@@ -928,6 +928,13 @@
 <span id="923">923</span>
 <span id="924">924</span>
 <span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::password_prompt</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">AccountCredential</span>, <span class="ident">AccountOpt</span>, <span class="ident">AccountPerson</span>, <span class="ident">AccountPosix</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>,
@@ -999,8 +1006,15 @@
                         .<span class="kw">await</span>;
 
                     <span class="kw">match</span> <span class="ident">rcred</span> {
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">s</span>)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Radius secret: {}&quot;</span>, <span class="ident">s</span>),
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;NO Radius secret&quot;</span>),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">s</span>)) =&gt; <span class="macro">println!</span>(
+                            <span class="string">&quot;RADIUS secret for {}: {}&quot;</span>,
+                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                            <span class="ident">s</span>,
+                        ),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(
+                            <span class="string">&quot;No RADIUS secret set for user {}&quot;</span>,
+                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                        ),
                         <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                             <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                         }

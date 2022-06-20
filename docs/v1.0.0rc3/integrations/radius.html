@@ -75,7 +75,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../intro.html"><strong aria-hidden="true">1.</strong> Introduction to Kanidm</a></li><li class="chapter-item expanded "><a href="../installing_the_server.html"><strong aria-hidden="true">2.</strong> Installing the Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../server_configuration.html"><strong aria-hidden="true">2.1.</strong> Server Configuration</a></li><li class="chapter-item expanded "><a href="../security_hardening.html"><strong aria-hidden="true">2.2.</strong> Security Hardening</a></li></ol></li><li class="chapter-item expanded "><a href="../client_tools.html"><strong aria-hidden="true">3.</strong> Client Tools</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../installing_client_tools.html"><strong aria-hidden="true">3.1.</strong> Installing client tools</a></li></ol></li><li class="chapter-item expanded "><a href="../accounts_and_groups.html"><strong aria-hidden="true">4.</strong> Accounts and Groups</a></li><li class="chapter-item expanded "><a href="../administrivia.html"><strong aria-hidden="true">5.</strong> Administrative Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../monitoring.html"><strong aria-hidden="true">5.1.</strong> Monitoring the platform</a></li><li class="chapter-item expanded "><a href="../password_quality.html"><strong aria-hidden="true">5.2.</strong> Password Quality and Badlisting</a></li><li class="chapter-item expanded "><a href="../posix_accounts.html"><strong aria-hidden="true">5.3.</strong> POSIX Accounts and Groups</a></li><li class="chapter-item expanded "><a href="../ssh_key_dist.html"><strong aria-hidden="true">5.4.</strong> SSH Key Distribution</a></li><li class="chapter-item expanded "><a href="../recycle_bin.html"><strong aria-hidden="true">5.5.</strong> The Recycle Bin</a></li><li class="chapter-item expanded "><a href="../why_tls.html"><strong aria-hidden="true">5.6.</strong> Why TLS?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">For Developers</li><li class="chapter-item expanded "><a href="../DEVELOPER_README.html"><strong aria-hidden="true">6.</strong> Developer Guide</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/oauth2.html"><strong aria-hidden="true">7.</strong> Oauth2</a></li><li class="chapter-item expanded "><a href="../integrations/pam_and_nsswitch.html"><strong aria-hidden="true">8.</strong> PAM and nsswitch</a></li><li class="chapter-item expanded "><a href="../integrations/radius.html" class="active"><strong aria-hidden="true">9.</strong> RADIUS</a></li><li class="chapter-item expanded "><a href="../integrations/ldap.html"><strong aria-hidden="true">10.</strong> LDAP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integration Examples</li><li class="chapter-item expanded "><a href="../examples/k8s_ingress_example.html"><strong aria-hidden="true">11.</strong> Kubernetes Ingress</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../intro.html"><strong aria-hidden="true">1.</strong> Introduction to Kanidm</a></li><li class="chapter-item expanded "><a href="../installing_the_server.html"><strong aria-hidden="true">2.</strong> Installing the Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../server_configuration.html"><strong aria-hidden="true">2.1.</strong> Server Configuration</a></li><li class="chapter-item expanded "><a href="../security_hardening.html"><strong aria-hidden="true">2.2.</strong> Security Hardening</a></li></ol></li><li class="chapter-item expanded "><a href="../client_tools.html"><strong aria-hidden="true">3.</strong> Client Tools</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../installing_client_tools.html"><strong aria-hidden="true">3.1.</strong> Installing client tools</a></li></ol></li><li class="chapter-item expanded "><a href="../accounts_and_groups.html"><strong aria-hidden="true">4.</strong> Accounts and Groups</a></li><li class="chapter-item expanded "><a href="../administrivia.html"><strong aria-hidden="true">5.</strong> Administrative Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../monitoring.html"><strong aria-hidden="true">5.1.</strong> Monitoring the platform</a></li><li class="chapter-item expanded "><a href="../password_quality.html"><strong aria-hidden="true">5.2.</strong> Password Quality and Badlisting</a></li><li class="chapter-item expanded "><a href="../posix_accounts.html"><strong aria-hidden="true">5.3.</strong> POSIX Accounts and Groups</a></li><li class="chapter-item expanded "><a href="../ssh_key_dist.html"><strong aria-hidden="true">5.4.</strong> SSH Key Distribution</a></li><li class="chapter-item expanded "><a href="../recycle_bin.html"><strong aria-hidden="true">5.5.</strong> The Recycle Bin</a></li><li class="chapter-item expanded "><a href="../why_tls.html"><strong aria-hidden="true">5.6.</strong> Why TLS?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">For Developers</li><li class="chapter-item expanded "><a href="../DEVELOPER_README.html"><strong aria-hidden="true">6.</strong> Developer Guide</a></li><li class="chapter-item expanded "><a href="../developers/python.html"><strong aria-hidden="true">7.</strong> Python Module</a></li><li class="chapter-item expanded "><a href="../developers/radius.html"><strong aria-hidden="true">8.</strong> RADIUS Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../integrations/oauth2.html"><strong aria-hidden="true">9.</strong> Oauth2</a></li><li class="chapter-item expanded "><a href="../integrations/pam_and_nsswitch.html"><strong aria-hidden="true">10.</strong> PAM and nsswitch</a></li><li class="chapter-item expanded "><a href="../integrations/radius.html" class="active"><strong aria-hidden="true">11.</strong> RADIUS</a></li><li class="chapter-item expanded "><a href="../integrations/ldap.html"><strong aria-hidden="true">12.</strong> LDAP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integration Examples</li><li class="chapter-item expanded "><a href="../examples/k8s_ingress_example.html"><strong aria-hidden="true">13.</strong> Kubernetes Ingress</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -199,106 +199,110 @@ kanidm group add_members --name idm_admin radius_access_allowed william
 <p>To read these secrets, the RADIUS server requires an account with the
 correct privileges. This can be created and assigned through the group
 &quot;idm_radius_servers&quot;, which is provided by default.</p>
-<pre><code>kanidm account create --name admin radius_service_account &quot;Radius Service Account&quot;
+<p>First, create the account and add it to the group:</p>
+<pre><code class="language-shell">kanidm account create --name admin radius_service_account &quot;Radius Service Account&quot;
 kanidm group add_members --name admin idm_radius_servers radius_service_account
-kanidm account credential reset_credential --name admin radius_service_account
+</code></pre>
+<p>Now reset the account password, using the <code>admin</code> account:</p>
+<pre><code class="language-shell">kanidm account credential update --name admin radius_service_account
 </code></pre>
 <h2 id="deploying-a-radius-container"><a class="header" href="#deploying-a-radius-container">Deploying a RADIUS Container</a></h2>
 <p>We provide a RADIUS container that has all the needed integrations. 
-This container requires some cryptographic material, laid out in a volume like so:</p>
-<pre><code>data
-data/ca.pem             # This is the kanidm ca.pem
-data/config.ini         # This is the kanidm-radius configuration.
-data/certs
-data/certs/dh           # openssl dhparam -out ./dh 2048
-data/certs/key.pem      # These are the radius ca/cert/key
-data/certs/cert.pem
-data/certs/ca.pem
+This container requires some cryptographic material, with the following files being in <code>/etc/raddb/certs</code>. (Modifiable in the configuration)</p>
+<table><thead><tr><th>filename</th><th>description</th></tr></thead><tbody>
+<tr><td>ca.pem</td><td>The signing CA of the RADIUS certificate</td></tr>
+<tr><td>dh.pem</td><td>The output of <code>openssl dhparam -in ca.pem -out ./dh.pem 2048</code></td></tr>
+<tr><td>cert.pem</td><td>The certificate for the RADIUS server</td></tr>
+<tr><td>key.pem</td><td>The signing key for the RADIUS certificate</td></tr>
+</tbody></table>
+<p>The configuration file (<code>/data/kanidm</code>) has the following template:</p>
+<pre><code class="language-toml">uri = &quot;https://example.com&quot; # URL to the Kanidm server
+verify_hostnames = true     # verify the hostname of the Kanidm server
+
+verify_ca = false           # Strict CA verification
+ca = /data/ca.pem           # Path to the kanidm ca
+username =                  # Username of the RADIUS service account
+password =                  # Generated secret for the service account
+
+# Default vlans for groups that don't specify one.
+radius_default_vlan = 1 
+
+# A list of Kanidm groups which must be a member
+# before they can authenticate via RADIUS.
+radius_required_groups = [
+	&quot;radius_access_allowed&quot;,
+]
+
+# A mapping between Kanidm groups and VLANS
+radius_groups = [
+    { name = &quot;radius_access_allowed&quot;, vlan = 10 },
+]
+
+# A mapping of clients and their authentication tokens
+radius_clients = [
+    { name = &quot;test&quot;, ipaddr = &quot;127.0.0.1&quot;, secret  = &quot;testing123&quot; },
+    # TODO: see if this works - it gets written out to the file
+    { name = &quot;docker&quot; , ipaddr = &quot;172.17.0.0/16&quot;, secret = &quot;testing123&quot; },
+]
+
+# radius_cert_path = &quot;/etc/raddb/certs/cert.pem&quot;
+# the signing key for radius TLS
+# radius_key_path = &quot;/etc/raddb/certs/key.pem&quot;   
+# the diffie-hellman output
+# radius_dh_path = &quot;/etc/raddb/certs/dh.pem&quot;     
+# the CA certificate
+# radius_ca_path = &quot;/etc/raddb/certs/ca.pem&quot;     
+
 </code></pre>
-<p>The config.ini has the following template:</p>
-<pre><code>[kanidm_client]
-url =                   # URL to the kanidm server
-strict = false          # Strict CA verification
-ca = /data/ca.pem       # Path to the kanidm ca
-user =                  # Username of the RADIUS service account
-secret =                # Generated secret for the service account
+<h2 id="a-fully-configured-example"><a class="header" href="#a-fully-configured-example">A fully configured example</a></h2>
+<pre><code class="language-toml">url = &quot;https://example.com&quot;
 
-; default VLANs for groups that don't specify one.
-[DEFAULT]
-vlan = 1
+username = &quot;radius_service_account&quot;
+# The generated password from above
+password = &quot;cr4bzr0ol&quot; 
 
-; [group.test]          # group.&lt;name&gt; will have these options applied
-; vlan =
+# default vlan for groups that don't specify one.
+radius_default_vlan = 99 
 
-[radiusd]
-ca =                    # Path to the radius server's CA
-key =                   # Path to the radius servers key
-cert =                  # Path to the radius servers cert
-dh =                    # Path to the radius servers dh params
-required_group =        # Name of a kanidm group which you must be 
-                        # A member of to use radius.
-cache_path =            # A path to an area where cached user records can be stored.
-                        # If in doubt, use /dev/shm/kanidmradiusd
+# if the user is in one of these Kanidm groups, 
+# then they're allowed to authenticate
+radius_required_groups = [
+    &quot;radius_access_allowed&quot;,
+]
 
-; [client.localhost]    # client.&lt;nas name&gt; configures wifi/vpn consumers
-; ipaddr =              # ipv4 or ipv6 address of the NAS
-; secret =              # Shared secret
+radius_groups = [
+    { name = &quot;radius_access_allowed&quot;, vlan = 10 }
+]
+
+radius_clients = [
+    { name = &quot;localhost&quot;, ipaddr = &quot;127.0.0.1&quot;, secret = &quot;testing123&quot; },
+    { name = &quot;docker&quot; , ipaddr = &quot;172.17.0.0/16&quot;, secret = &quot;testing123&quot; },
+]
 </code></pre>
-<p>A fully configured example:</p>
-<pre><code>[kanidm_client]
-; be sure to check the listening port is correct, it's the docker internal port
-; not the external one if these containers are on the same host.
-url = https://&lt;kanidmd container name or ip&gt;:8443
-strict = true           # Adjust this if you have CA validation issues
-ca = /data/ca.crt
-user = radius_service_account
-secret =                # The generated password from above
-
-; default vlans for groups that don't specify one.
-[DEFAULT]
-vlan = 1
-
-[group.network_admins]
-vlan = 10
-
-[radiusd]
-ca = /data/certs/ca.pem
-key =  /data/certs/key.pem
-cert = /data/certs/cert.pem
-dh = /data/certs/dh
-required_group = radius_access_allowed
-cache_path = /dev/shm/kanidmradiusd
-
-[client.localhost]
-ipaddr = 127.0.0.1
-secret = testing123
-
-[client.docker]
-ipaddr = 172.17.0.0/16
-secret = testing123
+<h2 id="moving-to-production"><a class="header" href="#moving-to-production">Moving to Production</a></h2>
+<p>To expose this to a Wi-Fi infrastructure, add your NAS in the configuration:</p>
+<pre><code class="language-toml">radius_clients = [
+    { name = &quot;access_point&quot;, ipaddr = &quot;10.2.3.4&quot;, secret = &quot;&lt;a_random_value&gt;&quot; }
+]
 </code></pre>
-<p>You can then run the container with:</p>
-<pre><code>docker run --name radiusd -v ...:/data kanidm/radius:latest
-</code></pre>
-<p>Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:</p>
-<pre><code>docker exec -i -t radiusd radtest &lt;username&gt; badpassword 127.0.0.1 10 testing123
-docker exec -i -t radiusd radtest &lt;username&gt; &lt;radius show_secret value here&gt; 127.0.0.1 10 testing123
-</code></pre>
-<p>Finally, to expose this to a Wi-Fi infrastructure, add your NAS in <code>config.ini</code>:</p>
-<pre><code>[client.access_point]
-ipaddr = &lt;some ipadd&gt;
-secret = &lt;random value&gt;
-</code></pre>
-<p>Then re-create/run your docker instance with <code>-p 1812:1812 -p 1812:1812/udp</code> ...</p>
+<p>Then re-create/run your docker instance and expose the ports by adding 
+<code>-p 1812:1812 -p 1812:1812/udp</code> to the command.</p>
 <p>If you have any issues, check the logs from the RADIUS output, as they tend 
 to indicate the cause of the problem. To increase the logging level you can 
 re-run your environment with debug enabled:</p>
-<pre><code>docker rm radiusd
-docker run --name radiusd -e DEBUG=True -i -t -v ...:/data kanidm/radius:latest
+<pre><code class="language-shell">docker rm radiusd
+docker run --name radiusd \
+    -e DEBUG=True \
+    -p 1812:1812 \
+    -p 1812:1812/udp
+    --interactive --tty \
+    --volume /tmp/kanidm:/etc/raddb/certs \
+    kanidm/radius:latest
 </code></pre>
-<p>Note the RADIUS container <em>is</em> configured to provide Tunnel-Private-Group-ID, 
+<p>Note: the RADIUS container <em>is</em> configured to provide 
+<a href="https://freeradius.org/rfc/rfc2868.html#Tunnel-Private-Group-ID">Tunnel-Private-Group-ID</a>, 
 so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
-assign these by groups in the config.ini as shown in the above examples.</p>
+assign these by groups in the configuration file as shown in the above examples.</p>
 
                     </main>
 
