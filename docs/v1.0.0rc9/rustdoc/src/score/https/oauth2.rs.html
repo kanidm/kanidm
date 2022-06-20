@@ -619,13 +619,54 @@
 <span id="614">614</span>
 <span id="615">615</span>
 <span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::v1</span>::{<span class="ident">json_rest_event_get</span>, <span class="ident">json_rest_event_post</span>};
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
 <span class="kw">use</span> <span class="ident">kanidm::idm::oauth2</span>::{
     <span class="ident">AccessTokenIntrospectRequest</span>, <span class="ident">AccessTokenRequest</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>,
-    <span class="ident">ErrorResponse</span>, <span class="ident">Oauth2Error</span>,
+    <span class="ident">AuthoriseResponse</span>, <span class="ident">ErrorResponse</span>, <span class="ident">Oauth2Error</span>,
 };
 <span class="kw">use</span> <span class="ident">kanidm::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">kanidm_proto::oauth2::AuthorisationResponse</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
@@ -806,7 +847,13 @@
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_authorise_post</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">auth_req</span>: <span class="ident">AuthorisationRequest</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="ident">oauth2_authorise</span>(<span class="ident">req</span>, <span class="ident">auth_req</span>).<span class="kw">await</span>
+    <span class="ident">oauth2_authorise</span>(<span class="ident">req</span>, <span class="ident">auth_req</span>).<span class="kw">await</span>.<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">res</span><span class="op">|</span> {
+        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">302</span> {
+            <span class="comment">// in post, we need the redirect not to be issued, so we mask 302 to 200</span>
+            <span class="ident">res</span>.<span class="ident">set_status</span>(<span class="number">200</span>);
+        }
+        <span class="ident">res</span>
+    })
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_authorise_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
@@ -840,12 +887,43 @@
         .<span class="kw">await</span>;
 
     <span class="kw">match</span> <span class="ident">res</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">consent_req</span>) =&gt; {
+        <span class="prelude-val">Ok</span>(<span class="ident">AuthoriseResponse::ConsentRequested</span> {
+            <span class="ident">client_name</span>,
+            <span class="ident">scopes</span>,
+            <span class="ident">pii_scopes</span>,
+            <span class="ident">consent_token</span>,
+        }) =&gt; {
             <span class="comment">// Render a redirect to the consent page for the user to interact with</span>
             <span class="comment">// to authorise this session-id</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
             <span class="comment">// This is json so later we can expand it with better detail.</span>
-            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">consent_req</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
+            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">AuthorisationResponse::ConsentRequested</span> {
+                <span class="ident">client_name</span>,
+                <span class="ident">scopes</span>,
+                <span class="ident">pii_scopes</span>,
+                <span class="ident">consent_token</span>,
+            })
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
+                <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
+                <span class="ident">res</span>
+            })
+        }
+        <span class="prelude-val">Ok</span>(<span class="ident">AuthoriseResponse::Permitted</span>(<span class="ident">AuthorisePermitSuccess</span> {
+            <span class="kw-2">mut</span> <span class="ident">redirect_uri</span>,
+            <span class="ident">state</span>,
+            <span class="ident">code</span>,
+        })) =&gt; {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">302</span>);
+
+            <span class="ident">redirect_uri</span>
+                .<span class="ident">query_pairs_mut</span>()
+                .<span class="ident">clear</span>()
+                .<span class="ident">append_pair</span>(<span class="string">&quot;state&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">state</span>)
+                .<span class="ident">append_pair</span>(<span class="string">&quot;code&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">code</span>);
+            <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Location&quot;</span>, <span class="ident">redirect_uri</span>.<span class="ident">as_str</span>());
+            <span class="comment">// I think the client server needs this</span>
+            <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Access-Control-Allow-Origin&quot;</span>, <span class="ident">redirect_uri</span>.<span class="ident">origin</span>().<span class="ident">ascii_serialization</span>());
+            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">AuthorisationResponse::Permitted</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
                 <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
                 <span class="ident">res</span>
             })
@@ -886,8 +964,10 @@
     <span class="ident">oauth2_authorise_permit</span>(<span class="ident">req</span>, <span class="ident">consent_req</span>)
         .<span class="kw">await</span>
         .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">res</span><span class="op">|</span> {
-            <span class="comment">// in post, we need the redirect not to be issued, so we mask 302 to 200</span>
-            <span class="ident">res</span>.<span class="ident">set_status</span>(<span class="number">200</span>);
+            <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">status</span>() <span class="op">==</span> <span class="number">302</span> {
+                <span class="comment">// in post, we need the redirect not to be issued, so we mask 302 to 200</span>
+                <span class="ident">res</span>.<span class="ident">set_status</span>(<span class="number">200</span>);
+            }
             <span class="ident">res</span>
         })
 }
@@ -939,7 +1019,7 @@
                 .<span class="ident">append_pair</span>(<span class="string">&quot;code&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">code</span>);
             <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Location&quot;</span>, <span class="ident">redirect_uri</span>.<span class="ident">as_str</span>());
             <span class="comment">// I think the client server needs this</span>
-            <span class="comment">// res.insert_header(&quot;Access-Control-Allow-Origin&quot;, redirect_uri.origin().ascii_serialization());</span>
+            <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Access-Control-Allow-Origin&quot;</span>, <span class="ident">redirect_uri</span>.<span class="ident">origin</span>().<span class="ident">ascii_serialization</span>());
             <span class="ident">res</span>
         }
         <span class="prelude-val">Err</span>(<span class="ident">_e</span>) =&gt; {

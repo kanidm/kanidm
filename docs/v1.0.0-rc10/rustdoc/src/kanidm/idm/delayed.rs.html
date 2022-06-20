@@ -33,6 +33,13 @@
 <span id="28">28</span>
 <span id="29">29</span>
 <span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 <span class="kw">use</span> <span class="ident">webauthn_rs::proto</span>::{<span class="ident">Counter</span>, <span class="ident">CredentialID</span>};
 
@@ -41,6 +48,7 @@
     <span class="ident">UnixPwUpgrade</span>(<span class="ident">UnixPasswordUpgrade</span>),
     <span class="ident">WebauthnCounterIncrement</span>(<span class="ident">WebauthnCounterIncrement</span>),
     <span class="ident">BackupCodeRemoval</span>(<span class="ident">BackupCodeRemoval</span>),
+    <span class="ident">Oauth2ConsentGrant</span>(<span class="ident">Oauth2ConsentGrant</span>),
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PasswordUpgrade</span> {
@@ -62,6 +70,12 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">BackupCodeRemoval</span> {
     <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">code_to_remove</span>: <span class="ident">String</span>,
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Oauth2ConsentGrant</span> {
+    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
+    <span class="kw">pub</span> <span class="ident">oauth2_rs_uuid</span>: <span class="ident">Uuid</span>,
+    <span class="kw">pub</span> <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidm" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>

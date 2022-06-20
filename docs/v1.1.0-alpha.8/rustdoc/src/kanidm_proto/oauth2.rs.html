@@ -354,6 +354,11 @@
 <span id="349">349</span>
 <span id="350">350</span>
 <span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">url::Url</span>;
@@ -413,18 +418,23 @@
     <span class="kw">pub</span> <span class="ident">acr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// We ask our user to consent to this Authorisation Request with the</span>
-<span class="doccomment">/// following data.</span>
+<span class="doccomment">/// When we request to authorise, it can either prompt us for consent,</span>
+<span class="doccomment">/// or it can immediately be granted due the past grant.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsentRequest</span> {
-    <span class="comment">// A pretty-name of the client</span>
-    <span class="kw">pub</span> <span class="ident">client_name</span>: <span class="ident">String</span>,
-    <span class="comment">// A list of scopes requested / to be issued.</span>
-    <span class="kw">pub</span> <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="comment">// The users displayname (?)</span>
-    <span class="comment">// pub display_name: String,</span>
-    <span class="comment">// The token we need to be given back to allow this to proceed</span>
-    <span class="kw">pub</span> <span class="ident">consent_token</span>: <span class="ident">String</span>,
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthorisationResponse</span> {
+    <span class="ident">ConsentRequested</span> {
+        <span class="comment">// A pretty-name of the client</span>
+        <span class="ident">client_name</span>: <span class="ident">String</span>,
+        <span class="comment">// A list of scopes requested / to be issued.</span>
+        <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="comment">// Extra PII that may be requested</span>
+        <span class="ident">pii_scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="comment">// The users displayname (?)</span>
+        <span class="comment">// pub display_name: String,</span>
+        <span class="comment">// The token we need to be given back to allow this to proceed</span>
+        <span class="ident">consent_token</span>: <span class="ident">String</span>,
+    },
+    <span class="ident">Permitted</span>,
 }
 
 <span class="comment">// The resource server then contacts the token endpoint with</span>

@@ -1391,8 +1391,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::oauth2</span>::{
     <span class="ident">AccessTokenIntrospectRequest</span>, <span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">AccessTokenRequest</span>,
-    <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>, <span class="ident">ConsentRequest</span>, <span class="ident">JwkKeySet</span>,
-    <span class="ident">Oauth2Error</span>, <span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OidcToken</span>,
+    <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>, <span class="ident">AuthoriseResponse</span>,
+    <span class="ident">JwkKeySet</span>, <span class="ident">Oauth2Error</span>, <span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OidcToken</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerTransaction</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap</span>::{<span class="ident">LdapBoundToken</span>, <span class="ident">LdapResponseState</span>, <span class="ident">LdapServer</span>};
@@ -2491,7 +2491,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">auth_req</span>: <span class="ident">AuthorisationRequest</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthoriseResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2Authorise&gt;&quot;</span>, {

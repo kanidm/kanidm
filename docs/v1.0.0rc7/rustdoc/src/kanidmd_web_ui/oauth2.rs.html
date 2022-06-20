@@ -423,6 +423,93 @@
 <span id="418">418</span>
 <span id="419">419</span>
 <span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::JsCast</span>;
@@ -439,8 +526,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">kanidm_proto::oauth2</span>::{
-    <span class="ident">AccessTokenRequest</span>, <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">CodeChallengeMethod</span>,
-    <span class="ident">ConsentRequest</span>, <span class="ident">ErrorResponse</span>,
+    <span class="ident">AccessTokenRequest</span>, <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisationResponse</span>,
+    <span class="ident">CodeChallengeMethod</span>, <span class="ident">ErrorResponse</span>,
 };
 
 <span class="kw">enum</span> <span class="ident">State</span> {
@@ -450,7 +537,13 @@
     <span class="ident">TokenCheck</span>(<span class="ident">String</span>),
     <span class="comment">// Token check done, lets do it.</span>
     <span class="ident">SubmitAuthReq</span>(<span class="ident">String</span>),
-    <span class="ident">Consent</span>(<span class="ident">String</span>, <span class="ident">ConsentRequest</span>),
+    <span class="ident">Consent</span> {
+        <span class="ident">token</span>: <span class="ident">String</span>,
+        <span class="ident">client_name</span>: <span class="ident">String</span>,
+        <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="ident">pii_scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="ident">consent_token</span>: <span class="ident">String</span>,
+    },
     <span class="ident">ConsentGranted</span>,
     <span class="ident">ErrInvalidRequest</span>,
 }
@@ -463,9 +556,17 @@
     <span class="ident">LoginProceed</span>,
     <span class="ident">ConsentGranted</span>,
     <span class="ident">TokenValid</span>,
-    <span class="ident">Consent</span>(<span class="ident">ConsentRequest</span>),
+    <span class="ident">Consent</span> {
+        <span class="ident">client_name</span>: <span class="ident">String</span>,
+        <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="ident">pii_scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="ident">consent_token</span>: <span class="ident">String</span>,
+    },
     <span class="ident">Redirect</span>(<span class="ident">String</span>),
-    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+    <span class="ident">Error</span> {
+        <span class="ident">emsg</span>: <span class="ident">String</span>,
+        <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    },
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">FetchError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Oauth2Msg</span> {
@@ -541,13 +642,41 @@
         <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
         <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
         <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
+        <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
 
         <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
             <span class="kw">let</span> <span class="ident">jsval</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">json</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">ConsentRequest</span> <span class="op">=</span> <span class="ident">jsval</span>.<span class="ident">into_serde</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
-            <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Consent</span>(<span class="ident">state</span>))
+            <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">AuthorisationResponse</span> <span class="op">=</span> <span class="ident">jsval</span>
+                .<span class="ident">into_serde</span>()
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">e_msg</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;serde error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">console::log!</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
+                })
+                .<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
+            <span class="kw">match</span> <span class="ident">state</span> {
+                <span class="ident">AuthorisationResponse::ConsentRequested</span> {
+                    <span class="ident">client_name</span>,
+                    <span class="ident">scopes</span>,
+                    <span class="ident">pii_scopes</span>,
+                    <span class="ident">consent_token</span>,
+                } =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Consent</span> {
+                    <span class="ident">client_name</span>,
+                    <span class="ident">scopes</span>,
+                    <span class="ident">pii_scopes</span>,
+                    <span class="ident">consent_token</span>,
+                }),
+                <span class="ident">AuthorisationResponse::Permitted</span> =&gt; {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">loc</span>) <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;location&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>() {
+                        <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Redirect</span>(<span class="ident">loc</span>))
+                    } <span class="kw">else</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Error</span> {
+                            <span class="ident">emsg</span>: <span class="string">&quot;no location header&quot;</span>.<span class="ident">to_string</span>(),
+                            <span class="ident">kopid</span>,
+                        })
+                    }
+                }
+            }
         } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
             <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
             <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
@@ -556,9 +685,9 @@
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_consent_token</span>(
         <span class="ident">token</span>: <span class="ident">String</span>,
-        <span class="ident">consent_req</span>: <span class="ident">ConsentRequest</span>,
+        <span class="ident">consent_token</span>: <span class="ident">String</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Oauth2Msg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">consentreq_jsvalue</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">consent_req</span>.<span class="ident">consent_token</span>)
+        <span class="kw">let</span> <span class="ident">consentreq_jsvalue</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">consent_token</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">JsValue::from</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>))
             .<span class="ident">expect_throw</span>(<span class="string">&quot;Failed to serialise consent_req&quot;</span>);
 
@@ -719,9 +848,20 @@
                 };
                 <span class="bool-val">true</span>
             }
-            <span class="ident">Oauth2Msg::Consent</span>(<span class="ident">consent_req</span>) =&gt; {
+            <span class="ident">Oauth2Msg::Consent</span> {
+                <span class="ident">client_name</span>,
+                <span class="ident">scopes</span>,
+                <span class="ident">pii_scopes</span>,
+                <span class="ident">consent_token</span>,
+            } =&gt; {
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-                    <span class="ident">State::SubmitAuthReq</span>(<span class="ident">token</span>) =&gt; <span class="ident">State::Consent</span>(<span class="ident">token</span>.<span class="ident">clone</span>(), <span class="ident">consent_req</span>),
+                    <span class="ident">State::SubmitAuthReq</span>(<span class="ident">token</span>) =&gt; <span class="ident">State::Consent</span> {
+                        <span class="ident">token</span>: <span class="ident">token</span>.<span class="ident">clone</span>(),
+                        <span class="ident">client_name</span>,
+                        <span class="ident">scopes</span>,
+                        <span class="ident">pii_scopes</span>,
+                        <span class="ident">consent_token</span>,
+                    },
                     <span class="kw">_</span> =&gt; {
                         <span class="macro">console::log!</span>(<span class="string">&quot;Invalid state transition&quot;</span>);
                         <span class="ident">State::ErrInvalidRequest</span>
@@ -731,9 +871,13 @@
             }
             <span class="ident">Oauth2Msg::ConsentGranted</span> =&gt; {
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-                    <span class="ident">State::Consent</span>(<span class="ident">token</span>, <span class="ident">consent_req</span>) =&gt; {
+                    <span class="ident">State::Consent</span> {
+                        <span class="ident">token</span>,
+                        <span class="ident">consent_token</span>,
+                        ..
+                    } =&gt; {
                         <span class="kw">let</span> <span class="ident">token_c</span> <span class="op">=</span> <span class="ident">token</span>.<span class="ident">clone</span>();
-                        <span class="kw">let</span> <span class="ident">cr_c</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">consent_req</span>).<span class="ident">clone</span>();
+                        <span class="kw">let</span> <span class="ident">cr_c</span> <span class="op">=</span> <span class="ident">consent_token</span>.<span class="ident">clone</span>();
                         <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
                             <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_consent_token</span>(<span class="ident">token_c</span>, <span class="ident">cr_c</span>).<span class="kw">await</span> {
                                 <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
@@ -805,8 +949,36 @@
                   <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
                 }
             }
-            <span class="ident">State::Consent</span>(<span class="kw">_</span>, <span class="ident">query</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client_name</span> <span class="op">=</span> <span class="ident">query</span>.<span class="ident">client_name</span>.<span class="ident">clone</span>();
+            <span class="ident">State::Consent</span> {
+                <span class="ident">token</span>: <span class="kw">_</span>,
+                <span class="ident">client_name</span>,
+                <span class="ident">scopes</span>: <span class="kw">_</span>,
+                <span class="ident">pii_scopes</span>,
+                <span class="ident">consent_token</span>: <span class="kw">_</span>,
+            } =&gt; {
+                <span class="kw">let</span> <span class="ident">client_name</span> <span class="op">=</span> <span class="ident">client_name</span>.<span class="ident">clone</span>();
+
+                <span class="kw">let</span> <span class="ident">pii_req</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">pii_scopes</span>.<span class="ident">is_empty</span>() {
+                    <span class="macro">html!</span> {
+                      <span class="op">&lt;</span><span class="ident">div</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="string">&quot;This site will not have access to your personal information&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="string">&quot;If this site requests personal information in the future we will check with you&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                    }
+                } <span class="kw">else</span> {
+                    <span class="macro">html!</span> {
+                      <span class="op">&lt;</span><span class="ident">div</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="string">&quot;This site has requested to see the following personal information&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">ul</span><span class="op">&gt;</span>
+                          {
+                            <span class="ident">pii_scopes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">li</span><span class="op">&gt;</span>{ <span class="ident">s</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span> } ).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Html</span><span class="op">&gt;</span>()
+                          }
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">ul</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="string">&quot;If this site requests different personal information in the future we will check with you again&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                    }
+                };
+
                 <span class="comment">// &lt;body class=&quot;html-body form-body&quot;&gt;</span>
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
@@ -818,7 +990,9 @@
                         } ) }
                         <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
                       <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">h1</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;h3 mb-3 fw-normal&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;Consent to Proceed to &quot;</span> }{ <span class="ident">client_name</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">h2</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;h3 mb-3 fw-normal&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;Consent to Proceed to &quot;</span> }{ <span class="ident">client_name</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
+                        { <span class="ident">pii_req</span> }
+
                         <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">id</span><span class="op">=</span><span class="string">&quot;autofocus&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;w-100 btn btn-lg btn-primary&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Proceed&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
