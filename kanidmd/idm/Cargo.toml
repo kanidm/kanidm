@@ -20,7 +20,7 @@ tracing = { version = "^0.1.35", features = ["attributes"] }
 tracing-subscriber = { version = "^0.3.11", features = ["env-filter"] }
 tracing-serde = "^0.1.3"
 
-dyn-clone = "^1.0.5"
+dyn-clone = "^1.0.6"
 
 url = { version = "^2.2.2", features = ["serde"] }
 tide = "^0.16.0"
