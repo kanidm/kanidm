@@ -177,67 +177,9 @@ radius_clients = [
     { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
 ]
 ```
+## Moving to Production
 
-## Running a test RADIUS container
-
-Starting from the root directory of the repository, we'll generate some basic certificates. Run the generate script and just accept all the defaults:
-
-From the root directory of the Kanidm repository:
-
-1. Build the container - this'll give you a container image called `kanidm/radius`  with the tag `devel`:
-
-```s
- `make build/radiusd`
-```
-
-Once the process has completed, check the container exists in your docker environment:
-
-```s
-➜ docker image ls kanidm/radius
-REPOSITORY      TAG       IMAGE ID       CREATED              SIZE
-kanidm/radius   devel     5dabe894134c   About a minute ago   622MB
-```
-*Note:* Containers are also automatically built based on the development branch and available at `ghcr.io/kanidm/radius:devel`
-
-2. Generate some self-signed certificates  by running the script - just hit enter on all the prompts if you don't want to customise them. This'll put the files in `/tmp/kanidm`:
-
-```shell
-./insecure_generate_tls.sh
-```
-3. Run the container: 
-
-```shell
-cd kanidm_rlm_python && ./run_radius_container.sh
-```
-
-You can pass the following environment variables to `run_radius_container.sh` to set other options:
-
-- IMAGE: an alternative image such as `ghcr.io/kanidm/radius:devel`
-- CONFIG_FILE: mount your own config file
-
-eg:
-
-```shell
-IMAGE=ghcr.io/kanidm/radius:devel \
-    CONFIG_FILE=~/.config/kanidm \
-    ./run_radius_container.sh
-```
-
-## Testing authentication
-
-Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:
-
-```shell
-docker exec -i -t radiusd radtest \
-    <username> badpassword \
-    127.0.0.1 10 testing123
-    
-docker exec -i -t radiusd radtest \
-    <username> <radius show_secret value here> \
-    127.0.0.1 10 testing123
-```
-
-Finally, to expose this to a Wi-Fi infrastructure, add your NAS in the configuration:
+To expose this to a Wi-Fi infrastructure, add your NAS in the configuration:
 
 ```toml
 radius_clients = [
