@@ -330,7 +330,7 @@ mkdocs = ">=1.1"
 
 [[package]]
 name = "mkdocs-material"
-version = "8.3.4"
+version = "8.3.6"
 description = "Documentation that simply works"
 category = "dev"
 optional = false
@@ -801,7 +801,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "22d0770031bef1a44a6f1b88f4ad46090951fdb890d6e4d587dc4c30ec2cea18"
+content-hash = "1511b1c3506aa609c54e18558dd29b30ea94da0f5f8495789870e92970be1905"
 
 [metadata.files]
 aiohttp = [
@@ -1177,8 +1177,8 @@ mkdocs-autorefs = [
     {file = "mkdocs_autorefs-0.4.1-py3-none-any.whl", hash = "sha256:a2248a9501b29dc0cc8ba4c09f4f47ff121945f6ce33d760f145d6f89d313f5b"},
 ]
 mkdocs-material = [
-    {file = "mkdocs-material-8.3.4.tar.gz", hash = "sha256:467040e9c93fada45f78398336595158ed5f398e49291186e2cfc2f3e8b1973e"},
-    {file = "mkdocs_material-8.3.4-py2.py3-none-any.whl", hash = "sha256:04db519908cd2bee450b0d2bdad3ac365d788e774528dd37f11e2ce3586d8e13"},
+    {file = "mkdocs-material-8.3.6.tar.gz", hash = "sha256:be8f95c0dfb927339b55b2cc066423dc0b381be9828ff74a5b02df979a859b66"},
+    {file = "mkdocs_material-8.3.6-py2.py3-none-any.whl", hash = "sha256:01f3fbab055751b3b75a64b538e86b9ce0c6a0f8d43620f6287dfa16534443e5"},
 ]
 mkdocs-material-extensions = [
     {file = "mkdocs-material-extensions-1.0.3.tar.gz", hash = "sha256:bfd24dfdef7b41c312ede42648f9eb83476ea168ec163b613f9abd12bbfddba2"},
