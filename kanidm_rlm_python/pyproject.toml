@@ -13,7 +13,7 @@ toml = "^0.10.2"
 aiohttp = "^3.8.1"
 
 [tool.poetry.dev-dependencies]
-pylint = "^2.13.9"
+pylint = "^2.14.3"
 mypy = "^0.961"
 types-requests = "^2.27.29"
 pytest = "^7.1.2"
