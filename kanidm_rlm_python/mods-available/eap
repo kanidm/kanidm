@@ -105,8 +105,8 @@ eap {
 	#  User-Password, or the NT-Password attributes.
 	#  'System' authentication is impossible with LEAP.
 	#
-	leap {
-	}
+	#leap {
+	#}
 
 	#  Generic Token Card.
 	#
@@ -236,7 +236,7 @@ eap {
 		#
 		#  	openssl dhparam -out certs/dh 2048
 		#
-		dh_file = ${certdir}/dh
+		dh_file = ${certdir}/dh.pem
 
 		#
 		#  If your system doesn't have /dev/urandom,

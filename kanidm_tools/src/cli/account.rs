@@ -69,8 +69,15 @@ impl AccountOpt {
                         .await;
 
                     match rcred {
-                        Ok(Some(s)) => println!("Radius secret: {}", s),
-                        Ok(None) => println!("NO Radius secret"),
+                        Ok(Some(s)) => println!(
+                            "RADIUS secret for {}: {}",
+                            aopt.aopts.account_id.as_str(),
+                            s,
+                        ),
+                        Ok(None) => println!(
+                            "No RADIUS secret set for user {}",
+                            aopt.aopts.account_id.as_str(),
+                        ),
                         Err(e) => {
                             error!("Error -> {:?}", e);
                         }

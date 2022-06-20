@@ -1,96 +1,135 @@
-import sys
-import os
-import subprocess
+""" entrypoint for kanidm's RADIUS module """
+
 import atexit
+import os
+from pathlib import Path
+import subprocess
 import shutil
 import signal
+import sys
+from typing import Any
 
+# import toml
+from kanidm.types import KanidmClientConfig
+from kanidm.utils import load_config
 
-MAJOR, MINOR, _, _, _ = sys.version_info
-
-if MAJOR >= 3:
-    import configparser
-else:
-    import ConfigParser as configparser
-
-DEBUG = False
+DEBUG = True
 if os.environ.get('DEBUG', False):
     DEBUG = True
 
-CONFIG = configparser.ConfigParser()
-CONFIG.read('/data/config.ini')
-
-CLIENTS = [
-    {
-        "name": x.split('.')[1],
-        "secret": CONFIG.get(x, "secret"),
-        "ipaddr": CONFIG.get(x, "ipaddr"),
-    }
-    for x in CONFIG.sections()
-    if x.startswith('client.')
-]
-
-print(CLIENTS)
-
-def _sigchild_handler(*args, **kwargs):
-    # log.debug("Received SIGCHLD ...")
+# pylint: disable=unused-argument
+def _sigchild_handler(
+    *args: Any,
+    **kwargs: Any,
+    ) -> None:
+    """ handler for SIGCHLD call"""
+    print("Received SIGCHLD ...", file=sys.stderr)
     os.waitpid(-1, os.WNOHANG)
 
-def write_clients_conf():
-    with open('/etc/raddb/clients.conf', 'w') as f:
-        for client in CLIENTS:
-            f.write('client %s {\n' % client['name'])
-            f.write('    ipaddr = %s\n' % client['ipaddr'])
-            f.write('    secret = %s\n' % client['secret'])
-            f.write('    proto = *\n')
-            f.write('}\n')
+def write_clients_conf(
+    kanidm_config_object: KanidmClientConfig,
+    ) -> None:
+    """ writes out the config file """
+    raddb_config_file = Path("/etc/raddb/clients.conf")
 
-def setup_certs():
+    with raddb_config_file.open('w', encoding='utf-8') as file_handle:
+        for client in kanidm_config_object.radius_clients:
+            file_handle.write(f"client {client.name} {{\n" )
+            file_handle.write(f"    ipaddr = {client.ipaddr}\n")
+            file_handle.write(f"    secret = {client.secret}\n" )
+            file_handle.write('    proto = *\n')
+            file_handle.write('}\n')
+
+def setup_certs(
+    kanidm_config_object: KanidmClientConfig,
+    ) -> None:
+    """ sets up certificates """
     # copy ca to /etc/raddb/certs/ca.pem
-    shutil.copyfile(CONFIG.get("radiusd", "ca"), '/etc/raddb/certs/ca.pem')
-    shutil.copyfile(CONFIG.get("radiusd", "dh"), '/etc/raddb/certs/dh')
-    # concat key + cert into /etc/raddb/certs/server.pem
-    with open('/etc/raddb/certs/server.pem', 'w') as f:
-        with open(CONFIG.get("radiusd", "key"), 'r') as r:
-            f.write(r.read())
-        f.write('\n')
-        with open(CONFIG.get("radiusd", "cert"), 'r') as r:
-            f.write(r.read())
-
-def run_radiusd():
-    global proc
-    if DEBUG:
-        proc = subprocess.Popen([
-            "/usr/sbin/radiusd", "-X"
-        ], stderr=subprocess.STDOUT)
-    else:
-        proc = subprocess.Popen([
-            "/usr/sbin/radiusd", "-f",
-            "-l", "stdout"
-        ], stderr=subprocess.STDOUT)
-    print(proc)
-
-    def kill_radius():
-        if proc is None:
-            pass
+    if kanidm_config_object.ca_path:
+        cert_ca = Path(kanidm_config_object.ca_path).expanduser().resolve()
+        if not cert_ca.exists():
+            print(f"Failed to find radiusd ca file ({cert_ca}), quitting!", file=sys.stderr)
+            sys.exit(1)
         else:
-            try:
-                os.kill(proc.pid, signal.SIGTERM)
-            except:
-                # It's already gone ...
-                pass
-        print("Stopping radiusd ...")
-        # To make sure we really do shutdown, we actually re-block on the proc
-        # again here to be sure it's done.
-        proc.wait()
+            print(f"Looking for cert_ca in {cert_ca}", file=sys.stderr )
+        shutil.copyfile(cert_ca, '/etc/raddb/certs/ca.pem')
+    if kanidm_config_object.radius_dh_path is not None:
+    # if CONFIG.get("radiusd", "dh", fallback="") != "":
+        cert_dh = Path(kanidm_config_object.radius_dh_path).expanduser().resolve()
+        if not cert_dh.exists():
+            print(f"Failed to find radiusd dh file ({cert_dh}), quitting!", file=sys.stderr)
+            sys.exit(1)
+        shutil.copyfile(cert_dh, '/etc/raddb/certs/dh')
 
-    atexit.register(kill_radius)
+    server_key = Path(kanidm_config_object.radius_key_path).expanduser().resolve()
+    if not server_key.exists() or not server_key.is_file():
+        print(
+            f"Failed to find server keyfile ({server_key}), quitting!",
+            file=sys.stderr,
+            )
+        sys.exit(1)
+
+    server_cert = Path(kanidm_config_object.radius_cert_path).expanduser().resolve()
+    if not server_cert.exists() or not server_cert.is_file():
+        print(
+            f"Failed to find server cert file ({server_cert}), quitting!",
+            file=sys.stderr,
+            )
+        sys.exit(1)
+    # concat key + cert into /etc/raddb/certs/server.pem
+    with open('/etc/raddb/certs/server.pem', 'w', encoding='utf-8') as file_handle:
+        file_handle.write(server_cert.read_text(encoding="utf-8"))
+        file_handle.write('\n')
+        file_handle.write(server_key.read_text(encoding="utf-8"))
+
+def kill_radius(
+    proc: subprocess.Popen,
+    ) -> None:
+    """ handler to kill the radius server once the script exits """
+    if proc is None:
+        pass
+    else:
+        try:
+            os.kill(proc.pid, signal.SIGTERM)
+        except OSError:
+            print("sever is already gone...", file=sys.stderr)
+    print("Stopping radiusd ...", file=sys.stderr)
+    # To make sure we really do shutdown, we actually re-block on the proc
+    # again here to be sure it's done.
 
     proc.wait()
 
+def run_radiusd() -> None:
+    """ run the server """
+
+    if DEBUG:
+        cmd_args = [ "-X" ]
+    else:
+        cmd_args = [ "-f", "-l", "stdout" ]
+    with subprocess.Popen(
+        ["/usr/sbin/radiusd"] + cmd_args,
+        stderr=subprocess.STDOUT,
+        ) as proc:
+        # print(proc, file=sys.stderr)
+        atexit.register(kill_radius, proc)
+        proc.wait()
+
 if __name__ == '__main__':
     signal.signal(signal.SIGCHLD, _sigchild_handler)
-    setup_certs()
-    write_clients_conf()
-    run_radiusd()
 
+    config_file = Path("/data/config.ini").expanduser().resolve()
+    if not config_file.exists:
+        print(
+            "Failed to find configuration file ({config_file}), quitting!",
+            file=sys.stderr,
+            )
+        sys.exit(1)
+
+    kanidm_config = KanidmClientConfig.parse_obj(load_config('/data/kanidm'))
+    setup_certs(kanidm_config)
+    write_clients_conf(kanidm_config)
+    print("Configuration set up, starting...")
+    try:
+        run_radiusd()
+    except KeyboardInterrupt as ki:
+        print(ki)

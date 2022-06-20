@@ -1,0 +1,28 @@
+name: pykanidm - pytest
+
+"on":
+  push:
+  pull_request:
+jobs:
+  pykanidm_pytest:
+    strategy:
+      matrix:
+        python_version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+      - name: Set up Python ${{matrix.python_version}}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{matrix.python_version}}
+      - name: Running pytest
+        run: |
+          cd pykanidm
+          python -m pip install --quiet --no-cache-dir --upgrade poetry
+          poetry install
+          poetry run pytest -v

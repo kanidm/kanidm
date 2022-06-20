@@ -1,0 +1,25 @@
+# mkdocs.yml
+site_name: kanidm python library
+theme:
+  name: "material"
+
+# site_url: https://kanidm.github.io/kanidm/master/pykanidm/
+repo_name: 'kanidm/kanidm'
+repo_url: 'https://github.com/kanidm/kanidm'
+
+plugins:
+- search:
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        rendering:
+          show_source: true
+    watch:
+    - "kanidm/"
+
+nav:
+  - "Home": README.md
+  - "KanidmClient": kanidmclient.md
+  - "KanidmClientConfig": kanidmclientconfig.md
+  - "RadiusClient": radiusclient.md
