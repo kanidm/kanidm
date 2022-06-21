@@ -6,7 +6,10 @@ name: Container - Radiusd
 # when you're committing on the master branch.
 
 "on":
+  pull_request:
   push:
+    branches:
+      - master
 
 jobs:
   radius_build:

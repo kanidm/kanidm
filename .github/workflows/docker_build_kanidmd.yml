@@ -6,7 +6,10 @@ name: Container - Kanidmd
 # when you're committing on the master branch.
 
 "on":
+  pull_request:
   push:
+    branches:
+      - master
 
 jobs:
   kanidm_build:
