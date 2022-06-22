@@ -6,7 +6,7 @@ use super::reset::ModalProps;
 
 use gloo::console;
 use yew::prelude::*;
-use yew_agent::{Dispatched, Dispatcher};
+use yew_agent::Dispatched;
 
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;

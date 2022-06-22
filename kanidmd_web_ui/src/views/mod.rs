@@ -9,7 +9,7 @@ use yew_router::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 

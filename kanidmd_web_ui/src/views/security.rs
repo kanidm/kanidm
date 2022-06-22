@@ -13,7 +13,7 @@ use yew_router::prelude::*;
 
 use kanidm_proto::v1::{CUSessionToken, CUStatus, UserAuthToken};
 
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 

@@ -17,11 +17,6 @@ use kanidm_proto::v1::{
 
 use webauthn_rs::proto::PublicKeyCredential;
 
-#[wasm_bindgen]
-extern "C" {
-    fn startConfetti();
-}
-
 pub struct LoginApp {
     inputvalue: String,
     session_id: String,
