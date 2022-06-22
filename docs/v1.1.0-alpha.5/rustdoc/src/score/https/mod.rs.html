@@ -751,6 +751,21 @@
 <span id="746">746</span>
 <span id="747">747</span>
 <span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -1034,13 +1049,28 @@
         <span class="kw">let</span> <span class="ident">body_str</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">take_body</span>().<span class="ident">into_string</span>().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="comment">// update it with the hash</span>
         <span class="ident">response</span>.<span class="ident">set_body</span>(<span class="ident">body_str</span>.<span class="ident">replace</span>(<span class="string">&quot;==WASMHASH==&quot;</span>, <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>()));
-
         <span class="ident">response</span>.<span class="ident">insert_header</span>(
+                <span class="comment">/* content-security-policy headers tell the browser what to trust
+                    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
+
+                    In this case we&#39;re only trusting the same server that the page is being loaded from, and adding
+                    a hash of wasmloader.js, which is the main script we should be loading, and should be really secure
+                    about that!
+
+                */</span>
+
+                <span class="comment">// TODO: consider scraping the other js files that wasm-pack builds and including them too</span>
                 <span class="string">&quot;content-security-policy&quot;</span>,
-                <span class="macro">format!</span>(
-                    <span class="string">&quot;default-src https: self; img-src https: self; script-src https: &#39;sha384-{}&#39; &#39;unsafe-eval&#39; self;&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>(),
-                )
+                <span class="macro">vec!</span>[
+                    <span class="string">&quot;default-src &#39;self&#39;&quot;</span>,
+                    <span class="comment">// we need unsafe-eval because of WASM things</span>
+                    <span class="macro">format!</span>(<span class="string">&quot;script-src &#39;self&#39; &#39;sha384-{}&#39; &#39;unsafe-eval&#39;&quot;</span>, <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>() ).<span class="ident">as_str</span>(),
+                    <span class="string">&quot;img-src &#39;self&#39;&quot;</span>,
+
+                    <span class="string">&quot;object-src &#39;self&#39;&quot;</span>,
+                    <span class="comment">// not currently using workers so it can be blocked</span>
+                    <span class="string">&quot;worker-src &#39;none&#39;&quot;</span>,
+                ].<span class="ident">join</span>(<span class="string">&quot;;&quot;</span>),
             );
 
         <span class="prelude-val">Ok</span>(<span class="ident">response</span>)
