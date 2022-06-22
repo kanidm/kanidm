@@ -284,12 +284,12 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                 /* content-security-policy headers tell the browser what to trust
                     https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
 
-                    In this case we're only trusting the same server that the page is being loaded from, and adding
-                    a hash of wasmloader.js, which is the main script we should be loading, and should be really secure
-                    about that!
+                    In this case we're only trusting the same server that the page is
+                    loaded from, and adding a hash of wasmloader.js, which is the main script
+                    we should be loading, and should be really secure about that!
 
                 */
-
+                // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
                 // TODO: consider scraping the other js files that wasm-pack builds and including them too
                 "content-security-policy",
                 vec![
@@ -301,8 +301,9 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                     "object-src 'self'",
                     // not currently using workers so it can be blocked
                     "worker-src 'none'",
-                    "report-to 'none'",
+                    // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
                     "report-uri 'none'",
+                    "base-uri 'self'",
                 ].join(";"),
             );
 
