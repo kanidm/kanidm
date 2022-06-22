@@ -167,7 +167,6 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
             <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
             <link rel="stylesheet" href="/pkg/style.css"/>
             <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
-            <script src="/pkg/external/confetti.js"></script>
             <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH==">
             </script>
 
@@ -282,28 +281,34 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
         // update it with the hash
         response.set_body(body_str.replace("==WASMHASH==", self.integrity_wasmloader.as_str()));
         response.insert_header(
-                /* content-security-policy headers tell the browser what to trust
-                    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
+            /* content-security-policy headers tell the browser what to trust
+                https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
 
-                    In this case we're only trusting the same server that the page is being loaded from, and adding
-                    a hash of wasmloader.js, which is the main script we should be loading, and should be really secure
-                    about that!
+                In this case we're only trusting the same server that the page is
+                loaded from, and adding a hash of wasmloader.js, which is the main script
+                we should be loading, and should be really secure about that!
 
-                */
-
-                // TODO: consider scraping the other js files that wasm-pack builds and including them too
-                "content-security-policy",
-                vec![
-                    "default-src 'self'",
-                    // we need unsafe-eval because of WASM things
-                    format!("script-src 'self' 'sha384-{}' 'unsafe-eval'", self.integrity_wasmloader.as_str() ).as_str(),
-                    "img-src 'self'",
-
-                    "object-src 'self'",
-                    // not currently using workers so it can be blocked
-                    "worker-src 'none'",
-                ].join(";"),
-            );
+            */
+            // TODO: consider scraping the other js files that wasm-pack builds and including them too
+            "content-security-policy",
+            vec![
+                "default-src 'self'",
+                // we need unsafe-eval because of WASM things
+                format!(
+                    "script-src 'self' 'sha384-{}' 'unsafe-eval'",
+                    self.integrity_wasmloader.as_str()
+                )
+                .as_str(),
+                "form-action https: 'self'", // to allow for OAuth posts
+                // we are not currently using workers so it can be blocked
+                "worker-src 'none'",
+                // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
+                // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
+                "report-uri 'none'",
+                "base-uri 'self'",
+            ]
+            .join(";"),
+        );
 
         Ok(response)
     }

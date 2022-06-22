@@ -261,7 +261,10 @@ async fn oauth2_authorise(
                 .append_pair("code", &code);
             res.insert_header("Location", redirect_uri.as_str());
             // I think the client server needs this
-            res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
+            res.insert_header(
+                "Access-Control-Allow-Origin",
+                redirect_uri.origin().ascii_serialization(),
+            );
             tide::Body::from_json(&AuthorisationResponse::Permitted).map(|b| {
                 res.set_body(b);
                 res
@@ -358,7 +361,10 @@ async fn oauth2_authorise_permit(
                 .append_pair("code", &code);
             res.insert_header("Location", redirect_uri.as_str());
             // I think the client server needs this
-            res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
+            res.insert_header(
+                "Access-Control-Allow-Origin",
+                redirect_uri.origin().ascii_serialization(),
+            );
             res
         }
         Err(_e) => {

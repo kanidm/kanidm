@@ -7,15 +7,13 @@ use super::reset::ModalProps;
 use gloo::console;
 use web_sys::Node;
 use yew::prelude::*;
-use yew_agent::{Dispatched, Dispatcher};
+use yew_agent::Dispatched;
 
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
-use kanidm_proto::v1::{
-    CURegState, CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback, TotpSecret,
-};
+use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
 use qrcode::{render::svg, QrCode};
 
 enum TotpState {
@@ -196,9 +194,14 @@ impl Component for TotpModalApp {
                 self.check = TotpCheck::Invalid;
                 self.state = TotpState::Init;
             }
+            // TODO: which status do we want to return?
             Msg::TotpClearInvalid => {
                 self.check = TotpCheck::Init;
             }
+            // this was originally lower in the code
+            // Msg::TotpClearInvalid => {
+            //     self.check = TotpCheck::Invalid;
+            // }
             Msg::TotpInvalidSha1 => {
                 self.check = TotpCheck::Sha1Accept;
                 self.state = TotpState::Init;
@@ -212,9 +215,6 @@ impl Component for TotpModalApp {
                 });
 
                 self.state = TotpState::Waiting;
-            }
-            Msg::TotpClearInvalid => {
-                self.check = TotpCheck::Invalid;
             }
             Msg::TotpSuccess => {
                 // Nothing to do but close and hide!

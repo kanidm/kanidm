@@ -5,17 +5,14 @@ use super::eventbus::{EventBus, EventBusMsg};
 use super::reset::ModalProps;
 
 use gloo::console;
-use web_sys::Node;
 use yew::prelude::*;
-use yew_agent::{Dispatched, Dispatcher};
+use yew_agent::Dispatched;
 
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
-use kanidm_proto::v1::{
-    CURegState, CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback, TotpSecret,
-};
+use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
 
 enum State {
     Init,
