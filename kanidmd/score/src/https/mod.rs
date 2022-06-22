@@ -289,18 +289,16 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                     we should be loading, and should be really secure about that!
 
                 */
-                // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
                 // TODO: consider scraping the other js files that wasm-pack builds and including them too
                 "content-security-policy",
                 vec![
                     "default-src 'self'",
                     // we need unsafe-eval because of WASM things
                     format!("script-src 'self' 'sha384-{}' 'unsafe-eval'", self.integrity_wasmloader.as_str() ).as_str(),
-                    "img-src 'self'",
-
-                    "object-src 'self'",
-                    // not currently using workers so it can be blocked
+                    "form-action https: 'self'", // to allow for OAuth posts
+                    // we are not currently using workers so it can be blocked
                     "worker-src 'none'",
+                    // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
                     // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
                     "report-uri 'none'",
                     "base-uri 'self'",
