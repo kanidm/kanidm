@@ -766,6 +766,11 @@
 <span id="761">761</span>
 <span id="762">762</span>
 <span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -935,7 +940,6 @@
             &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/external/bootstrap.min.css&quot; integrity=&quot;sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC&quot;/&gt;
             &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/style.css&quot;/&gt;
             &lt;script src=&quot;/pkg/external/bootstrap.bundle.min.js&quot; integrity=&quot;sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM&quot;&gt;&lt;/script&gt;
-            &lt;script src=&quot;/pkg/external/confetti.js&quot;&gt;&lt;/script&gt;
             &lt;script type=&quot;module&quot; type=&quot;text/javascript&quot; src=&quot;/pkg/wasmloader.js&quot; integrity=&quot;sha384-==WASMHASH==&quot;&gt;
             &lt;/script&gt;
 
@@ -1050,28 +1054,34 @@
         <span class="comment">// update it with the hash</span>
         <span class="ident">response</span>.<span class="ident">set_body</span>(<span class="ident">body_str</span>.<span class="ident">replace</span>(<span class="string">&quot;==WASMHASH==&quot;</span>, <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>()));
         <span class="ident">response</span>.<span class="ident">insert_header</span>(
-                <span class="comment">/* content-security-policy headers tell the browser what to trust
-                    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
+            <span class="comment">/* content-security-policy headers tell the browser what to trust
+                https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
 
-                    In this case we&#39;re only trusting the same server that the page is being loaded from, and adding
-                    a hash of wasmloader.js, which is the main script we should be loading, and should be really secure
-                    about that!
+                In this case we&#39;re only trusting the same server that the page is
+                loaded from, and adding a hash of wasmloader.js, which is the main script
+                we should be loading, and should be really secure about that!
 
-                */</span>
-
-                <span class="comment">// TODO: consider scraping the other js files that wasm-pack builds and including them too</span>
-                <span class="string">&quot;content-security-policy&quot;</span>,
-                <span class="macro">vec!</span>[
-                    <span class="string">&quot;default-src &#39;self&#39;&quot;</span>,
-                    <span class="comment">// we need unsafe-eval because of WASM things</span>
-                    <span class="macro">format!</span>(<span class="string">&quot;script-src &#39;self&#39; &#39;sha384-{}&#39; &#39;unsafe-eval&#39;&quot;</span>, <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>() ).<span class="ident">as_str</span>(),
-                    <span class="string">&quot;img-src &#39;self&#39;&quot;</span>,
-
-                    <span class="string">&quot;object-src &#39;self&#39;&quot;</span>,
-                    <span class="comment">// not currently using workers so it can be blocked</span>
-                    <span class="string">&quot;worker-src &#39;none&#39;&quot;</span>,
-                ].<span class="ident">join</span>(<span class="string">&quot;;&quot;</span>),
-            );
+            */</span>
+            <span class="comment">// TODO: consider scraping the other js files that wasm-pack builds and including them too</span>
+            <span class="string">&quot;content-security-policy&quot;</span>,
+            <span class="macro">vec!</span>[
+                <span class="string">&quot;default-src &#39;self&#39;&quot;</span>,
+                <span class="comment">// we need unsafe-eval because of WASM things</span>
+                <span class="macro">format!</span>(
+                    <span class="string">&quot;script-src &#39;self&#39; &#39;sha384-{}&#39; &#39;unsafe-eval&#39;&quot;</span>,
+                    <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>()
+                )
+                .<span class="ident">as_str</span>(),
+                <span class="string">&quot;form-action https: &#39;self&#39;&quot;</span>, <span class="comment">// to allow for OAuth posts</span>
+                <span class="comment">// we are not currently using workers so it can be blocked</span>
+                <span class="string">&quot;worker-src &#39;none&#39;&quot;</span>,
+                <span class="comment">// TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only</span>
+                <span class="comment">// &quot;report-to &#39;none&#39;&quot;, // unsupported by a lot of things still, but mozilla&#39;s saying report-uri is deprecated?</span>
+                <span class="string">&quot;report-uri &#39;none&#39;&quot;</span>,
+                <span class="string">&quot;base-uri &#39;self&#39;&quot;</span>,
+            ]
+            .<span class="ident">join</span>(<span class="string">&quot;;&quot;</span>),
+        );
 
         <span class="prelude-val">Ok</span>(<span class="ident">response</span>)
     }
