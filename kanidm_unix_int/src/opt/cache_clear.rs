@@ -1,9 +1,7 @@
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct CacheClearOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[clap(short, long)]
     debug: bool,
-    #[structopt(long = "really")]
+    #[clap(long)]
     really: bool,
 }
-
-

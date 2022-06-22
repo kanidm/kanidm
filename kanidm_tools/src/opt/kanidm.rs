@@ -1,502 +1,547 @@
-#[derive(Debug, StructOpt)]
+use clap::{Args, Subcommand};
+
+#[derive(Debug, Args)]
 pub struct Named {
-    #[structopt()]
     pub name: String,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub copt: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct DebugOpt {
-    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
+    #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct CommonOpt {
-    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
+    #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
-    #[structopt(short = "H", long = "url", env = "KANIDM_URL")]
+    #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
-    #[structopt(short = "D", long = "name", env = "KANIDM_NAME")]
+    #[clap(short = 'D', long = "name", env = "KANIDM_NAME")]
     pub username: Option<String>,
-    #[structopt(parse(from_os_str), short = "C", long = "ca", env = "KANIDM_CA_PATH")]
+    #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct GroupNamedMembers {
-    #[structopt()]
     name: String,
-    #[structopt()]
     members: Vec<String>,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct GroupPosixOpt {
-    #[structopt()]
     name: String,
-    #[structopt(long = "gidnumber")]
+    #[clap(long)]
     gidnumber: Option<u32>,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum GroupPosix {
-    #[structopt(name = "show")]
+    #[clap(name = "show")]
     Show(Named),
-    #[structopt(name = "set")]
+    #[clap(name = "set")]
     Set(GroupPosixOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum GroupOpt {
-    #[structopt(name = "list")]
+    #[clap(name = "list")]
     List(CommonOpt),
-    #[structopt(name = "get")]
+    #[clap(name = "get")]
     Get(Named),
-    #[structopt(name = "create")]
+    #[clap(name = "create")]
     Create(Named),
-    #[structopt(name = "delete")]
+    #[clap(name = "delete")]
     Delete(Named),
-    #[structopt(name = "list_members")]
+    #[clap(name = "list_members")]
     ListMembers(Named),
-    #[structopt(name = "set_members")]
+    #[clap(name = "set_members")]
     SetMembers(GroupNamedMembers),
-    #[structopt(name = "purge_members")]
+    #[clap(name = "purge_members")]
     PurgeMembers(Named),
-    #[structopt(name = "add_members")]
+    #[clap(name = "add_members")]
     AddMembers(GroupNamedMembers),
-    #[structopt(name = "remove_members")]
+    #[clap(name = "remove_members")]
     RemoveMembers(GroupNamedMembers),
-    #[structopt(name = "posix")]
-    Posix(GroupPosix),
+    #[clap(name = "posix")]
+    Posix {
+        #[clap(subcommand)]
+        commands: GroupPosix,
+    },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountCommonOpt {
-    #[structopt()]
+    #[clap()]
     account_id: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountNamedOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountNamedExpireDateTimeOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
-    #[structopt(name = "datetime")]
+    #[clap(name = "datetime")]
     /// An rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
     /// or the word "never", "clear" to remove account expiry.
     datetime: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountNamedValidDateTimeOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
-    #[structopt(name = "datetime")]
+    #[clap(name = "datetime")]
     /// An rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
     /// or the word "any", "clear" to remove valid from enforcement.
     datetime: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountNamedTagOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
-    #[structopt(name = "tag")]
+    #[clap(name = "tag")]
     tag: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountNamedTagPkOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
-    #[structopt(name = "tag")]
+    #[clap(name = "tag")]
     tag: String,
-    #[structopt(name = "pubkey")]
+    #[clap(name = "pubkey")]
     pubkey: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AnonTokenOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
-    #[structopt(name = "token")]
+    #[clap(name = "token")]
     token: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountCreateOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(name = "display_name")]
+    #[clap(name = "display_name")]
     display_name: String,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum AccountCredential {
     /// Interactively update and change the content of the credentials of an account
-    #[structopt(name = "update")]
+    #[clap(name = "update")]
     Update(AccountNamedOpt),
     /// Given a reset token, interactively perform a credential reset
-    #[structopt(name = "reset")]
+    #[clap(name = "reset")]
     Reset(AnonTokenOpt),
     /// Create a reset link (token) that can be given to another person so they can
     /// recover or reset their account credentials.
-    #[structopt(name = "create_reset_link")]
+    #[clap(name = "create_reset_link")]
     CreateResetLink(AccountNamedOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum AccountRadius {
-    #[structopt(name = "show_secret")]
+    #[clap(name = "show_secret")]
     Show(AccountNamedOpt),
-    #[structopt(name = "generate_secret")]
+    #[clap(name = "generate_secret")]
     Generate(AccountNamedOpt),
-    #[structopt(name = "delete_secret")]
+    #[clap(name = "delete_secret")]
     Delete(AccountNamedOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountPosixOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(long = "gidnumber")]
+    #[clap(long = "gidnumber")]
     gidnumber: Option<u32>,
-    #[structopt(long = "shell")]
+    #[clap(long = "shell")]
     shell: Option<String>,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum AccountPosix {
-    #[structopt(name = "show")]
+    #[clap(name = "show")]
     Show(AccountNamedOpt),
-    #[structopt(name = "set")]
+    #[clap(name = "set")]
     Set(AccountPosixOpt),
-    #[structopt(name = "set_password")]
+    #[clap(name = "set_password")]
     SetPassword(AccountNamedOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct AccountPersonOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt(long = "mail")]
+    #[clap(long = "mail")]
     mail: Option<Vec<String>>,
-    #[structopt(long = "legalname")]
+    #[clap(long = "legalname")]
     legalname: Option<String>,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     copt: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum AccountPerson {
-    #[structopt(name = "extend")]
+    #[clap(name = "extend")]
     Extend(AccountPersonOpt),
-    #[structopt(name = "set")]
+    #[clap(name = "set")]
     Set(AccountPersonOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum AccountSsh {
-    #[structopt(name = "list_publickeys")]
+    #[clap(name = "list_publickeys")]
     List(AccountNamedOpt),
-    #[structopt(name = "add_publickey")]
+    #[clap(name = "add_publickey")]
     Add(AccountNamedTagPkOpt),
-    #[structopt(name = "delete_publickey")]
+    #[clap(name = "delete_publickey")]
     Delete(AccountNamedTagOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum AccountValidity {
-    #[structopt(name = "show")]
+    #[clap(name = "show")]
     Show(AccountNamedOpt),
-    #[structopt(name = "expire_at")]
+    #[clap(name = "expire_at")]
     ExpireAt(AccountNamedExpireDateTimeOpt),
-    #[structopt(name = "begin_from")]
+    #[clap(name = "begin_from")]
     BeginFrom(AccountNamedValidDateTimeOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum AccountOpt {
-    #[structopt(name = "credential")]
-    Credential(AccountCredential),
-    #[structopt(name = "radius")]
-    Radius(AccountRadius),
-    #[structopt(name = "posix")]
-    Posix(AccountPosix),
-    #[structopt(name = "person")]
-    Person(AccountPerson),
-    #[structopt(name = "ssh")]
-    Ssh(AccountSsh),
-    #[structopt(name = "list")]
+    #[clap(name = "credential")]
+    Credential {
+        #[clap(subcommand)]
+        commands: AccountCredential,
+    },
+    #[clap(name = "radius")]
+    Radius {
+        #[clap(subcommand)]
+        commands: AccountRadius,
+    },
+    #[clap(name = "posix")]
+    Posix {
+        #[clap(subcommand)]
+        commands: AccountPosix,
+    },
+    #[clap(name = "person")]
+    Person {
+        #[clap(subcommand)]
+        commands: AccountPerson,
+    },
+    #[clap(name = "ssh")]
+    Ssh {
+        #[clap(subcommand)]
+        commands: AccountSsh,
+    },
+    #[clap(name = "list")]
     List(CommonOpt),
-    #[structopt(name = "get")]
+    #[clap(name = "get")]
     Get(AccountNamedOpt),
-    #[structopt(name = "create")]
+    #[clap(name = "create")]
     Create(AccountCreateOpt),
-    #[structopt(name = "delete")]
+    #[clap(name = "delete")]
     Delete(AccountNamedOpt),
-    #[structopt(name = "validity")]
-    Validity(AccountValidity),
+    #[clap(name = "validity")]
+    Validity {
+        #[clap(subcommand)]
+        commands: AccountValidity,
+    },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum RecycleOpt {
-    #[structopt(name = "list")]
+    #[clap(name = "list")]
     /// List objects that are in the recycle bin
     List(CommonOpt),
-    #[structopt(name = "get")]
+    #[clap(name = "get")]
     /// Display an object from the recycle bin
     Get(Named),
-    #[structopt(name = "revive")]
+    #[clap(name = "revive")]
     /// Revive a recycled object into a live (accessible) state - this is the opposite of "delete"
     Revive(Named),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct LoginOpt {
-    #[structopt(flatten)]
-    pub copt: CommonOpt,
-    #[structopt(short = "w", long = "webauthn")]
-    pub webauthn: bool,
+    #[clap(flatten)]
+    copt: CommonOpt,
+    #[clap(short, long)]
+    webauthn: bool,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct LogoutOpt {
-    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
+    #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
-    #[structopt(short = "H", long = "url", env = "KANIDM_URL")]
+    #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
-    #[structopt(parse(from_os_str), short = "C", long = "ca", env = "KANIDM_CA_PATH")]
+    #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
-    #[structopt()]
+    #[clap()]
     pub username: Option<String>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum SessionOpt {
-    #[structopt(name = "list")]
+    #[clap(name = "list")]
     /// List current active sessions
     List(DebugOpt),
-    #[structopt(name = "cleanup")]
+    #[clap(name = "cleanup")]
     /// Remove sessions that have expired or are invalid.
     Cleanup(DebugOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct FilterOpt {
-    #[structopt()]
+    #[clap()]
     filter: String,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     commonopts: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct CreateOpt {
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     file: PathBuf,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     commonopts: CommonOpt,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct ModifyOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     commonopts: CommonOpt,
-    #[structopt()]
+    #[clap()]
     filter: String,
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     file: PathBuf,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum RawOpt {
-    #[structopt(name = "search")]
+    #[clap(name = "search")]
     Search(FilterOpt),
-    #[structopt(name = "create")]
+    #[clap(name = "create")]
     Create(CreateOpt),
-    #[structopt(name = "modify")]
+    #[clap(name = "modify")]
     Modify(ModifyOpt),
-    #[structopt(name = "delete")]
+    #[clap(name = "delete")]
     Delete(FilterOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum SelfOpt {
-    #[structopt(name = "whoami")]
     /// Show the current authenticated user's identity
     Whoami(CommonOpt),
-    #[structopt(name = "set_password")]
+    #[clap(name = "set_password")]
     /// Set the current user's password
     SetPassword(CommonOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct Oauth2BasicCreateOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     nopt: Named,
-    #[structopt(name = "displayname")]
+    #[clap(name = "displayname")]
     displayname: String,
-    #[structopt(name = "origin")]
+    #[clap(name = "origin")]
     origin: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct Oauth2SetDisplayname {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     nopt: Named,
-    #[structopt(name = "displayname")]
+    #[clap(name = "displayname")]
     displayname: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct Oauth2SetImplicitScopes {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     nopt: Named,
-    #[structopt(name = "scopes")]
+    #[clap(name = "scopes")]
     scopes: Vec<String>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct Oauth2CreateScopeMapOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     nopt: Named,
-    #[structopt(name = "group")]
+    #[clap(name = "group")]
     group: String,
-    #[structopt(name = "scopes")]
+    #[clap(name = "scopes")]
     scopes: Vec<String>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 pub struct Oauth2DeleteScopeMapOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     nopt: Named,
-    #[structopt(name = "group")]
+    #[clap(name = "group")]
     group: String,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum Oauth2Opt {
-    #[structopt(name = "list")]
+    #[clap(name = "list")]
     /// List all configured oauth2 resource servers
     List(CommonOpt),
-    #[structopt(name = "get")]
+    #[clap(name = "get")]
     /// Display a selected oauth2 resource server
     Get(Named),
-    // #[structopt(name = "set")]
+    // #[clap(name = "set")]
     // /// Set options for a selected oauth2 resource server
     // Set(),
-    #[structopt(name = "create")]
+    #[clap(name = "create")]
     /// Create a new oauth2 resource server
     CreateBasic(Oauth2BasicCreateOpt),
-    #[structopt(name = "set_implicit_scopes")]
+    #[clap(name = "set_implicit_scopes")]
     /// Set the list of scopes that are granted to all valid accounts.
     SetImplictScopes(Oauth2SetImplicitScopes),
-    #[structopt(name = "create_scope_map")]
+    #[clap(name = "create_scope_map")]
     /// Add a new mapping from a group to what scopes it provides
     CreateScopeMap(Oauth2CreateScopeMapOpt),
-    #[structopt(name = "delete_scope_map")]
+    #[clap(name = "delete_scope_map")]
     /// Remove a mapping from groups to scopes
     DeleteScopeMap(Oauth2DeleteScopeMapOpt),
-    #[structopt(name = "reset_secrets")]
+    #[clap(name = "reset_secrets")]
     /// Reset the secrets associated to this resource server
     ResetSecrets(Named),
-    #[structopt(name = "delete")]
+    #[clap(name = "delete")]
     /// Delete a oauth2 resource server
     Delete(Named),
     /// Set a new displayname for a resource server
-    #[structopt(name = "set_displayname")]
+    #[clap(name = "set_displayname")]
     SetDisplayname(Oauth2SetDisplayname),
-    #[structopt(name = "enable_pkce")]
+    #[clap(name = "enable_pkce")]
     /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
     EnablePkce(Named),
     /// Disable PKCE on this oauth2 resource server to work around insecure clients that
     /// may not support it. You should request the client to enable PKCE!
-    #[structopt(name = "warning_insecure_client_disable_pkce")]
+    #[clap(name = "warning_insecure_client_disable_pkce")]
     DisablePkce(Named),
-    #[structopt(name = "warning_enable_legacy_crypto")]
+    #[clap(name = "warning_enable_legacy_crypto")]
     /// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.
     /// You only need to enable this for openid clients that do not support modern crytopgraphic
     /// operations.
     EnableLegacyCrypto(Named),
     /// Disable legacy signing crypto on this oauth2 resource server. This is the default.
-    #[structopt(name = "disable_legacy_crypto")]
+    #[clap(name = "disable_legacy_crypto")]
     DisableLegacyCrypto(Named),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum DomainOpt {
-    #[structopt(name = "show")]
+    #[clap(name = "show")]
     /// Show information about this systems domain
     Show(CommonOpt),
-    #[structopt(name = "reset_token_key")]
+    #[clap(name = "reset_token_key")]
     /// Reset this domain token signing key. This will cause all user sessions to be
     /// invalidated (logged out).
     ResetTokenKey(CommonOpt),
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum SystemOpt {
-    #[structopt(name = "oauth2")]
+    #[clap(name = "oauth2")]
     /// Configure and display oauth2/oidc resource server configuration
-    Oauth2(Oauth2Opt),
-    #[structopt(name = "domain")]
+    Oauth2 {
+        #[clap(subcommand)]
+        commands: Oauth2Opt,
+    },
+    #[clap(name = "domain")]
     /// Configure and display domain configuration
-    Domain(DomainOpt),
+    Domain {
+        #[clap(subcommand)]
+        commands: DomainOpt,
+    },
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(about = "Kanidm Client Utility")]
+#[derive(Debug, Subcommand)]
+#[clap(about = "Kanidm Client Utility")]
 pub enum KanidmClientOpt {
-    #[structopt(name = "login")]
     /// Login to an account to use with future cli operations
     Login(LoginOpt),
-    #[structopt(name = "logout")]
     /// Logout of an active cli session
     Logout(LogoutOpt),
-    #[structopt(name = "session")]
     /// Manage active cli sessions
-    Session(SessionOpt),
-    #[structopt(name = "self")]
+    Session {
+        #[clap(subcommand)]
+        commands: SessionOpt,
+    },
+    #[clap(name = "self")]
     /// Actions for the current authenticated account
-    CSelf(SelfOpt),
-    #[structopt(name = "account")]
+    CSelf {
+        #[clap(subcommand)]
+        commands: SelfOpt,
+    },
     /// Account operations
-    Account(AccountOpt),
-    #[structopt(name = "group")]
+    Account {
+        #[clap(subcommand)]
+        commands: AccountOpt,
+    },
     /// Group operations
-    Group(GroupOpt),
-    #[structopt(name = "system")]
+    Group {
+        #[clap(subcommand)]
+        commands: GroupOpt,
+    },
     /// System configuration operations
-    System(SystemOpt),
-    #[structopt(name = "recycle_bin")]
+    System {
+        #[clap(subcommand)]
+        commands: SystemOpt,
+    },
+    #[clap(name = "recycle_bin")]
     /// Recycle Bin operations
-    Recycle(RecycleOpt),
-    #[structopt(name = "raw")]
+    Recycle {
+        #[clap(subcommand)]
+        commands: RecycleOpt,
+    },
     /// Unsafe - low level, raw database operations.
-    Raw(RawOpt),
+    Raw {
+        #[clap(subcommand)]
+        commands: RawOpt,
+    },
+}
+
+#[derive(Debug, clap::Parser)]
+#[clap(about = "Kanidm Client Utility")]
+pub struct KanidmClientParser {
+    #[clap(subcommand)]
+    pub commands: KanidmClientOpt,
 }

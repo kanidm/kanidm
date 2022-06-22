@@ -1,12 +1,11 @@
-
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct BadlistProcOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[clap(short, long)]
     debug: bool,
-    #[structopt(short = "m", long = "modlist")]
+    #[clap(short, long)]
     modlist: bool,
-    #[structopt(short = "o", long = "output")]
+    #[clap(short, long = "output")]
     outfile: PathBuf,
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     password_list: Vec<PathBuf>,
 }

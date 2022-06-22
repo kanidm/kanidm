@@ -1,8 +1,7 @@
-
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct SshAuthorizedOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[clap(short, long)]
     debug: bool,
-    #[structopt()]
+    #[clap()]
     account_id: String,
 }

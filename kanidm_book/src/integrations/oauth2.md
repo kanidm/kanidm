@@ -271,3 +271,30 @@ these to a group with a scope map due to Velociraptors high impact.
     # kanidm group create velociraptor_users
     # kanidm group add_members velociraptor_users ...
     kanidm system oauth2 create_scope_map <resource server name> velociraptor_users openid email
+
+### Vouch Proxy
+
+_You need to run at least the version 0.37.0_.
+
+Vouch Proxy supports multiple OAuth and OIDC login providers.
+To configure it you need to pass:
+
+```yaml
+oauth:
+  auth_url: https://idm.wherekanidmruns.com/ui/oauth2
+  callback_url: https://login.wherevouchproxyruns.com/auth
+  client_id: <oauth2_rs_name> # Found in kanidm system oauth2 get XXXX (should be the same as XXXX)
+  client_secret: <oauth2_rs_basic_secret> # Found in kanidm system oauth2 get XXXX
+  code_challenge_method: S256
+  provider: oidc
+  scopes:
+    - email # Important, vouch proxy requiers a username (but does not use the proper scope, sub) or an email see https://github.com/vouch/vouch-proxy/issues/309, 310
+  token_url: https://idm.wherekanidmruns.com/oauth2/token
+  user_info_url: https://idm.wherekanidmruns.com/oauth2/openid/<oauth2_rs_name>/userinfo
+```
+
+The `email` scope needs to be passed and thus the attribute needs to exist in
+the account:
+
+    kanidm login --name idm_admin
+    kanidm account person extend YYYY --mail "YYYY@somedomain.com" --name idm_admin

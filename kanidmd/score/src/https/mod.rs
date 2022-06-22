@@ -162,6 +162,7 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
     <html lang="en">
         <head>
             <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width">
             <title>Kanidm</title>
             <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
             <link rel="stylesheet" href="/pkg/style.css"/>
@@ -170,7 +171,7 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
             <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH==">
             </script>
 
-            <link rel="icon" href="/pkg/favicon.svg" />
+            <link rel="icon" href="/pkg/img/favicon.png" />
         </head>
         <body>
         </body>
@@ -280,13 +281,28 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
         let body_str = response.take_body().into_string().await?;
         // update it with the hash
         response.set_body(body_str.replace("==WASMHASH==", self.integrity_wasmloader.as_str()));
-
         response.insert_header(
+                /* content-security-policy headers tell the browser what to trust
+                    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
+
+                    In this case we're only trusting the same server that the page is being loaded from, and adding
+                    a hash of wasmloader.js, which is the main script we should be loading, and should be really secure
+                    about that!
+
+                */
+
+                // TODO: consider scraping the other js files that wasm-pack builds and including them too
                 "content-security-policy",
-                format!(
-                    "default-src https: self; img-src https: self; script-src https: 'sha384-{}' 'unsafe-eval' self;",
-                    self.integrity_wasmloader.as_str(),
-                )
+                vec![
+                    "default-src 'self'",
+                    // we need unsafe-eval because of WASM things
+                    format!("script-src 'self' 'sha384-{}' 'unsafe-eval'", self.integrity_wasmloader.as_str() ).as_str(),
+                    "img-src 'self'",
+
+                    "object-src 'self'",
+                    // not currently using workers so it can be blocked
+                    "worker-src 'none'",
+                ].join(";"),
             );
 
         Ok(response)

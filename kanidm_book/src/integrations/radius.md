@@ -82,112 +82,131 @@ To read these secrets, the RADIUS server requires an account with the
 correct privileges. This can be created and assigned through the group
 "idm_radius_servers", which is provided by default.
 
-    kanidm account create --name admin radius_service_account "Radius Service Account"
-    kanidm group add_members --name admin idm_radius_servers radius_service_account
-    kanidm account credential reset_credential --name admin radius_service_account
+First, create the account and add it to the group:
+
+```shell
+kanidm account create --name admin radius_service_account "Radius Service Account"
+kanidm group add_members --name admin idm_radius_servers radius_service_account
+```
+
+Now reset the account password, using the `admin` account:
+
+```shell
+kanidm account credential update --name admin radius_service_account
+```
 
 ## Deploying a RADIUS Container
 
 We provide a RADIUS container that has all the needed integrations. 
-This container requires some cryptographic material, laid out in a volume like so:
+This container requires some cryptographic material, with the following files being in `/etc/raddb/certs`. (Modifiable in the configuration)
+   
+| filename   | description                                                   |
+| ---        | ---                                                           |
+| ca.pem     | The signing CA of the RADIUS certificate                      |
+| dh.pem     | The output of `openssl dhparam -in ca.pem -out ./dh.pem 2048` |
+| cert.pem   | The certificate for the RADIUS server                         |
+| key.pem    | The signing key for the RADIUS certificate                    |
 
-    data
-    data/ca.pem             # This is the kanidm ca.pem
-    data/config.ini         # This is the kanidm-radius configuration.
-    data/certs
-    data/certs/dh           # openssl dhparam -out ./dh 2048
-    data/certs/key.pem      # These are the radius ca/cert/key
-    data/certs/cert.pem
-    data/certs/ca.pem
+The configuration file (`/data/kanidm`) has the following template:
 
-The config.ini has the following template:
+```toml
+uri = "https://example.com" # URL to the Kanidm server
+verify_hostnames = true     # verify the hostname of the Kanidm server
 
-    [kanidm_client]
-    url =                   # URL to the kanidm server
-    strict = false          # Strict CA verification
-    ca = /data/ca.pem       # Path to the kanidm ca
-    user =                  # Username of the RADIUS service account
-    secret =                # Generated secret for the service account
+verify_ca = false           # Strict CA verification
+ca = /data/ca.pem           # Path to the kanidm ca
+username =                  # Username of the RADIUS service account
+password =                  # Generated secret for the service account
 
-    ; default VLANs for groups that don't specify one.
-    [DEFAULT]
-    vlan = 1
+# Default vlans for groups that don't specify one.
+radius_default_vlan = 1 
 
-    ; [group.test]          # group.<name> will have these options applied
-    ; vlan =
+# A list of Kanidm groups which must be a member
+# before they can authenticate via RADIUS.
+radius_required_groups = [
+	"radius_access_allowed",
+]
 
-    [radiusd]
-    ca =                    # Path to the radius server's CA
-    key =                   # Path to the radius servers key
-    cert =                  # Path to the radius servers cert
-    dh =                    # Path to the radius servers dh params
-    required_group =        # Name of a kanidm group which you must be 
-                            # A member of to use radius.
-    cache_path =            # A path to an area where cached user records can be stored.
-                            # If in doubt, use /dev/shm/kanidmradiusd
+# A mapping between Kanidm groups and VLANS
+radius_groups = [
+    { name = "radius_access_allowed", vlan = 10 },
+]
 
-    ; [client.localhost]    # client.<nas name> configures wifi/vpn consumers
-    ; ipaddr =              # ipv4 or ipv6 address of the NAS
-    ; secret =              # Shared secret
+# A mapping of clients and their authentication tokens
+radius_clients = [
+    { name = "test", ipaddr = "127.0.0.1", secret  = "testing123" },
+    # TODO: see if this works - it gets written out to the file
+    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
+]
 
-A fully configured example:
+# radius_cert_path = "/etc/raddb/certs/cert.pem"
+# the signing key for radius TLS
+# radius_key_path = "/etc/raddb/certs/key.pem"   
+# the diffie-hellman output
+# radius_dh_path = "/etc/raddb/certs/dh.pem"     
+# the CA certificate
+# radius_ca_path = "/etc/raddb/certs/ca.pem"     
 
-    [kanidm_client]
-    ; be sure to check the listening port is correct, it's the docker internal port
-    ; not the external one if these containers are on the same host.
-    url = https://<kanidmd container name or ip>:8443
-    strict = true           # Adjust this if you have CA validation issues
-    ca = /data/ca.crt
-    user = radius_service_account
-    secret =                # The generated password from above
+```
 
-    ; default vlans for groups that don't specify one.
-    [DEFAULT]
-    vlan = 1
+## A fully configured example
 
-    [group.network_admins]
-    vlan = 10
 
-    [radiusd]
-    ca = /data/certs/ca.pem
-    key =  /data/certs/key.pem
-    cert = /data/certs/cert.pem
-    dh = /data/certs/dh
-    required_group = radius_access_allowed
-    cache_path = /dev/shm/kanidmradiusd
+```toml
+url = "https://example.com"
 
-    [client.localhost]
-    ipaddr = 127.0.0.1
-    secret = testing123
+username = "radius_service_account"
+# The generated password from above
+password = "cr4bzr0ol" 
 
-    [client.docker]
-    ipaddr = 172.17.0.0/16
-    secret = testing123
+# default vlan for groups that don't specify one.
+radius_default_vlan = 99 
 
-You can then run the container with:
+# if the user is in one of these Kanidm groups, 
+# then they're allowed to authenticate
+radius_required_groups = [
+    "radius_access_allowed",
+]
 
-    docker run --name radiusd -v ...:/data kanidm/radius:latest
+radius_groups = [
+    { name = "radius_access_allowed", vlan = 10 }
+]
 
-Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:
+radius_clients = [
+    { name = "localhost", ipaddr = "127.0.0.1", secret = "testing123" },
+    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
+]
+```
+## Moving to Production
 
-    docker exec -i -t radiusd radtest <username> badpassword 127.0.0.1 10 testing123
-    docker exec -i -t radiusd radtest <username> <radius show_secret value here> 127.0.0.1 10 testing123
+To expose this to a Wi-Fi infrastructure, add your NAS in the configuration:
 
-Finally, to expose this to a Wi-Fi infrastructure, add your NAS in `config.ini`:
+```toml
+radius_clients = [
+    { name = "access_point", ipaddr = "10.2.3.4", secret = "<a_random_value>" }
+]
+```
 
-    [client.access_point]
-    ipaddr = <some ipadd>
-    secret = <random value>
-
-Then re-create/run your docker instance with `-p 1812:1812 -p 1812:1812/udp` ...
+Then re-create/run your docker instance and expose the ports by adding 
+`-p 1812:1812 -p 1812:1812/udp` to the command.
 
 If you have any issues, check the logs from the RADIUS output, as they tend 
 to indicate the cause of the problem. To increase the logging level you can 
 re-run your environment with debug enabled:
 
-    docker rm radiusd
-    docker run --name radiusd -e DEBUG=True -i -t -v ...:/data kanidm/radius:latest
+```shell
+docker rm radiusd
+docker run --name radiusd \
+    -e DEBUG=True \
+    -p 1812:1812 \
+    -p 1812:1812/udp
+    --interactive --tty \
+    --volume /tmp/kanidm:/etc/raddb/certs \
+    kanidm/radius:latest
+```
 
-Note the RADIUS container *is* configured to provide Tunnel-Private-Group-ID, 
+Note: the RADIUS container *is* configured to provide 
+[Tunnel-Private-Group-ID](https://freeradius.org/rfc/rfc2868.html#Tunnel-Private-Group-ID), 
 so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
-assign these by groups in the config.ini as shown in the above examples.
+assign these by groups in the configuration file as shown in the above examples.
+

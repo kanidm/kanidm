@@ -20,8 +20,8 @@ use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, JwkKeySet,
-    Oauth2Error, OidcDiscoveryResponse, OidcToken,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
+    JwkKeySet, Oauth2Error, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
@@ -1120,7 +1120,7 @@ impl QueryServerReadV1 {
         uat: Option<String>,
         auth_req: AuthorisationRequest,
         eventid: Uuid,
-    ) -> Result<ConsentRequest, Oauth2Error> {
+    ) -> Result<AuthoriseResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<Oauth2Authorise>", {

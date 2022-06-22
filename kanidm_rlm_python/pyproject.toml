@@ -1,16 +1,31 @@
 [tool.poetry]
 name = "kanidmradius"
 version = "0.0.1"
-description = ""
-authors = []
+description = "FreeRADIUS Module for Kanidm Authentication"
+authors = [
+    "James Hodgkinson <james@terminaloutcomes.com>"
+]
 
 [tool.poetry.dependencies]
-python = "^3.6.2"
-requests = "^2.27.1"
+python = "^3.8"
+requests = "^2.28.0"
+toml = "^0.10.2"
+aiohttp = "^3.8.1"
 
 [tool.poetry.dev-dependencies]
-pylint = "^2.13.9"
+pylint = "^2.14.3"
+mypy = "^0.961"
+types-requests = "^2.27.29"
+pytest = "^7.1.2"
+types-toml = "^0.10.7"
+pytest-asyncio = "^0.18.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pylint.MASTER]
+disable="W0511"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

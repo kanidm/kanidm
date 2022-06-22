@@ -13,7 +13,7 @@
 #[macro_use]
 extern crate tracing;
 
-use structopt::StructOpt;
+use clap::Parser;
 
 use futures::executor::block_on;
 
@@ -25,7 +25,7 @@ include!("./opt/cache_clear.rs");
 
 #[tokio::main]
 async fn main() {
-    let opt = CacheClearOpt::from_args();
+    let opt = CacheClearOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }

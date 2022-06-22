@@ -90,7 +90,7 @@ authorize {
 
 	#
 	#  Look for realms in user@domain format
-	# 
+	#
 	#  Note that proxying the inner tunnel authentication means
 	#  that the user MAY use one identity in the outer session
 	#  (e.g. "anonymous", and a different one here
@@ -344,21 +344,21 @@ post-auth {
 	#  Instead of "use_tunneled_reply", change this "if (0)" to an
 	#  "if (1)".
 	#
-	if (0) {
+	#if (0) {
 		#
 		#  These attributes are for the inner-tunnel only,
 		#  and MUST NOT be copied to the outer reply.
 		#
-		update reply {
-			User-Name !* ANY
-			Message-Authenticator !* ANY
-			EAP-Message !* ANY
-			Proxy-State !* ANY
-			MS-MPPE-Encryption-Types !* ANY
-			MS-MPPE-Encryption-Policy !* ANY
-			MS-MPPE-Send-Key !* ANY
-			MS-MPPE-Recv-Key !* ANY
-		}
+	#	update reply {
+	#		User-Name !* ANY
+	#		Message-Authenticator !* ANY
+	#		EAP-Message !* ANY
+	#		Proxy-State !* ANY
+	#		MS-MPPE-Encryption-Types !* ANY
+	#		MS-MPPE-Encryption-Policy !* ANY
+	#		MS-MPPE-Send-Key !* ANY
+	#		MS-MPPE-Recv-Key !* ANY
+	#	}
 
 		#
 		#  Copy the inner reply attributes to the outer
@@ -366,10 +366,10 @@ post-auth {
 		#  care of copying the outer session-state list to the
 		#  outer reply.
 		#
-		update {
-			&outer.session-state: += &reply:
-		}
-	}
+	#	update {
+	#		&outer.session-state: += &reply:
+	#	}
+	#}
 
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the

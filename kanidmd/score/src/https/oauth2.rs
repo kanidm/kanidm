@@ -2,9 +2,10 @@ use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::{to_tide_response, AppState, RequestExtensions};
 use kanidm::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
-    ErrorResponse, Oauth2Error,
+    AuthoriseResponse, ErrorResponse, Oauth2Error,
 };
 use kanidm::prelude::*;
+use kanidm_proto::oauth2::AuthorisationResponse;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use serde::{Deserialize, Serialize};
 
@@ -185,7 +186,13 @@ pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
 
 pub async fn oauth2_authorise_post(mut req: tide::Request<AppState>) -> tide::Result {
     let auth_req: AuthorisationRequest = req.body_json().await?;
-    oauth2_authorise(req, auth_req).await
+    oauth2_authorise(req, auth_req).await.map(|mut res| {
+        if res.status() == 302 {
+            // in post, we need the redirect not to be issued, so we mask 302 to 200
+            res.set_status(200);
+        }
+        res
+    })
 }
 
 pub async fn oauth2_authorise_get(req: tide::Request<AppState>) -> tide::Result {
@@ -219,12 +226,43 @@ async fn oauth2_authorise(
         .await;
 
     match res {
-        Ok(consent_req) => {
+        Ok(AuthoriseResponse::ConsentRequested {
+            client_name,
+            scopes,
+            pii_scopes,
+            consent_token,
+        }) => {
             // Render a redirect to the consent page for the user to interact with
             // to authorise this session-id
             let mut res = tide::Response::new(200);
             // This is json so later we can expand it with better detail.
-            tide::Body::from_json(&consent_req).map(|b| {
+            tide::Body::from_json(&AuthorisationResponse::ConsentRequested {
+                client_name,
+                scopes,
+                pii_scopes,
+                consent_token,
+            })
+            .map(|b| {
+                res.set_body(b);
+                res
+            })
+        }
+        Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
+            mut redirect_uri,
+            state,
+            code,
+        })) => {
+            let mut res = tide::Response::new(302);
+
+            redirect_uri
+                .query_pairs_mut()
+                .clear()
+                .append_pair("state", &state)
+                .append_pair("code", &code);
+            res.insert_header("Location", redirect_uri.as_str());
+            // I think the client server needs this
+            res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
+            tide::Body::from_json(&AuthorisationResponse::Permitted).map(|b| {
                 res.set_body(b);
                 res
             })
@@ -265,8 +303,10 @@ pub async fn oauth2_authorise_permit_post(mut req: tide::Request<AppState>) -> t
     oauth2_authorise_permit(req, consent_req)
         .await
         .map(|mut res| {
-            // in post, we need the redirect not to be issued, so we mask 302 to 200
-            res.set_status(200);
+            if res.status() == 302 {
+                // in post, we need the redirect not to be issued, so we mask 302 to 200
+                res.set_status(200);
+            }
             res
         })
 }
@@ -318,7 +358,7 @@ async fn oauth2_authorise_permit(
                 .append_pair("code", &code);
             res.insert_header("Location", redirect_uri.as_str());
             // I think the client server needs this
-            // res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
+            res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
             res
         }
         Err(_e) => {

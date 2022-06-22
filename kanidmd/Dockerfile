@@ -11,16 +11,15 @@ LABEL maintainer william@blackhats.net.au
 
 RUN zypper install -y \
         cargo \
-        rust \
-        gcc clang lld \
+        rust wasm-pack \
+        clang lld \
         make automake autoconf \
         libopenssl-devel pam-devel \
         sqlite3-devel \
-        sccache && \
-    zypper clean -a
+        sccache
+RUN zypper clean -a
 
 COPY . /usr/src/kanidm
-WORKDIR /usr/src/kanidm/kanidmd/daemon
 
 ARG SCCACHE_REDIS=""
 ARG KANIDM_FEATURES
@@ -31,25 +30,43 @@ RUN mkdir /scratch
 RUN echo $KANIDM_BUILD_PROFILE
 RUN echo $KANIDM_FEATURES
 
-ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
 ENV CARGO_HOME=/scratch/.cargo
+ENV RUSTFLAGS="-Clinker=clang"
+
+WORKDIR /usr/src/kanidm/kanidmd_web_ui
+RUN if [ "${SCCACHE_REDIS}" != "" ]; \
+        then \
+            export CARGO_INCREMENTAL=false && \
+            export RUSTC_WRAPPER=sccache && \
+            sccache --start-server; \
+    fi && \
+    ./build_wasm_dev.sh
+
+WORKDIR /usr/src/kanidm/kanidmd/daemon
+
+ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
 
 RUN if [ "${SCCACHE_REDIS}" != "" ]; \
-		then \
-			export CC="/usr/bin/sccache /usr/bin/clang" && \
-      export CARGO_INCREMENTAL=false && \
-			export RUSTC_WRAPPER=sccache && \
-			sccache --start-server; \
-		else \
-			export CC="/usr/bin/clang"; \
-	fi && \
-    cargo build ${KANIDM_BUILD_OPTIONS} \
-		--features=${KANIDM_FEATURES} \
-		--target-dir=/usr/src/kanidm/target/ \
-		--release && \
-    if [ "${SCCACHE_REDIS}" != "" ]; \
-		then sccache -s; \
-	fi;
+then \
+  export CARGO_INCREMENTAL=false && \
+  export CC="/usr/bin/sccache /usr/bin/clang" && \
+  export RUSTC_WRAPPER=sccache && \
+  sccache --start-server; \
+else \
+  export CC="/usr/bin/clang"; \
+fi
+
+RUN if [ -z "${KANIDM_FEATURES}" ]; then \
+  cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
+    --target-dir="/usr/src/kanidm/target/" \
+    --release; \
+else \
+ cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
+ --target-dir="/usr/src/kanidm/target/" \
+ --features="${KANIDM_FEATURES}" \
+ --release; \
+fi
+RUN if [ "${SCCACHE_REDIS}" != "" ]; then sccache -s; fi
 
 RUN ls -al /usr/src/kanidm/target/release
 

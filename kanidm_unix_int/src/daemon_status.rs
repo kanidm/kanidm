@@ -13,8 +13,9 @@
 #[macro_use]
 extern crate tracing;
 
+use clap::Parser;
+
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 // use futures::executor::block_on;
 
@@ -25,7 +26,7 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 include!("./opt/unixd_status.rs");
 
 fn main() {
-    let opt = UnixdStatusOpt::from_args();
+    let opt = UnixdStatusOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }

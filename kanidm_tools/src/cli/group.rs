@@ -12,7 +12,7 @@ impl GroupOpt {
             GroupOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
-            GroupOpt::Posix(gpopt) => match gpopt {
+            GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => gcopt.copt.debug,
                 GroupPosix::Set(gcopt) => gcopt.copt.debug,
             },
@@ -78,7 +78,7 @@ impl GroupOpt {
                     .await
                 {
                     Err(e) => error!("Error -> {:?}", e),
-                    Ok(_) => println!("Successfully added members to {}", gcopt.name.as_str()),
+                    Ok(_) => println!("Successfully added {:?} to group \"{}\"", &new_members, gcopt.name.as_str()),
                 }
             }
 
@@ -107,7 +107,7 @@ impl GroupOpt {
                     Ok(_) => println!("Successfully set members for group {}", gcopt.name.as_str()),
                 }
             }
-            GroupOpt::Posix(gpopt) => match gpopt {
+            GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => {
                     let client = gcopt.copt.to_client().await;
                     match client.idm_group_unix_token_get(gcopt.name.as_str()).await {

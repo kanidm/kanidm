@@ -718,6 +718,37 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A set of scopes mapped from a relying server to a user, where the user has previously consented to the following. If changed or deleted, consent will be re-sought."
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "oauth2_consent_scope_map"
+      ],
+      "syntax": [
+        "OAUTH_SCOPE_MAP"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000097"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: &str = r#"{
     "attrs": {
       "class": [
@@ -973,7 +1004,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "radius_secret",
         "account_expire",
         "account_valid_from",
-        "mail"
+        "mail",
+        "oauth2_consent_scope_map"
       ],
       "systemmust": [
         "displayname",

@@ -24,22 +24,22 @@ use url::Url;
 impl AccountOpt {
     pub fn debug(&self) -> bool {
         match self {
-            AccountOpt::Credential(acopt) => acopt.debug(),
-            AccountOpt::Radius(acopt) => match acopt {
+            AccountOpt::Credential { commands } => commands.debug(),
+            AccountOpt::Radius { commands } => match commands {
                 AccountRadius::Show(aro) => aro.copt.debug,
                 AccountRadius::Generate(aro) => aro.copt.debug,
                 AccountRadius::Delete(aro) => aro.copt.debug,
             },
-            AccountOpt::Posix(apopt) => match apopt {
+            AccountOpt::Posix { commands } => match commands {
                 AccountPosix::Show(apo) => apo.copt.debug,
                 AccountPosix::Set(apo) => apo.copt.debug,
                 AccountPosix::SetPassword(apo) => apo.copt.debug,
             },
-            AccountOpt::Person(apopt) => match apopt {
+            AccountOpt::Person { commands } => match commands {
                 AccountPerson::Extend(apo) => apo.copt.debug,
                 AccountPerson::Set(apo) => apo.copt.debug,
             },
-            AccountOpt::Ssh(asopt) => match asopt {
+            AccountOpt::Ssh { commands } => match commands {
                 AccountSsh::List(ano) => ano.copt.debug,
                 AccountSsh::Add(ano) => ano.copt.debug,
                 AccountSsh::Delete(ano) => ano.copt.debug,
@@ -48,7 +48,7 @@ impl AccountOpt {
             AccountOpt::Get(aopt) => aopt.copt.debug,
             AccountOpt::Delete(aopt) => aopt.copt.debug,
             AccountOpt::Create(aopt) => aopt.copt.debug,
-            AccountOpt::Validity(avopt) => match avopt {
+            AccountOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => ano.copt.debug,
                 AccountValidity::ExpireAt(ano) => ano.copt.debug,
                 AccountValidity::BeginFrom(ano) => ano.copt.debug,
@@ -59,8 +59,8 @@ impl AccountOpt {
     pub async fn exec(&self) {
         match self {
             // id/cred/primary/set
-            AccountOpt::Credential(acopt) => acopt.exec().await,
-            AccountOpt::Radius(aropt) => match aropt {
+            AccountOpt::Credential { commands } => commands.exec().await,
+            AccountOpt::Radius { commands } => match commands {
                 AccountRadius::Show(aopt) => {
                     let client = aopt.copt.to_client().await;
 
@@ -69,8 +69,15 @@ impl AccountOpt {
                         .await;
 
                     match rcred {
-                        Ok(Some(s)) => println!("Radius secret: {}", s),
-                        Ok(None) => println!("NO Radius secret"),
+                        Ok(Some(s)) => println!(
+                            "RADIUS secret for {}: {}",
+                            aopt.aopts.account_id.as_str(),
+                            s,
+                        ),
+                        Ok(None) => println!(
+                            "No RADIUS secret set for user {}",
+                            aopt.aopts.account_id.as_str(),
+                        ),
                         Err(e) => {
                             error!("Error -> {:?}", e);
                         }
@@ -95,7 +102,7 @@ impl AccountOpt {
                     }
                 }
             }, // end AccountOpt::Radius
-            AccountOpt::Posix(apopt) => match apopt {
+            AccountOpt::Posix { commands } => match commands {
                 AccountPosix::Show(aopt) => {
                     let client = aopt.copt.to_client().await;
                     match client
@@ -142,7 +149,7 @@ impl AccountOpt {
                     }
                 }
             }, // end AccountOpt::Posix
-            AccountOpt::Person(apopt) => match apopt {
+            AccountOpt::Person { commands } => match commands {
                 AccountPerson::Extend(aopt) => {
                     let client = aopt.copt.to_client().await;
                     if let Err(e) = client
@@ -170,7 +177,7 @@ impl AccountOpt {
                     }
                 }
             }, // end AccountOpt::Person
-            AccountOpt::Ssh(asopt) => match asopt {
+            AccountOpt::Ssh { commands } => match commands {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client().await;
 
@@ -246,7 +253,7 @@ impl AccountOpt {
                     error!("Error -> {:?}", e)
                 }
             }
-            AccountOpt::Validity(avopt) => match avopt {
+            AccountOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => {
                     let client = ano.copt.to_client().await;
 

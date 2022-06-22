@@ -17,7 +17,7 @@ kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
 libc = "^0.2.126"
 
-uuid = { version = "^1.1.1", features = ["serde", "v4" ] }
+uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
 
 tide = "^0.16.0"
 tide-openssl = "^0.1.1"
@@ -29,10 +29,10 @@ tokio-openssl = "^0.6.3"
 openssl = "^0.10.38"
 ldap3_proto = "^0.2.3"
 
-tracing = { version = "^0.1.34", features = ["attributes"] }
+tracing = { version = "^0.1.35", features = ["attributes"] }
 serde = { version = "^1.0.137", features = ["derive"] }
 async-trait = "^0.1.53"
-async-std = { version = "^1.11.0", features = ["tokio1"] }
+async-std = { version = "^1.12.0", features = ["tokio1"] }
 compact_jwt = "^0.2.1"
 
 [build-dependencies]
@@ -53,4 +53,4 @@ base64 = "^0.13.0"
 
 kanidm_client = { path = "../../kanidm_client" }
 url = { version = "^2.2.2", features = ["serde"] }
-reqwest = { version = "0.11.10", features=["cookies", "json", "native-tls"] }
+reqwest = { version = "0.11.11", features=["cookies", "json", "native-tls"] }

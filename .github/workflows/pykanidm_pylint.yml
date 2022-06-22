@@ -1,0 +1,22 @@
+name: pykanidm - pylint
+
+"on":
+  push:
+  pull_request:
+jobs:
+  pykanidm_pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Running tests
+        run: |
+          cd pykanidm
+          python -m pip install --quiet --no-cache-dir --upgrade poetry
+          poetry install
+          poetry run pylint tests kanidm

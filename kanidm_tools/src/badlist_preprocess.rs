@@ -16,14 +16,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use kanidm_proto::v1::Modify;
 
+use clap::Parser;
 use rayon::prelude::*;
-use structopt::StructOpt;
 use tracing::{debug, error, info};
 
 include!("opt/badlist_preprocess.rs");
 
 fn main() {
-    let opt = BadlistProcOpt::from_args();
+    let opt = BadlistProcOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }
