@@ -167,7 +167,6 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
             <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
             <link rel="stylesheet" href="/pkg/style.css"/>
             <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
-            <script src="/pkg/external/confetti.js"></script>
             <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH==">
             </script>
 
@@ -302,6 +301,8 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                     "object-src 'self'",
                     // not currently using workers so it can be blocked
                     "worker-src 'none'",
+                    "report-to 'none'",
+                    "report-uri 'none'",
                 ].join(";"),
             );
 
