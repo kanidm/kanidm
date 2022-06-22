@@ -12,9 +12,7 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
-use kanidm_proto::v1::{
-    CURequest, CUSessionToken, CUStatus,
-};
+use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
 
 enum State {
     Init,

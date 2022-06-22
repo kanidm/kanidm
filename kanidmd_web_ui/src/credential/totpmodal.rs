@@ -13,9 +13,7 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
-use kanidm_proto::v1::{
-    CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret,
-};
+use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
 use qrcode::{render::svg, QrCode};
 
 enum TotpState {
