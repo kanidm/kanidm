@@ -141,6 +141,7 @@ impl fmt::Display for Configuration {
                 Some(u) => write!(f, "log_level: {:x}, ", u),
                 None => write!(f, "log_level: default, "),
             })
+            // TODO: include the backup timings
             .and_then(|_| match &self.online_backup {
                 Some(_) => write!(f, "online_backup: enabled, "),
                 None => write!(f, "online_backup: disabled, "),
