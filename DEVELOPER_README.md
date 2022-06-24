@@ -56,10 +56,10 @@ You need [rustup](https://rustup.rs/) to install a Rust toolchain.
 You will also need some system libraries to build this, which can be installed by running:
 
 ```shell
-sudo apt-get install libsqlite3-dev libudev-dev libssl-dev
-```
+sudo apt-get install libsqlite3-dev libudev-dev libssl-dev pkg-config libpam0g-dev
+``` 
 
-Tested with Ubuntu 20.04.
+Tested with Ubuntu 20.04 and 22.04.
 
 ### Get Involved
 
