@@ -1094,7 +1094,7 @@ impl QueryServer {
             Err(OperationError::NoMatchingEntries) => Ok(0),
             Err(r) => Err(r),
         }?;
-        admin_info!(?system_info_version);
+        admin_debug!(?system_info_version);
 
         if system_info_version < 3 {
             migrate_txn.migrate_2_to_3()?;
@@ -1119,8 +1119,8 @@ impl QueryServer {
         ts_write_3
             .initialise_idm()
             .and_then(|_| ts_write_3.commit())?;
-
-        admin_info!("migrations success! ☀️  ");
+        // TODO: work out if we've actually done any migrations before printing this
+        admin_debug!("Database version check and migrations success! ☀️  ");
         Ok(())
     }
 
@@ -2267,7 +2267,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     */
 
     pub fn initialise_schema_core(&self) -> Result<(), OperationError> {
-        admin_info!("initialise_schema_core -> start ...");
+        admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
 
@@ -2277,9 +2277,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.internal_migrate_or_create(e)
         });
         if r.is_ok() {
-            admin_info!("initialise_schema_core -> Ok!");
+            admin_debug!("initialise_schema_core -> Ok!");
         } else {
-            admin_info!(?r, "initialise_schema_core -> Error");
+            admin_error!(?r, "initialise_schema_core -> Error");
         }
         // why do we have error handling if it's always supposed to be `Ok`?
         debug_assert!(r.is_ok());
@@ -2287,7 +2287,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn initialise_schema_idm(&self) -> Result<(), OperationError> {
-        admin_info!("initialise_schema_idm -> start ...");
+        admin_debug!("initialise_schema_idm -> start ...");
         // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
             JSON_SCHEMA_ATTR_DISPLAYNAME,
@@ -2338,7 +2338,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
 
         if r.is_ok() {
-            admin_info!("initialise_schema_idm -> Ok!");
+            admin_debug!("initialise_schema_idm -> Ok!");
         } else {
             admin_error!(res = ?r, "initialise_schema_idm -> Error");
         }
@@ -2467,7 +2467,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .iter()
             .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
         if res.is_ok() {
-            admin_info!("initialise_idm -> result Ok!");
+            admin_debug!("initialise_idm -> result Ok!");
         } else {
             admin_error!(?res, "initialise_idm p3 -> result");
         }

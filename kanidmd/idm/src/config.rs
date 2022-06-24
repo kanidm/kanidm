@@ -74,6 +74,31 @@ impl FromStr for ServerRole {
     }
 }
 
+// TODO: this should probably be in the kanidm crate
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum ConsoleOutputMode {
+    Text,
+    JSON,
+}
+impl Default for ConsoleOutputMode {
+    fn default() -> Self {
+        ConsoleOutputMode::Text
+    }
+}
+
+impl FromStr for ConsoleOutputMode {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "json" => Ok(ConsoleOutputMode::JSON),
+            "text" => Ok(ConsoleOutputMode::Text),
+            _ => Err("Must be one of json, text"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Configuration {
     pub address: String,
@@ -93,6 +118,7 @@ pub struct Configuration {
     pub domain: String,
     pub origin: String,
     pub role: ServerRole,
+    pub output_mode: ConsoleOutputMode,
 }
 
 impl fmt::Display for Configuration {
@@ -112,21 +138,22 @@ impl fmt::Display for Configuration {
             .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
             .and_then(|_| match self.log_level {
-                Some(u) => write!(f, "with log_level: {:x}, ", u),
-                None => write!(f, "with log_level: default, "),
+                Some(u) => write!(f, "log_level: {:x}, ", u),
+                None => write!(f, "log_level: default, "),
             })
             .and_then(|_| match &self.online_backup {
-                Some(_) => write!(f, "with online_backup: enabled, "),
-                None => write!(f, "with online_backup: disabled, "),
+                Some(_) => write!(f, "online_backup: enabled, "),
+                None => write!(f, "online_backup: disabled, "),
             })
             .and_then(|_| write!(f, "role: {}, ", self.role.to_string()))
             .and_then(|_| {
                 write!(
                     f,
-                    "integration mode: {}",
+                    "integration mode: {}, ",
                     self.integration_test_config.is_some()
                 )
             })
+            .and_then(|_| write!(f, "console output format: {:?} ", self.output_mode))
     }
 }
 
@@ -144,7 +171,7 @@ impl Configuration {
             db_path: String::from(""),
             db_fs_type: None,
             db_arc_size: None,
-            maximum_request: 262_144, // 256k
+            maximum_request: 256 * 1024, // 256k
             // log type
             // log path
             // TODO #63: default true in prd
@@ -157,6 +184,7 @@ impl Configuration {
             domain: "idm.example.com".to_string(),
             origin: "https://idm.example.com".to_string(),
             role: ServerRole::WriteReplica,
+            output_mode: ConsoleOutputMode::default(),
         };
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);
@@ -216,6 +244,11 @@ impl Configuration {
 
     pub fn update_role(&mut self, r: ServerRole) {
         self.role = r;
+    }
+
+    /// Sets the output mode for writing to the console
+    pub fn update_output_mode(&mut self, om: ConsoleOutputMode) {
+        self.output_mode = om;
     }
 
     pub fn update_tls(&mut self, chain: &Option<String>, key: &Option<String>) {
