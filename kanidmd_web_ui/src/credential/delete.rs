@@ -91,7 +91,7 @@ impl Component for DeleteApp {
     type Message = Msg;
     type Properties = ModalProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         console::log!("delete modal create");
 
         DeleteApp { state: State::Init }

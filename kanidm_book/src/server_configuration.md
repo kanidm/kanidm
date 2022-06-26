@@ -119,7 +119,7 @@ You should test your configuration is valid before you proceed.
 Then you can setup the initial admin account and initialise the database into your volume.
 
     docker run --rm -i -t -v kanidmd:/data \
-        kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
+        kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml admin
 
 ### Run the Server
 

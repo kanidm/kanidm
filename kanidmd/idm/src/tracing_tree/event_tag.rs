@@ -3,6 +3,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 #[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
 #[repr(u64)]
 pub enum EventTag {
+    AdminDebug,
     AdminError,
     AdminWarn,
     AdminInfo,
@@ -24,6 +25,7 @@ pub enum EventTag {
 impl EventTag {
     pub fn pretty(self) -> &'static str {
         match self {
+            EventTag::AdminDebug => "admin.debug",
             EventTag::AdminError => "admin.error",
             EventTag::AdminWarn => "admin.warn",
             EventTag::AdminInfo => "admin.info",
@@ -46,8 +48,9 @@ impl EventTag {
     pub fn emoji(self) -> &'static str {
         use EventTag::*;
         match self {
+            AdminDebug => "🐛",
             AdminError | FilterError | RequestError | SecurityError => "🚨",
-            AdminWarn | FilterWarn | RequestWarn => "⚠️ ",
+            AdminWarn | FilterWarn | RequestWarn => "⚠️",
             AdminInfo | FilterInfo | RequestInfo | SecurityInfo => "  ",
             RequestTrace | FilterTrace | PerfTrace => "📍",
             SecurityCritical => "🔐",
