@@ -2115,7 +2115,6 @@
 <span id="2110">2110</span>
 <span id="2111">2111</span>
 <span id="2112">2112</span>
-<span id="2113">2113</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -2623,8 +2622,7 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_session_id</span>.<span class="ident">write</span>().<span class="kw">await</span>;
             <span class="kw-2">*</span><span class="ident">sguard</span> <span class="op">=</span> <span class="ident">headers</span>
                 .<span class="ident">get</span>(<span class="ident">KSESSIONID</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> <span class="ident">hv</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>().<span class="ident">map</span>(<span class="ident">str::to_string</span>))
-                .<span class="ident">flatten</span>();
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> <span class="ident">hv</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>().<span class="ident">map</span>(<span class="ident">str::to_string</span>));
         }
 
         <span class="kw">let</span> <span class="ident">opid</span> <span class="op">=</span> <span class="ident">headers</span>

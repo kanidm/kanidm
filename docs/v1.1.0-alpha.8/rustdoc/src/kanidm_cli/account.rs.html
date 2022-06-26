@@ -935,6 +935,8 @@
 <span id="930">930</span>
 <span id="931">931</span>
 <span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::password_prompt</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">AccountCredential</span>, <span class="ident">AccountOpt</span>, <span class="ident">AccountPerson</span>, <span class="ident">AccountPosix</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>,
@@ -1488,7 +1490,7 @@ commit (save) - Commit the changes to the credential
     };
 
     <span class="comment">// gen the qr</span>
-    <span class="macro">eprintln!</span>(<span class="string">&quot;Scan the following QR code with your OTP app.&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;Scan the following QR code with your OTP app.&quot;</span>);
 
     <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">QrCode::new</span>(<span class="ident">totp_secret</span>.<span class="ident">to_uri</span>().<span class="ident">as_str</span>()) {
         <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
@@ -1502,9 +1504,11 @@ commit (save) - Commit the changes to the credential
         .<span class="ident">dark_color</span>(<span class="ident">unicode::Dense1x2::Light</span>)
         .<span class="ident">light_color</span>(<span class="ident">unicode::Dense1x2::Dark</span>)
         .<span class="ident">build</span>();
-    <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">image</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">image</span>);
 
-    <span class="macro">eprintln!</span>(<span class="string">&quot;Alternatively, you can manually enter the following OTP details:&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;Alternatively, you can manually enter the following OTP details:&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;--------------------------------------------------------------&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;TOTP URI: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">to_uri</span>().<span class="ident">as_str</span>());
     <span class="macro">println!</span>(<span class="string">&quot;Account Name: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">accountname</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Issuer: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">issuer</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Algorithm: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">algo</span>);
@@ -1512,8 +1516,8 @@ commit (save) - Commit the changes to the credential
     <span class="macro">println!</span>(<span class="string">&quot;Secret: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">get_secret</span>());
 
     <span class="comment">// prompt for the totp.</span>
-    <span class="macro">eprintln!</span>(<span class="string">&quot;--------------------------------------------------------------&quot;</span>);
-    <span class="macro">eprintln!</span>(<span class="string">&quot;Enter a TOTP from your authenticator to complete registration:&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;--------------------------------------------------------------&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;Enter a TOTP from your authenticator to complete registration:&quot;</span>);
 
     <span class="comment">// Up to three attempts</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attempts</span> <span class="op">=</span> <span class="number">3</span>;
