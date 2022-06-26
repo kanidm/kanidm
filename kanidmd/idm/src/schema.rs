@@ -1354,10 +1354,10 @@ impl<'a> SchemaWriteTransaction<'a> {
 
             let r = self.validate();
             if r.is_empty() {
-                admin_info!("schema validate -> passed");
+                admin_debug!("schema validate -> passed");
                 Ok(())
             } else {
-                admin_info!(err = ?r, "schema validate -> errors");
+                admin_error!(err = ?r, "schema validate -> errors");
                 Err(OperationError::ConsistencyError(r))
             }
         })

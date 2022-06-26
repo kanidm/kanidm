@@ -26,6 +26,11 @@ macro_rules! tagged_event {
 }
 
 #[macro_export]
+macro_rules! admin_debug {
+    ($($arg:tt)*) => { tagged_event!(DEBUG, EventTag::AdminDebug, $($arg)*) }
+}
+
+#[macro_export]
 macro_rules! admin_error {
     ($($arg:tt)*) => { tagged_event!(ERROR, EventTag::AdminError, $($arg)*) }
 }

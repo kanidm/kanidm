@@ -148,7 +148,7 @@ in `/tmp/kanidm.db`.
 
 Create the initial database and generate an `admin` username:
 
-    cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml -n admin
+    cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml admin
     <snip>
     Success - password reset to -> Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9cT4
 

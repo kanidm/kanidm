@@ -6,6 +6,10 @@ struct CommonOpt {
     #[clap(parse(from_os_str), short, long = "config", env = "KANIDM_CONFIG")]
     /// Path to the server's configuration file. If it does not exist, it will be created.
     config_path: PathBuf,
+    //TODO: remove this once we work out the format
+    /// Log format (still in very early development)
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
+    output_mode: String,
 }
 
 #[derive(Debug, Args)]
@@ -28,7 +32,7 @@ struct RestoreOpt {
 
 #[derive(Debug, Args)]
 struct RecoverAccountOpt {
-    #[clap(short)]
+    #[clap(value_parser)]
     /// The account name to recover credentials for.
     name: String,
     #[clap(flatten)]

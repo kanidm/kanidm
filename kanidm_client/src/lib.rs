@@ -505,8 +505,7 @@ impl KanidmClient {
             let mut sguard = self.auth_session_id.write().await;
             *sguard = headers
                 .get(KSESSIONID)
-                .map(|hv| hv.to_str().ok().map(str::to_string))
-                .flatten();
+                .and_then(|hv| hv.to_str().ok().map(str::to_string));
         }
 
         let opid = headers
