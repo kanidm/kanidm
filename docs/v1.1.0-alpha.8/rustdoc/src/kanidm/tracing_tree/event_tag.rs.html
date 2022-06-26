@@ -60,11 +60,15 @@
 <span id="55">55</span>
 <span id="56">56</span>
 <span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">num_enum</span>::{<span class="ident">IntoPrimitive</span>, <span class="ident">TryFromPrimitive</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">IntoPrimitive</span>, <span class="ident">TryFromPrimitive</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u64</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">EventTag</span> {
+    <span class="ident">AdminDebug</span>,
     <span class="ident">AdminError</span>,
     <span class="ident">AdminWarn</span>,
     <span class="ident">AdminInfo</span>,
@@ -86,6 +90,7 @@
 <span class="kw">impl</span> <span class="ident">EventTag</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pretty</span>(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">EventTag::AdminDebug</span> =&gt; <span class="string">&quot;admin.debug&quot;</span>,
             <span class="ident">EventTag::AdminError</span> =&gt; <span class="string">&quot;admin.error&quot;</span>,
             <span class="ident">EventTag::AdminWarn</span> =&gt; <span class="string">&quot;admin.warn&quot;</span>,
             <span class="ident">EventTag::AdminInfo</span> =&gt; <span class="string">&quot;admin.info&quot;</span>,
@@ -108,8 +113,9 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">emoji</span>(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">use</span> <span class="ident">EventTag</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">AdminDebug</span> =&gt; <span class="string">&quot;🐛&quot;</span>,
             <span class="ident">AdminError</span> <span class="op">|</span> <span class="ident">FilterError</span> <span class="op">|</span> <span class="ident">RequestError</span> <span class="op">|</span> <span class="ident">SecurityError</span> =&gt; <span class="string">&quot;🚨&quot;</span>,
-            <span class="ident">AdminWarn</span> <span class="op">|</span> <span class="ident">FilterWarn</span> <span class="op">|</span> <span class="ident">RequestWarn</span> =&gt; <span class="string">&quot;⚠️ &quot;</span>,
+            <span class="ident">AdminWarn</span> <span class="op">|</span> <span class="ident">FilterWarn</span> <span class="op">|</span> <span class="ident">RequestWarn</span> =&gt; <span class="string">&quot;⚠️&quot;</span>,
             <span class="ident">AdminInfo</span> <span class="op">|</span> <span class="ident">FilterInfo</span> <span class="op">|</span> <span class="ident">RequestInfo</span> <span class="op">|</span> <span class="ident">SecurityInfo</span> =&gt; <span class="string">&quot;  &quot;</span>,
             <span class="ident">RequestTrace</span> <span class="op">|</span> <span class="ident">FilterTrace</span> <span class="op">|</span> <span class="ident">PerfTrace</span> =&gt; <span class="string">&quot;📍&quot;</span>,
             <span class="ident">SecurityCritical</span> =&gt; <span class="string">&quot;🔐&quot;</span>,

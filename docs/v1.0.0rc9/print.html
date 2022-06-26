@@ -431,7 +431,7 @@ may refuse to start, or some features (e.g. webauthn, oauth) may not work correc
 <h3 id="default-admin-account"><a class="header" href="#default-admin-account">Default Admin Account</a></h3>
 <p>Then you can setup the initial admin account and initialise the database into your volume.</p>
 <pre><code>docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
+    kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml admin
 </code></pre>
 <h3 id="run-the-server"><a class="header" href="#run-the-server">Run the Server</a></h3>
 <p>Now we can run the server so that it can accept connections. This defaults to using <code>-c /data/server.toml</code></p>
@@ -1320,7 +1320,7 @@ insecure certificate tool creates <code>/tmp/kanidm</code> and puts some self-si
 <p>You can now build and run the server with the commands below. It will use a database 
 in <code>/tmp/kanidm.db</code>.</p>
 <p>Create the initial database and generate an <code>admin</code> username:</p>
-<pre><code>cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml -n admin
+<pre><code>cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml admin
 &lt;snip&gt;
 Success - password reset to -&gt; Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9cT4
 </code></pre>

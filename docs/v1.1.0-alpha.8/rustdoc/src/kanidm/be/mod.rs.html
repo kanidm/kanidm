@@ -4209,7 +4209,7 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">upgrade_reindex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">v</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dbv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_db_index_version</span>();
-        <span class="macro">admin_info!</span>(<span class="question-mark">?</span><span class="ident">dbv</span>, <span class="question-mark">?</span><span class="ident">v</span>, <span class="string">&quot;upgrade_reindex&quot;</span>);
+        <span class="macro">admin_debug!</span>(<span class="question-mark">?</span><span class="ident">dbv</span>, <span class="question-mark">?</span><span class="ident">v</span>, <span class="string">&quot;upgrade_reindex&quot;</span>);
         <span class="kw">if</span> <span class="ident">dbv</span> <span class="op">&lt;</span> <span class="ident">v</span> {
             <span class="macro">limmediate_warning!</span>(
                 <span class="string">&quot;NOTICE: A system reindex is required. This may take a long time ...\n&quot;</span>
@@ -4468,9 +4468,9 @@
         <span class="ident">idxkeys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdxKey</span><span class="op">&gt;</span>,
         <span class="ident">vacuum</span>: <span class="ident">bool</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">info!</span>(<span class="string">&quot;DB tickets -&gt; {:?}&quot;</span>, <span class="ident">cfg</span>.<span class="ident">pool_size</span>);
-        <span class="macro">info!</span>(<span class="string">&quot;Profile -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_PROFILE_NAME&quot;</span>));
-        <span class="macro">info!</span>(<span class="string">&quot;CPU Flags -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_CPU_FLAGS&quot;</span>));
+        <span class="macro">debug!</span>(<span class="string">&quot;DB tickets -&gt; {:?}&quot;</span>, <span class="ident">cfg</span>.<span class="ident">pool_size</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;Profile -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_PROFILE_NAME&quot;</span>));
+        <span class="macro">debug!</span>(<span class="string">&quot;CPU Flags -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_CPU_FLAGS&quot;</span>));
 
         <span class="comment">// If in memory, reduce pool to 1</span>
         <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">path</span>.<span class="ident">is_empty</span>() {

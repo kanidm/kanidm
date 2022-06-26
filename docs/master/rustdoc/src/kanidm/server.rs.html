@@ -5315,7 +5315,7 @@
             <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="prelude-val">Err</span>(<span class="ident">r</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">r</span>),
         }<span class="question-mark">?</span>;
-        <span class="macro">admin_info!</span>(<span class="question-mark">?</span><span class="ident">system_info_version</span>);
+        <span class="macro">admin_debug!</span>(<span class="question-mark">?</span><span class="ident">system_info_version</span>);
 
         <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">3</span> {
             <span class="ident">migrate_txn</span>.<span class="ident">migrate_2_to_3</span>()<span class="question-mark">?</span>;
@@ -5340,8 +5340,8 @@
         <span class="ident">ts_write_3</span>
             .<span class="ident">initialise_idm</span>()
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ts_write_3</span>.<span class="ident">commit</span>())<span class="question-mark">?</span>;
-
-        <span class="macro">admin_info!</span>(<span class="string">&quot;migrations success! ☀️  &quot;</span>);
+        <span class="comment">// TODO: work out if we&#39;ve actually done any migrations before printing this</span>
+        <span class="macro">admin_debug!</span>(<span class="string">&quot;Database version check and migrations success! ☀️  &quot;</span>);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -6488,7 +6488,7 @@
     */</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_schema_core</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">admin_info!</span>(<span class="string">&quot;initialise_schema_core -&gt; start ...&quot;</span>);
+        <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_schema_core -&gt; start ...&quot;</span>);
         <span class="comment">// Load in all the &quot;core&quot; schema, that we already have in &quot;memory&quot;.</span>
         <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">schema</span>.<span class="ident">to_entries</span>();
 
@@ -6498,9 +6498,9 @@
             <span class="self">self</span>.<span class="ident">internal_migrate_or_create</span>(<span class="ident">e</span>)
         });
         <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">is_ok</span>() {
-            <span class="macro">admin_info!</span>(<span class="string">&quot;initialise_schema_core -&gt; Ok!&quot;</span>);
+            <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_schema_core -&gt; Ok!&quot;</span>);
         } <span class="kw">else</span> {
-            <span class="macro">admin_info!</span>(<span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;initialise_schema_core -&gt; Error&quot;</span>);
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;initialise_schema_core -&gt; Error&quot;</span>);
         }
         <span class="comment">// why do we have error handling if it&#39;s always supposed to be `Ok`?</span>
         <span class="macro">debug_assert!</span>(<span class="ident">r</span>.<span class="ident">is_ok</span>());
@@ -6508,7 +6508,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_schema_idm</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">admin_info!</span>(<span class="string">&quot;initialise_schema_idm -&gt; start ...&quot;</span>);
+        <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_schema_idm -&gt; start ...&quot;</span>);
         <span class="comment">// List of IDM schemas to init.</span>
         <span class="kw">let</span> <span class="ident">idm_schema</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
             <span class="ident">JSON_SCHEMA_ATTR_DISPLAYNAME</span>,
@@ -6559,7 +6559,7 @@
             .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e_str</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">internal_migrate_or_create_str</span>(<span class="ident">e_str</span>));
 
         <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">is_ok</span>() {
-            <span class="macro">admin_info!</span>(<span class="string">&quot;initialise_schema_idm -&gt; Ok!&quot;</span>);
+            <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_schema_idm -&gt; Ok!&quot;</span>);
         } <span class="kw">else</span> {
             <span class="macro">admin_error!</span>(<span class="ident">res</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;initialise_schema_idm -&gt; Error&quot;</span>);
         }
@@ -6688,7 +6688,7 @@
             .<span class="ident">iter</span>()
             .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e_str</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">internal_migrate_or_create_str</span>(<span class="ident">e_str</span>));
         <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_ok</span>() {
-            <span class="macro">admin_info!</span>(<span class="string">&quot;initialise_idm -&gt; result Ok!&quot;</span>);
+            <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_idm -&gt; result Ok!&quot;</span>);
         } <span class="kw">else</span> {
             <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">res</span>, <span class="string">&quot;initialise_idm p3 -&gt; result&quot;</span>);
         }

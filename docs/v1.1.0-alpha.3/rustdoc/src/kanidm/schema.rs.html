@@ -3555,10 +3555,10 @@
 
             <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">validate</span>();
             <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">is_empty</span>() {
-                <span class="macro">admin_info!</span>(<span class="string">&quot;schema validate -&gt; passed&quot;</span>);
+                <span class="macro">admin_debug!</span>(<span class="string">&quot;schema validate -&gt; passed&quot;</span>);
                 <span class="prelude-val">Ok</span>(())
             } <span class="kw">else</span> {
-                <span class="macro">admin_info!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;schema validate -&gt; errors&quot;</span>);
+                <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;schema validate -&gt; errors&quot;</span>);
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::ConsistencyError</span>(<span class="ident">r</span>))
             }
         })
