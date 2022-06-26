@@ -93,9 +93,9 @@ pub mod prelude {
         ValueSetUuid,
     };
     pub use crate::{
-        admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace, filter_warn,
-        perf_trace, request_error, request_info, request_trace, request_warn, security_access,
-        security_critical, security_error, security_info, spanned,
+        admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
+        filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
+        security_access, security_critical, security_error, security_info, spanned,
     };
 }
 
