@@ -551,7 +551,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
     };
 
     // gen the qr
-    eprintln!("Scan the following QR code with your OTP app.");
+    println!("Scan the following QR code with your OTP app.");
 
     let code = match QrCode::new(totp_secret.to_uri().as_str()) {
         Ok(c) => c,
@@ -565,9 +565,11 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
         .dark_color(unicode::Dense1x2::Light)
         .light_color(unicode::Dense1x2::Dark)
         .build();
-    eprintln!("{}", image);
+    println!("{}", image);
 
-    eprintln!("Alternatively, you can manually enter the following OTP details:");
+    println!("Alternatively, you can manually enter the following OTP details:");
+    println!("--------------------------------------------------------------");
+    println!("TOTP URI: {}", totp_secret.to_uri().as_str());
     println!("Account Name: {}", totp_secret.accountname);
     println!("Issuer: {}", totp_secret.issuer);
     println!("Algorithm: {}", totp_secret.algo);
@@ -575,8 +577,8 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
     println!("Secret: {}", totp_secret.get_secret());
 
     // prompt for the totp.
-    eprintln!("--------------------------------------------------------------");
-    eprintln!("Enter a TOTP from your authenticator to complete registration:");
+    println!("--------------------------------------------------------------");
+    println!("Enter a TOTP from your authenticator to complete registration:");
 
     // Up to three attempts
     let mut attempts = 3;
