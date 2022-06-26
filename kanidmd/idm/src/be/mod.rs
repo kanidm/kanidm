@@ -1255,7 +1255,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn upgrade_reindex(&self, v: i64) -> Result<(), OperationError> {
         let dbv = self.get_db_index_version();
-        admin_info!(?dbv, ?v, "upgrade_reindex");
+        admin_debug!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
             limmediate_warning!(
                 "NOTICE: A system reindex is required. This may take a long time ...\n"
@@ -1514,9 +1514,9 @@ impl Backend {
         idxkeys: Vec<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        info!("DB tickets -> {:?}", cfg.pool_size);
-        info!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-        info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+        debug!("DB tickets -> {:?}", cfg.pool_size);
+        debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
+        debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
         if cfg.path.is_empty() {
