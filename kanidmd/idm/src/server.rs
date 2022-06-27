@@ -860,13 +860,37 @@ impl<'a> QueryServerReadTransaction<'a> {
             return idx_errs;
         }
 
-        // Ok BE passed, lets move on to the content.
+        // If anything error to this point we can't trust the verifications below. From
+        // here we can just amass results.
+        let mut results = Vec::new();
+
+        // Verify all our entries. Weird flex I know, but it's needed for verifying
+        // the entry changelogs are consistent to their entries.
+
+        spanned!("server::verify", {
+            let filt_all = filter!(f_pres("class"));
+            let all_entries = match self.internal_search(filt_all) {
+                Ok(a) => a,
+                Err(_e) => return vec![Err(ConsistencyError::QueryServerSearchFailure)],
+            };
+
+            for e in all_entries {
+                e.verify(&mut results)
+            }
+        });
+
+        // Verify the RUV to the entry changelogs now:
+
+
+        // Ok entries passed, lets move on to the content.
         // Most of our checks are in the plugins, so we let them
         // do their job.
 
         // Now, call the plugins verification system.
-        Plugins::run_verify(self)
+        Plugins::run_verify(self, &mut results);
         // Finished
+
+        results
     }
 }
 
@@ -1991,10 +2015,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Schema check all.
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
                 .into_iter()
-                .map(|e| 
-                    e.validate(&self.schema)
-                        .map(|e| e.seal(&self.schema))
-                )
+                .map(|e| e.validate(&self.schema).map(|e| e.seal(&self.schema)))
                 .collect();
 
             let norm_cand: Vec<Entry<_, _>> = match res {

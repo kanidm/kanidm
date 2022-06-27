@@ -1,7 +1,1 @@
-
-struct ChangelogIndex {
-
-
-}
-
-
+struct ChangelogIndex {}

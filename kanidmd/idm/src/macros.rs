@@ -379,7 +379,6 @@ macro_rules! run_entrychangelog_test {
         let schema_txn = schema_outer.read();
 
         $test_fn(&schema_txn)
-
     }};
 }
 

@@ -37,7 +37,7 @@ use crate::value::{IntentTokenState, PartialValue, Value};
 use crate::valueset::{self, ValueSet};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::{OperationError, SchemaError};
+use kanidm_proto::v1::{OperationError, SchemaError, ConsistencyError};
 use tracing::trace;
 
 use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
@@ -495,8 +495,10 @@ impl Entry<EntryInit, EntryNew> {
 
     /// Assign the Change Identifier to this Entry, allowing it to be modified and then
     /// written to the `Backend`
-    pub fn assign_cid(mut self, cid: Cid,
-        schema: &dyn SchemaTransaction
+    pub fn assign_cid(
+        mut self,
+        cid: Cid,
+        schema: &dyn SchemaTransaction,
     ) -> Entry<EntryInvalid, EntryNew> {
         /* setup our last changed time */
         self.set_last_changed(cid.clone());
@@ -528,9 +530,7 @@ impl Entry<EntryInit, EntryNew> {
         let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
 
         Entry {
-            valid: EntryInvalid {
-                cid, eclog
-            },
+            valid: EntryInvalid { cid, eclog },
             state: EntryNew,
             attrs: self.attrs,
         }
@@ -578,7 +578,7 @@ impl Entry<EntryInit, EntryNew> {
         Entry {
             valid: EntrySealed {
                 uuid: self.get_uuid().expect("Invalid uuid").clone(),
-                eclog
+                eclog,
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -876,7 +876,10 @@ impl Entry<EntryInvalid, EntryNew> {
             .and_then(|u| Some(u.clone()))
             .unwrap_or_else(|| Uuid::new_v4());
         Entry {
-            valid: EntrySealed { uuid, eclog: self.valid.eclog },
+            valid: EntrySealed {
+                uuid,
+                eclog: self.valid.eclog,
+            },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
         }
@@ -926,7 +929,10 @@ impl Entry<EntryInvalid, EntryCommitted> {
             .and_then(|u| Some(u.clone()))
             .unwrap_or_else(|| Uuid::new_v4());
         Entry {
-            valid: EntrySealed { uuid, eclog: self.valid.eclog },
+            valid: EntrySealed {
+                uuid,
+                eclog: self.valid.eclog,
+            },
             state: self.state,
             attrs: self.attrs,
         }
@@ -996,7 +1002,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     /// Serialise this entry to it's Database format ready for storage.
-    pub fn to_dbentry(&self) -> (DbEntry, EntryChangelog) {
+    pub fn to_dbentry(&self) -> DbEntry {
         // In the future this will do extra work to process uuid
         // into "attributes" suitable for dbentry storage.
 
@@ -1005,7 +1011,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         // Alternately, we may have higher-level types that translate entry
         // into proper structures, and they themself emit/modify entries?
 
-        (DbEntry {
+        DbEntry {
             ent: DbEntryVers::V2(DbEntryV2 {
                 attrs: self
                     .attrs
@@ -1016,7 +1022,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                     })
                     .collect(),
             }),
-        }, self.valid.eclog.clone())
+        }
     }
 
     #[inline]
@@ -1393,7 +1399,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
-    pub fn from_dbentry(db_e: DbEntry, id: u64, eclog: EntryChangelog) -> Option<Self> {
+    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         // Convert attrs from db format to value
         let r_attrs: Result<Eattrs, ()> = match db_e.ent {
             DbEntryVers::V1(_) => {
@@ -1419,8 +1425,10 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let uuid = attrs.get("uuid").and_then(|vs| vs.to_uuid_single())?;
 
-        let cid = attrs.get("last_modified_cid")
-            .and_then(|vs| vs.as_cid_set().iter().next())?;
+        let cid = attrs
+            .get("last_modified_cid")
+            .and_then(|vs| vs.as_cid_set())
+            .and_then(|set| set.iter().cloned().next())?;
 
         let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
 
@@ -1491,7 +1499,10 @@ impl Entry<EntrySealed, EntryCommitted> {
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
 
         Entry {
-            valid: EntryInvalid { cid, eclog: self.valid.eclog.clone() },
+            valid: EntryInvalid {
+                cid,
+                eclog: self.valid.eclog.clone(),
+            },
             state: self.state.clone(),
             attrs: attrs_new,
         }
@@ -1503,11 +1514,15 @@ impl Entry<EntrySealed, EntryCommitted> {
             valid: EntryValid {
                 uuid: self.valid.uuid,
                 cid,
-                eclog
+                eclog,
             },
             state: self.state,
             attrs: self.attrs,
         }
+    }
+
+    pub fn verify(&self, results: &mut Vec<Result<(), ConsistencyError>>) {
+        self.valid.eclog.verify(self, results);
     }
 }
 
@@ -1517,25 +1532,18 @@ impl<STATE> Entry<EntryValid, STATE> {
         Entry {
             valid: EntryInvalid {
                 cid: self.valid.cid,
-                eclog
+                eclog,
             },
             state: self.state,
             attrs: self.attrs,
         }
     }
 
-    pub fn seal(self,
-        schema: &dyn SchemaTransaction,
-    ) -> Entry<EntrySealed, STATE> {
-        let EntryValid {
-            cid, uuid, eclog
-        } = self.valid;
+    pub fn seal(self, schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
+        let EntryValid { cid, uuid, eclog } = self.valid;
 
         Entry {
-            valid: EntrySealed {
-                uuid,
-                eclog
-            },
+            valid: EntrySealed { uuid, eclog },
             state: self.state,
             attrs: self.attrs,
         }
@@ -1553,7 +1561,10 @@ impl<STATE> Entry<EntrySealed, STATE> {
         self.set_last_changed(cid.clone());
 
         Entry {
-            valid: EntryInvalid { cid, eclog: self.valid.eclog },
+            valid: EntryInvalid {
+                cid,
+                eclog: self.valid.eclog,
+            },
             state: self.state,
             attrs: self.attrs,
         }
@@ -1571,9 +1582,7 @@ impl<STATE> Entry<EntrySealed, STATE> {
         let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
 
         Entry {
-            valid: EntryInvalid {
-                cid, eclog
-            },
+            valid: EntryInvalid { cid, eclog },
             state: self.state,
             attrs: self.attrs,
         }
