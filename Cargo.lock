@@ -1010,6 +1010,7 @@ dependencies = [
  "clap 3.2.6",
  "clap_complete",
  "kanidm",
+ "kanidm_proto",
  "profiles",
  "score",
  "serde",

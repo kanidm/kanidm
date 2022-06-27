@@ -1579,7 +1579,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Validate input.
 
             // Is the modlist non zero?
-            if me.modlist.len() == 0 {
+            if me.modlist.is_empty() {
                 request_error!("modify: empty modify request");
                 return Err(OperationError::EmptyRequest);
             }

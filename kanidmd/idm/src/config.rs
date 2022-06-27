@@ -4,6 +4,7 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
+use kanidm_proto::messages::ConsoleOutputMode;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -70,31 +71,6 @@ impl FromStr for ServerRole {
             "write_replica_no_ui" => Ok(ServerRole::WriteReplicaNoUI),
             "read_only_replica" => Ok(ServerRole::ReadOnlyReplica),
             _ => Err("Must be one of write_replica, write_replica_no_ui, read_only_replica"),
-        }
-    }
-}
-
-// TODO: this should probably be in the kanidm crate
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum ConsoleOutputMode {
-    Text,
-    JSON,
-}
-impl Default for ConsoleOutputMode {
-    fn default() -> Self {
-        ConsoleOutputMode::Text
-    }
-}
-
-impl FromStr for ConsoleOutputMode {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "json" => Ok(ConsoleOutputMode::JSON),
-            "text" => Ok(ConsoleOutputMode::Text),
-            _ => Err("Must be one of json, text"),
         }
     }
 }

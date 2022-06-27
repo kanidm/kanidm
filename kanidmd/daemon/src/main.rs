@@ -28,7 +28,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use kanidm::audit::LogLevel;
-use kanidm::config::{Configuration, ConsoleOutputMode, OnlineBackup, ServerRole};
+use kanidm::config::{Configuration, OnlineBackup, ServerRole};
 use kanidm::tracing_tree;
 use kanidm::utils::file_permissions_readonly;
 use score::{
@@ -221,9 +221,7 @@ async fn main() {
     config.update_domain(&sconfig.domain.as_str());
     config.update_db_arc_size(sconfig.db_arc_size);
     config.update_role(sconfig.role);
-    config.update_output_mode(
-        ConsoleOutputMode::from_str(opt.commands.commonopt().output_mode.as_str()).unwrap(),
-    );
+    config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
 
     // Apply any cli overrides, normally debug level.
     if let Some(dll) = opt.commands.commonopt().debug.as_ref() {

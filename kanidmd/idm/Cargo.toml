@@ -15,74 +15,54 @@ name = "kanidm"
 path = "src/lib.rs"
 
 [dependencies]
-kanidm_proto = { path = "../../kanidm_proto" }
-tracing = { version = "^0.1.35", features = ["attributes"] }
-tracing-subscriber = { version = "^0.3.11", features = ["env-filter"] }
-tracing-serde = "^0.1.3"
-
-dyn-clone = "^1.0.6"
-
-url = { version = "^2.2.2", features = ["serde"] }
-tide = "^0.16.0"
-async-trait = "^0.1.53"
-fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
-compact_jwt = "^0.2.1"
-
 async-std = { version = "^1.12.0", features = ["tokio1"] }
-
-rand = "^0.8.5"
-toml = "^0.5.9"
-
+async-trait = "^0.1.53"
+base64 = "^0.13.0"
 chrono = "^0.4.19"
-saffron = "^0.1.0"
-regex = "^1.5.6"
-lazy_static = "^1.4.0"
-
+compact_jwt = "^0.2.1"
+compiled-uuid = "0.1.2"
+concread = "^0.3.4"
+dyn-clone = "^1.0.6"
+fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
+filetime = "^0.2.16"
 futures = "^0.3.21"
 futures-util = "^0.3.21"
-tokio = { version = "^1.19.1", features = ["net", "sync", "time"] }
-tokio-util = { version = "^0.7.3", features = ["codec"] }
+hashbrown = { version = "0.12.0", features = ["serde", "inline-more", "ahash"] }
+idlset = { version = "^0.2.3" }
+kanidm_proto = { path = "../../kanidm_proto" }
+lazy_static = "^1.4.0"
+ldap3_proto = "^0.2.3"
+libc = "^0.2.126"
+libsqlite3-sys = "0.24.2"
+num_enum = "^0.5.7"
 openssl = "^0.10.38"
-
-uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
-compiled-uuid = "0.1.2"
+r2d2 = "^0.8.9"
+r2d2_sqlite = "^0.20.0"
+rand = "^0.8.5"
+regex = "^1.5.6"
+rusqlite = "^0.27.0"
+saffron = "^0.1.0"
 serde = { version = "^1.0.137", features = ["derive"] }
 serde_cbor = "^0.11.2"
 serde_json = "^1.0.81"
-
-libsqlite3-sys = "0.24.2"
-rusqlite = "^0.27.0"
-r2d2 = "^0.8.10"
-r2d2_sqlite = "^0.20.0"
-
-time = { version = "=0.2.27", features = ["serde", "std"] }
-
-hashbrown = { version = "0.12.0", features = ["serde", "inline-more", "ahash"] }
-concread = "^0.3.4"
-smolset = "^1.3.1"
-
-sshkeys = "^0.3.1"
-
-zxcvbn = "^2.2.1"
-base64 = "^0.13.0"
-
-idlset = { version = "^0.2.3" }
-
-ldap3_proto = "^0.2.3"
-
-webauthn-rs = "^0.3.2"
-
-libc = "^0.2.126"
-users = "^0.11.0"
-
 smartstring = { version = "^1.0.1", features = ["serde"] }
-
-validator = { version = "^0.15.0", features = ["phone"] }
-
+smolset = "^1.3.1"
+sshkeys = "^0.3.1"
+tide = "^0.16.0"
+time = { version = "=0.2.27", features = ["serde", "std"] }
+tokio = { version = "^1.19.1", features = ["net", "sync", "time"] }
+tokio-util = { version = "^0.7.3", features = ["codec"] }
+toml = "^0.5.9"
 touch = "^0.0.1"
-filetime = "^0.2.16"
-
-num_enum = "^0.5.7"
+tracing = { version = "^0.1.35", features = ["attributes"] }
+tracing-serde = "^0.1.3"
+tracing-subscriber = { version = "^0.3.11", features = ["env-filter"] }
+url = { version = "^2.2.2", features = ["serde"] }
+users = "^0.11.0"
+uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
+validator = { version = "^0.15.0", features = ["phone"] }
+webauthn-rs = "^0.3.2"
+zxcvbn = "^2.2.1"
 
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
