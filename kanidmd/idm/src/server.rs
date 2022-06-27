@@ -1184,7 +1184,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Assign our replication metadata now, since we can proceed with this operation.
             let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = candidates
                 .into_iter()
-                .map(|e| e.assign_cid(self.cid.clone()))
+                .map(|e| e.assign_cid(self.cid.clone(), &self.schema))
                 .collect();
 
             // run any pre plugins, giving them the list of mutable candidates.
@@ -1213,7 +1213,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         })
                         .map(|e| {
                             // Then seal the changes?
-                            e.seal()
+                            e.seal(&self.schema)
                         })
                 })
                 .collect();
@@ -1358,7 +1358,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
@@ -1489,7 +1489,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
@@ -1693,7 +1693,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             );
                             OperationError::SchemaViolation(e)
                         })
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
@@ -1867,7 +1867,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             );
                             OperationError::SchemaViolation(e)
                         })
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
@@ -1991,7 +1991,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Schema check all.
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
                 .into_iter()
-                .map(|e| e.validate(&self.schema).map(Entry::seal))
+                .map(|e| 
+                    e.validate(&self.schema)
+                        .map(|e| e.seal(&self.schema))
+                )
                 .collect();
 
             let norm_cand: Vec<Entry<_, _>> = match res {

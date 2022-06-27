@@ -35,6 +35,15 @@ impl Cid {
         }
     }
 
+    #[cfg(test)]
+    pub fn new_random_s_d(ts: Duration) -> Self {
+        Cid {
+            d_uuid: Uuid::new_v4(),
+            s_uuid: Uuid::new_v4(),
+            ts,
+        }
+    }
+
     #[allow(clippy::expect_used)]
     pub fn sub_secs(&self, secs: u64) -> Result<Self, OperationError> {
         self.ts
