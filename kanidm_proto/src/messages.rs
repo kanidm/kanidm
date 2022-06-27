@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-// TODO: this should probably be in the kanidm crate
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ConsoleOutputMode {
     Text,
@@ -20,7 +19,7 @@ impl Default for ConsoleOutputMode {
 impl FromStr for ConsoleOutputMode {
     type Err = &'static str;
     /// This can be safely unwrap'd because it'll always return a default
-    fn from_str(s: &str) -> Result<Self, &'static str> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "json" => Ok(ConsoleOutputMode::JSON),
             "text" => Ok(ConsoleOutputMode::Text),
@@ -35,6 +34,33 @@ impl FromStr for ConsoleOutputMode {
     }
 }
 
+/// This will take any string, if it's 'text' or 'json' then you'll get
+/// what you asked for, else you'll get a text version.
+///
+/// ```
+/// use kanidm_proto::messages::ConsoleOutputMode;
+/// let bork = "text";
+/// let com: ConsoleOutputMode = bork.into();
+/// matches!(ConsoleOutputMode::Text, com);
+/// ```
+impl From<&str> for ConsoleOutputMode {
+    fn from(input: &str) -> Self {
+        match ConsoleOutputMode::from_str(input) {
+            Ok(val) => val,
+            Err(_) => Self::Text,
+        }
+    }
+}
+
+/// This will take any string, if it's 'text' or 'json' then you'll get
+/// what you asked for, else you'll get a text version.
+///
+/// ```
+/// use kanidm_proto::messages::ConsoleOutputMode;
+/// let bork = String::from("cr4bz");
+/// let com: ConsoleOutputMode = bork.into();
+/// matches!(ConsoleOutputMode::Text, com);
+/// ```
 impl From<String> for ConsoleOutputMode {
     fn from(input: String) -> Self {
         match ConsoleOutputMode::from_str(input.as_str()) {
@@ -44,7 +70,6 @@ impl From<String> for ConsoleOutputMode {
     }
 }
 
-// TODO: should this go somewhere else
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MessageStatus {
