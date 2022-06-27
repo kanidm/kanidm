@@ -527,7 +527,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
     println!(
         "{}",
         AccountChangeMessage {
-            output_mode: config.output_mode, // TODO: fix this because we're matching
+            output_mode: config.output_mode,
             status: MessageStatus::Success,
             src_user: String::from("command-line invocation"),
             dest_user: name.to_string(),
