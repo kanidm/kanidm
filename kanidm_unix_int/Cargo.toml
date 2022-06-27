@@ -65,7 +65,7 @@ clap = { version = "^3.2", features = ["derive"] }
 
 libsqlite3-sys = "0.24.2"
 rusqlite = "^0.27.0"
-r2d2 = "^0.8.9"
+r2d2 = "^0.8.10"
 r2d2_sqlite = "^0.20.0"
 
 reqwest = "^0.11.11"
