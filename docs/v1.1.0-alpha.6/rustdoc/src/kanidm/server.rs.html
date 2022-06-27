@@ -5800,7 +5800,7 @@
             <span class="comment">// Validate input.</span>
 
             <span class="comment">// Is the modlist non zero?</span>
-            <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
+            <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">is_empty</span>() {
                 <span class="macro">request_error!</span>(<span class="string">&quot;modify: empty modify request&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>);
             }

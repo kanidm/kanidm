@@ -510,6 +510,7 @@
 <span id="505">505</span>
 <span id="506">506</span>
 <span id="507">507</span>
+<span id="508">508</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::JsCast</span>;
@@ -540,6 +541,7 @@
     <span class="ident">Consent</span> {
         <span class="ident">token</span>: <span class="ident">String</span>,
         <span class="ident">client_name</span>: <span class="ident">String</span>,
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
         <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">pii_scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">consent_token</span>: <span class="ident">String</span>,

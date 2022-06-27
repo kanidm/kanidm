@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["oauth2",""],["v1",""]]});
+initSidebarItems({"mod":[["messages",""],["oauth2",""],["v1",""]]});

@@ -369,8 +369,6 @@
 <span id="364">364</span>
 <span id="365">365</span>
 <span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -401,7 +399,7 @@
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
 <span class="kw">use</span> <span class="ident">kanidm::audit::LogLevel</span>;
-<span class="kw">use</span> <span class="ident">kanidm::config</span>::{<span class="ident">Configuration</span>, <span class="ident">ConsoleOutputMode</span>, <span class="ident">OnlineBackup</span>, <span class="ident">ServerRole</span>};
+<span class="kw">use</span> <span class="ident">kanidm::config</span>::{<span class="ident">Configuration</span>, <span class="ident">OnlineBackup</span>, <span class="ident">ServerRole</span>};
 <span class="kw">use</span> <span class="ident">kanidm::tracing_tree</span>;
 <span class="kw">use</span> <span class="ident">kanidm::utils::file_permissions_readonly</span>;
 <span class="kw">use</span> <span class="ident">score</span>::{
@@ -594,9 +592,7 @@
     <span class="ident">config</span>.<span class="ident">update_domain</span>(<span class="kw-2">&amp;</span><span class="ident">sconfig</span>.<span class="ident">domain</span>.<span class="ident">as_str</span>());
     <span class="ident">config</span>.<span class="ident">update_db_arc_size</span>(<span class="ident">sconfig</span>.<span class="ident">db_arc_size</span>);
     <span class="ident">config</span>.<span class="ident">update_role</span>(<span class="ident">sconfig</span>.<span class="ident">role</span>);
-    <span class="ident">config</span>.<span class="ident">update_output_mode</span>(
-        <span class="ident">ConsoleOutputMode::from_str</span>(<span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">output_mode</span>.<span class="ident">as_str</span>()).<span class="ident">unwrap</span>(),
-    );
+    <span class="ident">config</span>.<span class="ident">update_output_mode</span>(<span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">output_mode</span>.<span class="ident">to_owned</span>().<span class="ident">into</span>());
 
     <span class="comment">// Apply any cli overrides, normally debug level.</span>
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dll</span>) <span class="op">=</span> <span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">debug</span>.<span class="ident">as_ref</span>() {

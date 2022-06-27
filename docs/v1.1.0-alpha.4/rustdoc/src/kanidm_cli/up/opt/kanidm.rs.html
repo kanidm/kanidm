@@ -550,6 +550,12 @@
 <span id="545">545</span>
 <span id="546">546</span>
 <span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Args</span>, <span class="ident">Subcommand</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -567,14 +573,20 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
+    <span class="comment">// TODO: this should probably be a flag, or renamed to log level if it&#39;s a level</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;H&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;url&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_URL&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">addr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// User which will initiate requests</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;D&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;name&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_NAME&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">username</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Path to a CA certificate file</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;C&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">ca_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Log format (still in very early development)</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;output&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_OUTPUT&quot;</span>, <span class="ident">default_value</span><span class="op">=</span><span class="string">&quot;text&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">output_mode</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -735,9 +747,9 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountPosixOpt</span> {
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;gidnumber&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>)]</span>
     <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;shell&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>)]</span>
     <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
@@ -757,9 +769,9 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountPersonOpt</span> {
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;mail&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>, <span class="ident">short</span>, <span class="ident">help</span><span class="op">=</span><span class="string">&quot;Set the mail address, can be set multiple times for multiple addresses.&quot;</span>)]</span>
     <span class="ident">mail</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;legalname&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>, <span class="ident">short</span>, <span class="ident">help</span><span class="op">=</span><span class="string">&quot;Set the legal name for the person.&quot;</span>)]</span>
     <span class="ident">legalname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,

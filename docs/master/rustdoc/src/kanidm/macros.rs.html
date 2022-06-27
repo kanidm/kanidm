@@ -960,7 +960,7 @@
         <span class="comment">// Any needed teardown?</span>
         <span class="comment">// Make sure there are no errors.</span>
         <span class="macro">assert!</span>(<span class="ident">test_server</span>.<span class="ident">verify</span>().<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>);
-        <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+        <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
     }};
 }
 

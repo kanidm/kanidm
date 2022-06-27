@@ -137,7 +137,6 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
-<span id="135">135</span>
 </pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
@@ -146,7 +145,6 @@
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;config&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CONFIG&quot;</span>)]</span>
     <span class="doccomment">/// Path to the server&#39;s configuration file. If it does not exist, it will be created.</span>
     <span class="ident">config_path</span>: <span class="ident">PathBuf</span>,
-    <span class="comment">//TODO: remove this once we work out the format</span>
     <span class="doccomment">/// Log format (still in very early development)</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;output&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_OUTPUT&quot;</span>, <span class="ident">default_value</span><span class="op">=</span><span class="string">&quot;text&quot;</span>)]</span>
     <span class="ident">output_mode</span>: <span class="ident">String</span>,

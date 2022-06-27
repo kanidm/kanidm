@@ -369,7 +369,7 @@
         <span class="ident">options</span>.<span class="ident">push</span>(<span class="ident">String::from</span>(<span class="ident">option</span>.<span class="number">0</span>));
     }
     <span class="kw">let</span> <span class="ident">user_select</span> <span class="op">=</span> <span class="ident">Select::with_theme</span>(<span class="kw-2">&amp;</span><span class="ident">ColorfulTheme::default</span>())
-        .<span class="ident">with_prompt</span>(<span class="string">&quot;Authentication tokens exist. Please select one&quot;</span>)
+        .<span class="ident">with_prompt</span>(<span class="string">&quot;Multiple authentication tokens exist. Please select one&quot;</span>)
         .<span class="ident">default</span>(<span class="number">0</span>)
         .<span class="ident">items</span>(<span class="kw-2">&amp;</span><span class="ident">options</span>)
         .<span class="ident">interact</span>();

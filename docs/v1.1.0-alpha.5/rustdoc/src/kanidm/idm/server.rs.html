@@ -4256,7 +4256,7 @@
                 <span class="kw">let</span> <span class="ident">valid</span> <span class="op">=</span> <span class="ident">url</span>.<span class="ident">domain</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">effective_domain</span><span class="op">|</span> {
                     <span class="comment">// We need to prepend the &#39;.&#39; here to ensure that myexample.com != example.com,</span>
                     <span class="comment">// rather than just ends with.</span>
-                    <span class="ident">effective_domain</span>.<span class="ident">ends_with</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;.{}&quot;</span>, <span class="ident">rp_id</span>)) 
+                    <span class="ident">effective_domain</span>.<span class="ident">ends_with</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;.{}&quot;</span>, <span class="ident">rp_id</span>))
                     <span class="op">|</span><span class="op">|</span> <span class="ident">effective_domain</span> <span class="op">==</span> <span class="ident">rp_id</span>
                 }).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
@@ -4423,7 +4423,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">IdmServerDelayed</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_empty_or_panic</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">check_is_empty_or_panic</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">futures_task::noop_waker</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cx</span> <span class="op">=</span> <span class="ident">Context::from_waker</span>(<span class="kw-2">&amp;</span><span class="ident">waker</span>);
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">async_rx</span>.<span class="ident">poll_recv</span>(<span class="kw-2">&amp;mut</span> <span class="ident">cx</span>) {
@@ -7160,7 +7160,7 @@
         <span class="macro">run_idm_test!</span>(
             <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
                 <span class="comment">// Assert the delayed action queue is empty</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
                 <span class="comment">// Setup the admin w_ an imported password.</span>
                 {
                     <span class="kw">let</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
@@ -7179,7 +7179,7 @@
                     <span class="ident">qs_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;failed to commit&quot;</span>);
                 }
                 <span class="comment">// Still empty</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
                 <span class="comment">// Do an auth, this will trigger the action to send.</span>
                 <span class="ident">check_admin_password</span>(<span class="ident">idms</span>, <span class="string">&quot;password&quot;</span>);
                 <span class="comment">// process it.</span>
@@ -7189,7 +7189,7 @@
                 <span class="comment">// Check the admin pw still matches</span>
                 <span class="ident">check_admin_password</span>(<span class="ident">idms</span>, <span class="string">&quot;password&quot;</span>);
                 <span class="comment">// No delayed action was queued.</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
             }
         )
     }
@@ -7199,7 +7199,7 @@
         <span class="macro">run_idm_test!</span>(
             <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
                 <span class="comment">// Assert the delayed action queue is empty</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
                 <span class="comment">// Setup the admin with an imported unix pw.</span>
                 <span class="kw">let</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">duration_from_epoch_now</span>());
 
@@ -7223,7 +7223,7 @@
                 };
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">qs_write</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_posix</span>).<span class="ident">is_ok</span>());
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
                 <span class="comment">// Get the auth ready.</span>
                 <span class="kw">let</span> <span class="ident">uuae</span> <span class="op">=</span> <span class="ident">UnixUserAuthEvent::new_internal</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>, <span class="string">&quot;password&quot;</span>);
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_auth</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">auth</span>();
@@ -7250,7 +7250,7 @@
                 };
                 <span class="ident">idms_auth</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
                 <span class="comment">// No delayed action was queued.</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
             }
         )
     }
@@ -7802,7 +7802,7 @@
                 <span class="comment">// Assert we can increment the counter if needed.</span>
 
                 <span class="comment">// Assert the delayed action queue is empty</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
 
                 <span class="comment">// Generate a fake counter increment</span>
                 <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="ident">WebauthnCounterIncrement</span> {
@@ -7894,7 +7894,7 @@
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
 
                 <span class="comment">// Assert the delayed action queue is empty</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">is_empty_or_panic</span>();
+                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
 
                 <span class="comment">// Generate a fake action to remove one backup code</span>
                 <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="ident">BackupCodeRemoval</span> {
