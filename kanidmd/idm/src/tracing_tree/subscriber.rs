@@ -336,7 +336,8 @@ impl TreeEvent {
             fn record_u64(&mut self, field: &Field, value: u64) {
                 if field.name() == "event_tag_id" {
                     let tag = EventTag::try_from(value).unwrap_or_else(|_| {
-                        panic!("Invalid `event_tag_id`: {}, this is a bug", value)
+                        error!("Invalid `event_tag_id`: {}, this is a bug", value);
+                        std::process::exit(1)
                     });
                     self.tag = Some(tag);
                 } else {

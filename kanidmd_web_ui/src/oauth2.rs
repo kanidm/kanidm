@@ -28,6 +28,7 @@ enum State {
     Consent {
         token: String,
         client_name: String,
+        #[allow(dead_code)]
         scopes: Vec<String>,
         pii_scopes: Vec<String>,
         consent_token: String,

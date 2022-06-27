@@ -37,7 +37,7 @@ use libc::umask;
 use kanidm::actors::v1_read::QueryServerReadV1;
 use kanidm::actors::v1_write::QueryServerWriteV1;
 use kanidm::be::{Backend, BackendConfig, BackendTransaction, FsType};
-use kanidm::config::{Configuration, ConsoleOutputMode};
+use kanidm::config::Configuration;
 use kanidm::crypto::setup_tls;
 use kanidm::idm::server::{IdmServer, IdmServerDelayed};
 use kanidm::interval::IntervalActor;
@@ -45,11 +45,9 @@ use kanidm::ldap::LdapServer;
 use kanidm::schema::Schema;
 use kanidm::status::StatusActor;
 use kanidm::utils::{duration_from_epoch_now, touch_file_or_quit};
+use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
 
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::fmt;
 use std::sync::Arc;
 
 // === internal setup helpers
@@ -483,42 +481,6 @@ pub fn verify_server_core(config: &Configuration) {
     // Now add IDM server verifications?
 }
 
-// TODO: should this go somewhere else
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum MessageStatus {
-    Failure,
-    Success,
-}
-
-impl fmt::Display for MessageStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
-        match *self {
-            MessageStatus::Failure => f.write_str("failure"),
-            MessageStatus::Success => f.write_str("status"),
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct AccountChangeMessage {
-    action: String,
-    result: String,
-    status: MessageStatus,
-    src_user: String,
-    dest_user: String,
-}
-
-impl fmt::Display for AccountChangeMessage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).unwrap_or(format!("{:?}", self))
-        )
-    }
-}
-
 pub fn recover_account_core(config: &Configuration, name: &str) {
     let schema = match Schema::new() {
         Ok(s) => s,
@@ -562,26 +524,17 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
             std::process::exit(1);
         }
     };
-    match config.output_mode {
-        ConsoleOutputMode::JSON => {
-            println!(
-                "{}",
-                AccountChangeMessage {
-                    status: MessageStatus::Success,
-                    src_user: String::from("command-line invocation"),
-                    dest_user: name.to_string(),
-                    result: new_pw,
-                    action: String::from("recover_account"),
-                }
-            );
+    println!(
+        "{}",
+        AccountChangeMessage {
+            output_mode: config.output_mode, // TODO: fix this because we're matching
+            status: MessageStatus::Success,
+            src_user: String::from("command-line invocation"),
+            dest_user: name.to_string(),
+            result: new_pw,
+            action: String::from("recover_account"),
         }
-        ConsoleOutputMode::Text => {
-            println!(
-                "Successfully recovered account '{}' - password reset to -> {}",
-                name, new_pw
-            );
-        }
-    }
+    );
 }
 
 pub async fn create_server_core(config: Configuration, config_test: bool) -> Result<(), ()> {

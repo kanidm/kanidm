@@ -191,7 +191,7 @@ macro_rules! run_idm_test_inner {
         // Any needed teardown?
         // Make sure there are no errors.
         assert!(test_server.verify().len() == 0);
-        idms_delayed.is_empty_or_panic();
+        idms_delayed.check_is_empty_or_panic();
     }};
 }
 

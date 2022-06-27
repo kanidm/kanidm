@@ -3,22 +3,17 @@ use crate::{
     AccountCredential, AccountOpt, AccountPerson, AccountPosix, AccountRadius, AccountSsh,
     AccountValidity,
 };
-use qrcode::{render::unicode, QrCode};
-// use std::io;
-use kanidm_client::KanidmClient;
-use time::OffsetDateTime;
-
 use dialoguer::{theme::ColorfulTheme, Select};
 use dialoguer::{Confirm, Input, Password};
-
-// use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
-
-// use kanidm_client::ClientError;
 use kanidm_client::ClientError::Http as ClientErrorHttp;
-use kanidm_proto::v1::OperationError::PasswordQuality;
+use kanidm_client::KanidmClient;
+use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
+use kanidm_proto::v1::OperationError::{InvalidAttribute, PasswordQuality};
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus};
-use std::fmt;
+use qrcode::{render::unicode, QrCode};
+use std::fmt::{self, Debug};
 use std::str::FromStr;
+use time::OffsetDateTime;
 use url::Url;
 
 impl AccountOpt {
@@ -149,10 +144,23 @@ impl AccountOpt {
                     }
                 }
             }, // end AccountOpt::Posix
+
             AccountOpt::Person { commands } => match commands {
                 AccountPerson::Extend(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) = client
+                    let mut result_output = kanidm_proto::messages::AccountChangeMessage {
+                        output_mode: aopt.copt.output_mode.to_owned().into(),
+                        action: String::from("account_person_extend"),
+                        result: String::from("This is a filler message"),
+                        src_user: aopt
+                            .copt
+                            .username
+                            .to_owned()
+                            .unwrap_or(format!("{:?}", client.whoami().await)),
+                        dest_user: aopt.aopts.account_id.to_string(),
+                        status: kanidm_proto::messages::MessageStatus::Failure,
+                    };
+                    match client
                         .idm_account_person_extend(
                             aopt.aopts.account_id.as_str(),
                             aopt.mail.as_deref(),
@@ -160,12 +168,71 @@ impl AccountOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        // TODO: JSON output for account person extend.
+                        Ok(_) => {
+                            result_output.result = format!(
+                                "Successfully extended the user {}.",
+                                aopt.aopts.account_id
+                            );
+                            match &aopt.legalname {
+                                Some(legalname) => {
+                                    result_output.result +=
+                                        format!(" Set legalname to {}.", legalname).as_str()
+                                }
+                                _ => debug!("Didn't change legalname field."),
+                            };
+                            match &aopt.mail {
+                                Some(mail) => {
+                                    result_output.result +=
+                                        format!(" Set mail to {:?}.", mail.join(", ")).as_str()
+                                }
+                                _ => debug!("Didn't change mail field."),
+                            };
+                            println!("{}", result_output);
+                        }
+                        // TODO: consider a macro to unpack the KanidmClient result object
+                        Err(e) => {
+                            match e {
+                                ClientErrorHttp(_, result, _) => {
+                                    if let Some(ia_error) = result {
+                                        match ia_error {
+                                            InvalidAttribute(msg) => {
+                                                result_output.result =
+                                                    format!("Failed to set value: {}", msg)
+                                            }
+                                            _ => {
+                                                result_output.result =
+                                                    format!("Operation Error - {:?}", ia_error)
+                                            }
+                                        };
+                                    } else {
+                                        result_output.result =
+                                            format!("ClientError - {:?}", result);
+                                    }
+                                }
+                                _ => result_output.result = format!("Error -> {:?}", e),
+                            };
+                            eprintln!("{:?}", result_output);
+                        }
                     }
                 }
+
+                // TODO: there should probably be an 'unset' variant of this
                 AccountPerson::Set(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) = client
+                    let mut result_output = AccountChangeMessage {
+                        output_mode: aopt.copt.output_mode.to_owned().into(),
+                        action: String::from("account_person set"),
+                        result: String::from(""),
+                        src_user: aopt
+                            .copt
+                            .username
+                            .to_owned()
+                            .unwrap_or(format!("{:?}", client.whoami().await)),
+                        dest_user: aopt.aopts.account_id.to_string(),
+                        status: MessageStatus::Failure,
+                    };
+                    match client
                         .idm_account_person_set(
                             aopt.aopts.account_id.as_str(),
                             aopt.mail.as_deref(),
@@ -173,7 +240,16 @@ impl AccountOpt {
                         )
                         .await
                     {
-                        error!("Error -> {:?}", e);
+                        Ok(_) => {
+                            result_output.status = kanidm_proto::messages::MessageStatus::Success;
+                            result_output.result = "set 'person' status on user".to_string();
+                            println!("{}", result_output)
+                        }
+                        // TODO: ponder macro'ing handling ClientError
+                        Err(e) => {
+                            result_output.result = format!("Error -> {:?}", e);
+                            eprintln!("{}", result_output)
+                        }
                     }
                 }
             }, // end AccountOpt::Person
@@ -460,13 +536,13 @@ impl AccountCredential {
                             .build();
                         println!("{}", image);
 
-                        println!("");
+                        println!();
                         println!("link: {}", url.as_str());
                         println!(
                             "command: kanidm account credential reset {}",
                             cuintent_token.token
                         );
-                        println!("");
+                        println!();
                     }
                     Err(e) => {
                         error!("Error starting credential reset -> {:?}", e);
@@ -826,22 +902,20 @@ async fn credential_update_exec(
 
                 if password_a != password_b {
                     eprintln!("Passwords do not match");
-                } else {
-                    if let Err(e) = client
-                        .idm_account_credential_update_set_password(&session_token, &password_a)
-                        .await
-                    {
-                        match e {
-                            ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
-                                for fb_item in feedback.iter() {
-                                    eprintln!("{:?}", fb_item)
-                                }
+                } else if let Err(e) = client
+                    .idm_account_credential_update_set_password(&session_token, &password_a)
+                    .await
+                {
+                    match e {
+                        ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
+                            for fb_item in feedback.iter() {
+                                eprintln!("{:?}", fb_item)
                             }
-                            _ => eprintln!("An error occured -> {:?}", e),
                         }
-                    } else {
-                        println!("success");
+                        _ => eprintln!("An error occured -> {:?}", e),
                     }
+                } else {
+                    println!("Successfully reset password.");
                 }
             }
             CUAction::Totp => totp_enroll_prompt(&session_token, &client).await,

@@ -8,5 +8,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+pub mod messages;
 pub mod oauth2;
 pub mod v1;

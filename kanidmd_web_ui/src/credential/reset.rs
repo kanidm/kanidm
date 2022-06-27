@@ -339,10 +339,11 @@ impl CredentialResetApp {
                 uuid: _,
                 claims: _,
                 type_:
+                    // TODO: review this and find out why we aren't using these variables
                     CredentialDetailType::PasswordMfa(
-                        totp_set,
-                        security_key_labels,
-                        backup_codes_remaining,
+                        _totp_set,
+                        _security_key_labels,
+                        _backup_codes_remaining,
                     ),
             }) => {
                 html! {

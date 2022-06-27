@@ -15,14 +15,20 @@ pub struct DebugOpt {
 
 #[derive(Debug, Args)]
 pub struct CommonOpt {
+    // TODO: this should probably be a flag, or renamed to log level if it's a level
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
     #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
+    /// User which will initiate requests
     #[clap(short = 'D', long = "name", env = "KANIDM_NAME")]
     pub username: Option<String>,
+    /// Path to a CA certificate file
     #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
+    /// Log format (still in very early development)
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
+    pub output_mode: String,
 }
 
 #[derive(Debug, Args)]
@@ -183,9 +189,9 @@ pub enum AccountRadius {
 pub struct AccountPosixOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long = "gidnumber")]
+    #[clap(long)]
     gidnumber: Option<u32>,
-    #[clap(long = "shell")]
+    #[clap(long)]
     shell: Option<String>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -205,9 +211,9 @@ pub enum AccountPosix {
 pub struct AccountPersonOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long = "mail")]
+    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses.")]
     mail: Option<Vec<String>>,
-    #[clap(long = "legalname")]
+    #[clap(long, short, help="Set the legal name for the person.")]
     legalname: Option<String>,
     #[clap(flatten)]
     copt: CommonOpt,

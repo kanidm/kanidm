@@ -203,7 +203,7 @@ impl IdmServer {
                 let valid = url.domain().map(|effective_domain| {
                     // We need to prepend the '.' here to ensure that myexample.com != example.com,
                     // rather than just ends with.
-                    effective_domain.ends_with(&format!(".{}", rp_id)) 
+                    effective_domain.ends_with(&format!(".{}", rp_id))
                     || effective_domain == rp_id
                 }).unwrap_or(false);
 
@@ -370,7 +370,7 @@ impl IdmServer {
 }
 
 impl IdmServerDelayed {
-    pub(crate) fn is_empty_or_panic(&mut self) {
+    pub(crate) fn check_is_empty_or_panic(&mut self) {
         let waker = futures_task::noop_waker();
         let mut cx = Context::from_waker(&waker);
         match self.async_rx.poll_recv(&mut cx) {
@@ -3107,7 +3107,7 @@ mod tests {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 // Assert the delayed action queue is empty
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
                 // Setup the admin w_ an imported password.
                 {
                     let qs_write = qs.write(duration_from_epoch_now());
@@ -3126,7 +3126,7 @@ mod tests {
                     qs_write.commit().expect("failed to commit");
                 }
                 // Still empty
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
                 // Do an auth, this will trigger the action to send.
                 check_admin_password(idms, "password");
                 // process it.
@@ -3136,7 +3136,7 @@ mod tests {
                 // Check the admin pw still matches
                 check_admin_password(idms, "password");
                 // No delayed action was queued.
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
             }
         )
     }
@@ -3146,7 +3146,7 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 // Assert the delayed action queue is empty
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
                 // Setup the admin with an imported unix pw.
                 let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
 
@@ -3170,7 +3170,7 @@ mod tests {
                 };
                 assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
                 // Get the auth ready.
                 let uuae = UnixUserAuthEvent::new_internal(&UUID_ADMIN, "password");
                 let mut idms_auth = idms.auth();
@@ -3197,7 +3197,7 @@ mod tests {
                 };
                 idms_auth.commit().expect("Must not fail");
                 // No delayed action was queued.
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
             }
         )
     }
@@ -3749,7 +3749,7 @@ mod tests {
                 // Assert we can increment the counter if needed.
 
                 // Assert the delayed action queue is empty
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
 
                 // Generate a fake counter increment
                 let da = DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
@@ -3841,7 +3841,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // Assert the delayed action queue is empty
-                idms_delayed.is_empty_or_panic();
+                idms_delayed.check_is_empty_or_panic();
 
                 // Generate a fake action to remove one backup code
                 let da = DelayedAction::BackupCodeRemoval(BackupCodeRemoval {
