@@ -15,7 +15,7 @@ aiohttp = "^3.8.1"
 [tool.poetry.dev-dependencies]
 pylint = "^2.14.3"
 mypy = "^0.961"
-types-requests = "^2.27.29"
+types-requests = "^2.28.0"
 pytest = "^7.1.2"
 types-toml = "^0.10.7"
 pytest-asyncio = "^0.18.3"
