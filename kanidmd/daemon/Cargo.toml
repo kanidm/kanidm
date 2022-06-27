@@ -31,5 +31,5 @@ tikv-jemallocator = "0.5"
 [build-dependencies]
 serde = { version = "1", features = ["derive"] }
 clap = { version = "^3.2", features = ["derive"] }
-clap_complete = "^3.2.1"
+clap_complete = "^3.2.2"
 profiles = { path = "../../profiles" }
