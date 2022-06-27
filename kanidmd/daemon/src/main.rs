@@ -59,6 +59,7 @@ struct ServerConfig {
     pub log_level: Option<String>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
+    pub domain_display_name: Option<String>,
     pub origin: String,
     #[serde(default)]
     pub role: ServerRole,
@@ -250,11 +251,18 @@ async fn main() {
         }
     }
 
+    // If domain_display_name is unset, default back to the domain value.
+    match &sconfig.domain_display_name {
+        Some(value) => config.update_domain_display_name(value.as_str()),
+        None => config.update_domain_display_name(&sconfig.domain.as_str())
+    };
+
     config.update_log_level(ll);
     config.update_db_path(&sconfig.db_path.as_str());
     config.update_db_fs_type(&sconfig.db_fs_type);
     config.update_origin(&sconfig.origin.as_str());
     config.update_domain(&sconfig.domain.as_str());
+
     config.update_db_arc_size(sconfig.db_arc_size);
     config.update_role(sconfig.role);
     config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());

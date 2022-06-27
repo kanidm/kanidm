@@ -61,6 +61,10 @@ You need a configuration file in the volume named `server.toml`. (Within the con
     #   If you change this value you *must* run 
     #   `kanidmd domain_name_change` immediately after.
     domain = "idm.example.com"
+    #   The display name for the server. This shows up in the Web UI,
+    #   TOTP generation and other human-facing UI. If unset, will default
+    #   to the value of domain
+    domain_display_name = "Kani's Crab Shack"
     #
     #   The origin for webauthn. This is the url to the server, 
     #   with the port included if
