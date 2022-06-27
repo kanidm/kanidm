@@ -28,9 +28,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use kanidm::audit::LogLevel;
-use kanidm::config::{Configuration, ConsoleOutputMode, OnlineBackup, ServerRole};
+use kanidm::config::{Configuration, OnlineBackup, ServerRole};
 use kanidm::tracing_tree;
 use kanidm::utils::file_permissions_readonly;
+use kanidm_proto::messages::ConsoleOutputMode;
 use score::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,

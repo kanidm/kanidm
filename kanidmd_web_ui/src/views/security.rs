@@ -147,7 +147,8 @@ impl Component for SecurityApp {
                    <button type="button" class="btn btn-primary"
                      disabled={ !submit_enabled }
                      onclick={
-                        ctx.link().callback(|e| {
+                        // TODO: figure out if we need the e here? :)
+                        ctx.link().callback(|_e| {
                             Msg::RequestCredentialUpdate
                         })
                      }

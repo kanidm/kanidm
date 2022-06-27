@@ -155,7 +155,7 @@ pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
         options.push(String::from(option.0));
     }
     let user_select = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Authentication tokens exist. Please select one")
+        .with_prompt("Multiple authentication tokens exist. Please select one")
         .default(0)
         .items(&options)
         .interact();
