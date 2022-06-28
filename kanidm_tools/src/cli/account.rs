@@ -10,7 +10,6 @@ use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError::{InvalidAttribute, PasswordQuality};
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus};
-use kanidm_proto::messages::{AccountChangeMessage,MessageStatus};
 use qrcode::{render::unicode, QrCode};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
@@ -91,22 +90,32 @@ impl AccountOpt {
                 AccountRadius::Delete(aopt) => {
                     let client = aopt.copt.to_client().await;
 
-                    let modmessage = AccountChangeMessage{
-                        output_mode,
-                        action: "account_delete".to_string(),
-                        result: "deleted",
-                        src_user: aopt.copt.username.to_string(),
-                        dest_user: aopt.aopts.account_id.as_str(),
+                    let mut modmessage = AccountChangeMessage{
+                        output_mode: aopt.copt.output_mode.to_owned().into(),
+                        action: "radius account_delete".to_string(),
+                        result: "deleted".to_string(),
+                        src_user: aopt
+                        .copt
+                        .username
+                        .to_owned()
+                        .unwrap_or(format!("{:?}", client.whoami().await)),
+                        dest_user: aopt.aopts.account_id.to_string(),
                         status: MessageStatus::Success,
                     };
                     match client
                         .idm_account_radius_credential_delete(aopt.aopts.account_id.as_str())
                         .await
                     {
-                        Err(e) => error!("Error -> {:?}", e),
-                        Some(result) => {
+                        Err(e) => {
+                            modmessage.status = MessageStatus::Failure;
+                            modmessage.result = format!("Error -> {:?}", e);
+                            error!("{}", modmessage);
+                        },
+                        Ok(result) => {
+                            debug!("{:?}", result);
+                            println!("{}", modmessage);
                         }
-                    }
+                    };
                 }
             }, // end AccountOpt::Radius
             AccountOpt::Posix { commands } => match commands {
@@ -322,12 +331,32 @@ impl AccountOpt {
             }
             AccountOpt::Delete(aopt) => {
                 let client = aopt.copt.to_client().await;
-                if let Err(e) = client
+                let mut modmessage = AccountChangeMessage{
+                    output_mode: aopt.copt.output_mode.to_owned().into(),
+                    action: "account delete".to_string(),
+                    result: "deleted".to_string(),
+                    src_user: aopt
+                    .copt
+                    .username
+                    .to_owned()
+                    .unwrap_or(format!("{:?}", client.whoami().await)),
+                    dest_user: aopt.aopts.account_id.to_string(),
+                    status: MessageStatus::Success,
+                };
+                match client
                     .idm_account_delete(aopt.aopts.account_id.as_str())
                     .await
                 {
-                    error!("Error -> {:?}", e)
-                }
+                    Err(e) => {
+                        modmessage.result = format!("Error -> {:?}", e);
+                        modmessage.status = MessageStatus::Failure;
+                        eprintln!("{}", modmessage);
+                    },
+                    Ok(result) => {
+                        debug!("{:?}", result);
+                        println!("{}", modmessage);
+                    }
+                };
             }
             AccountOpt::Create(acopt) => {
                 let client = acopt.copt.to_client().await;
