@@ -333,6 +333,7 @@ impl AccountOpt {
                 AccountValidity::Show(ano) => {
                     let client = ano.copt.to_client().await;
 
+                    println!("user: {}", ano.aopts.account_id.as_str());
                     let ex = match client
                         .idm_account_get_attr(ano.aopts.account_id.as_str(), "account_expire")
                         .await
