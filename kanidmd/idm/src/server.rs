@@ -58,6 +58,7 @@ lazy_static! {
 struct DomainInfo {
     d_uuid: Uuid,
     d_name: String,
+    d_display: String,
 }
 
 #[derive(Clone)]
@@ -142,6 +143,9 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_uuid(&self) -> Uuid;
 
     fn get_domain_name(&self) -> &str;
+
+    // #860
+    fn get_domain_display_name(&self) -> &str;
 
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
@@ -822,6 +826,9 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     fn get_domain_name(&self) -> &str {
         &self.d_info.d_name
     }
+    fn get_domain_display_name(&self) -> &str {
+        &self.d_info.d_display
+    }
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -903,10 +910,13 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     fn get_domain_name(&self) -> &str {
         &self.d_info.d_name
     }
+    fn get_domain_display_name(&self) -> &str {
+        &self.d_info.d_display
+    }
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema, d_name: String) -> Self {
+    pub fn new(be: Backend, schema: Schema, domain_name: String, domain_display_name: String) -> Self {
         let (s_uuid, d_uuid) = {
             let wr = be.write();
             let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
@@ -918,11 +928,12 @@ impl QueryServer {
 
         let pool_size = be.get_pool_size();
 
-        info!("Server UUID -> {:?}", s_uuid);
-        info!("Domain UUID -> {:?}", d_uuid);
-        info!("Domain Name -> {:?}", d_name);
+        debug!("Server UUID -> {:?}", s_uuid);
+        debug!("Domain UUID -> {:?}", d_uuid);
+        debug!("Domain Name -> {:?}", domain_name);
+        debug!("Domain Display Name -> {:?}", domain_display_name);
 
-        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name }));
+        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name: domain_name, d_display: domain_display_name }));
 
         // log_event!(log, "Starting query worker ...");
         QueryServer {

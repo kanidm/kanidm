@@ -776,6 +776,7 @@ impl fmt::Display for TotpAlgo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TotpSecret {
     pub accountname: String,
+    /// TODO: #860 this'll be domain_display_name
     pub issuer: String,
     pub secret: Vec<u8>,
     pub algo: TotpAlgo,
