@@ -53,6 +53,7 @@ pub struct CredentialUpdateSessionToken {
     pub token_enc: String,
 }
 
+/// The current state of MFA registration
 enum MfaRegState {
     None,
     TotpInit(Totp),
@@ -72,6 +73,7 @@ impl fmt::Debug for MfaRegState {
     }
 }
 
+// TODO: what's CredentialUpdateSession used for?
 pub(crate) struct CredentialUpdateSession {
     // Current credentials - these are on the Account!
     account: Account,
@@ -124,7 +126,9 @@ impl fmt::Debug for MfaRegStateStatus {
 
 #[derive(Debug)]
 pub struct CredentialUpdateSessionStatus {
+    // #860 can we shove it in here?
     spn: String,
+    // TODO: is this the user's display name, or the session, or some random crab that was running down the street?
     displayname: String,
     // ttl: Duration,
     //
@@ -296,6 +300,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let primary = account.primary.clone();
         // - store account policy (if present)
         let session = CredentialUpdateSession {
+            // #860 - here?
+            // domain_display_name = self.qs_write.get_domain_display_name()
             account,
             intent_token_id,
             primary,
@@ -414,6 +420,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn exchange_intent_credential_update(
         &mut self,
         token: CredentialUpdateIntentToken,
+        //TODO: rename ct to something... else?
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let CredentialUpdateIntentToken { intent_id } = token;
@@ -588,6 +595,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.create_credupdate_session(session_id, Some(intent_id), account, ct)
     }
 
+
     pub fn init_credential_update(
         &mut self,
         event: &InitCredentialUpdateEvent,
@@ -595,9 +603,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         spanned!("idm::server::credupdatesession<Init>", {
             let account = self.validate_init_credential_update(event.target, &event.ident)?;
-
             // ==== AUTHORISATION CHECKED ===
-
+            // #860 we have access to the qs here
             // This is the expiry time, so that our cleanup task can "purge up to now" rather
             // than needing to do calculations.
             let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);

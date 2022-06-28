@@ -84,7 +84,7 @@ type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
-    // variaous accounts, and we have a good idea of how to structure the
+    // various accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
     session_ticket: Semaphore,
     sessions: BptreeMap<Uuid, AuthSessionMutex>,
