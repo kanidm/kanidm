@@ -30,22 +30,26 @@ By default the idm_admin user has no password, and can not be accessed. You shou
 admin (system admin) account. We recommend the use of "reset_credential" as it provides a high
 strength, random, machine only password.
 
-    kanidm account credential reset_credential  --name admin idm_admin
-    Generated password for idm_admin: tqoReZfz....
+    kanidmd recover_account  --name admin idm_admin
+    Successfully recovered account 'idm_admin' - password reset to -> j9YUv...
 
 ## Creating Accounts
 
 You can now use the idm_admin user to create initial groups and accounts.
 
-    kanidm group create demo_group --name idm_admin
-    kanidm account create demo_user "Demonstration User" --name idm_admin
-    kanidm group add_members demo_group demo_user --name idm_admin
-    kanidm group list_members demo_group --name idm_admin
-    kanidm account get demo_user --name idm_admin
+```shell
+kanidm login --name idm_admin
+kanidm group create demo_group --name idm_admin
+kanidm account create demo_user "Demonstration User" --name idm_admin
+kanidm group add_members demo_group demo_user --name idm_admin
+kanidm group list_members demo_group --name idm_admin
+kanidm account get demo_user --name idm_admin
+```
 
 You can also use anonymous to view users and groups - note that you won't see as many fields due
-to the different anonymous access profile limits.
+to the limits of the anonymous access profile.
 
+    kanidm login --name anonymous
     kanidm account get demo_user --name anonymous
 
 ## Viewing Default Groups
@@ -62,10 +66,31 @@ Members of the `idm_account_manage_priv` group have the rights to manage other u
 accounts security and login aspects. This includes resetting account credentials.
 
 You can perform a password reset on the demo_user, for example as the idm_admin user, who is
-a default member of this group.
+a default member of this group. The lines below prefixed with `#` are the interactive credential
+update interface.
 
-    kanidm account credential set_password demo_user --name idm_admin
-    kanidm self whoami --name demo_user
+```shell
+kanidm account credential update demo_user --name idm_admin
+# spn: demo_user@idm.example.com
+# Name: Demonstration User
+# Primary Credential:
+# uuid: 0e19cd08-f943-489e-8ff2-69f9eacb1f31
+# generated password: set
+# Can Commit: true
+# 
+# cred update (? for help) # : pass
+# New password: 
+# New password: [hidden]
+# Confirm password: 
+# Confirm password: [hidden]
+# success
+# 
+# cred update (? for help) # : commit
+# Do you want to commit your changes? yes
+# success
+kanidm login --name demo_user
+kanidm self whoami --name demo_user
+```
 
 ## Nested Groups
 
@@ -76,18 +101,20 @@ Kanidm makes all group membership determinations by inspecting an entry's "membe
 
 An example can be easily shown with:
 
-    kanidm group create group_1 --name idm_admin
-    kanidm group create group_2 --name idm_admin
-    kanidm account create nest_example "Nesting Account Example" --name idm_admin
-    kanidm group add_members group_1 group_2 --name idm_admin
-    kanidm group add_members group_2 nest_example --name idm_admin
-    kanidm account get nest_example --name anonymous
+```shell
+kanidm group create group_1 --name idm_admin
+kanidm group create group_2 --name idm_admin
+kanidm account create nest_example "Nesting Account Example" --name idm_admin
+kanidm group add_members group_1 group_2 --name idm_admin
+kanidm group add_members group_2 nest_example --name idm_admin
+kanidm account get nest_example --name anonymous
+```
 
 ## Account Validity
 
 Kanidm supports accounts that are only able to be authenticated between specific date and time
-windows. This takes the form of a "valid from" attribute that defines the earliest start
 date where authentication can succeed, and an expiry date where the account will no longer
+windows. This takes the form of a "valid from" attribute that defines the earliest start
 allow authentication.
 
 This can be displayed with:
@@ -102,15 +129,24 @@ to aid correct understanding of when the events will occur.
 To set the values, an account with account management permission is required (for example, idm_admin).
 Again, these values will correctly translated from the entered local timezone to UTC.
 
-    # Set the earliest time the account can start authenticating
-    kanidm account validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
-    # Set the expiry or end date of the account
-    kanidm account validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+Set the earliest time the account can start authenticating:
 
-To unset or remove these values the following can be used:
+```shell
+kanidm account validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+```
+    
+Set the expiry or end date of the account:
 
-    kanidm account validity begin_from demo_user any|clear --name idm_admin
-    kanidm account validity expire_at demo_user never|clear --name idm_admin
+```shell
+kanidm account validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+```
+
+To unset or remove these values the following can be used, where `any|clear` means you may use either `any` or `clear`.
+
+```shell
+kanidm account validity begin_from demo_user any|clear --name idm_admin
+kanidm account validity expire_at demo_user never|clear --name idm_admin
+```
 
 To "lock" an account, you can set the expire_at value to the past, or unix epoch. Even in the situation
 where the "valid from" is *after* the expire_at, the expire_at will be respected.
