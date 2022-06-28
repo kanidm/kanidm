@@ -207,7 +207,10 @@ impl Plugins {
         })
     }
 
-    pub fn run_verify(qs: &QueryServerReadTransaction, results: &mut Vec<Result<(), ConsistencyError>>) {
+    pub fn run_verify(
+        qs: &QueryServerReadTransaction,
+        results: &mut Vec<Result<(), ConsistencyError>>,
+    ) {
         let _entered = trace_span!("plugins::run_verify").entered();
         spanned!("plugins::run_verify", {
             run_verify_plugin!(qs, results, base::Base);

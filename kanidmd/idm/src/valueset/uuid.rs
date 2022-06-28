@@ -174,8 +174,12 @@ impl ValueSetRefer {
     where
         T: IntoIterator<Item = Uuid>,
     {
-        let set = iter.into_iter().collect();
-        Some(Box::new(ValueSetRefer { set }))
+        let set: BTreeSet<_> = iter.into_iter().collect();
+        if set.is_empty() {
+            None
+        } else {
+            Some(Box::new(ValueSetRefer { set }))
+        }
     }
 }
 

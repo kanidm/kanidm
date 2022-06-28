@@ -172,6 +172,7 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -206,6 +207,7 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -243,6 +245,7 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(

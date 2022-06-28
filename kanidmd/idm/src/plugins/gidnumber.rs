@@ -190,6 +190,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
             None,
+            |_| {},
             |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -222,6 +223,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_purge("gidnumber")]),
             None,
+            |_| {},
             |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -257,6 +259,7 @@ mod tests {
                 m_pres("gidnumber", &Value::new_uint32(2000))
             ]),
             None,
+            |_| {},
             |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",

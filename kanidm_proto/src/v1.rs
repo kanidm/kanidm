@@ -57,6 +57,7 @@ pub enum ConsistencyError {
     SqliteIntegrityFailure,
     BackendAllIdsSync,
     BackendIndexSync,
+    ChangelogDesynchronised(u64),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -143,6 +144,7 @@ pub enum OperationError {
     QueueDisconnected,
     Webauthn,
     Wait(time::OffsetDateTime),
+    ReplReplayFailure,
 }
 
 impl PartialEq for OperationError {

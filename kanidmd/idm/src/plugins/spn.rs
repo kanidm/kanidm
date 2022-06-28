@@ -246,6 +246,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_purge("spn")]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -302,6 +303,7 @@ mod tests {
                 m_pres("spn", &Value::new_spn_str("invalid", "spn"))
             ]),
             None,
+            |_| {},
             |_| {}
         );
     }

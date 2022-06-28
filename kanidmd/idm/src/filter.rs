@@ -1330,6 +1330,8 @@ mod tests {
     use crate::prelude::*;
     use std::cmp::{Ordering, PartialOrd};
     use std::collections::BTreeSet;
+    use std::time::Duration;
+    use crate::event::DeleteEvent;
 
     use kanidm_proto::v1::Filter as ProtoFilter;
     use ldap3_proto::simple::LdapFilter;
@@ -1786,7 +1788,11 @@ mod tests {
     #[test]
     fn test_filter_resolve_value() {
         run_test!(|server: &QueryServer| {
-            let server_txn = server.write(duration_from_epoch_now());
+            let time_p1 = duration_from_epoch_now();
+            let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+            let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+
+            let server_txn = server.write(time_p1);
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "attrs": {
@@ -1809,17 +1815,48 @@ mod tests {
                 }
             }"#,
             );
-            let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["tombstone", "object"],
-                    "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
-                }
-            }"#,
+
+            // We need to add these and then push through the state machine.
+            let e_ts = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson3")),
+                (
+                    "uuid",
+                    Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson3")),
+                ("displayname", Value::new_utf8s("testperson3"))
             );
+
             let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
             let cr = server_txn.create(&ce);
             assert!(cr.is_ok());
+
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(
+                f_or!([
+                    f_eq(
+                        "name",
+                        PartialValue::new_iname("testperson3")
+                    )
+                ]))
+                )
+            };
+            assert!(server_txn.delete(&de_sin).is_ok());
+
+            // Commit
+            assert!(server_txn.commit().is_ok());
+
+            // Now, establish enough time for the recycled items to be purged.
+            let server_txn = server.write(time_p2);
+            assert!(server_txn.purge_recycled().is_ok());
+            assert!(server_txn.commit().is_ok());
+
+            let server_txn = server.write(time_p3);
+            assert!(server_txn.purge_tombstones().is_ok());
+
+            // ===== ✅ now read to test!
 
             // Resolving most times should yield expected results
             let t1 = vs_utf8!["teststring".to_string()] as _;

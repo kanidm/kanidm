@@ -16,12 +16,12 @@ use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;
 use std::slice;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModifyValid;
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModifyInvalid;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum Modify {
     // This value *should* exist.
@@ -59,7 +59,7 @@ impl Modify {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct ModifyList<VALID> {
     // This is never read, it's just used for state machine enforcement.
     #[allow(dead_code)]
@@ -207,8 +207,7 @@ impl ModifyList<ModifyInvalid> {
         })
     }
 
-    #[cfg(test)]
-    pub unsafe fn into_valid(self) -> ModifyList<ModifyValid> {
+    pub(crate) unsafe fn into_valid(self) -> ModifyList<ModifyValid> {
         ModifyList {
             valid: ModifyValid,
             mods: self.mods,

@@ -867,6 +867,8 @@ impl<'a> QueryServerReadTransaction<'a> {
         // Verify all our entries. Weird flex I know, but it's needed for verifying
         // the entry changelogs are consistent to their entries.
 
+        let schema = self.get_schema();
+
         spanned!("server::verify", {
             let filt_all = filter!(f_pres("class"));
             let all_entries = match self.internal_search(filt_all) {
@@ -875,12 +877,11 @@ impl<'a> QueryServerReadTransaction<'a> {
             };
 
             for e in all_entries {
-                e.verify(&mut results)
+                e.verify(schema, &mut results)
             }
         });
 
         // Verify the RUV to the entry changelogs now:
-
 
         // Ok entries passed, lets move on to the content.
         // Most of our checks are in the plugins, so we let them
@@ -1205,6 +1206,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 return Err(OperationError::AccessDenied);
             }
 
+            // Before we assign replication metadata, we need to assert these entries
+            // are valid to create within the set of replication transitions. This
+            // means they *can not* be recycled or tombstones!
+            if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
+                admin_warn!("Refusing to create invalid entries that are attempting to bypass replication state machine.");
+                return Err(OperationError::AccessDenied);
+            }
+
             // Assign our replication metadata now, since we can proceed with this operation.
             let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = candidates
                 .into_iter()
@@ -1355,6 +1364,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 request_error!(filter = ?de.filter, "delete: no candidates match filter");
                 return Err(OperationError::NoMatchingEntries);
             };
+
+            if pre_candidates.iter().any(|e| e.mask_tombstone().is_none()) {
+                admin_warn!("Refusing to delete entries which may be an attempt to bypass replication state machine.");
+                return Err(OperationError::AccessDenied);
+            }
 
             let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
                 .iter()
@@ -1692,6 +1706,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             trace!("modify: candidates -> {:?}", candidates);
 
+            // Did any of the candidates now become masked?
+            if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
+                admin_warn!("Refusing to apply modifications that are attempting to bypass replication state machine.");
+                return Err(OperationError::AccessDenied);
+            }
+
             // Pre mod plugins
             // We should probably supply the pre-post cands here.
             Plugins::run_pre_modify(self, &mut candidates, me).map_err(|e| {
@@ -1822,7 +1842,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    #[allow(clippy::cognitive_complexity)]
     pub fn modify(&self, me: &ModifyEvent) -> Result<(), OperationError> {
         spanned!("server::modify", {
             let mp = unsafe { self.modify_pre_apply(me)? };
@@ -1999,16 +2018,24 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .collect();
 
             candidates.iter_mut().try_for_each(|er| {
-                if let Some(vs) = er.get_ava_mut("name") {
-                    if let Some(mut nvs) = vs.migrate_iutf8_iname()? {
-                        std::mem::swap(&mut nvs, vs)
-                    }
+                let nvs = if let Some(vs) = er.get_ava_set("name") {
+                    vs.migrate_iutf8_iname()?
+                } else {
+                    None
                 };
-                if let Some(vs) = er.get_ava_mut("domain_name") {
-                    if let Some(mut nvs) = vs.migrate_iutf8_iname()? {
-                        std::mem::swap(&mut nvs, vs)
-                    }
+                if let Some(nvs) = nvs {
+                    er.set_ava_set("name", nvs)
+                }
+
+                let nvs = if let Some(vs) = er.get_ava_set("domain_name") {
+                    vs.migrate_iutf8_iname()?
+                } else {
+                    None
                 };
+                if let Some(nvs) = nvs {
+                    er.set_ava_set("domain_name", nvs)
+                }
+
                 Ok(())
             })?;
 
@@ -3253,6 +3280,7 @@ mod tests {
             // First we setup some timestamps
             let time_p1 = duration_from_epoch_now();
             let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+            let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
             let server_txn = server.write(time_p1);
             let admin = server_txn
@@ -3278,19 +3306,43 @@ mod tests {
                 unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_ts.clone()) };
             let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
 
-            // First, create a tombstone
+            // First, create an entry, then push it through the lifecycle.
             let e_ts = entry_init!(
                 ("class", Value::new_class("object")),
-                ("class", Value::new_class("tombstone")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
                 (
                     "uuid",
                     Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
-                )
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
 
             let ce = CreateEvent::new_internal(vec![e_ts]);
             let cr = server_txn.create(&ce);
             assert!(cr.is_ok());
+
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(
+                f_or!([
+                    f_eq(
+                        "name",
+                        PartialValue::new_iname("testperson1")
+                    )
+                ]))
+                )
+            };
+            assert!(server_txn.delete(&de_sin).is_ok());
+
+            // Commit
+            assert!(server_txn.commit().is_ok());
+
+            // Now, establish enough time for the recycled items to be purged.
+            let server_txn = server.write(time_p2);
+            assert!(server_txn.purge_recycled().is_ok());
+
+            // Now test the tombstone properties.
 
             // Can it be seen (external search)
             let r1 = server_txn.search(&se_ts).expect("search failed");
@@ -3323,7 +3375,7 @@ mod tests {
             assert!(server_txn.commit().is_ok());
 
             // New txn, push the cid forward.
-            let server_txn = server.write(time_p2);
+            let server_txn = server.write(time_p3);
 
             // Now purge
             assert!(server_txn.purge_tombstones().is_ok());
@@ -3389,7 +3441,6 @@ mod tests {
             let e1 = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("person")),
-                ("class", Value::new_class("recycled")),
                 ("name", Value::new_iname("testperson1")),
                 (
                     "uuid",
@@ -3402,7 +3453,6 @@ mod tests {
             let e2 = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("person")),
-                ("class", Value::new_class("recycled")),
                 ("name", Value::new_iname("testperson2")),
                 (
                     "uuid",
@@ -3415,6 +3465,23 @@ mod tests {
             let ce = CreateEvent::new_internal(vec![e1, e2]);
             let cr = server_txn.create(&ce);
             assert!(cr.is_ok());
+
+            // Now we immediately delete these to force them to the correct state.
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(
+                f_or!([
+                    f_eq(
+                        "name",
+                        PartialValue::new_iname("testperson1")
+                    ),
+                    f_eq(
+                        "name",
+                        PartialValue::new_iname("testperson2")
+                    ),
+                ]))
+                )
+            };
+            assert!(server_txn.delete(&de_sin).is_ok());
 
             // Can it be seen (external search)
             let r1 = server_txn.search(&se_rc).expect("search failed");
