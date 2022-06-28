@@ -262,7 +262,6 @@ async fn main() {
     config.update_db_fs_type(&sconfig.db_fs_type);
     config.update_origin(&sconfig.origin.as_str());
     config.update_domain(&sconfig.domain.as_str());
-
     config.update_db_arc_size(sconfig.db_arc_size);
     config.update_role(sconfig.role);
     config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
