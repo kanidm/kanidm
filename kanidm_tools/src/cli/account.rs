@@ -10,6 +10,7 @@ use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::{InvalidAttribute, PasswordQuality};
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus};
+use kanidm_proto::messages::{AccountChangeMessage,MessageStatus};
 use qrcode::{render::unicode, QrCode};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
@@ -114,17 +115,10 @@ impl AccountOpt {
                             debug!("{:?}", result);
                             println!("{}", modmessage);
                         }
-                    };
                 }
             }, // end AccountOpt::Radius
             AccountOpt::Posix { commands } => match commands {
                 AccountPosix::Show(aopt) => {
-                    let client = aopt.copt.to_client().await;
-                    match client
-                        .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
-                        .await
-                    {
-                        Ok(token) => println!("{}", token),
                         Err(e) => {
                             error!("Error -> {:?}", e);
                         }
