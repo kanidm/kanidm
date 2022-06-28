@@ -52,7 +52,7 @@ macro_rules! setup_test {
         let be =
             Backend::new(BackendConfig::new_test(), idxmeta, false).expect("Failed to init BE");
 
-        let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
+        let qs = QueryServer::new(be, schema_outer, "example.com".to_string(), "example.com".to_string());
         qs.initialise_helper(duration_from_epoch_now())
             .expect("init failed!");
 
