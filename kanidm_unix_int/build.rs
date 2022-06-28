@@ -85,7 +85,7 @@ fn main() {
         Shell::Zsh,
         &mut UnixdStatusOpt::command(),
         "kanidm_unixd_status",
-        comp_dir.clone(),
+        comp_dir,
     )
     .ok();
 }
