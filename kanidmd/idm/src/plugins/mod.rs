@@ -1,4 +1,4 @@
-//! plugins allow an `Event` to be inspected and transformed during the write
+//! Plugins allow an `Event` to be inspected and transformed during the write
 //! paths of the server. This allows richer expression of some concepts and
 //! helps to ensure that data is always in specific known states within the
 //! `QueryServer`

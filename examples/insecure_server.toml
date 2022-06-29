@@ -11,7 +11,5 @@ tls_key = "/tmp/kanidm/key.pem"
 log_level = "verbose"
 
 domain = "idm.example.com"
-domain_display_name = "Kani's Crab Shack"
-
 origin = "https://idm.example.com:8443"
 

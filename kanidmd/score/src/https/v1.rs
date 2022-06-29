@@ -886,12 +886,10 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     // out of the req cookie.
     let (eventid, hvalue) = req.new_eventid();
 
-    let maybe_sessionid = req.get_current_auth_session_id();
-    // TODO: lol, what is this
-    admin_debug!("🍿 https/v1/auth - maybe_sessionid {:?}", maybe_sessionid);
+    let maybe_sessionid: Option<Uuid> = req.get_current_auth_session_id();
 
     let obj: AuthRequest = req.body_json().await.map_err(|e| {
-        debug!("wat? {:?}", e);
+        debug!("Failed get body JSON? {:?}", e);
         e
     })?;
 

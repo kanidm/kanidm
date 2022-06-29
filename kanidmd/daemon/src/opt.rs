@@ -38,6 +38,42 @@ struct RecoverAccountOpt {
     commonopts: CommonOpt,
 }
 
+
+#[derive(Debug, Subcommand)]
+enum SystemSettingsCmds {
+    #[clap(name="domain_display_name")]
+    SetDomainDisplayName(SetDomainDisplayNameOpt)
+}
+
+#[derive(Debug, Subcommand)]
+enum DbCommands {
+    #[clap(name = "vacuum")]
+    /// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)
+    Vacuum(CommonOpt),
+    #[clap(name = "backup")]
+    /// Backup the database content (offline)
+    Backup(BackupOpt),
+    #[clap(name = "restore")]
+    /// Restore the database content (offline)
+    Restore(RestoreOpt),
+    #[clap(name = "verify")]
+    /// Verify database and entity consistency.
+    Verify(CommonOpt),
+    #[clap(name = "reindex")]
+    /// Reindex the database (offline)
+    Reindex(CommonOpt),
+}
+
+
+#[derive(Debug, Args)]
+struct SetDomainDisplayNameOpt {
+    #[clap(parse(from_str))]
+    /// The new domain display name.
+    domain_display_name: String,
+    #[clap(flatten)]
+    commonopts: CommonOpt,
+}
+
 #[derive(Debug, Args)]
 struct DbScanListIndex {
     /// The name of the index to list
@@ -102,26 +138,13 @@ enum KanidmdOpt {
     #[clap(name = "configtest")]
     /// Test the IDM Server configuration, without starting network listeners.
     ConfigTest(CommonOpt),
-    #[clap(name = "backup")]
-    /// Backup the database content (offline)
-    Backup(BackupOpt),
-    #[clap(name = "restore")]
-    /// Restore the database content (offline)
-    Restore(RestoreOpt),
-    #[clap(name = "verify")]
-    /// Verify database and entity consistency.
-    Verify(CommonOpt),
     #[clap(name = "recover_account")]
-    /// Recover an account's password
+    /// Recover an account's password (must be run offline)
     RecoverAccount(RecoverAccountOpt),
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
-    #[clap(name = "reindex")]
-    /// Reindex the database (offline)
-    Reindex(CommonOpt),
-    #[clap(name = "vacuum")]
-    /// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)
-    Vacuum(CommonOpt),
+
+
     #[clap(name = "domain_name_change")]
     /// Change the IDM domain name
     DomainChange(CommonOpt),
@@ -130,5 +153,17 @@ enum KanidmdOpt {
     DbScan {
         #[clap(subcommand)]
         commands: DbScanOpt,
+    },
+    /// Database maintenance, backups, restoration etc.
+    #[clap(name = "database")]
+    Database {
+        #[clap(subcommand)]
+        commands: DbCommands,
+    },
+    /// Change system settings
+    #[clap(name = "set")]
+    SystemSettings {
+        #[clap(subcommand)]
+        commands: SystemSettingsCmds,
     },
 }

@@ -58,7 +58,6 @@ lazy_static! {
 struct DomainInfo {
     d_uuid: Uuid,
     d_name: String,
-    d_display: String,
 }
 
 #[derive(Clone)]
@@ -143,9 +142,6 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_uuid(&self) -> Uuid;
 
     fn get_domain_name(&self) -> &str;
-
-    // #860
-    fn get_domain_display_name(&self) -> &str;
 
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
@@ -718,6 +714,7 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    /// Pull the domain name from the database
     fn get_db_domain_name(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
             .and_then(|e| {
@@ -731,6 +728,33 @@ pub trait QueryServerTransaction<'a> {
                 e
             })
     }
+
+    /// Tries to pull the domain display name from the database. If it's not set,
+    /// then pull the domain_name because we fall back to that. If that fails
+    /// then throw the error and give up.
+    fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
+        admin_debug!("Attempting to pull domain_display_name from database");
+        let display_name_value = self.internal_search_uuid(&UUID_DOMAIN_DISPLAY_NAME)
+            .and_then(|e| {
+                trace!(?e);
+                e.get_ava_single_iname("domain_display_name")
+                    .map(str::to_string)
+                    .ok_or(OperationError::InvalidEntryState)
+            });
+
+        match display_name_value {
+            Ok(value) => {
+                admin_debug!("Success, we got the domain_display_name value from the database: {}", value);
+                Ok(value)
+            }
+            Err(error) => {
+                admin_error!(?error, "Error getting domain_display_name, falling back to domain_name");
+                self.get_db_domain_name()
+            }
+        }
+
+    }
+
 
     fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
@@ -826,9 +850,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     fn get_domain_name(&self) -> &str {
         &self.d_info.d_name
     }
-    fn get_domain_display_name(&self) -> &str {
-        &self.d_info.d_display
-    }
+
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -910,13 +932,11 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     fn get_domain_name(&self) -> &str {
         &self.d_info.d_name
     }
-    fn get_domain_display_name(&self) -> &str {
-        &self.d_info.d_display
-    }
+
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema, domain_name: String, domain_display_name: String) -> Self {
+    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
         let (s_uuid, d_uuid) = {
             let wr = be.write();
             let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
@@ -931,9 +951,8 @@ impl QueryServer {
         debug!("Server UUID -> {:?}", s_uuid);
         debug!("Domain UUID -> {:?}", d_uuid);
         debug!("Domain Name -> {:?}", domain_name);
-        debug!("Domain Display Name -> {:?}", domain_display_name);
 
-        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name: domain_name, d_display: domain_display_name }));
+        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name: domain_name, }));
 
         // log_event!(log, "Starting query worker ...");
         QueryServer {
@@ -2696,6 +2715,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(())
         })
     }
+
+    /// Initiate a domain display name change process. This isn't particularly scary
+    /// because it's just a wibbly human-facing thing, not used for secure
+    /// activities (yet)
+    pub fn domain_display_name_set(&self) -> Result<(), OperationError> {
+        // unsafe { self.domain_display_name_set_inner(self.d_info.d_name.as_str()) }
+        unimplemented!("I still need to get to this!")
+    }
+
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.

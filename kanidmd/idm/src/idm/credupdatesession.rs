@@ -128,7 +128,7 @@ impl fmt::Debug for MfaRegStateStatus {
 pub struct CredentialUpdateSessionStatus {
     // #860 can we shove it in here?
     spn: String,
-    // TODO: is this the user's display name, or the session, or some random crab that was running down the street?
+    // The target user's display name
     displayname: String,
     // ttl: Duration,
     //
@@ -1042,12 +1042,12 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     Ok(session.deref().into())
                 } else {
                     // What if it's a broken authenticator app? Google authenticator
-                    // and authy both force sha1 and ignore the algo we send. So lets
+                    // and Authy both force SHA1 and ignore the algo we send. So let's
                     // check that just in case.
                     let token_sha1 = totp_token.clone().downgrade_to_legacy();
 
                     if token_sha1.verify(totp_chal, &ct) {
-                        // Greeeaaaaaatttt it's a broken app. Let's check the user
+                        // Greeeaaaaaatttt. It's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
                         session.mfaregstate =
                             MfaRegState::TotpInvalidSha1(totp_token.clone(), token_sha1);

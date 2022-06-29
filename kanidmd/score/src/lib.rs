@@ -99,7 +99,7 @@ fn setup_qs_idms(
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed), OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone(), config.domain_display_name.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone());
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -124,7 +124,7 @@ fn setup_qs(
     config: &Configuration,
 ) -> Result<QueryServer, OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone(), config.domain_display_name.clone());
+    let query_server = QueryServer::new(be, schema, config.domain.clone());
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -391,6 +391,58 @@ pub fn vacuum_server_core(config: &Configuration) {
     };
 }
 
+/// This'll set the domain's display name in the database
+pub fn domain_display_set_core(config: &Configuration, new_display_name: &str) {
+    let schema = match Schema::new() {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to setup in memory schema: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+    // Start the backend.
+    let be = match setup_backend(config, &schema) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    // setup the qs - *with out* init of the migrations and schema.
+    let qs = match setup_qs(be, schema, config) {
+        Ok(t) => t,
+        Err(e) => {
+            error!("Unable to setup query server -> {:?}", e);
+            return;
+        }
+    };
+    // make sure we're actually changing the displayname...
+    match task::block_on(qs.read_async()).get_db_domain_display_name() {
+        Ok(old_display_name) => {
+            admin_info!(?old_display_name, ?new_display_name);
+            if &old_display_name == &new_display_name {
+                admin_info!("Domain display name not changing, stopping.");
+                return;
+            }
+        }
+        Err(e) => {
+            admin_error!("Failed to query domain name, quitting! -> {:?}", e);
+            return;
+        }
+    }
+    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
+    let r = qs_write.domain_display_name_set().and_then(|_| qs_write.commit());
+
+    match r {
+        Ok(_) => info!("Domain Display Name Successfully set!"),
+        Err(e) => {
+            error!("Domain Display Name Change Failed - Rollback has occured: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
+}
+
 pub fn domain_rename_core(config: &Configuration) {
     let schema = match Schema::new() {
         Ok(s) => s,
@@ -464,7 +516,7 @@ pub fn verify_server_core(config: &Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem, config.domain.clone(), config.domain_display_name.clone());
+    let server = QueryServer::new(be, schema_mem, config.domain.clone());
 
     // Run verifications.
     let r = server.verify();

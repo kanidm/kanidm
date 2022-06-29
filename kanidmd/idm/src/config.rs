@@ -92,7 +92,6 @@ pub struct Configuration {
     pub log_level: Option<u32>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
-    pub domain_display_name: String,
     pub origin: String,
     pub role: ServerRole,
     pub output_mode: ConsoleOutputMode,
@@ -102,7 +101,6 @@ impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "address: {}, ", self.address)
         .and_then(|_| { write!(f, "domain: {}, ", self.domain )})
-        .and_then(|_| { write!(f, "domain_display_name: \"{}\", ", self.domain_display_name )})
             .and_then(|_| match &self.ldapaddress {
                 Some(la) => write!(f, "ldap address: {}, ", la),
                 None => write!(f, "ldap address: disabled, "),
@@ -162,7 +160,6 @@ impl Configuration {
             log_level: None,
             online_backup: None,
             domain: "idm.example.com".to_string(),
-            domain_display_name: "Example Domain".to_string(),
             origin: "https://idm.example.com".to_string(),
             role: ServerRole::WriteReplica,
             output_mode: ConsoleOutputMode::default(),
@@ -221,10 +218,6 @@ impl Configuration {
 
     pub fn update_domain(&mut self, d: &str) {
         self.domain = d.to_string();
-    }
-
-    pub fn update_domain_display_name(&mut self, dsn: &str) {
-        self.domain_display_name = dsn.to_string();
     }
 
     pub fn update_role(&mut self, r: ServerRole) {

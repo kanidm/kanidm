@@ -114,7 +114,7 @@ impl MfaRegSession {
                     let token_sha1 = token.clone().downgrade_to_legacy();
 
                     if token_sha1.verify(chal, ct) {
-                        // Greeeaaaaaatttt. it's a broken app. Let's check the user
+                        // Greeeaaaaaatttt. It's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
                         let mut nstate = MfaRegState::TotpInvalidSha1(token_sha1);
                         mem::swap(&mut self.state, &mut nstate);

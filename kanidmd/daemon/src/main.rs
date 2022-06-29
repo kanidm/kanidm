@@ -38,7 +38,7 @@ use kanidm::utils::file_permissions_readonly;
 use score::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
-    domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
+    domain_rename_core, domain_display_set_core, recover_account_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
 
@@ -59,7 +59,6 @@ struct ServerConfig {
     pub log_level: Option<String>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
-    pub domain_display_name: Option<String>,
     pub origin: String,
     #[serde(default)]
     pub role: ServerRole,
@@ -84,9 +83,6 @@ impl KanidmdOpt {
         match self {
             KanidmdOpt::Server(sopt)
             | KanidmdOpt::ConfigTest(sopt)
-            | KanidmdOpt::Verify(sopt)
-            | KanidmdOpt::Reindex(sopt)
-            | KanidmdOpt::Vacuum(sopt)
             | KanidmdOpt::DomainChange(sopt)
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndexes(sopt),
@@ -97,8 +93,8 @@ impl KanidmdOpt {
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndexAnalysis(sopt),
             } => &sopt,
-            KanidmdOpt::Backup(bopt) => &bopt.commonopts,
-            KanidmdOpt::Restore(ropt) => &ropt.commonopts,
+            KanidmdOpt::Database { commands: DbCommands::Backup(bopt) } => &bopt.commonopts,
+            KanidmdOpt::Database { commands: DbCommands::Restore(ropt) } => &ropt.commonopts,
             KanidmdOpt::RecoverAccount(ropt) => &ropt.commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
@@ -107,6 +103,14 @@ impl KanidmdOpt {
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::GetId2Entry(dopt),
             } => &dopt.commonopts,
+            KanidmdOpt::SystemSettings {
+                commands: SystemSettingsCmds::SetDomainDisplayName(sopt)
+            } => &sopt.commonopts,
+
+            KanidmdOpt::Database { commands: DbCommands::Verify(sopt) }
+            | KanidmdOpt::Database { commands: DbCommands::Reindex(sopt) }
+            => &sopt,
+            KanidmdOpt::Database { commands: DbCommands::Vacuum(copt) } => &copt,
         }
     }
 }
@@ -251,12 +255,6 @@ async fn main() {
         }
     }
 
-    // If domain_display_name is unset, default back to the domain value.
-    match &sconfig.domain_display_name {
-        Some(value) => config.update_domain_display_name(value.as_str()),
-        None => config.update_domain_display_name(&sconfig.domain.as_str())
-    };
-
     config.update_log_level(ll);
     config.update_db_path(&sconfig.db_path.as_str());
     config.update_db_fs_type(&sconfig.db_fs_type);
@@ -347,7 +345,7 @@ async fn main() {
                 eprintln!("stopped 🛑 ");
             }
         }
-        KanidmdOpt::Backup(bopt) => {
+        KanidmdOpt::Database { commands: DbCommands::Backup(bopt) } => {
             eprintln!("Running in backup mode ...");
             let p = match bopt.path.to_str() {
                 Some(p) => p,
@@ -358,7 +356,7 @@ async fn main() {
             };
             backup_server_core(&config, p);
         }
-        KanidmdOpt::Restore(ropt) => {
+        KanidmdOpt::Database { commands: DbCommands::Restore(ropt) } => {
             eprintln!("Running in restore mode ...");
             let p = match ropt.path.to_str() {
                 Some(p) => p,
@@ -369,7 +367,7 @@ async fn main() {
             };
             restore_server_core(&config, p);
         }
-        KanidmdOpt::Verify(_vopt) => {
+        KanidmdOpt::Database { commands: DbCommands::Verify(_vopt) } => {
             eprintln!("Running in db verification mode ...");
             verify_server_core(&config);
         }
@@ -377,14 +375,11 @@ async fn main() {
             eprintln!("Running account recovery ...");
             recover_account_core(&config, &raopt.name);
         }
-        KanidmdOpt::Reindex(_copt) => {
+        KanidmdOpt::Database { commands: DbCommands::Reindex(_copt) } => {
             eprintln!("Running in reindex mode ...");
             reindex_server_core(&config);
         }
-        KanidmdOpt::Vacuum(_copt) => {
-            eprintln!("Running in vacuum mode ...");
-            vacuum_server_core(&config);
-        }
+
         KanidmdOpt::DomainChange(_dopt) => {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
             domain_rename_core(&config);
@@ -418,6 +413,18 @@ async fn main() {
         } => {
             eprintln!("👀 db scan - get id2 entry - {}", dopt.id);
             dbscan_get_id2entry_core(&config, dopt.id);
+        }
+        KanidmdOpt::SystemSettings {
+            commands: SystemSettingsCmds::SetDomainDisplayName(sopt)
+        } => {
+            eprintln!("system settings: set domain_display_name - {:?}", &sopt.domain_display_name);
+            domain_display_set_core(&config, sopt.domain_display_name.as_str())
+        }
+        KanidmdOpt::Database {
+            commands: DbCommands::Vacuum(_copt)
+        } => {
+            eprintln!("Running in vacuum mode ...");
+            vacuum_server_core(&config);
         }
     }
 }
