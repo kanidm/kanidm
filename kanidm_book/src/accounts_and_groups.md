@@ -27,11 +27,22 @@ and sensitive data), group management, and more.
 ## Recovering the Initial idm_admin Account
 
 By default the idm_admin user has no password, and can not be accessed. You should recover it with the
-admin (system admin) account. We recommend the use of "reset_credential" as it provides a high
-strength, random, machine only password.
+admin (system admin) account. We recommend the use of the "recover_account" functionalit as it provides a high strength, random password.
 
-    kanidmd recover_account  --name admin idm_admin
-    Successfully recovered account 'idm_admin' - password reset to -> j9YUv...
+<table>
+<tr>
+<td>
+<img src="/images/kani-warning.png" style="float:left">
+</td>
+<td>Warning: The server must not be running at this point, as it requires raw access to the database.</td>
+</tr>
+</table>
+
+
+```shell
+kanidmd recover_account  --name admin idm_admin
+Successfully recovered account 'idm_admin' - password reset to -> j9YUv...
+```
 
 ## Creating Accounts
 

@@ -1,6 +1,13 @@
 [book]
-authors = ["William Brown"]
+authors = [
+    "James Hodgkinson",
+    "William Brown",
+]
 language = "en"
 multilingual = false
 src = "src"
 title = "Kanidm Administration"
+
+[output.html]
+edit-url-template = "https://github.com/kanidm/kanidm/edit/master/kanidm_book/{path}"
+git-repository-url = "https://github.com/kanidm/kanidm"
