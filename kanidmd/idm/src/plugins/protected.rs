@@ -194,10 +194,16 @@ mod tests {
             ],
             "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
             "acp_modify_class": ["system", "domain_info"],
-            "acp_modify_removedattr": ["class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"],
-            "acp_modify_presentattr": ["class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"],
+            "acp_modify_removedattr": [
+                "class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
+                ],
+            "acp_modify_presentattr": [
+                "class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
+                ],
             "acp_create_class": ["object", "person", "system", "domain_info"],
-            "acp_create_attr": ["name", "class", "description", "displayname", "domain_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"]
+            "acp_create_attr": [
+                "name", "class", "description", "displayname", "domain_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"
+                ]
         }
     }"#;
 

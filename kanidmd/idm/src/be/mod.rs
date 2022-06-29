@@ -1456,6 +1456,7 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(nsid)
     }
 
+    /// This... gets the domain uuid?
     pub fn get_db_d_uuid(&self) -> Uuid {
         #[allow(clippy::expect_used)]
         match self

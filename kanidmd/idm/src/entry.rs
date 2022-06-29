@@ -342,7 +342,7 @@ impl Entry<EntryInit, EntryNew> {
                             vs.into_iter().map(|v| Value::new_iutf8(&v))
                         )
                     }
-                    "name" | "domain_name" => {
+                    "name" | "domain_name" | "domain_display_name" => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_iname(&v))
                         )
@@ -664,6 +664,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             });
 
             if !missing_must.is_empty() {
+                eprintln!("validate: missing_must is not empty");
                 return Err(SchemaError::MissingMustAttribute(missing_must));
             }
 

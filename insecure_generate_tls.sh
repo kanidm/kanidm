@@ -1,7 +1,14 @@
 #!/bin/sh
 
+# you can set the hostname if you want, but it'll default to localhost
+if [ -z "$CERT_HOSTNAME" ]; then
+    CERT_HOSTNAME="localhost"
+fi
 
-KANI_TMP=/tmp/kanidm/
+# also where the files are stored
+if [ -z "$KANI_TMP" ]; then
+    KANI_TMP=/tmp/kanidm/
+fi
 
 ALTNAME_FILE="${KANI_TMP}altnames.cnf"
 CACERT="${KANI_TMP}ca.pem"
@@ -65,19 +72,21 @@ DEVEOF
 openssl req -x509 -new -newkey rsa:4096 -sha256 \
     -keyout "${CAKEY}" \
     -out "${CACERT}" \
-    -days 31 \
+    -days +31 \
     -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
 
-# generate the private key
+# generate the ca private key
 openssl genrsa -out "${KEYFILE}" 4096
 
 # generate the certficate signing request
 openssl req -sha256 \
     -config "${ALTNAME_FILE}" \
-    -days 31 \
     -new -extensions v3_req \
     -key "${KEYFILE}"\
+    -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=${CERT_HOSTNAME}" \
+    -nodes \
     -out "${CSRFILE}"
+
 # sign the cert
 openssl x509 -req -days 31 \
     -extfile "${ALTNAME_FILE}" \
@@ -95,4 +104,5 @@ openssl dhparam -in "${CAFILE}" -out "${DHFILE}" 2048
 
 echo "Certificate chain is at: ${CHAINFILE}"
 echo "Private key is at: ${KEYFILE}"
-
+echo ""
+echo "**Remember** the default action is to store the files in /tmp/ so they'll be deleted on reboot! Set the KANI_TMP environment variable before running this script if you want to change that. You'll need to update server config elsewhere if you do, however."

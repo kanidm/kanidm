@@ -431,7 +431,8 @@ pub fn domain_display_set_core(config: &Configuration, new_display_name: &str) {
         }
     }
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
-    let r = qs_write.domain_display_name_set().and_then(|_| qs_write.commit());
+    let r = qs_write.set_domain_display_name(new_display_name)
+    .and_then(|_| qs_write.commit());
 
     match r {
         Ok(_) => info!("Domain Display Name Successfully set!"),

@@ -44,6 +44,12 @@ impl Plugin for Domain {
                     e.set_ava("domain_name", once(n));
                     trace!("plugin_domain: Applying domain_name transform");
                 }
+                if !e.attribute_pres("domain_display_name") {
+                    let n = Value::new_iname(qs.get_domain_name());
+                    e.set_ava("domain_display_name", once(n));
+                    trace!("plugin_domain: setting default domain_display_name");
+                    eprintln!("plugin_domain: setting default domain_display_name")
+                }
                 if !e.attribute_pres("fernet_private_key_str") {
                     security_info!("regenerating domain token encryption key");
                     let k = fernet::Fernet::generate_key();

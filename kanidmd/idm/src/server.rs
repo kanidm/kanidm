@@ -51,6 +51,7 @@ lazy_static! {
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
     static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
+    static ref PVUUID_DOMAIN_DISPLAY_NAME: PartialValue = PartialValue::new_uuid(UUID_DOMAIN_DISPLAY_NAME);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
@@ -142,6 +143,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_uuid(&self) -> Uuid;
 
     fn get_domain_name(&self) -> &str;
+    fn get_domain_display_name(&self) -> String;
 
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
@@ -851,6 +853,12 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.d_info.d_name
     }
 
+    fn get_domain_display_name(&self) -> String {
+        // TODO: lol this is terrible
+        // "filler text from qst qsrt"
+        self.get_db_domain_display_name().unwrap()
+    }
+
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -929,9 +937,16 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         self.d_info.d_uuid
     }
 
+    /// Gets the in-memory domain_name element
     fn get_domain_name(&self) -> &str {
         &self.d_info.d_name
     }
+
+    fn get_domain_display_name(&self) -> String {
+        // TODO: lol this is probably terrible
+        String::from("filler text from server.rs qst qstwt")
+    }
+
 
 }
 
@@ -952,7 +967,7 @@ impl QueryServer {
         debug!("Domain UUID -> {:?}", d_uuid);
         debug!("Domain Name -> {:?}", domain_name);
 
-        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name: domain_name, }));
+        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name: domain_name }));
 
         // log_event!(log, "Starting query worker ...");
         QueryServer {
@@ -1217,7 +1232,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation -> {:?}", e);
+                            admin_error!("Schema Violation in create validate {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
                         .map(|e| {
@@ -1363,7 +1378,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.into_recycled()
                         .validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!(err = ?e, "Schema Violation");
+                            admin_error!(err = ?e, "Schema Violation in delete validate");
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
@@ -1494,7 +1509,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.to_tombstone(self.cid.clone())
                         .validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violationi {:?}", e);
+                            admin_error!("Schema Violation in purge_recycled validate: {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
@@ -1534,7 +1549,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             )]);
 
             let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-                admin_error!("revive recycled modlist Schema Violation {:?}", e);
+                admin_error!("Schema Violation in revive recycled modlist validate: {:?}", e);
                 OperationError::SchemaViolation(e)
             })?;
 
@@ -1693,7 +1708,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation {:?}", e);
+                            admin_error!("Schema Violation in validation of modify_pre_apply {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
                         .map(Entry::seal)
@@ -1864,7 +1879,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation {:?}", e);
+                            admin_error!("Schema Violation in internal_batch_modify validate: {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
                         .map(Entry::seal)
@@ -2327,6 +2342,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
             JSON_SCHEMA_ATTR_RADIUS_SECRET,
             JSON_SCHEMA_ATTR_DOMAIN_NAME,
+            JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
             JSON_SCHEMA_ATTR_DOMAIN_UUID,
             JSON_SCHEMA_ATTR_DOMAIN_SSID,
             JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
@@ -2719,9 +2735,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Initiate a domain display name change process. This isn't particularly scary
     /// because it's just a wibbly human-facing thing, not used for secure
     /// activities (yet)
-    pub fn domain_display_name_set(&self) -> Result<(), OperationError> {
-        // unsafe { self.domain_display_name_set_inner(self.d_info.d_name.as_str()) }
-        unimplemented!("I still need to get to this!")
+    pub fn set_domain_display_name(&self, new_domain_name: &str) -> Result<(), OperationError> {
+        // unimplemented!("I still need to get to this - setting domain display name to {}", new_domain_name);
+        let modl = ModifyList::new_purge_and_set("domain_display_name", Value::new_iname(new_domain_name));
+        let udi = PVUUID_DOMAIN_INFO.clone();
+        let filt = filter_all!(f_eq("uuid", udi));
+        self.internal_modify(&filt, &modl)
     }
 
 

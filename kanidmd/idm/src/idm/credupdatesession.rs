@@ -75,6 +75,7 @@ impl fmt::Debug for MfaRegState {
 
 // TODO: what's CredentialUpdateSession used for?
 pub(crate) struct CredentialUpdateSession {
+    domain_display_name: String,
     // Current credentials - these are on the Account!
     account: Account,
     //
@@ -169,8 +170,10 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
-                    // TODO: #860 the issuer is actually set here!
-                    token.to_proto(session.account.name.as_str(), session.account.spn.as_str()),
+                    token.to_proto(
+                        session.account.name.as_str(),
+                        session.domain_display_name.as_str()
+                    ),
                 ),
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
                 MfaRegState::TotpInvalidSha1(_, _) => MfaRegStateStatus::TotpInvalidSha1,
@@ -291,6 +294,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn create_credupdate_session(
         &mut self,
+        issuer: String,
         sessionid: Uuid,
         intent_token_id: Option<String>,
         account: Account,
@@ -300,8 +304,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let primary = account.primary.clone();
         // - store account policy (if present)
         let session = CredentialUpdateSession {
-            // #860 - here?
-            // domain_display_name = self.qs_write.get_domain_display_name()
+            // TODO: #860 - here?
+            domain_display_name: issuer,
             account,
             intent_token_id,
             primary,
@@ -421,7 +425,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         token: CredentialUpdateIntentToken,
         //TODO: rename ct to something... else?
-        ct: Duration,
+        current_time: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let CredentialUpdateIntentToken { intent_id } = token;
 
@@ -484,7 +488,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     "Rejecting Update Session - Intent Token does not exist (replication delay?)",
                 );
                 return Err(OperationError::Wait(
-                    OffsetDateTime::unix_epoch() + (ct + Duration::from_secs(150)),
+                    OffsetDateTime::unix_epoch() + (current_time + Duration::from_secs(150)),
                 ));
             }
         };
@@ -509,7 +513,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 session_id,
                 session_ttl,
             }) => {
-                if ct > *session_ttl {
+                if current_time > *session_ttl {
                     // The former session has expired, continue.
                     security_info!(
                         ?entry,
@@ -530,8 +534,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
             Some(IntentTokenState::Valid { max_ttl }) => {
                 // Check the TTL
-                if ct >= *max_ttl {
-                    trace!(?ct, ?max_ttl);
+                if current_time >= *max_ttl {
+                    trace!(?current_time, ?max_ttl);
                     security_info!(%account.uuid, "intent has expired");
                     return Err(OperationError::SessionExpired);
                 } else {
@@ -558,7 +562,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // We need to pin the id from the intent token into the credential to ensure it's not re-used
 
         // Need to change this to the expiry time, so we can purge up to.
-        let session_id = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
+        let session_id = uuid_from_duration(current_time + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
         let mut modlist = ModifyList::new();
 
@@ -573,7 +577,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 IntentTokenState::InProgress {
                     max_ttl,
                     session_id,
-                    session_ttl: ct + MAXIMUM_CRED_UPDATE_TTL,
+                    session_ttl: current_time + MAXIMUM_CRED_UPDATE_TTL,
                 },
             ),
         ));
@@ -592,7 +596,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(session_id, Some(intent_id), account, ct)
+        self.create_credupdate_session(
+            String::from("issuer goes here"),
+            session_id,
+            Some(intent_id), account, current_time,
+        )
     }
 
 
@@ -604,13 +612,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         spanned!("idm::server::credupdatesession<Init>", {
             let account = self.validate_init_credential_update(event.target, &event.ident)?;
             // ==== AUTHORISATION CHECKED ===
-            // #860 we have access to the qs here
+            // TODO: #860 we have access to the qs here
+            let issuer = String::from("issuer goes here");
+
             // This is the expiry time, so that our cleanup task can "purge up to now" rather
             // than needing to do calculations.
             let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
             // Build the cred update session.
-            self.create_credupdate_session(sessionid, None, account, ct)
+            self.create_credupdate_session(issuer, sessionid, None, account, ct)
         })
     }
 
