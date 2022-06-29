@@ -144,7 +144,8 @@ pub struct AccountNamedTagPkOpt {
 }
 
 #[derive(Debug, Args)]
-pub struct AnonTokenOpt {
+/// Command-line options for account credental use_reset_token
+pub struct UseResetTokenOpt {
     #[clap(flatten)]
     copt: CommonOpt,
     #[clap(name = "token")]
@@ -163,16 +164,16 @@ pub struct AccountCreateOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountCredential {
-    /// Interactively update and change the content of the credentials of an account
+    /// Interactively update/change the credentials for an account
     #[clap(name = "update")]
     Update(AccountNamedOpt),
-    /// Given a reset token, interactively perform a credential reset
-    #[clap(name = "reset")]
-    Reset(AnonTokenOpt),
-    /// Create a reset link (token) that can be given to another person so they can
+    /// Using a reset token, interactively reset credentials for a user
+    #[clap(name = "use_reset_token")]
+    UseResetToken(UseResetTokenOpt),
+    /// Create a reset token that can be given to another person so they can
     /// recover or reset their account credentials.
-    #[clap(name = "create_reset_link")]
-    CreateResetLink(AccountNamedOpt),
+    #[clap(name = "create_reset_token")]
+    CreateResetToken(AccountNamedOpt),
 }
 
 #[derive(Debug, Subcommand)]

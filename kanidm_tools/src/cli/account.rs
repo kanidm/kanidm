@@ -90,15 +90,15 @@ impl AccountOpt {
                 AccountRadius::Delete(aopt) => {
                     let client = aopt.copt.to_client().await;
 
-                    let mut modmessage = AccountChangeMessage{
+                    let mut modmessage = AccountChangeMessage {
                         output_mode: aopt.copt.output_mode.to_owned().into(),
                         action: "radius account_delete".to_string(),
                         result: "deleted".to_string(),
                         src_user: aopt
-                        .copt
-                        .username
-                        .to_owned()
-                        .unwrap_or(format!("{:?}", client.whoami().await)),
+                            .copt
+                            .username
+                            .to_owned()
+                            .unwrap_or(format!("{:?}", client.whoami().await)),
                         dest_user: aopt.aopts.account_id.to_string(),
                         status: MessageStatus::Success,
                     };
@@ -110,7 +110,7 @@ impl AccountOpt {
                             modmessage.status = MessageStatus::Failure;
                             modmessage.result = format!("Error -> {:?}", e);
                             error!("{}", modmessage);
-                        },
+                        }
                         Ok(result) => {
                             debug!("{:?}", result);
                             println!("{}", modmessage);
@@ -331,15 +331,15 @@ impl AccountOpt {
             }
             AccountOpt::Delete(aopt) => {
                 let client = aopt.copt.to_client().await;
-                let mut modmessage = AccountChangeMessage{
+                let mut modmessage = AccountChangeMessage {
                     output_mode: aopt.copt.output_mode.to_owned().into(),
                     action: "account delete".to_string(),
                     result: "deleted".to_string(),
                     src_user: aopt
-                    .copt
-                    .username
-                    .to_owned()
-                    .unwrap_or(format!("{:?}", client.whoami().await)),
+                        .copt
+                        .username
+                        .to_owned()
+                        .unwrap_or(format!("{:?}", client.whoami().await)),
                     dest_user: aopt.aopts.account_id.to_string(),
                     status: MessageStatus::Success,
                 };
@@ -351,7 +351,7 @@ impl AccountOpt {
                         modmessage.result = format!("Error -> {:?}", e);
                         modmessage.status = MessageStatus::Failure;
                         eprintln!("{}", modmessage);
-                    },
+                    }
                     Ok(result) => {
                         debug!("{:?}", result);
                         println!("{}", modmessage);
@@ -505,9 +505,9 @@ impl AccountOpt {
 impl AccountCredential {
     pub fn debug(&self) -> bool {
         match self {
+            AccountCredential::CreateResetToken(aopt) => aopt.copt.debug,
+            AccountCredential::UseResetToken(aopt) => aopt.copt.debug,
             AccountCredential::Update(aopt) => aopt.copt.debug,
-            AccountCredential::Reset(aopt) => aopt.copt.debug,
-            AccountCredential::CreateResetLink(aopt) => aopt.copt.debug,
         }
     }
 
@@ -527,7 +527,8 @@ impl AccountCredential {
                     }
                 }
             }
-            AccountCredential::Reset(aopt) => {
+            // The account credential use_reset_token CLI
+            AccountCredential::UseResetToken(aopt) => {
                 let client = aopt.copt.to_unauth_client();
                 let cuintent_token = CUIntentToken {
                     token: aopt.token.clone(),
@@ -541,11 +542,20 @@ impl AccountCredential {
                         credential_update_exec(cusession_token, custatus, client).await
                     }
                     Err(e) => {
-                        error!("Error starting credential reset -> {:?}", e);
+                        match e {
+                            ClientErrorHttp(status_code, error, _kopid) => {
+                                eprintln!(
+                                    "Error completing command: HTTP{} - {:?}",
+                                    status_code,
+                                    error.unwrap()
+                                );
+                            }
+                            _ => error!("Error starting use_reset_token -> {:?}", e),
+                        };
                     }
                 }
             }
-            AccountCredential::CreateResetLink(aopt) => {
+            AccountCredential::CreateResetToken(aopt) => {
                 let client = aopt.copt.to_client().await;
 
                 // What's the client url?
@@ -559,11 +569,14 @@ impl AccountCredential {
                         url.query_pairs_mut()
                             .append_pair("token", cuintent_token.token.as_str());
 
-                        println!("success!");
-                        println!(
-                            "Send the person one of the following to allow the credential reset"
+                        debug!(
+                            "Successfully created credential reset token for {}: {}",
+                            aopt.aopts.account_id, cuintent_token.token
                         );
-                        println!("scan:");
+                        println!(
+                            "The person can use one of the following to allow the credential reset"
+                        );
+                        println!("\nScan this QR Code:\n");
                         let code = match QrCode::new(url.as_str()) {
                             Ok(c) => c,
                             Err(e) => {
@@ -579,9 +592,9 @@ impl AccountCredential {
                         println!("{}", image);
 
                         println!();
-                        println!("link: {}", url.as_str());
+                        println!("This link: {}", url.as_str());
                         println!(
-                            "command: kanidm account credential reset {}",
+                            "Or run this command: kanidm account credential use_reset_token {}",
                             cuintent_token.token
                         );
                         println!();
@@ -886,6 +899,7 @@ fn display_status(status: CUStatus) {
     println!("Can Commit: {}", can_commit);
 }
 
+/// This is the REPL for updating a credential for a given account
 async fn credential_update_exec(
     session_token: CUSessionToken,
     status: CUStatus,

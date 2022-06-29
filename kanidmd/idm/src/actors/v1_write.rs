@@ -778,7 +778,7 @@ impl QueryServerWriteV1 {
             let intent_token = CredentialUpdateIntentToken {
                 intent_id: intent_token.token,
             };
-
+            // TODO: this is throwing a 500 error when a session is already in use, that seems bad?
             idms_prox_write
                 .exchange_intent_credential_update(intent_token, ct)
                 .and_then(|tok| idms_prox_write.commit().map(|_| tok))
