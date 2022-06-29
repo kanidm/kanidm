@@ -849,7 +849,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     }
 
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
-    pub fn into_recycled(mut self) -> Self {
+    pub fn to_recycled(mut self) -> Self {
         // This will put the modify ahead of the recycle transition.
         self.add_ava("class", Value::new_class("recycled"));
 
@@ -857,7 +857,22 @@ impl Entry<EntryInvalid, EntryCommitted> {
         self.valid.eclog.recycled(&self.valid.cid);
 
         Entry {
-            valid: self.valid.clone(),
+            valid: self.valid,
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
+
+    /// Convert this entry into a recycled entry, that is "in the recycle bin".
+    pub fn to_revived(mut self) -> Self {
+        // This will put the modify ahead of the revive transition.
+        self.remove_ava("class", &PVCLASS_RECYCLED);
+
+        // Last step before we proceed.
+        self.valid.eclog.revive(&self.valid.cid);
+
+        Entry {
+            valid: self.valid,
             state: self.state,
             attrs: self.attrs,
         }
@@ -1495,10 +1510,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         eclog.tombstone(&cid, attrs_new.clone());
 
         Entry {
-            valid: EntryInvalid {
-                cid,
-                eclog,
-            },
+            valid: EntryInvalid { cid, eclog },
             state: self.state.clone(),
             attrs: attrs_new,
         }
@@ -2120,8 +2132,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
-                if cls.contains(&PVCLASS_RECYCLED as &PartialValue)
-                {
+                if cls.contains(&PVCLASS_RECYCLED as &PartialValue) {
                     None
                 } else {
                     Some(self)
@@ -2137,8 +2148,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
-                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue)
-                {
+                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue) {
                     None
                 } else {
                     Some(self)

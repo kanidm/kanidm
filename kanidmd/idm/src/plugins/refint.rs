@@ -597,14 +597,10 @@ mod tests {
             |qs: &QueryServerWriteTransaction| {
                 // Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a
                 let de_sin = unsafe {
-                    crate::event::DeleteEvent::new_internal_invalid(filter!(
-                    f_or!([
-                        f_eq(
-                            "name",
-                            PartialValue::new_iname("testgroup_a")
-                        )
-                    ]))
-                    )
+                    crate::event::DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+                        "name",
+                        PartialValue::new_iname("testgroup_a")
+                    )])))
                 };
                 assert!(qs.delete(&de_sin).is_ok());
             },

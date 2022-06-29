@@ -1389,7 +1389,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
                 .into_iter()
                 .map(|e| {
-                    e.into_recycled()
+                    e.to_recycled()
                         .validate(&self.schema)
                         .map_err(|e| {
                             admin_error!(err = ?e, "Schema Violation in delete validate");
@@ -1549,13 +1549,174 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // Should this take a revive event?
     pub fn revive_recycled(&self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
         spanned!("server::revive_recycled", {
-            // Revive an entry to live. This is a specialised (limited)
-            // modify proxy.
+            // Revive an entry to live. This is a specialised function, and draws a lot of
+            // inspiration from modify.
             //
-            // impersonate modify will require ability to search the class=recycled
-            // and the ability to remove that from the object.
+            // Access is granted by the ability to ability to search the class=recycled
+            // and the ability modify + remove that class from the object.
+            if !re.ident.is_internal() {
+                security_info!(name = %re.ident, "revive initiator");
+            }
 
-            // create the modify
+            // Get the list of pre_candidates, using impersonate search.
+            let pre_candidates =
+                self.impersonate_search_valid(re.filter.clone(), re.filter.clone(), &re.ident)?;
+
+            // Is the list empty?
+            if pre_candidates.is_empty() {
+                if re.ident.is_internal() {
+                    trace!(
+                        "revive: no candidates match filter ... continuing {:?}",
+                        re.filter
+                    );
+                    return Ok(());
+                } else {
+                    request_error!(
+                        "revive: no candidates match filter, failure {:?}",
+                        re.filter
+                    );
+                    return Err(OperationError::NoMatchingEntries);
+                }
+            };
+
+            trace!("revive: pre_candidates -> {:?}", pre_candidates);
+
+            // Check access against a "fake" modify.
+            let modlist = ModifyList::new_list(vec![Modify::Removed(
+                AttrString::from("class"),
+                PVCLASS_RECYCLED.clone(),
+            )]);
+
+            let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
+                admin_error!("revive recycled modlist Schema Violation {:?}", e);
+                OperationError::SchemaViolation(e)
+            })?;
+
+            let me = ModifyEvent::new_impersonate(
+                &re.ident,
+                re.filter.clone(),
+                re.filter.clone(),
+                m_valid,
+            );
+
+            let access = self.get_accesscontrols();
+            let op_allow = access
+                .modify_allow_operation(&me, &pre_candidates)
+                .map_err(|e| {
+                    admin_error!("Unable to check modify access {:?}", e);
+                    e
+                })?;
+            if !op_allow {
+                return Err(OperationError::AccessDenied);
+            }
+
+            // Are all of the entries actually recycled?
+            if pre_candidates.iter().all(|e| e.mask_recycled().is_some()) {
+                admin_warn!("Refusing to revive entries that are already live!");
+                return Err(OperationError::AccessDenied);
+            }
+
+            // Build the list of mods from directmo, to revive memberships.
+            let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
+                HashMap::with_capacity(pre_candidates.len());
+
+            for e in &pre_candidates {
+                // Get this entries uuid.
+                let u: Uuid = e.get_uuid();
+
+                if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
+                    for g_uuid in riter {
+                        dm_mods
+                            .entry(g_uuid)
+                            .and_modify(|mlist| {
+                                let m = Modify::Present(
+                                    AttrString::from("member"),
+                                    Value::new_refer_r(&u),
+                                );
+                                mlist.push_mod(m);
+                            })
+                            .or_insert({
+                                let m = Modify::Present(
+                                    AttrString::from("member"),
+                                    Value::new_refer_r(&u),
+                                );
+                                ModifyList::new_list(vec![m])
+                            });
+                    }
+                }
+            }
+
+            // clone the writeable entries.
+            let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+                .iter()
+                .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+                // Mutate to apply the revive.
+                .map(|er| er.to_revived())
+                .collect();
+
+            // Are they all revived?
+            if candidates.iter().all(|e| e.mask_recycled().is_none()) {
+                admin_error!("Not all candidates were correctly revived, unable to proceed");
+                return Err(OperationError::InvalidEntryState);
+            }
+
+            // Do we need to apply pre-mod?
+            // Very likely, incase domain has renamed etc.
+            Plugins::run_pre_modify(self, &mut candidates, &me).map_err(|e| {
+                admin_error!("Revive operation failed (plugin), {:?}", e);
+                e
+            })?;
+
+            // Schema validate
+            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
+                .into_iter()
+                .map(|e| {
+                    e.validate(&self.schema)
+                        .map_err(|e| {
+                            admin_error!("Schema Violation {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
+                        .map(|e| e.seal(&self.schema))
+                })
+                .collect();
+
+            let norm_cand: Vec<Entry<_, _>> = res?;
+
+            // build the mod partial
+            let mp = ModifyPartial {
+                norm_cand,
+                pre_candidates,
+                me: &me,
+            };
+
+            // Call modify_apply
+            self.modify_apply(mp)?;
+
+            // If and only if that succeeds, apply the direct membership modifications
+            // if possible.
+            for (g, mods) in dm_mods {
+                // I think the filter/filter_all shouldn't matter here because the only
+                // valid direct memberships should be still valid/live references, as refint
+                // removes anything that was deleted even from recycled entries.
+                let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
+                self.internal_modify(&f, &mods)?;
+            }
+
+            Ok(())
+        })
+    }
+
+    // Should this take a revive event?
+    pub fn revive_recycled_legacy(&self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
+        spanned!("server::revive_recycled", {
+            // Revive an entry to live. This is a specialised function, and draws a lot of
+            // inspiration from modify.
+            //
+            //
+            // Access is granted by the ability to ability to search the class=recycled
+            // and the ability modify + remove that class from the object.
+
+            // create the modify for access testing.
             // tl;dr, remove the class=recycled
             let modlist = ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("class"),
@@ -3324,14 +3485,10 @@ mod tests {
             assert!(cr.is_ok());
 
             let de_sin = unsafe {
-                DeleteEvent::new_internal_invalid(filter!(
-                f_or!([
-                    f_eq(
-                        "name",
-                        PartialValue::new_iname("testperson1")
-                    )
-                ]))
-                )
+                DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+                    "name",
+                    PartialValue::new_iname("testperson1")
+                )])))
             };
             assert!(server_txn.delete(&de_sin).is_ok());
 
@@ -3468,18 +3625,10 @@ mod tests {
 
             // Now we immediately delete these to force them to the correct state.
             let de_sin = unsafe {
-                DeleteEvent::new_internal_invalid(filter!(
-                f_or!([
-                    f_eq(
-                        "name",
-                        PartialValue::new_iname("testperson1")
-                    ),
-                    f_eq(
-                        "name",
-                        PartialValue::new_iname("testperson2")
-                    ),
-                ]))
-                )
+                DeleteEvent::new_internal_invalid(filter!(f_or!([
+                    f_eq("name", PartialValue::new_iname("testperson1")),
+                    f_eq("name", PartialValue::new_iname("testperson2")),
+                ])))
             };
             assert!(server_txn.delete(&de_sin).is_ok());
 

@@ -149,7 +149,6 @@ impl State {
                     state = State::Tombstone(attrs.clone());
                 }
 
-
                 // ==============================
                 // Invalid States
                 /*
@@ -167,8 +166,7 @@ impl State {
                 | (State::Recycled(_), Transition::ModifyPresent(_, _))
                 | (State::Tombstone(_), _)
                 */
-                (s, t)
-                => {
+                (s, t) => {
                     warn!("{} + {} -> REJECTING", s, t);
                     return Err(state);
                 }
@@ -272,9 +270,7 @@ impl EntryChangelog {
             .changes
             .get_mut(cid)
             .expect("Memory corruption, change must exist");
-        change
-            .s
-            .push(Transition::Recycle);
+        change.s.push(Transition::Recycle);
     }
 
     pub fn revive(&mut self, cid: &Cid) {
@@ -286,9 +282,7 @@ impl EntryChangelog {
             .changes
             .get_mut(cid)
             .expect("Memory corruption, change must exist");
-        change
-            .s
-            .push(Transition::Revive);
+        change.s.push(Transition::Revive);
     }
 
     pub fn tombstone(&mut self, cid: &Cid, attrs: Eattrs) {
@@ -300,11 +294,8 @@ impl EntryChangelog {
             .changes
             .get_mut(cid)
             .expect("Memory corruption, change must exist");
-        change
-            .s
-            .push(Transition::Tombstone(attrs));
+        change.s.push(Transition::Tombstone(attrs));
     }
-
 
     /// Replay our changes from and including the replay Cid, up to the latest point
     /// in time. We also return a vector of *rejected* Cid's showing what is in the
@@ -343,8 +334,7 @@ impl EntryChangelog {
                         }
                         State::Live(ref mut attrs)
                         | State::Recycled(ref mut attrs)
-                        | State::Tombstone(ref mut attrs)
-                        => {
+                        | State::Tombstone(ref mut attrs) => {
                             let cv = vs_cid![change_cid.clone()];
                             let _ = attrs.insert(AttrString::from("last_modified_cid"), cv);
                         }
@@ -386,9 +376,7 @@ impl EntryChangelog {
                     trace!(?rejected);
 
                     match entry_state {
-                        State::Live(attrs)
-                        | State::Recycled(attrs)
-                        | State::Tombstone(attrs) => {
+                        State::Live(attrs) | State::Recycled(attrs) | State::Tombstone(attrs) => {
                             if compare_attrs(&attrs, expected_attrs) {
                                 // valid
                                 trace!("changelog is synchronised");

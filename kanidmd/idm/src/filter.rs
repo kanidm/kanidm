@@ -1326,12 +1326,12 @@ impl FilterResolved {
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;
+    use crate::event::DeleteEvent;
     use crate::filter::{Filter, FilterInvalid, FILTER_DEPTH_MAX};
     use crate::prelude::*;
     use std::cmp::{Ordering, PartialOrd};
     use std::collections::BTreeSet;
     use std::time::Duration;
-    use crate::event::DeleteEvent;
 
     use kanidm_proto::v1::Filter as ProtoFilter;
     use ldap3_proto::simple::LdapFilter;
@@ -1834,14 +1834,10 @@ mod tests {
             assert!(cr.is_ok());
 
             let de_sin = unsafe {
-                DeleteEvent::new_internal_invalid(filter!(
-                f_or!([
-                    f_eq(
-                        "name",
-                        PartialValue::new_iname("testperson3")
-                    )
-                ]))
-                )
+                DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+                    "name",
+                    PartialValue::new_iname("testperson3")
+                )])))
             };
             assert!(server_txn.delete(&de_sin).is_ok());
 
