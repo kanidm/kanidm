@@ -1689,7 +1689,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&wre.ident.origin).into();
         let label = wre.label.clone();
 
-        let (session, mfa_reg_next) = MfaRegSession::webauthn_new(origin, account, label, self.webauthn)?;
+        let (session, mfa_reg_next) =
+            MfaRegSession::webauthn_new(origin, account, label, self.webauthn)?;
 
         let next = mfa_reg_next.to_proto(sessionid);
 

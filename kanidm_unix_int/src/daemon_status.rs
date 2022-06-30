@@ -20,6 +20,7 @@ use std::path::PathBuf;
 // use futures::executor::block_on;
 
 use kanidm_unix_common::client_sync::call_daemon_blocking;
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
@@ -34,7 +35,7 @@ fn main() {
 
     trace!("Starting cache status tool ...");
 
-    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd")
+    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
     {
         Ok(c) => c,
         Err(_e) => {

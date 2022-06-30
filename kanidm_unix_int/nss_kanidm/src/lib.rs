@@ -16,6 +16,7 @@ extern crate libnss;
 extern crate lazy_static;
 
 use kanidm_unix_common::client_sync::call_daemon_blocking;
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
 
@@ -29,7 +30,7 @@ libnss_passwd_hooks!(kanidm, KanidmPasswd);
 impl PasswdHooks for KanidmPasswd {
     fn get_all_entries() -> Response<Vec<Passwd>> {
         let cfg =
-            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+            match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH) {
                 Ok(c) => c,
                 Err(_) => {
                     return Response::Unavail;
@@ -47,7 +48,7 @@ impl PasswdHooks for KanidmPasswd {
 
     fn get_entry_by_uid(uid: libc::uid_t) -> Response<Passwd> {
         let cfg =
-            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+            match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH) {
                 Ok(c) => c,
                 Err(_) => {
                     return Response::Unavail;
@@ -67,7 +68,7 @@ impl PasswdHooks for KanidmPasswd {
 
     fn get_entry_by_name(name: String) -> Response<Passwd> {
         let cfg =
-            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+            match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH) {
                 Ok(c) => c,
                 Err(_) => {
                     return Response::Unavail;
@@ -92,7 +93,7 @@ libnss_group_hooks!(kanidm, KanidmGroup);
 impl GroupHooks for KanidmGroup {
     fn get_all_entries() -> Response<Vec<Group>> {
         let cfg =
-            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+            match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH) {
                 Ok(c) => c,
                 Err(_) => {
                     return Response::Unavail;
@@ -110,7 +111,7 @@ impl GroupHooks for KanidmGroup {
 
     fn get_entry_by_gid(gid: libc::gid_t) -> Response<Group> {
         let cfg =
-            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+            match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH) {
                 Ok(c) => c,
                 Err(_) => {
                     return Response::Unavail;
@@ -130,7 +131,7 @@ impl GroupHooks for KanidmGroup {
 
     fn get_entry_by_name(name: String) -> Response<Group> {
         let cfg =
-            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+            match KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH) {
                 Ok(c) => c,
                 Err(_) => {
                     return Response::Unavail;
