@@ -431,17 +431,20 @@ pub fn domain_display_set_core(config: &Configuration, new_display_name: &str) {
         }
     }
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
-    let r = qs_write.set_domain_display_name(new_display_name)
-    .and_then(|_| qs_write.commit());
+    let r = qs_write
+        .set_domain_display_name(new_display_name)
+        .and_then(|_| qs_write.commit());
 
     match r {
         Ok(_) => info!("Domain Display Name Successfully set!"),
         Err(e) => {
-            error!("Domain Display Name Change Failed - Rollback has occured: {:?}", e);
+            error!(
+                "Domain Display Name Change Failed - Rollback has occured: {:?}",
+                e
+            );
             std::process::exit(1);
         }
     };
-
 }
 
 pub fn domain_rename_core(config: &Configuration) {
@@ -481,7 +484,11 @@ pub fn domain_rename_core(config: &Configuration) {
                 admin_info!("Domain name not changing, stopping.");
                 return;
             }
-            admin_debug!("Domain name is changing from {:?} to {:?}", old_domain_name, new_domain_name);
+            admin_debug!(
+                "Domain name is changing from {:?} to {:?}",
+                old_domain_name,
+                new_domain_name
+            );
         }
         Err(e) => {
             admin_error!("Failed to query domain name, quitting! -> {:?}", e);

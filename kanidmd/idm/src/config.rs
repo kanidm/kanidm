@@ -100,7 +100,7 @@ pub struct Configuration {
 impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "address: {}, ", self.address)
-        .and_then(|_| { write!(f, "domain: {}, ", self.domain )})
+            .and_then(|_| write!(f, "domain: {}, ", self.domain))
             .and_then(|_| match &self.ldapaddress {
                 Some(la) => write!(f, "ldap address: {}, ", la),
                 None => write!(f, "ldap address: disabled, "),

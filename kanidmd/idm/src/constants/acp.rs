@@ -973,6 +973,7 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
             "name",
             "uuid",
             "domain_name",
+            "domain_display_name",
             "domain_ssid",
             "domain_uuid",
             "fernet_private_key_str",

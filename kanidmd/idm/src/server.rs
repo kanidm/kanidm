@@ -51,7 +51,8 @@ lazy_static! {
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
     static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
-    static ref PVUUID_DOMAIN_DISPLAY_NAME: PartialValue = PartialValue::new_uuid(UUID_DOMAIN_DISPLAY_NAME);
+    static ref PVUUID_DOMAIN_DISPLAY_NAME: PartialValue =
+        PartialValue::new_uuid(UUID_DOMAIN_DISPLAY_NAME);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
@@ -737,7 +738,8 @@ pub trait QueryServerTransaction<'a> {
     /// then throw the error and give up.
     fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
         admin_debug!("Attempting to pull domain_display_name from database");
-        let display_name_value = self.internal_search_uuid(&UUID_DOMAIN_DISPLAY_NAME)
+        let display_name_value = self
+            .internal_search_uuid(&UUID_DOMAIN_DISPLAY_NAME)
             .and_then(|e| {
                 trace!(?e);
                 e.get_ava_single_utf8("domain_display_name")
@@ -747,17 +749,21 @@ pub trait QueryServerTransaction<'a> {
 
         match display_name_value {
             Ok(value) => {
-                admin_debug!("Success, we got the domain_display_name value from the database: {}", value);
+                admin_debug!(
+                    "Success, we got the domain_display_name value from the database: {}",
+                    value
+                );
                 Ok(value)
             }
             Err(error) => {
-                admin_error!(?error, "Error getting domain_display_name, falling back to domain_name");
+                admin_error!(
+                    ?error,
+                    "Error getting domain_display_name, falling back to domain_name"
+                );
                 self.get_db_domain_name()
             }
         }
-
     }
-
 
     fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
@@ -854,12 +860,13 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.d_info.d_name
     }
 
+    /// Gets the domain display name.
+    /// [self.get_db_domain_display_name] fails back to pulling the domain
+    /// name from the database, if that fails it's all gone bad.
     fn get_domain_display_name(&self) -> String {
-        // TODO: lol this is terrible
-        // "filler text from qst qsrt"
-        self.get_db_domain_display_name().unwrap()
+        self.get_db_domain_display_name()
+            .expect("Failed to query domain display name from database.")
     }
-
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -954,8 +961,6 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
             }
         }
     }
-
-
 }
 
 impl QueryServer {
@@ -965,7 +970,7 @@ impl QueryServer {
             let res = (
                 wr.get_db_s_uuid(),
                 wr.get_db_d_uuid(),
-                String::from("I really need help with this, lulz") // wr.get_db_display_name(),
+                wr.get_db_display_name(),
             );
             #[allow(clippy::expect_used)]
             wr.commit()
@@ -980,13 +985,11 @@ impl QueryServer {
         debug!("Domain Name -> {:?}", domain_name);
         debug!("Domain Display Name -> {:?}", domain_display_name);
 
-        let d_info = Arc::new(
-            CowCell::new(
-                DomainInfo {
-                    d_uuid,
-                    d_name: domain_name.clone(),
-                    d_display: domain_display_name,
-                }));
+        let d_info = Arc::new(CowCell::new(DomainInfo {
+            d_uuid,
+            d_name: domain_name,
+            d_display: domain_display_name,
+        }));
 
         // log_event!(log, "Starting query worker ...");
         QueryServer {
@@ -1002,7 +1005,7 @@ impl QueryServer {
                     .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
                     .set_reader_quiesce(true)
                     .build()
-                    .expect("Failer to build resolve_filter_cache"),
+                    .expect("Failed to build resolve_filter_cache"),
             ),
         }
     }
@@ -1568,7 +1571,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             )]);
 
             let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-                admin_error!("Schema Violation in revive recycled modlist validate: {:?}", e);
+                admin_error!(
+                    "Schema Violation in revive recycled modlist validate: {:?}",
+                    e
+                );
                 OperationError::SchemaViolation(e)
             })?;
 
@@ -1727,7 +1733,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation in validation of modify_pre_apply {:?}", e);
+                            admin_error!(
+                                "Schema Violation in validation of modify_pre_apply {:?}",
+                                e
+                            );
                             OperationError::SchemaViolation(e)
                         })
                         .map(Entry::seal)
@@ -1898,7 +1907,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation in internal_batch_modify validate: {:?}", e);
+                            admin_error!(
+                                "Schema Violation in internal_batch_modify validate: {:?}",
+                                e
+                            );
                             OperationError::SchemaViolation(e)
                         })
                         .map(Entry::seal)
@@ -2768,12 +2780,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// activities (yet)
     pub fn set_domain_display_name(&self, new_domain_name: &str) -> Result<(), OperationError> {
         // unimplemented!("I still need to get to this - setting domain display name to {}", new_domain_name);
-        let modl = ModifyList::new_purge_and_set("domain_display_name", Value::new_iname(new_domain_name));
+        let modl =
+            ModifyList::new_purge_and_set("domain_display_name", Value::new_iname(new_domain_name));
         let udi = PVUUID_DOMAIN_INFO.clone();
         let filt = filter_all!(f_eq("uuid", udi));
         self.internal_modify(&filt, &modl)
     }
-
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.

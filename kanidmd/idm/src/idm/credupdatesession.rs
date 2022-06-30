@@ -170,10 +170,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
-                    token.to_proto(
-                        session.account.name.as_str(),
-                        session.issuer.as_str()
-                    ),
+                    token.to_proto(session.account.name.as_str(), session.issuer.as_str()),
                 ),
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
                 MfaRegState::TotpInvalidSha1(_, _) => MfaRegStateStatus::TotpInvalidSha1,
@@ -595,12 +592,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(
-            session_id,
-            Some(intent_id), account, current_time,
-        )
+        self.create_credupdate_session(session_id, Some(intent_id), account, current_time)
     }
-
 
     pub fn init_credential_update(
         &mut self,

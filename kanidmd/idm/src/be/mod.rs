@@ -1471,6 +1471,21 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
+    /// Pull domain_display_name from the database
+    pub fn get_db_display_name(&self) -> String {
+        // #[allow(clippy::expect_used)]
+        // match self
+        //     .get_idlayer()
+        //     .get_db_d_uuid()
+        //     .expect("DBLayer Error pulling Domain UUID!!!")
+        // {
+        //     Some(d_uuid) => d_uuid,
+        //     None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),
+        // }
+        // TODO: #860 pull this from the DB
+        String::from("this is a placeholder lololol")
+    }
+
     pub fn set_db_ts_max(&self, ts: Duration) -> Result<(), OperationError> {
         self.get_idlayer().set_db_ts_max(ts)
     }
