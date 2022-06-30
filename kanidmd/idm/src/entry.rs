@@ -342,7 +342,7 @@ impl Entry<EntryInit, EntryNew> {
                             vs.into_iter().map(|v| Value::new_iutf8(&v))
                         )
                     }
-                    "name" | "domain_name" | "domain_display_name" => {
+                    "name" | "domain_name" => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_iname(&v))
                         )
@@ -420,7 +420,7 @@ impl Entry<EntryInit, EntryNew> {
                         )
                         )
                     }
-                    "displayname" | "description" => {
+                    "displayname" | "description" | "domain_display_name" => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| Value::new_utf8(v))
                         )

@@ -59,6 +59,7 @@ lazy_static! {
 struct DomainInfo {
     d_uuid: Uuid,
     d_name: String,
+    d_display: String,
 }
 
 #[derive(Clone)]
@@ -739,7 +740,7 @@ pub trait QueryServerTransaction<'a> {
         let display_name_value = self.internal_search_uuid(&UUID_DOMAIN_DISPLAY_NAME)
             .and_then(|e| {
                 trace!(?e);
-                e.get_ava_single_iname("domain_display_name")
+                e.get_ava_single_utf8("domain_display_name")
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             });
@@ -942,9 +943,16 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.d_info.d_name
     }
 
+    /// Pulls the domain display name from the DB
     fn get_domain_display_name(&self) -> String {
         // TODO: lol this is probably terrible
-        String::from("filler text from server.rs qst qstwt")
+        match self.get_db_domain_display_name() {
+            Ok(value) => value,
+            Err(err) => {
+                admin_error!("Failed to get_db_domain_display_name: {:?}", err);
+                String::from("Kanidm")
+            }
+        }
     }
 
 
@@ -952,9 +960,13 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
-        let (s_uuid, d_uuid) = {
+        let (s_uuid, d_uuid, domain_display_name) = {
             let wr = be.write();
-            let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
+            let res = (
+                wr.get_db_s_uuid(),
+                wr.get_db_d_uuid(),
+                String::from("I really need help with this, lulz") // wr.get_db_display_name(),
+            );
             #[allow(clippy::expect_used)]
             wr.commit()
                 .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
@@ -966,8 +978,15 @@ impl QueryServer {
         debug!("Server UUID -> {:?}", s_uuid);
         debug!("Domain UUID -> {:?}", d_uuid);
         debug!("Domain Name -> {:?}", domain_name);
+        debug!("Domain Display Name -> {:?}", domain_display_name);
 
-        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name: domain_name }));
+        let d_info = Arc::new(
+            CowCell::new(
+                DomainInfo {
+                    d_uuid,
+                    d_name: domain_name.clone(),
+                    d_display: domain_display_name,
+                }));
 
         // log_event!(log, "Starting query worker ...");
         QueryServer {
@@ -2316,6 +2335,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
 
+        // admin_debug!("Dumping schemas: {:?}", entries);
+
         // internal_migrate_or_create.
         let r: Result<_, _> = entries.into_iter().try_for_each(|e| {
             trace!(?e, "init schema entry");
@@ -2712,14 +2733,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    /// Pulls the domain name from the database and updates the DomainInfo data in memory
     fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         spanned!("server::reload_domain_info", {
             let domain_name = self.get_db_domain_name()?;
+            let domain_display_name = self.get_domain_display_name();
 
             let mut_d_info = self.d_info.get_mut();
             if mut_d_info.d_name != domain_name {
                 admin_warn!(
-                    "Using database configured domain name {} - was {}",
+                    "Using domain name from the database {} - was {} in memory",
                     domain_name,
                     mut_d_info.d_name,
                 );
@@ -2727,6 +2750,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     "If you think this is an error, see https://kanidm.github.io/kanidm/stable/administrivia.html#rename-the-domain"
                 );
                 mut_d_info.d_name = domain_name;
+            }
+            if mut_d_info.d_display != domain_display_name {
+                admin_debug!(
+                    "Updating in-memory cache of Domain Display Name to {} - was {}",
+                    domain_display_name,
+                    mut_d_info.d_display,
+                );
+                mut_d_info.d_display = domain_display_name;
             }
             Ok(())
         })

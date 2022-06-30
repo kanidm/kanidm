@@ -75,7 +75,7 @@ impl fmt::Debug for MfaRegState {
 
 // TODO: what's CredentialUpdateSession used for?
 pub(crate) struct CredentialUpdateSession {
-    domain_display_name: String,
+    issuer: String,
     // Current credentials - these are on the Account!
     account: Account,
     //
@@ -172,7 +172,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
                     token.to_proto(
                         session.account.name.as_str(),
-                        session.domain_display_name.as_str()
+                        session.issuer.as_str()
                     ),
                 ),
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
@@ -294,7 +294,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn create_credupdate_session(
         &mut self,
-        issuer: String,
         sessionid: Uuid,
         intent_token_id: Option<String>,
         account: Account,
@@ -305,7 +304,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // - store account policy (if present)
         let session = CredentialUpdateSession {
             // TODO: #860 - here?
-            domain_display_name: issuer,
+            issuer: self.qs_write.get_domain_display_name(),
             account,
             intent_token_id,
             primary,
@@ -597,7 +596,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Okay, good to exchange.
 
         self.create_credupdate_session(
-            String::from("issuer goes here"),
             session_id,
             Some(intent_id), account, current_time,
         )
@@ -612,15 +610,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         spanned!("idm::server::credupdatesession<Init>", {
             let account = self.validate_init_credential_update(event.target, &event.ident)?;
             // ==== AUTHORISATION CHECKED ===
-            // TODO: #860 we have access to the qs here
-            let issuer = String::from("issuer goes here");
-
             // This is the expiry time, so that our cleanup task can "purge up to now" rather
             // than needing to do calculations.
             let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
             // Build the cred update session.
-            self.create_credupdate_session(issuer, sessionid, None, account, ct)
+            self.create_credupdate_session(sessionid, None, account, ct)
         })
     }
 

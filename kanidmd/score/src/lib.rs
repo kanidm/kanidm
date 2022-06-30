@@ -481,6 +481,7 @@ pub fn domain_rename_core(config: &Configuration) {
                 admin_info!("Domain name not changing, stopping.");
                 return;
             }
+            admin_debug!("Domain name is changing from {:?} to {:?}", old_domain_name, new_domain_name);
         }
         Err(e) => {
             admin_error!("Failed to query domain name, quitting! -> {:?}", e);

@@ -226,8 +226,7 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
       "The user-facing display name of the Kanidm domain."
     ],
     "index": [
-      "EQUALITY",
-      "PRESENCE"
+      "EQUALITY"
     ],
     "unique": [
       "true"
@@ -239,13 +238,14 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
       "domain_display_name"
     ],
     "syntax": [
-      "UTF8STRING_INAME"
+      "UTF8STRING"
     ],
     "uuid": [
       "00000000-0000-0000-0000-ffffff000042"
     ]
   }
 }"#;
+
 pub const JSON_SCHEMA_ATTR_DOMAIN_UUID: &str = r#"{
     "attrs": {
       "class": [

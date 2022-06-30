@@ -44,11 +44,11 @@ impl Plugin for Domain {
                     e.set_ava("domain_name", once(n));
                     trace!("plugin_domain: Applying domain_name transform");
                 }
+                // create the domain_display_name if it's missing
                 if !e.attribute_pres("domain_display_name") {
-                    let n = Value::new_iname(qs.get_domain_name());
+                    let n = Value::new_utf8(qs.get_domain_name().into());
+                    security_info!("plugin_domain: setting default domain_display_name to {:?}", n);
                     e.set_ava("domain_display_name", once(n));
-                    trace!("plugin_domain: setting default domain_display_name");
-                    eprintln!("plugin_domain: setting default domain_display_name")
                 }
                 if !e.attribute_pres("fernet_private_key_str") {
                     security_info!("regenerating domain token encryption key");
@@ -76,7 +76,7 @@ impl Plugin for Domain {
     }
 
     fn pre_modify(
-        _qs: &QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -84,6 +84,12 @@ impl Plugin for Domain {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
+                // create the domain_display_name if it's missing
+                if !e.attribute_pres("domain_display_name") {
+                    let n = Value::new_utf8(qs.get_domain_name().into());
+                    security_info!("plugin_domain: pre_modify setting default domain_display_name to {:?}", n);
+                    e.set_ava("domain_display_name", once(n));
+                }
                 if !e.attribute_pres("fernet_private_key_str") {
                     security_info!("regenerating domain token encryption key");
                     let k = fernet::Fernet::generate_key();
