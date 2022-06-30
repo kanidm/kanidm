@@ -27,6 +27,8 @@ impl FromStr for ConsoleOutputMode {
     ///
     /// let mode: ConsoleOutputMode = "🦀".into();
     /// assert_eq!(ConsoleOutputMode::Text, mode);
+    /// let mode: ConsoleOutputMode = "".into();
+    /// assert_eq!(ConsoleOutputMode::Text, mode);
     ///
     /// let mode: ConsoleOutputMode = "json".into();
     /// assert_eq!(ConsoleOutputMode::JSON, mode);
@@ -82,7 +84,7 @@ impl From<String> for ConsoleOutputMode {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum MessageStatus {
     Failure,
@@ -125,6 +127,24 @@ impl Default for AccountChangeMessage {
 }
 
 /// This outputs in either JSON or Text depending on the output_mode setting
+/// ```
+/// use std::fmt::format;
+/// use kanidm_proto::messages::*;
+/// let mut msg = AccountChangeMessage::default();
+/// msg.action=String::from("cake_eating");
+/// msg.src_user=String::from("Kani");
+/// msg.dest_user=String::from("Krabby");
+/// msg.result=String::from("It was amazing");
+/// assert_eq!(msg.status, MessageStatus::Success);
+///
+/// let expected_result = "success - cake_eating for user Krabby: It was amazing";
+/// assert_eq!(format!("{}", msg), expected_result);
+///
+/// msg.output_mode = ConsoleOutputMode::JSON;
+/// let expected_result = "{\"action\":\"cake_eating\",\"result\":\"It was amazing\",\"status\":\"success\",\"src_user\":\"Kani\",\"dest_user\":\"Krabby\"}";
+/// assert_eq!(format!("{}", msg), expected_result);
+///
+/// ```
 impl fmt::Display for AccountChangeMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.output_mode {
@@ -169,15 +189,16 @@ impl Default for BasicMessage {
 /// use std::fmt::format;
 /// use kanidm_proto::messages::*;
 /// let mut msg = BasicMessage::default();
-/// msg.action="cake_eating";
-/// msg.result="It was amazing";
+/// msg.action=String::from("cake_eating");
+/// msg.result=String::from("It was amazing");
 /// assert_eq!(msg.status, MessageStatus::Success);
 ///
 /// let expected_result = "success - cake_eating: It was amazing";
 /// assert_eq!(format!("{}", msg), expected_result);
-/// // msg.output_mode = ConsoleOutputMode::JSON;
-/// // let expected_result = "success - cake_eating: It was amazing";
-/// // assert_eq!(format("{}", msg), expected_result);
+///
+/// msg.output_mode = ConsoleOutputMode::JSON;
+/// let expected_result = "{\"action\":\"cake_eating\",\"result\":\"It was amazing\",\"status\":\"success\"}";
+/// assert_eq!(format!("{}", msg), expected_result);
 ///
 /// ```
 impl fmt::Display for BasicMessage {
