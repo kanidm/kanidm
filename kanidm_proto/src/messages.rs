@@ -100,8 +100,6 @@ impl fmt::Display for MessageStatus {
     }
 }
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AccountChangeMessage {
     #[serde(skip_serializing)]
@@ -162,8 +160,6 @@ impl fmt::Display for AccountChangeMessage {
     }
 }
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BasicMessage {
     #[serde(skip_serializing)]
@@ -209,11 +205,9 @@ impl fmt::Display for BasicMessage {
                 "{}",
                 serde_json::to_string(self).unwrap_or(format!("{:?}", self)) // if it fails to JSON serialize, just debug-dump it
             ),
-            ConsoleOutputMode::Text => write!(
-                f,
-                "{} - {}: {}",
-                self.status, self.action, self.result,
-            ),
+            ConsoleOutputMode::Text => {
+                write!(f, "{} - {}: {}", self.status, self.action, self.result,)
+            }
         }
     }
 }
