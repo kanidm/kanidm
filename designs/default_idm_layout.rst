@@ -2,13 +2,12 @@
 Default IDM Layout
 ------------------
 
-It's important we have a good default IDM entry layout, as this will serve as examples and
-guidance for many users. We also need to consider that the defaults may be ignored also, but
-many users will consume them by default.
+It's important we have a good default IDM entry layout, as this will serve as
+examples and guidance for many users. We also need to consider that the defaults
+may be ignored, but many users will consume them by default.
 
 Additionally, we also need to think carefully about the roles and interactions with the
-default entries, and how people will deploy and interact with software like this. This document
-is to discuss the roles and their requirements, rather than the absolute details of the implementation.
+default entries, and how people will deploy and interact with software like this. This document is to discuss the roles and their requirements, rather than the absolute details of the implementation.
 
 Privileged Groups
 -----------------
