@@ -42,7 +42,11 @@ struct RecoverAccountOpt {
 #[derive(Debug, Subcommand)]
 enum SystemSettingsCmds {
     #[clap(name="domain_display_name")]
-    SetDomainDisplayName(SetDomainDisplayNameOpt)
+    /// Set the domain's human-facing display name
+    SetDomainDisplayName(SetDomainDisplayNameOpt),
+    #[clap(name = "domain_name")]
+    /// Change the IDM domain name
+    DomainChange(CommonOpt),
 }
 
 #[derive(Debug, Subcommand)]
@@ -145,9 +149,6 @@ enum KanidmdOpt {
     // ResetServerId(CommonOpt),
 
 
-    #[clap(name = "domain_name_change")]
-    /// Change the IDM domain name
-    DomainChange(CommonOpt),
     #[clap(name = "db_scan")]
     /// Inspect the internal content of the database datastructures.
     DbScan {
