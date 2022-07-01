@@ -1,6 +1,8 @@
+mod middleware;
 mod oauth2;
 mod v1;
 
+use self::middleware::*;
 use self::oauth2::*;
 use self::v1::*;
 
@@ -32,6 +34,8 @@ pub struct AppState {
     // Store the token management parts.
     pub jws_signer: std::sync::Arc<JwsSigner>,
     pub jws_validator: std::sync::Arc<JwsValidator>,
+    // Domain Display Name, this ... could be an issue?
+    pub domain_display_name: String,
 }
 
 /// This is for the tide_compression middleware so that we only compress certain content types.
@@ -182,17 +186,22 @@ pub fn to_tide_response<T: Serialize>(
 }
 
 // Handle the various end points we need to expose
-async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
+async fn index_view(req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
-
+    eprintln!(
+        "index_view domain_display_name {}",
+        req.state().domain_display_name
+    );
     res.set_content_type("text/html;charset=utf-8");
+
+    // TODO: #860 pull the domain display name and write it here
     res.set_body(r#"
     <!DOCTYPE html>
     <html lang="en">
         <head>
             <meta charset="utf-8"/>
             <meta name="viewport" content="width=device-width">
-            <title>Kanidm</title>
+            <title>===DOMAIN_DISPLAY_NAME===</title>
             <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
             <link rel="stylesheet" href="/pkg/style.css"/>
             <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
@@ -244,6 +253,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Cacheable
 }
 
 #[derive(Default)]
+/// Sets Cache-Control headers on static content endpoints
 struct StaticContentMiddleware;
 
 #[async_trait::async_trait]
@@ -260,6 +270,12 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticCon
 }
 
 #[derive(Default)]
+/// Adds the folloing headers to responses
+/// - x-frame-options
+/// - x-content-type-options
+/// - cross-origin-resource-policy
+/// - cross-origin-embedder-policy
+/// - cross-origin-opener-policy
 struct StrictResponseMiddleware;
 
 #[async_trait::async_trait]
@@ -270,15 +286,18 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRes
         next: tide::Next<'_, State>,
     ) -> tide::Result {
         let mut response = next.run(request).await;
-        response.insert_header("x-frame-options", "deny");
-        response.insert_header("x-content-type-options", "nosniff");
-        response.insert_header("cross-origin-resource-policy", "same-origin");
         response.insert_header("cross-origin-embedder-policy", "require-corp");
         response.insert_header("cross-origin-opener-policy", "same-origin");
+        response.insert_header("cross-origin-resource-policy", "same-origin");
+        response.insert_header("x-content-type-options", "nosniff");
+        response.insert_header("x-frame-options", "deny");
         Ok(response)
     }
 }
 #[derive(Default)]
+/// This tide MiddleWare adds headers like Content-Security-Policy
+/// and similar families. If it keeps adding more things then
+/// probably rename the middlewre :)
 struct UIContentSecurityPolicyResponseMiddleware {
     // The sha384 hash of /pkg/wasmloader.js
     pub integrity_wasmloader: String,
@@ -296,13 +315,12 @@ impl UIContentSecurityPolicyResponseMiddleware {
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
     for UIContentSecurityPolicyResponseMiddleware
 {
+    // This updates the UI body with the integrity hash value for the wasmloader.js file, and adds content-security-policy headers.
     async fn handle(
         &self,
         request: tide::Request<State>,
         next: tide::Next<'_, State>,
     ) -> tide::Result {
-        // This updates the UI body with the integrity hash value for the wasmloader.js file, and adds content-security-policy headers.
-
         let mut response = next.run(request).await;
 
         // grab the body we're intending to return at this point
@@ -417,6 +435,7 @@ pub fn create_https_server(
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
+    domain_display_name: String,
 ) -> Result<(), ()> {
     let jws_validator = jws_signer.get_validator().map_err(|e| {
         error!(?e, "Failed to get jws validator");
@@ -431,6 +450,7 @@ pub fn create_https_server(
         qe_r_ref,
         jws_signer,
         jws_validator,
+        domain_display_name: domain_display_name.to_owned(),
     });
 
     // tide::log::with_level(tide::log::LevelFilter::Debug);
@@ -488,9 +508,23 @@ pub fn create_https_server(
 
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
-        static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
-            generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
-                .unwrap(),
+
+        // if we've configured TLS, enable the CSP header middleware
+        match opt_tls_params {
+            Some(_) => {
+                static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
+                    generate_integrity_hash(
+                        env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js",
+                    )
+                    .unwrap(),
+                ));
+                debug!("Adding Content-Security-Policy Middleware")
+            }
+            _ => debug!("Skipping Content-Security-Policy Middleware as TLS params not set"),
+        };
+        // Handles the domain_display_name rewrites.
+        static_tserver.with(KanidmDisplayNameMiddleware::new(
+            domain_display_name.to_owned(),
         ));
         // The compression middleware needs to be the last one added before routes
         static_tserver.with(compress_middleware.clone());

@@ -51,8 +51,8 @@ lazy_static! {
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
     static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
-    static ref PVUUID_DOMAIN_DISPLAY_NAME: PartialValue =
-        PartialValue::new_uuid(UUID_DOMAIN_DISPLAY_NAME);
+    static ref PVUUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: PartialValue =
+        PartialValue::new_uuid(UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
@@ -145,6 +145,10 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_uuid(&self) -> Uuid;
 
     fn get_domain_name(&self) -> &str;
+
+    /// Pulls the domain display name from the DB
+    /// [self.get_db_domain_display_name] fails back to pulling the domain
+    /// name from the database, if that fails it's all gone bad.
     fn get_domain_display_name(&self) -> String;
 
     #[allow(clippy::mut_from_ref)]
@@ -737,9 +741,11 @@ pub trait QueryServerTransaction<'a> {
     /// then pull the domain_name because we fall back to that. If that fails
     /// then throw the error and give up.
     fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
-        admin_debug!("Attempting to pull domain_display_name from database");
+        admin_debug!(
+            "qst get_db_domain_display_name Attempting to pull domain_display_name from database"
+        );
         let display_name_value = self
-            .internal_search_uuid(&UUID_DOMAIN_DISPLAY_NAME)
+            .internal_search_uuid(&UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME)
             .and_then(|e| {
                 trace!(?e);
                 e.get_ava_single_utf8("domain_display_name")
@@ -750,7 +756,7 @@ pub trait QueryServerTransaction<'a> {
         match display_name_value {
             Ok(value) => {
                 admin_debug!(
-                    "Success, we got the domain_display_name value from the database: {}",
+                    "qst get_db_domain_display_name Success, we got the domain_display_name value from the database: {}",
                     value
                 );
                 Ok(value)
@@ -760,7 +766,11 @@ pub trait QueryServerTransaction<'a> {
                     ?error,
                     "Error getting domain_display_name, falling back to domain_name"
                 );
-                self.get_db_domain_name()
+                // prefix the domain name with Kanidm
+                match self.get_db_domain_name() {
+                    Ok(domain) => Ok(format!("Kanidm {}", domain)),
+                    Err(e) => Err(e),
+                }
             }
         }
     }
@@ -860,12 +870,18 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.d_info.d_name
     }
 
-    /// Gets the domain display name.
+    /// Pulls the domain display name from the DB
     /// [self.get_db_domain_display_name] fails back to pulling the domain
     /// name from the database, if that fails it's all gone bad.
     fn get_domain_display_name(&self) -> String {
-        self.get_db_domain_display_name()
-            .expect("Failed to query domain display name from database.")
+        // TODO: lol this is really terrible
+        match self.get_db_domain_display_name() {
+            Ok(value) => value,
+            Err(err) => {
+                admin_error!("Failed to get_db_domain_display_name: {:?}", err);
+                format!("Kanidm {}", self.get_domain_name())
+            }
+        }
     }
 }
 
@@ -951,13 +967,15 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     }
 
     /// Pulls the domain display name from the DB
+    /// [self.get_db_domain_display_name] fails back to pulling the domain
+    /// name from the database, if that fails it's all gone bad.
     fn get_domain_display_name(&self) -> String {
-        // TODO: lol this is probably terrible
+        // TODO: lol this is really terrible
         match self.get_db_domain_display_name() {
             Ok(value) => value,
             Err(err) => {
                 admin_error!("Failed to get_db_domain_display_name: {:?}", err);
-                String::from("Kanidm")
+                format!("Kanidm {}", self.get_domain_name())
             }
         }
     }

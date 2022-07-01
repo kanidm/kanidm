@@ -44,7 +44,7 @@ use std::convert::TryFrom;
 
 pub struct QueryServerReadV1 {
     pub log_level: Option<u32>,
-    idms: Arc<IdmServer>,
+    pub idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
 }
 

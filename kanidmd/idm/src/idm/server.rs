@@ -300,7 +300,7 @@ impl IdmServer {
         }
     }
 
-    #[cfg(test)]
+    // #[cfg(test)]
     pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
         task::block_on(self.proxy_read_async())
     }
@@ -317,6 +317,14 @@ impl IdmServer {
     #[cfg(test)]
     pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
         task::block_on(self.proxy_write_async(ts))
+    }
+
+    /// Pulls the domain_display_name from the db
+    pub fn get_domain_display_name(&self) -> String {
+        self.proxy_read()
+            .qs_read
+            .get_db_domain_display_name()
+            .expect("Failed to pull domain_display_name from database")
     }
 
     pub async fn proxy_write_async(&self, ts: Duration) -> IdmServerProxyWriteTransaction<'_> {

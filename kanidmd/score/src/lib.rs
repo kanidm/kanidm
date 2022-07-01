@@ -700,6 +700,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
         }
     };
 
+    let domain_display_name = format!("{}", &idms.get_domain_display_name());
     // Arc the idms and ldap
     let idms_arc = Arc::new(idms);
     let ldap_arc = Arc::new(ldap);
@@ -769,6 +770,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
             status_ref,
             server_write_ref,
             server_read_ref,
+            domain_display_name,
         )?;
 
         admin_info!("ready to rock! 🪨 ");

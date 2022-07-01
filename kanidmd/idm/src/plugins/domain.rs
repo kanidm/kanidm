@@ -46,9 +46,10 @@ impl Plugin for Domain {
                 }
                 // create the domain_display_name if it's missing
                 if !e.attribute_pres("domain_display_name") {
-                    let n = Value::new_utf8(qs.get_domain_name().into());
-                    security_info!("plugin_domain: setting default domain_display_name to {:?}", n);
-                    e.set_ava("domain_display_name", once(n));
+                    let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()).into());
+                    security_info!("plugin_domain: setting default domain_display_name to {:?}", domain_display_name);
+
+                    e.set_ava("domain_display_name", once(domain_display_name));
                 }
                 if !e.attribute_pres("fernet_private_key_str") {
                     security_info!("regenerating domain token encryption key");
