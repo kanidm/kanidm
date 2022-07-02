@@ -1724,7 +1724,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Pre mod plugins
             // We should probably supply the pre-post cands here.
             Plugins::run_pre_modify(self, &mut candidates, me).map_err(|e| {
-                admin_error!("Modify operation failed (plugin), {:?}", e);
+                admin_error!("Pre-Modify operation failed (plugin), {:?}", e);
                 e
             })?;
 
@@ -1781,7 +1781,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // memberOf actually wants the pre cand list and the norm_cand list to see what
             // changed. Could be optimised, but this is correct still ...
             Plugins::run_post_modify(self, &pre_candidates, &norm_cand, me).map_err(|e| {
-                admin_error!("Modify operation failed (plugin), {:?}", e);
+                admin_error!("Post-Modify operation failed (plugin), {:?}", e);
                 e
             })?;
 

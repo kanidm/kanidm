@@ -474,10 +474,21 @@ pub enum Oauth2Opt {
     DisableLegacyCrypto(Named),
 }
 
+#[derive(Args, Debug)]
+pub struct OptSetDomainDisplayName{
+    #[clap(flatten)]
+    copt: CommonOpt,
+    #[clap(name = "new_display_Name")]
+    new_display_name: String,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {
+    #[clap[name = "set_domain_display_name"]]
+    /// Set the domain display name
+    SetDomainDisplayName(OptSetDomainDisplayName),
     #[clap(name = "show")]
-    /// Show information about this systems domain
+    /// Show information about this system's domain
     Show(CommonOpt),
     #[clap(name = "reset_token_key")]
     /// Reset this domain token signing key. This will cause all user sessions to be

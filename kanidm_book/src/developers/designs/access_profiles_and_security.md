@@ -314,18 +314,18 @@ A complete schema would be:
 
 ### Attributes
 
-| Name                   | Single/Multi | Type              |
-| ---                    | ---          | ---               |
-| acp_allow              | single value | bool              |
-| acp_enable             | single value | bool              |
-| acp_receiver           | single value | filter            |
-| acp_targetscope        | single value | filter            |
-| acp_search_attr        | multi value  | utf8 case insense |
-| acp_create_class       | multi value  | utf8 case insense |
-| acp_create_attr        | multi value  | utf8 case insense |
-| acp_modify_removedattr | multi value  | utf8 case insense |
-| acp_modify_presentattr | multi value  | utf8 case insense |
-| acp_modify_class       | multi value  | utf8 case insense |
+| Name                   | Single/Multi | Type              | Description           |
+| ---                    | ---          | ---               |                       |
+| acp_allow              | single value | bool              |                       |
+| acp_enable             | single value | bool              | This ACP is enabled   |
+| acp_receiver           | single value | filter            |  ??? |
+| acp_targetscope        | single value | filter            |  ??? |
+| acp_search_attr        | multi value  | utf8 case insense | A list of attributes that can be searched. |
+| acp_create_class       | multi value  | utf8 case insense | Object classes in which an object can be created.  | 
+| acp_create_attr        | multi value  | utf8 case insense | Attribute Entries that can be created.  | 
+| acp_modify_removedattr | multi value  | utf8 case insense | Modify if removed?                      |
+| acp_modify_presentattr | multi value  | utf8 case insense | ??? |
+| acp_modify_class       | multi value  | utf8 case insense | ??? |
 
 ### Classes
 

@@ -970,21 +970,23 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
             "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "name",
-            "uuid",
-            "domain_name",
             "domain_display_name",
+            "domain_name",
             "domain_ssid",
             "domain_uuid",
+            "es256_private_key_der",
             "fernet_private_key_str",
-            "es256_private_key_der"
+            "name",
+            "uuid"
         ],
         "acp_modify_removedattr": [
+            "domain_display_name",
             "domain_ssid",
-            "fernet_private_key_str",
-            "es256_private_key_der"
+            "es256_private_key_der",
+            "fernet_private_key_str"
         ],
         "acp_modify_presentattr": [
+            "domain_display_name",
             "domain_ssid"
         ]
     }
