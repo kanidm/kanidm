@@ -17,7 +17,7 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 use tide_openssl::TlsListener;
-
+use tide_compress::CompressMiddleware;
 use kanidm::tracing_tree::TreeMiddleware;
 use tracing::{error, info};
 
@@ -433,12 +433,23 @@ pub fn create_https_server(
         }
         info!("Web UI package path: {:?}", canonicalize(pkg_path).unwrap());
 
+        // let's build a compression middleware!
+        let compression_check_regex = regex::Regex::new(r"^(application|text)/|\+(?:json|javascript|text|xml|wasm)$")
+            .expect("regular expression defined in source code");
+
+        let compress_middleware = CompressMiddleware::builder()
+            .threshold(1024)
+            .content_type_check(Some(compression_check_regex.clone()))
+            .build();
+
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
         static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
             generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
                 .unwrap(),
         ));
+        // The compression middleware needs to be the last one added before routes
+        static_tserver.with(compress_middleware.clone());
 
         static_tserver.at("/").get(index_view);
         static_tserver.at("/ui/").get(index_view);
@@ -446,6 +457,8 @@ pub fn create_https_server(
 
         let mut static_dir_tserver = tserver.at("");
         static_dir_tserver.with(StaticContentMiddleware::default());
+        // The compression middleware needs to be the last one added before routes
+        static_dir_tserver.with(compress_middleware);
         static_dir_tserver
             .at("/pkg")
             .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
