@@ -664,7 +664,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             });
 
             if !missing_must.is_empty() {
-                eprintln!("validate: missing_must is not empty");
+                eprintln!("Validation error, at least one entry specified in schema is missing!");
                 return Err(SchemaError::MissingMustAttribute(missing_must));
             }
 

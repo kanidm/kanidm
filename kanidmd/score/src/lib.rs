@@ -392,7 +392,10 @@ pub fn vacuum_server_core(config: &Configuration) {
 }
 
 /// This'll set the domain's display name in the database
-pub fn set_domain_display_name(config: &Configuration, new_display_name: &str) {
+pub fn set_domain_display_name(
+    config: &Configuration,
+    new_display_name: &str,
+) -> Result<String, OperationError> {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -404,8 +407,8 @@ pub fn set_domain_display_name(config: &Configuration, new_display_name: &str) {
     let be = match setup_backend(config, &schema) {
         Ok(be) => be,
         Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
-            return;
+            error!("Failed to setup backend: {:?}", e);
+            return Err(e);
         }
     };
     // setup the qs - *with out* init of the migrations and schema.
@@ -413,7 +416,7 @@ pub fn set_domain_display_name(config: &Configuration, new_display_name: &str) {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server -> {:?}", e);
-            return;
+            return Err(e);
         }
     };
     // make sure we're actually changing the displayname...
@@ -422,12 +425,12 @@ pub fn set_domain_display_name(config: &Configuration, new_display_name: &str) {
             admin_info!(?old_display_name, ?new_display_name);
             if &old_display_name == &new_display_name {
                 admin_info!("Domain display name not changing, stopping.");
-                return;
+                return Ok(String::from("Domain display name not changing, stopping."));
             }
         }
         Err(e) => {
             admin_error!("Failed to query domain name, quitting! -> {:?}", e);
-            return;
+            return Err(e);
         }
     }
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
@@ -436,7 +439,10 @@ pub fn set_domain_display_name(config: &Configuration, new_display_name: &str) {
         .and_then(|_| qs_write.commit());
 
     match r {
-        Ok(_) => info!("Domain Display Name Successfully set!"),
+        Ok(_) => {
+            info!("Domain Display Name Successfully set!");
+            Ok(String::from("Success"))
+        }
         Err(e) => {
             error!(
                 "Domain Display Name Change Failed - Rollback has occured: {:?}",
@@ -444,7 +450,7 @@ pub fn set_domain_display_name(config: &Configuration, new_display_name: &str) {
             );
             std::process::exit(1);
         }
-    };
+    }
 }
 
 pub fn domain_rename_core(config: &Configuration) {

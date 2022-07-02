@@ -741,14 +741,12 @@ pub trait QueryServerTransaction<'a> {
         admin_debug!(
             "qst get_db_domain_display_name Attempting to pull domain_display_name from database"
         );
-        let display_name_value = self
-            .internal_search_uuid(&UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                trace!(?e);
-                e.get_ava_single_utf8("domain_display_name")
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)
-            });
+        let display_name_value = self.internal_search_uuid(&UUID_DOMAIN_INFO).and_then(|e| {
+            trace!(?e);
+            e.get_ava_single_utf8("domain_display_name")
+                .map(str::to_string)
+                .ok_or(OperationError::InvalidEntryState)
+        });
 
         match display_name_value {
             Ok(value) => {
@@ -2778,8 +2776,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// because it's just a wibbly human-facing thing, not used for secure
     /// activities (yet)
     pub fn set_domain_display_name(&self, new_domain_name: &str) -> Result<(), OperationError> {
-        let modl =
-            ModifyList::new_purge_and_set("domain_display_name", Value::new_utf8(new_domain_name.to_string()));
+        let modl = ModifyList::new_purge_and_set(
+            "domain_display_name",
+            Value::new_utf8(new_domain_name.to_string()),
+        );
         let udi = PVUUID_DOMAIN_INFO.clone();
         let filt = filter_all!(f_eq("uuid", udi));
         self.internal_modify(&filt, &modl)

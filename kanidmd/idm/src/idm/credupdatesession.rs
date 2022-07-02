@@ -73,7 +73,6 @@ impl fmt::Debug for MfaRegState {
     }
 }
 
-// TODO: what's CredentialUpdateSession used for?
 pub(crate) struct CredentialUpdateSession {
     issuer: String,
     // Current credentials - these are on the Account!

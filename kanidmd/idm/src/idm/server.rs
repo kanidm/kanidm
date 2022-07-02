@@ -299,11 +299,12 @@ impl IdmServer {
         }
     }
 
-    // #[cfg(test)]
+    /// Perform a blocking read transaction on the database.
     pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
         task::block_on(self.proxy_read_async())
     }
 
+    /// Read from the database, in a transaction.
     pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
@@ -1700,7 +1701,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let label = wre.label.clone();
 
         #[allow(clippy::expect_used)]
-        let issuer = self.qs_write.get_db_domain_display_name().expect("reg_account_webauthn_init to retrieve issuer");
+        let issuer = self
+            .qs_write
+            .get_db_domain_display_name()
+            .expect("reg_account_webauthn_init to retrieve issuer");
 
         let (session, mfa_reg_next) =
             MfaRegSession::webauthn_new(origin, account, label, self.webauthn, issuer)?;
@@ -1809,12 +1813,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let origin = (&gte.ident.origin).into();
         #[allow(clippy::expect_used)]
-        let issuer = self.qs_write.get_db_domain_display_name().expect("generate_account_totp to retrieve issuer");
-        let (session, next) = MfaRegSession::totp_new(
-            origin,
-            account,
-            issuer,
-        ).map_err(|e| {
+        let issuer = self
+            .qs_write
+            .get_db_domain_display_name()
+            .expect("generate_account_totp to retrieve issuer");
+        let (session, next) = MfaRegSession::totp_new(origin, account, issuer).map_err(|e| {
             admin_error!("Unable to start totp MfaRegSession {:?}", e);
             e
         })?;

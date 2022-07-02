@@ -125,9 +125,10 @@ impl MfaRegSession {
                     } else {
                         // Probably a bad code or typo then. Let them try again.
                         let accountname = self.account.name.as_str();
-                        // TODO: #860 set this to domain_display_name
                         Ok((
-                            MfaRegNext::TotpCheck(token.to_proto(accountname, self.issuer.as_str())),
+                            MfaRegNext::TotpCheck(
+                                token.to_proto(accountname, self.issuer.as_str()),
+                            ),
                             None,
                         ))
                     }
@@ -180,11 +181,11 @@ impl MfaRegSession {
             })?;
 
         let state = MfaRegState::WebauthnInit(label, reg_state);
-        // this isn't used in webauthn... yet?
         let s = MfaRegSession {
             origin,
             account,
             state,
+            // this isn't used in webauthn... yet?
             issuer,
         };
         let next = MfaRegNext::WebauthnChallenge(chal);
