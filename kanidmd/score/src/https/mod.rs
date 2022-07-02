@@ -16,9 +16,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
-use tide_openssl::TlsListener;
-use tide_compress::CompressMiddleware;
 use kanidm::tracing_tree::TreeMiddleware;
+use tide_compress::CompressMiddleware;
+use tide_openssl::TlsListener;
 use tracing::{error, info};
 
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
@@ -434,8 +434,9 @@ pub fn create_https_server(
         info!("Web UI package path: {:?}", canonicalize(pkg_path).unwrap());
 
         // let's build a compression middleware!
-        let compression_check_regex = regex::Regex::new(r"^(application|text)/|\+(?:json|javascript|text|xml|wasm)$")
-            .expect("regular expression defined in source code");
+        let compression_check_regex =
+            regex::Regex::new(r"^(application|text)/|\+(?:json|javascript|text|xml|wasm)$")
+                .expect("regex matcher for tide_compress content-type check failed to compile");
 
         let compress_middleware = CompressMiddleware::builder()
             .threshold(1024)
