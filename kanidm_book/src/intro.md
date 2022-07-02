@@ -9,11 +9,12 @@ The intent of the Kanidm project is to:
 * Enable integrations to systems and services so they can authenticate accounts.
 * Make system, network, application and web authentication easy and accessible.
 
-> ![Kanidm Alert](/images/kani-alert.png) **NOTICE:**
->
-> 
-> This is a pre-release project. While all effort has been made to ensure no data loss
-> or security flaws, you should still be careful when using this in your environment.
+
+ {{#template  
+    templates/kani-warning.md      
+    title=NOTICE
+    text=This is a pre-release project. While all effort has been made to ensure no data loss or security flaws, you should still be careful when using this in your environment.
+}}
 
 ## Library documentation
 

@@ -417,11 +417,6 @@ However, a possible issue is that Option #2 means that a delete request of
 This is also a concern for modification, where the modification attempt may or may not
 fail depending on the entries and if you can/can't see them.
 
- {{#template  
-    ../../templates/kani-warning.md      
-    text=hello world
-}}
-
 **IDEA:** You can only `delete`/`modify` within the read scope you have. If you can't
 read it (based on the read rules of `search`), you can't `delete` it. This is in addition to the filter
 rules of the `delete` applying as well. So performing a `delete` of `Pres(class)`, will only delete
