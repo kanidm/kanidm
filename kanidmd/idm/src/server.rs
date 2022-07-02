@@ -51,8 +51,6 @@ lazy_static! {
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
     static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
-    static ref PVUUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: PartialValue =
-        PartialValue::new_uuid(UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
@@ -60,7 +58,7 @@ lazy_static! {
 struct DomainInfo {
     d_uuid: Uuid,
     d_name: String,
-    d_display: String,
+    d_display: Option<String>,
 }
 
 #[derive(Clone)]
@@ -314,7 +312,7 @@ pub trait QueryServerTransaction<'a> {
             .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.as_hyphenated())))
     }
 
-    // From internal, generate an exists event and dispatch
+    /// From internal, generate an "exists" event and dispatch
     fn internal_exists(&self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
         spanned!("server::internal_exists", {
             // Check the filter
@@ -353,7 +351,7 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // this applys ACP to filter result entries.
+    /// Applies ACP to filter result entries.
     fn impersonate_search_ext_valid(
         &self,
         f_valid: Filter<FilterValid>,
@@ -397,8 +395,8 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // Get a single entry by it's UUID. This is heavily relied on for internal
-    // server operations, especially in login and acp checks for acp.
+    /// Get a single entry by it's UUID. This is heavily relied on for internal
+    /// server operations, especially in login and acp checks for acp.
     fn internal_search_uuid(
         &self,
         uuid: &Uuid,
@@ -745,7 +743,7 @@ pub trait QueryServerTransaction<'a> {
             "qst get_db_domain_display_name Attempting to pull domain_display_name from database"
         );
         let display_name_value = self
-            .internal_search_uuid(&UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME)
+            .internal_search_uuid(&UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
                 e.get_ava_single_utf8("domain_display_name")
@@ -983,13 +981,9 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
-        let (s_uuid, d_uuid, domain_display_name) = {
+        let (s_uuid, d_uuid) = {
             let wr = be.write();
-            let res = (
-                wr.get_db_s_uuid(),
-                wr.get_db_d_uuid(),
-                wr.get_db_display_name(),
-            );
+            let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
             #[allow(clippy::expect_used)]
             wr.commit()
                 .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
@@ -1001,12 +995,11 @@ impl QueryServer {
         debug!("Server UUID -> {:?}", s_uuid);
         debug!("Domain UUID -> {:?}", d_uuid);
         debug!("Domain Name -> {:?}", domain_name);
-        debug!("Domain Display Name -> {:?}", domain_display_name);
 
         let d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
             d_name: domain_name,
-            d_display: domain_display_name,
+            d_display: None,
         }));
 
         // log_event!(log, "Starting query worker ...");
@@ -2781,13 +2774,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 );
                 mut_d_info.d_name = domain_name;
             }
-            if mut_d_info.d_display != domain_display_name {
+            if mut_d_info.d_display.as_ref().is_none()
+                || mut_d_info.d_display.as_ref().unwrap() != &domain_display_name
+            {
                 admin_debug!(
-                    "Updating in-memory cache of Domain Display Name to {} - was {}",
+                    "Updating in-memory cache of Domain Display Name to '{}' - was {}",
                     domain_display_name,
-                    mut_d_info.d_display,
+                    mut_d_info
+                        .d_display
+                        .as_ref()
+                        .unwrap_or(&String::from("<Unset>")),
                 );
-                mut_d_info.d_display = domain_display_name;
+                mut_d_info.d_display = Some(domain_display_name);
             }
             Ok(())
         })
@@ -2797,9 +2795,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// because it's just a wibbly human-facing thing, not used for secure
     /// activities (yet)
     pub fn set_domain_display_name(&self, new_domain_name: &str) -> Result<(), OperationError> {
-        // unimplemented!("I still need to get to this - setting domain display name to {}", new_domain_name);
         let modl =
-            ModifyList::new_purge_and_set("domain_display_name", Value::new_iname(new_domain_name));
+            ModifyList::new_purge_and_set("domain_display_name", Value::new_utf8(new_domain_name.to_string()));
         let udi = PVUUID_DOMAIN_INFO.clone();
         let filt = filter_all!(f_eq("uuid", udi));
         self.internal_modify(&filt, &modl)

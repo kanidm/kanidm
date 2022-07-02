@@ -38,7 +38,7 @@ use kanidm::utils::file_permissions_readonly;
 use score::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
-    domain_display_set_core, domain_rename_core, recover_account_core, reindex_server_core,
+    set_domain_display_name, domain_rename_core, recover_account_core, reindex_server_core,
     restore_server_core, vacuum_server_core, verify_server_core,
 };
 
@@ -434,7 +434,7 @@ async fn main() {
                 "system settings: set domain_display_name - {:?}",
                 &sopt.domain_display_name
             );
-            domain_display_set_core(&config, sopt.domain_display_name.as_str())
+            set_domain_display_name(&config, sopt.domain_display_name.as_str())
         }
         KanidmdOpt::SystemSettings {
             commands: SystemSettingsCmds::DomainChange(_dopt),

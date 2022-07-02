@@ -392,7 +392,7 @@ pub fn vacuum_server_core(config: &Configuration) {
 }
 
 /// This'll set the domain's display name in the database
-pub fn domain_display_set_core(config: &Configuration, new_display_name: &str) {
+pub fn set_domain_display_name(config: &Configuration, new_display_name: &str) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {

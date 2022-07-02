@@ -239,8 +239,6 @@ pub const _UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000040");
 pub const _UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000041");
-pub const UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: Uuid =
-    uuid!("00000000-0000-0000-0000-ffffff000042");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
