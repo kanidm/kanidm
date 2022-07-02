@@ -405,7 +405,7 @@ mod tests {
                 "name": ["domain_example.net.au"],
                 "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
                 "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "description": ["Demonstration of a remote domain's info being created for uuid generationin test_delete_domain"],
+                "description": ["Demonstration of a remote domain's info being created for uuid generation in test_delete_domain"],
                 "domain_name": ["example.net.au"],
                 "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],

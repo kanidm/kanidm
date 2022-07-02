@@ -58,7 +58,6 @@ lazy_static! {
 struct DomainInfo {
     d_uuid: Uuid,
     d_name: String,
-    d_display: Option<String>,
 }
 
 #[derive(Clone)]
@@ -999,7 +998,6 @@ impl QueryServer {
         let d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
             d_name: domain_name,
-            d_display: None,
         }));
 
         // log_event!(log, "Starting query worker ...");
@@ -2760,8 +2758,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         spanned!("server::reload_domain_info", {
             let domain_name = self.get_db_domain_name()?;
-            let domain_display_name = self.get_domain_display_name();
-
             let mut_d_info = self.d_info.get_mut();
             if mut_d_info.d_name != domain_name {
                 admin_warn!(
@@ -2773,19 +2769,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     "If you think this is an error, see https://kanidm.github.io/kanidm/stable/administrivia.html#rename-the-domain"
                 );
                 mut_d_info.d_name = domain_name;
-            }
-            if mut_d_info.d_display.as_ref().is_none()
-                || mut_d_info.d_display.as_ref().unwrap() != &domain_display_name
-            {
-                admin_debug!(
-                    "Updating in-memory cache of Domain Display Name to '{}' - was {}",
-                    domain_display_name,
-                    mut_d_info
-                        .d_display
-                        .as_ref()
-                        .unwrap_or(&String::from("<Unset>")),
-                );
-                mut_d_info.d_display = Some(domain_display_name);
             }
             Ok(())
         })

@@ -143,12 +143,10 @@ enum KanidmdOpt {
     /// Test the IDM Server configuration, without starting network listeners.
     ConfigTest(CommonOpt),
     #[clap(name = "recover_account")]
-    /// Recover an account's password (must be run offline)
+    /// Recover an account's password
     RecoverAccount(RecoverAccountOpt),
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
-
-
     #[clap(name = "db_scan")]
     /// Inspect the internal content of the database datastructures.
     DbScan {

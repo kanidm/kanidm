@@ -127,7 +127,6 @@ impl fmt::Debug for MfaRegStateStatus {
 
 #[derive(Debug)]
 pub struct CredentialUpdateSessionStatus {
-    // #860 can we shove it in here?
     spn: String,
     // The target user's display name
     displayname: String,
@@ -300,7 +299,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let primary = account.primary.clone();
         // - store account policy (if present)
         let session = CredentialUpdateSession {
-            // TODO: #860 - here?
             issuer: self.qs_write.get_domain_display_name(),
             account,
             intent_token_id,

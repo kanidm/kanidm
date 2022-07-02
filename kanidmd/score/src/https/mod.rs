@@ -188,20 +188,16 @@ pub fn to_tide_response<T: Serialize>(
 // Handle the various end points we need to expose
 async fn index_view(req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
-    eprintln!(
-        "index_view domain_display_name {}",
-        req.state().domain_display_name
-    );
+
     res.set_content_type("text/html;charset=utf-8");
 
-    // TODO: #860 pull the domain display name and write it here
-    res.set_body(r#"
+    res.set_body(format!(r#"
     <!DOCTYPE html>
     <html lang="en">
         <head>
             <meta charset="utf-8"/>
             <meta name="viewport" content="width=device-width">
-            <title>===DOMAIN_DISPLAY_NAME===</title>
+            <title>{}</title>
             <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
             <link rel="stylesheet" href="/pkg/style.css"/>
             <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
@@ -213,7 +209,7 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
         <body>
         </body>
     </html>
-        "#,
+        "#, req.state().domain_display_name.as_str())
     );
 
     Ok(res)
@@ -446,10 +442,7 @@ pub fn create_https_server(
             generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
                 .unwrap(),
         ));
-        // Handles the domain_display_name rewrites.
-        static_tserver.with(KanidmDisplayNameMiddleware::new(
-            domain_display_name.to_owned(),
-        ));
+
         // The compression middleware needs to be the last one added before routes
         static_tserver.with(compress_middleware.clone());
 

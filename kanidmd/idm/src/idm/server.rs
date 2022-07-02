@@ -185,7 +185,6 @@ impl IdmServer {
             let qs_read = task::block_on(qs.read_async());
             (
                 qs_read.get_domain_name().to_string(),
-                // #860 do we need to include the domain_display_name here?
                 qs_read.get_domain_fernet_private_key()?,
                 qs_read.get_domain_es256_private_key()?,
                 qs_read.get_password_badlist()?,
@@ -319,8 +318,11 @@ impl IdmServer {
         task::block_on(self.proxy_write_async(ts))
     }
 
-    /// Pulls the domain_display_name from the db
+    /// Tries to pull the domain display name from the database. If it's not set,
+    /// then pull the domain_name because we fall back to that. If that fails
+    /// then throw the error and give up.
     pub fn get_domain_display_name(&self) -> String {
+        #[allow(clippy::expect_used)]
         self.proxy_read()
             .qs_read
             .get_db_domain_display_name()
@@ -1697,8 +1699,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&wre.ident.origin).into();
         let label = wre.label.clone();
 
+        #[allow(clippy::expect_used)]
+        let issuer = self.qs_write.get_db_domain_display_name().expect("reg_account_webauthn_init to retrieve issuer");
+
         let (session, mfa_reg_next) =
-            MfaRegSession::webauthn_new(origin, account, label, self.webauthn)?;
+            MfaRegSession::webauthn_new(origin, account, label, self.webauthn, issuer)?;
 
         let next = mfa_reg_next.to_proto(sessionid);
 
@@ -1803,8 +1808,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sessionid = uuid_from_duration(ct, self.sid);
 
         let origin = (&gte.ident.origin).into();
-        // #860 - this is where the session is created
-        let (session, next) = MfaRegSession::totp_new(origin, account).map_err(|e| {
+        #[allow(clippy::expect_used)]
+        let issuer = self.qs_write.get_db_domain_display_name().expect("generate_account_totp to retrieve issuer");
+        let (session, next) = MfaRegSession::totp_new(
+            origin,
+            account,
+            issuer,
+        ).map_err(|e| {
             admin_error!("Unable to start totp MfaRegSession {:?}", e);
             e
         })?;
