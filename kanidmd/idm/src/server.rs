@@ -1254,6 +1254,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
             // remember, that you only get the first error and the iter terminates.
 
+            // eprintln!("{:?}", candidates);
+
             // Now, normalise AND validate!
 
             let res: Result<Vec<Entry<EntrySealed, EntryNew>>, OperationError> = candidates

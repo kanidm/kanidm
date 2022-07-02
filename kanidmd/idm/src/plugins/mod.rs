@@ -22,6 +22,7 @@ mod protected;
 mod recycle;
 mod refint;
 mod spn;
+mod system_config;
 
 trait Plugin {
     fn id() -> &'static str;

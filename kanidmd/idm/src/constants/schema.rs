@@ -1075,7 +1075,6 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "name",
         "domain_uuid",
         "domain_name",
-        "domain_display_name",
         "fernet_private_key_str",
         "es256_private_key_der"
       ],
@@ -1154,7 +1153,10 @@ pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
       ],
       "systemmay": [
         "description",
-        "badlist_password"
+        "badlist_password",
+        "domain_display_name"
+      ],
+      "systemmust" : [
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000060"

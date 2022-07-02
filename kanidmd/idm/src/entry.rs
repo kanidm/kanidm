@@ -316,7 +316,7 @@ impl Entry<EntryInit, EntryNew> {
             }
             // str -> Proto entry
             let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
-                admin_error!(?e, "SerdeJson Failure");
+                admin_error!(?e, "{} {}", format!("{:?}", es), "SerdeJson Failure");
                 OperationError::SerdeJsonError
             })?;
             // now call from_proto_entry

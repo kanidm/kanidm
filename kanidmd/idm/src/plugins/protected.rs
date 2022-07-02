@@ -62,7 +62,8 @@ impl Plugin for Protected {
             if cand.attribute_equality("class", &PVCLASS_SYSTEM)
                 || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
+                // not much point having a replicated config if we can't edit it!
+                // || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
                 || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
             {
