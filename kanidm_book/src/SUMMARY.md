@@ -1,4 +1,4 @@
-# Summary
+# Kanidm
 
 - [Introduction to Kanidm](intro.md)
 - [Installing the Server](installing_the_server.md)
@@ -18,8 +18,11 @@
 # For Developers
 
 - [Developer Guide](DEVELOPER_README.md)
+- [Design Documents]()
+  - [Access Profiles](developers/designs/access_profiles_and_security.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)
+
 
 # Integrations
 
