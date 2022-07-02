@@ -45,6 +45,7 @@ lazy_static! {
     static ref CLASS_OAUTH2_BASIC: PartialValue =
         PartialValue::new_class("oauth2_resource_server_basic");
     static ref URL_SERVICE_DOCUMENTATION: Url =
+        #[allow(clippy::expect_used)]
         Url::parse("https://kanidm.github.io/kanidm/master/integrations/oauth2.html")
             .expect("Failed to parse oauth2 service documentation url");
 }

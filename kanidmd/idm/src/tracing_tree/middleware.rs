@@ -115,7 +115,8 @@ impl<State: Clone + Send + Sync + 'static> Middleware<State> for TreeMiddleware 
             TreeIo::Stdout => "console stdout",
             TreeIo::Stderr => "console stderr",
             TreeIo::File(ref path) => path.to_str().unwrap_or_else(|| {
-                panic!("File path isn't UTF-8, cannot write to file: {:#?}", path)
+                eprintln!("File path isn't UTF-8, cannot write logs to: {:#?}", path);
+                std::process::exit(1);
                 // warn!(
                 //     "File path isn't UTF-8, logging to stderr instead: {:#?}",
                 //     path
