@@ -226,6 +226,7 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
       "The user-facing display name of the Kanidm domain."
     ],
     "index": [
+      "EQUALITY"
     ],
     "unique": [
       "true"

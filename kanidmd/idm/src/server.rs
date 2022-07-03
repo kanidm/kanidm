@@ -741,7 +741,7 @@ pub trait QueryServerTransaction<'a> {
         admin_debug!(
             "qst get_db_domain_display_name Attempting to pull domain_display_name from database"
         );
-        let display_name_value = self.internal_search_uuid(&UUID_DOMAIN_INFO).and_then(|e| {
+        let display_name_value = self.internal_search_uuid(&UUID_SYSTEM_CONFIG).and_then(|e| {
             trace!(?e);
             e.get_ava_single_utf8("domain_display_name")
                 .map(str::to_string)

@@ -19,6 +19,7 @@ lazy_static! {
         let mut m = HashSet::with_capacity(8);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
+        //
         m.insert("must");
         m.insert("may");
         // Allow modification of some domain info types for local configuration.
@@ -26,6 +27,7 @@ lazy_static! {
         m.insert("fernet_private_key_str");
         m.insert("es256_private_key_der");
         m.insert("badlist_password");
+        m.insert("domain_display_name");
         m
     };
     static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
@@ -62,8 +64,7 @@ impl Plugin for Protected {
             if cand.attribute_equality("class", &PVCLASS_SYSTEM)
                 || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                // not much point having a replicated config if we can't edit it!
-                // || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
+                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
                 || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
             {
@@ -203,7 +204,7 @@ mod tests {
                 ],
             "acp_create_class": ["object", "person", "system", "domain_info"],
             "acp_create_attr": [
-                "name", "class", "description", "displayname", "domain_display_name", "domain_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"
+                "name", "class", "description", "displayname", "domain_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"
                 ]
         }
     }"#;

@@ -569,8 +569,8 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 
-    /// Validate that this entry and it's attribute-value sets are conformant to the systems
-    /// schema and the releant syntaxes.
+    /// Validate that this entry and its attribute-value sets are conformant to the system's'
+    /// schema and the relevant syntaxes.
     pub fn validate(
         self,
         schema: &dyn SchemaTransaction,
@@ -695,9 +695,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             }
                         }
                         None => {
-                            // lrequest_error!("Invalid Attribute {} for extensible object", attr_name);
+                            // TODO: remove this log message from #860
+                            admin_error!("Invalid Attribute {} for extensible object, not in list {:?}", attr_name.to_string(), schema_attributes);
                             trace!(?attr_name, "extensible -> SchemaError::InvalidAttribute");
-                            Err(SchemaError::InvalidAttribute(attr_name.to_string()))
+                            Err(SchemaError::InvalidAttribute(format!("systemmust: {}", attr_name.to_string())))
                         }
                     }
                 })?;
@@ -745,9 +746,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);
                         }
                         None => {
-                            // lrequest_error!("Invalid Attribute {} for may+must set", attr_name);
+                            // TODO: remove this log message from #860
+                            admin_error!("Invalid Attribute {} for extensible object in may list {:?}", attr_name.to_string(), schema_attributes);
                             trace!(?attr_name, "SchemaError::InvalidAttribute");
-                            Err(SchemaError::InvalidAttribute(attr_name.to_string()))
+                            Err(SchemaError::InvalidAttribute(format!("systemmay missing attribute: {}", attr_name.to_string())))
                         }
                     }
                 })?;
