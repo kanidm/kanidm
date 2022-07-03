@@ -10,15 +10,16 @@ use kanidm::config::{ServerRole, TlsConfiguration};
 use kanidm::prelude::*;
 use kanidm::status::StatusActor;
 
+use regex::Regex;
 use serde::Serialize;
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
-use tide_openssl::TlsListener;
-
 use kanidm::tracing_tree::TreeMiddleware;
+use tide_compress::CompressMiddleware;
+use tide_openssl::TlsListener;
 use tracing::{error, info};
 
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
@@ -33,6 +34,34 @@ pub struct AppState {
     pub jws_validator: std::sync::Arc<JwsValidator>,
 }
 
+/// This is for the tide_compression middleware so that we only compress certain content types.
+///
+/// ```
+/// use score::https::compression_content_type_checker;
+/// let these_should_match = vec![
+///     "application/wasm",
+///     "text/json",
+///     "text/javascript"
+/// ];
+/// for test_value in these_should_match {
+///     eprintln!("checking {:?}", test_value);
+///     assert!(compression_content_type_checker().is_match(test_value));
+/// }
+/// assert!(compression_content_type_checker().is_match("application/wasm"));
+/// let these_should_fail = vec![
+///     "image/jpeg",
+///     "image/wasm",
+///     "text/html",
+/// ];
+/// for test_value in these_should_fail {
+///     eprintln!("checking {:?}", test_value);
+///     assert!(!compression_content_type_checker().is_match(test_value));
+/// }
+/// ```
+pub fn compression_content_type_checker() -> Regex {
+    Regex::new(r"^(?:(image/svg\+xml)|(?:application|text)/(?:css|javascript|json|text|xml|wasm))$")
+        .expect("regex matcher for tide_compress content-type check failed to compile")
+}
 pub trait RequestExtensions {
     fn get_current_uat(&self) -> Option<String>;
 
@@ -433,12 +462,38 @@ pub fn create_https_server(
         }
         info!("Web UI package path: {:?}", canonicalize(pkg_path).unwrap());
 
+        /*
+        Let's build a compression middleware!
+
+        The threat of the TLS BREACH attack [1] was considered as part of adding
+        the CompressMiddleware configuration.
+
+        The attack targets secrets compressed and encrypted in flight with the intent
+        to infer their content.
+
+        This is not a concern for the paths covered by this configuration
+        ( /, /ui/<and all sub-paths>, /pkg/<and all sub-paths> ),
+        as they're all static content with no secrets in transit - all that data should
+        come from Kanidm's REST API, which is on a different path and not covered by
+        the compression middleware.
+
+
+        [1] - https://resources.infosecinstitute.com/topic/the-breach-attack/
+        */
+
+        let compress_middleware = CompressMiddleware::builder()
+            .threshold(1024)
+            .content_type_check(Some(compression_content_type_checker()))
+            .build();
+
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
         static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
             generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
                 .unwrap(),
         ));
+        // The compression middleware needs to be the last one added before routes
+        static_tserver.with(compress_middleware.clone());
 
         static_tserver.at("/").get(index_view);
         static_tserver.at("/ui/").get(index_view);
@@ -446,6 +501,8 @@ pub fn create_https_server(
 
         let mut static_dir_tserver = tserver.at("");
         static_dir_tserver.with(StaticContentMiddleware::default());
+        // The compression middleware needs to be the last one added before routes
+        static_dir_tserver.with(compress_middleware);
         static_dir_tserver
             .at("/pkg")
             .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))

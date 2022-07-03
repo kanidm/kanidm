@@ -25,7 +25,7 @@ extern crate tracing;
 #[macro_use]
 extern crate kanidm;
 
-mod https;
+pub mod https;
 mod ldaps;
 
 // use crossbeam::channel::unbounded;
