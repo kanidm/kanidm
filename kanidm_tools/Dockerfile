@@ -81,7 +81,8 @@ RUN zypper install -y timezone
 RUN zypper clean -a
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
-
+RUN chmod +x /sbin/kanidm
 ENV RUST_BACKTRACE 1
 
-ENTRYPOINT ["/sbin/kanidm"]
+ENTRYPOINT [ "/sbin/kanidm" ]
+CMD [ "-c", "/data/kanidm.toml" ]
