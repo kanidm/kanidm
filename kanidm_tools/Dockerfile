@@ -70,14 +70,17 @@ RUN ls -al /usr/src/kanidm/target/release
 
 FROM repos
 
-RUN zypper install -y timezone
-#         # sqlite3 \
-#         pam
+RUN zypper install -y timezone busybox-adduser
 RUN zypper clean -a
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 RUN chmod +x /sbin/kanidm
 ENV RUST_BACKTRACE 1
+
+RUN adduser -D -H kanidm
+RUN zypper remove -y busybox-adduser
+
+USER kanidm
 
 ENTRYPOINT [ "/sbin/kanidm" ]
 
