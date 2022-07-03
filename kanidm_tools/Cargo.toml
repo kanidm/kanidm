@@ -54,4 +54,4 @@ url = { version = "^2.2.2", features = ["serde"] }
 
 [build-dependencies]
 clap = { version = "^3.2", features = ["derive"] }
-clap_complete = { version = "^3.2.2"}
+clap_complete = { version = "^3.2.3"}
