@@ -771,6 +771,63 @@
 <span id="766">766</span>
 <span id="767">767</span>
 <span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -783,15 +840,16 @@
 <span class="kw">use</span> <span class="ident">kanidm::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">kanidm::status::StatusActor</span>;
 
+<span class="kw">use</span> <span class="ident">regex::Regex</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::fs::canonicalize</span>;
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
-<span class="kw">use</span> <span class="ident">tide_openssl::TlsListener</span>;
-
 <span class="kw">use</span> <span class="ident">kanidm::tracing_tree::TreeMiddleware</span>;
+<span class="kw">use</span> <span class="ident">tide_compress::CompressMiddleware</span>;
+<span class="kw">use</span> <span class="ident">tide_openssl::TlsListener</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>};
 
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>, <span class="ident">JwsUnverified</span>, <span class="ident">JwsValidator</span>};
@@ -806,6 +864,34 @@
     <span class="kw">pub</span> <span class="ident">jws_validator</span>: <span class="ident">std::sync::Arc</span><span class="op">&lt;</span><span class="ident">JwsValidator</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// This is for the tide_compression middleware so that we only compress certain content types.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```</span>
+<span class="doccomment">/// use score::https::compression_content_type_checker;</span>
+<span class="doccomment">/// let these_should_match = vec![</span>
+<span class="doccomment">///     &quot;application/wasm&quot;,</span>
+<span class="doccomment">///     &quot;text/json&quot;,</span>
+<span class="doccomment">///     &quot;text/javascript&quot;</span>
+<span class="doccomment">/// ];</span>
+<span class="doccomment">/// for test_value in these_should_match {</span>
+<span class="doccomment">///     eprintln!(&quot;checking {:?}&quot;, test_value);</span>
+<span class="doccomment">///     assert!(compression_content_type_checker().is_match(test_value));</span>
+<span class="doccomment">/// }</span>
+<span class="doccomment">/// assert!(compression_content_type_checker().is_match(&quot;application/wasm&quot;));</span>
+<span class="doccomment">/// let these_should_fail = vec![</span>
+<span class="doccomment">///     &quot;image/jpeg&quot;,</span>
+<span class="doccomment">///     &quot;image/wasm&quot;,</span>
+<span class="doccomment">///     &quot;text/html&quot;,</span>
+<span class="doccomment">/// ];</span>
+<span class="doccomment">/// for test_value in these_should_fail {</span>
+<span class="doccomment">///     eprintln!(&quot;checking {:?}&quot;, test_value);</span>
+<span class="doccomment">///     assert!(!compression_content_type_checker().is_match(test_value));</span>
+<span class="doccomment">/// }</span>
+<span class="doccomment">/// ```</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compression_content_type_checker</span>() -&gt; <span class="ident">Regex</span> {
+    <span class="ident">Regex::new</span>(<span class="string">r&quot;^(?:(image/svg\+xml)|(?:application|text)/(?:css|javascript|json|text|xml|wasm))$&quot;</span>)
+        .<span class="ident">expect</span>(<span class="string">&quot;regex matcher for tide_compress content-type check failed to compile&quot;</span>)
+}
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RequestExtensions</span> {
     <span class="kw">fn</span> <span class="ident">get_current_uat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
 
@@ -1206,12 +1292,38 @@
         }
         <span class="macro">info!</span>(<span class="string">&quot;Web UI package path: {:?}&quot;</span>, <span class="ident">canonicalize</span>(<span class="ident">pkg_path</span>).<span class="ident">unwrap</span>());
 
+        <span class="comment">/*
+        Let&#39;s build a compression middleware!
+
+        The threat of the TLS BREACH attack [1] was considered as part of adding
+        the CompressMiddleware configuration.
+
+        The attack targets secrets compressed and encrypted in flight with the intent
+        to infer their content.
+
+        This is not a concern for the paths covered by this configuration
+        ( /, /ui/&lt;and all sub-paths&gt;, /pkg/&lt;and all sub-paths&gt; ),
+        as they&#39;re all static content with no secrets in transit - all that data should
+        come from Kanidm&#39;s REST API, which is on a different path and not covered by
+        the compression middleware.
+
+
+        [1] - https://resources.infosecinstitute.com/topic/the-breach-attack/
+        */</span>
+
+        <span class="kw">let</span> <span class="ident">compress_middleware</span> <span class="op">=</span> <span class="ident">CompressMiddleware::builder</span>()
+            .<span class="ident">threshold</span>(<span class="number">1024</span>)
+            .<span class="ident">content_type_check</span>(<span class="prelude-val">Some</span>(<span class="ident">compression_content_type_checker</span>()))
+            .<span class="ident">build</span>();
+
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">static_tserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">StaticContentMiddleware::default</span>());
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">UIContentSecurityPolicyResponseMiddleware::new</span>(
             <span class="ident">generate_integrity_hash</span>(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>).<span class="ident">to_owned</span>() <span class="op">+</span> <span class="string">&quot;/wasmloader.js&quot;</span>)
                 .<span class="ident">unwrap</span>(),
         ));
+        <span class="comment">// The compression middleware needs to be the last one added before routes</span>
+        <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">compress_middleware</span>.<span class="ident">clone</span>());
 
         <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
         <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/ui/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
@@ -1219,6 +1331,8 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">static_dir_tserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
         <span class="ident">static_dir_tserver</span>.<span class="ident">with</span>(<span class="ident">StaticContentMiddleware::default</span>());
+        <span class="comment">// The compression middleware needs to be the last one added before routes</span>
+        <span class="ident">static_dir_tserver</span>.<span class="ident">with</span>(<span class="ident">compress_middleware</span>);
         <span class="ident">static_dir_tserver</span>
             .<span class="ident">at</span>(<span class="string">&quot;/pkg&quot;</span>)
             .<span class="ident">serve_dir</span>(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>))

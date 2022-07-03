@@ -269,7 +269,7 @@ variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in
 </code></pre>
 <p>Check <code>make help</code> for a list of valid targets.</p>
 <p>The following environment variables control the build:</p>
-<table><thead><tr><th>ENV variable</th><th>Definition</th><th>Default</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ENV variable</th><th>Definition</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>IMAGE_BASE</code></td><td>Base location of the container image.</td><td><code>kanidm</code></td></tr>
 <tr><td><code>IMAGE_VERSION</code></td><td>Determines the container's tag.</td><td>None</td></tr>
 <tr><td><code>CONTAINER_TOOL_ARGS</code></td><td>Specify extra options for the container build tool.</td><td>None</td></tr>
@@ -278,6 +278,7 @@ variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in
 <tr><td><code>CONTAINER_TOOL</code></td><td>Use an alternative container build tool.</td><td><code>docker</code></td></tr>
 <tr><td><code>BOOK_VERSION</code></td><td>Sets version used when building the documentation book.</td><td><code>master</code></td></tr>
 </tbody></table>
+</div>
 <h4 id="container-build-examples"><a class="header" href="#container-build-examples">Container Build Examples</a></h4>
 <p>Build a <code>kanidm</code> container using <code>podman</code>:</p>
 <pre><code>CONTAINER_TOOL=podman make build/kanidmd

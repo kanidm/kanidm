@@ -209,12 +209,13 @@ kanidm group add_members --name admin idm_radius_servers radius_service_account
 <h2 id="deploying-a-radius-container"><a class="header" href="#deploying-a-radius-container">Deploying a RADIUS Container</a></h2>
 <p>We provide a RADIUS container that has all the needed integrations. 
 This container requires some cryptographic material, with the following files being in <code>/etc/raddb/certs</code>. (Modifiable in the configuration)</p>
-<table><thead><tr><th>filename</th><th>description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>filename</th><th>description</th></tr></thead><tbody>
 <tr><td>ca.pem</td><td>The signing CA of the RADIUS certificate</td></tr>
 <tr><td>dh.pem</td><td>The output of <code>openssl dhparam -in ca.pem -out ./dh.pem 2048</code></td></tr>
 <tr><td>cert.pem</td><td>The certificate for the RADIUS server</td></tr>
 <tr><td>key.pem</td><td>The signing key for the RADIUS certificate</td></tr>
 </tbody></table>
+</div>
 <p>The configuration file (<code>/data/kanidm</code>) has the following template:</p>
 <pre><code class="language-toml">uri = &quot;https://example.com&quot; # URL to the Kanidm server
 verify_hostnames = true     # verify the hostname of the Kanidm server

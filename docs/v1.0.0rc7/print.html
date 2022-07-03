@@ -947,14 +947,14 @@ kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '
 <h2 id="kanidmd"><a class="header" href="#kanidmd">kanidmd</a></h2>
 <p>kanidmd currently responds to HTTP GET requests at the <code>/status</code> endpoint with a JSON object of 
 either &quot;true&quot; or &quot;false&quot;. <code>true</code> indicates that the platform is responding to requests.</p>
-<table><thead><tr><th>URL</th><th><code>&lt;hostname&gt;/status</code></th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>URL</th><th><code>&lt;hostname&gt;/status</code></th></tr></thead><tbody>
 <tr><td>Example URL</td><td><code>https://example.com/status</code></td></tr>
 <tr><td>Expected response</td><td>One of either <code>true</code> or <code>false</code> (without quotes)</td></tr>
 <tr><td>Additional Headers</td><td>x-kanidm-opid</td></tr>
 <tr><td>Content Type</td><td>application/json</td></tr>
 <tr><td>Cookies</td><td>kanidm-session</td></tr>
 </tbody></table>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="password-quality-and-badlisting"><a class="header" href="#password-quality-and-badlisting">Password Quality and Badlisting</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="password-quality-and-badlisting"><a class="header" href="#password-quality-and-badlisting">Password Quality and Badlisting</a></h1>
 <p>Kanidm embeds a set of tools to help your users use and create strong passwords. 
 This is important as not all user types will require multi-factor authentication (MFA) 
 for their roles, but compromised accounts still pose a risk. There may also be deployment 
@@ -1361,7 +1361,7 @@ variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in
 </code></pre>
 <p>Check <code>make help</code> for a list of valid targets.</p>
 <p>The following environment variables control the build:</p>
-<table><thead><tr><th>ENV variable</th><th>Definition</th><th>Default</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ENV variable</th><th>Definition</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>IMAGE_BASE</code></td><td>Base location of the container image.</td><td><code>kanidm</code></td></tr>
 <tr><td><code>IMAGE_VERSION</code></td><td>Determines the container's tag.</td><td>None</td></tr>
 <tr><td><code>CONTAINER_TOOL_ARGS</code></td><td>Specify extra options for the container build tool.</td><td>None</td></tr>
@@ -1370,6 +1370,7 @@ variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in
 <tr><td><code>CONTAINER_TOOL</code></td><td>Use an alternative container build tool.</td><td><code>docker</code></td></tr>
 <tr><td><code>BOOK_VERSION</code></td><td>Sets version used when building the documentation book.</td><td><code>master</code></td></tr>
 </tbody></table>
+</div>
 <h4 id="container-build-examples"><a class="header" href="#container-build-examples">Container Build Examples</a></h4>
 <p>Build a <code>kanidm</code> container using <code>podman</code>:</p>
 <pre><code>CONTAINER_TOOL=podman make build/kanidmd
@@ -2155,12 +2156,13 @@ kanidm group add_members --name admin idm_radius_servers radius_service_account
 <h2 id="deploying-a-radius-container"><a class="header" href="#deploying-a-radius-container">Deploying a RADIUS Container</a></h2>
 <p>We provide a RADIUS container that has all the needed integrations. 
 This container requires some cryptographic material, with the following files being in <code>/etc/raddb/certs</code>. (Modifiable in the configuration)</p>
-<table><thead><tr><th>filename</th><th>description</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>filename</th><th>description</th></tr></thead><tbody>
 <tr><td>ca.pem</td><td>The signing CA of the RADIUS certificate</td></tr>
 <tr><td>dh.pem</td><td>The output of <code>openssl dhparam -in ca.pem -out ./dh.pem 2048</code></td></tr>
 <tr><td>cert.pem</td><td>The certificate for the RADIUS server</td></tr>
 <tr><td>key.pem</td><td>The signing key for the RADIUS certificate</td></tr>
 </tbody></table>
+</div>
 <p>The configuration file (<code>/data/kanidm</code>) has the following template:</p>
 <pre><code class="language-toml">uri = &quot;https://example.com&quot; # URL to the Kanidm server
 verify_hostnames = true     # verify the hostname of the Kanidm server
