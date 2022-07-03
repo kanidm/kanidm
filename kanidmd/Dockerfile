@@ -16,7 +16,9 @@ RUN zypper install -y \
         make automake autoconf \
         libopenssl-devel pam-devel \
         sqlite3-devel \
-        sccache
+        sccache \
+        gcc \
+        rsync
 RUN zypper clean -a
 
 COPY . /usr/src/kanidm

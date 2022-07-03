@@ -12,12 +12,16 @@ FROM repos AS builder
 
 RUN zypper install -y \
         cargo \
+        gcc \
         rust wasm-pack \
         clang lld \
         make automake autoconf \
-        libopenssl-devel pam-devel \
+        libopenssl-devel \
+        pam-devel \
+        libudev-devel \
         sqlite3-devel \
-        sccache
+        sccache \
+        rsync
 RUN zypper clean -a
 
 COPY . /usr/src/kanidm
@@ -34,16 +38,7 @@ RUN echo $KANIDM_FEATURES
 ENV CARGO_HOME=/scratch/.cargo
 ENV RUSTFLAGS="-Clinker=clang"
 
-WORKDIR /usr/src/kanidm/kanidmd_web_ui
-RUN if [ "${SCCACHE_REDIS}" != "" ]; \
-        then \
-            export CARGO_INCREMENTAL=false && \
-            export RUSTC_WRAPPER=sccache && \
-            sccache --start-server; \
-    fi && \
-    ./build_wasm_dev.sh
-
-WORKDIR /usr/src/kanidm/kanidmd/daemon
+WORKDIR /usr/src/kanidm/
 
 ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
 
@@ -63,10 +58,10 @@ RUN if [ -z "${KANIDM_FEATURES}" ]; then \
     --target-dir="/usr/src/kanidm/target/" \
     --release; \
 else \
- cargo build -p kanidm_tools --bin kanidm ${KANIDM_BUILD_OPTIONS} \
- --target-dir="/usr/src/kanidm/target/" \
- --features="${KANIDM_FEATURES}" \
- --release; \
+  cargo build -p kanidm_tools --bin kanidm ${KANIDM_BUILD_OPTIONS} \
+    --target-dir="/usr/src/kanidm/target/" \
+    --features="${KANIDM_FEATURES}" \
+    --release; \
 fi
 
 RUN if [ "${SCCACHE_REDIS}" != "" ]; then sccache -s; fi
@@ -85,4 +80,4 @@ RUN chmod +x /sbin/kanidm
 ENV RUST_BACKTRACE 1
 
 ENTRYPOINT [ "/sbin/kanidm" ]
-CMD [ "-c", "/data/kanidm.toml" ]
+
