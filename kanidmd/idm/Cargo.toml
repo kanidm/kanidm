@@ -21,7 +21,7 @@ base64 = "^0.13.0"
 chrono = "^0.4.19"
 compact_jwt = "^0.2.1"
 compiled-uuid = "0.1.2"
-concread = "^0.3.4"
+concread = "^0.3.7"
 dyn-clone = "^1.0.6"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 filetime = "^0.2.16"
