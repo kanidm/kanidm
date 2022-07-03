@@ -257,7 +257,6 @@ pub const JSON_IDM_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 
-
 /// Builtin IDM Group for RADIUS server access delegation.
 pub const JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
     "attrs": {
