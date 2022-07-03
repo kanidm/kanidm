@@ -618,9 +618,15 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             match entry_classes.as_iutf8_iter() {
                 Some(cls_iter) => cls_iter.for_each(|s| match schema_classes.get(s) {
                     Some(x) => classes.push(x),
-                    None => invalid_classes.push(s.to_string()),
+                    None => {
+                        admin_debug!("invalid class: {:?}", s);
+                        invalid_classes.push(s.to_string())
+                    }
                 }),
-                None => invalid_classes.push("corrupt class attribute".to_string()),
+                None => {
+                    admin_debug!("corrupt class attribute in: {:?}", entry_classes);
+                    invalid_classes.push("corrupt class attribute".to_string())
+                }
             };
 
             if !invalid_classes.is_empty() {

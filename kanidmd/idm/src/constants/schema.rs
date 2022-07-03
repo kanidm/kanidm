@@ -225,7 +225,8 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
     "description": [
       "The user-facing display name of the Kanidm domain."
     ],
-    "index": [],
+    "index": [
+    ],
     "unique": [
       "true"
     ],
@@ -1137,7 +1138,7 @@ pub const JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
   }
 "#;
 
-pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
+pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = &r#"
   {
     "attrs": {
       "class": [
@@ -1153,10 +1154,10 @@ pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
       ],
       "systemmay": [
         "description",
-        "badlist_password",
-        "domain_display_name"
+        "badlist_password"
       ],
       "systemmust" : [
+        "domain_display_name"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000060"

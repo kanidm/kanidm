@@ -36,10 +36,9 @@ impl Plugin for SystemConfig {
             {
                 // create the domain_display_name if it's missing
                 if !e.attribute_pres("domain_display_name") {
-                    let domain_display_name =
-                        Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
+                    let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
                     security_info!(
-                        "plugin_domain: setting default domain_display_name to {:?}",
+                        "plugin_system_config: setting default domain_display_name to {:?} in pre_create_transform",
                         domain_display_name
                     );
 
@@ -64,9 +63,9 @@ impl Plugin for SystemConfig {
             {
                 // create the domain_display_name if it's missing
                 if !e.attribute_pres("domain_display_name") {
-                    let n = Value::new_utf8(qs.get_domain_name().into());
+                    let n = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
                     security_info!(
-                        "plugin_domain: pre_modify setting default domain_display_name to {:?}",
+                        "plugin_system_config: pre_modify setting default domain_display_name to {:?}",
                         n
                     );
                     e.set_ava("domain_display_name", once(n));
@@ -79,23 +78,3 @@ impl Plugin for SystemConfig {
         })
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     // use crate::prelude::*;
-
-//     // test we can create and generate the id
-//     #[test]
-//     fn test_domain_generate_uuid() {
-//         run_test!(|server: &QueryServer| {
-//             let server_txn = server.write(duration_from_epoch_now());
-//             let e_dom = server_txn
-//                 .internal_search_uuid(&UUID_SYSTEM_CONFIG)
-//                 .expect("must not fail");
-
-//             let u_dom = server_txn.get_domain_uuid();
-
-//             assert!(e_dom.attribute_equality("", &PartialValue::new_uuid(u_dom)));
-//         })
-//     }
-// }
