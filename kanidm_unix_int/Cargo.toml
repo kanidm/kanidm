@@ -85,6 +85,6 @@ score = { path = "../kanidmd/score" }
 
 [build-dependencies]
 clap = { version = "^3.2", features = ["derive"] }
-clap_complete = "^3.2.2"
+clap_complete = "^3.2.3"
 profiles = { path = "../profiles" }
 
