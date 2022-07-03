@@ -18,7 +18,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 serde = { version = "^1.0.137", features = ["derive"] }
-serde_json = "^1.0.81"
+serde_json = "^1.0.82"
 
 wasm-bindgen = { version = "^0.2.81", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "^0.4.30" }
