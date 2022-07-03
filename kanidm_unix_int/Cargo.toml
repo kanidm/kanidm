@@ -48,7 +48,7 @@ kanidm_proto = { path = "../kanidm_proto" }
 kanidm = { path = "../kanidmd/idm" }
 
 tracing = "^0.1.35"
-tracing-subscriber = "^0.3.11"
+tracing-subscriber = "^0.3.14"
 
 toml = "^0.5.9"
 rpassword = "^6.0.1"
