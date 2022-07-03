@@ -8,8 +8,8 @@ name: Container - Kanidm
 "on":
   pull_request:
   push:
-    # branches:
-      # - master
+    branches:
+      - master
 
 jobs:
   kanidm_build:
