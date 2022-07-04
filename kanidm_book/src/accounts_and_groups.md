@@ -80,7 +80,7 @@ An example can be easily shown with:
     kanidm group create group_2 --name idm_admin
     kanidm account create nest_example "Nesting Account Example" --name idm_admin
     kanidm group add_members group_1 group_2 --name idm_admin
-    kanidm group add_members group2 nest_example --name idm_admin
+    kanidm group add_members group_2 nest_example --name idm_admin
     kanidm account get nest_example --name anonymous
 
 ## Account Validity
