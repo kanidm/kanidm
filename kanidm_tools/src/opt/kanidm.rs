@@ -26,9 +26,6 @@ pub struct CommonOpt {
     /// Path to a CA certificate file
     #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
-    /// Log format (still in very early development)
-    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
-    pub output_mode: String,
 }
 
 #[derive(Debug, Args)]
@@ -176,14 +173,18 @@ pub enum AccountCredential {
     CreateResetToken(AccountNamedOpt),
 }
 
+/// RADIUS secret management
 #[derive(Debug, Subcommand)]
 pub enum AccountRadius {
+    /// Show the RADIUS secret for a user.
     #[clap(name = "show_secret")]
     Show(AccountNamedOpt),
+    /// Generate a randomized RADIUS secret for a user.
     #[clap(name = "generate_secret")]
     Generate(AccountNamedOpt),
     #[clap(name = "delete_secret")]
-    Delete(AccountNamedOpt),
+    /// Remove the configured RADIUS secret for the user.
+    DeleteSecret(AccountNamedOpt),
 }
 
 #[derive(Debug, Args)]

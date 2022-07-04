@@ -7,7 +7,7 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use dialoguer::{Confirm, Input, Password};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
-use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
+use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::{InvalidAttribute, PasswordQuality};
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus};
 use qrcode::{render::unicode, QrCode};
@@ -23,7 +23,7 @@ impl AccountOpt {
             AccountOpt::Radius { commands } => match commands {
                 AccountRadius::Show(aro) => aro.copt.debug,
                 AccountRadius::Generate(aro) => aro.copt.debug,
-                AccountRadius::Delete(aro) => aro.copt.debug,
+                AccountRadius::DeleteSecret(aro) => aro.copt.debug,
             },
             AccountOpt::Posix { commands } => match commands {
                 AccountPosix::Show(apo) => apo.copt.debug,
@@ -87,11 +87,10 @@ impl AccountOpt {
                         error!("Error -> {:?}", e);
                     }
                 }
-                AccountRadius::Delete(aopt) => {
+                AccountRadius::DeleteSecret(aopt) => {
                     let client = aopt.copt.to_client().await;
-
                     let mut modmessage = AccountChangeMessage {
-                        output_mode: aopt.copt.output_mode.to_owned().into(),
+                        output_mode: ConsoleOutputMode::Text,
                         action: "radius account_delete".to_string(),
                         result: "deleted".to_string(),
                         src_user: aopt
@@ -170,7 +169,7 @@ impl AccountOpt {
                 AccountPerson::Extend(aopt) => {
                     let client = aopt.copt.to_client().await;
                     let mut result_output = kanidm_proto::messages::AccountChangeMessage {
-                        output_mode: aopt.copt.output_mode.to_owned().into(),
+                        output_mode: ConsoleOutputMode::Text,
                         action: String::from("account_person_extend"),
                         result: String::from("This is a filler message"),
                         src_user: aopt
@@ -242,7 +241,7 @@ impl AccountOpt {
                 AccountPerson::Set(aopt) => {
                     let client = aopt.copt.to_client().await;
                     let mut result_output = AccountChangeMessage {
-                        output_mode: aopt.copt.output_mode.to_owned().into(),
+                        output_mode: ConsoleOutputMode::Text,
                         action: String::from("account_person set"),
                         result: String::from(""),
                         src_user: aopt
@@ -332,7 +331,7 @@ impl AccountOpt {
             AccountOpt::Delete(aopt) => {
                 let client = aopt.copt.to_client().await;
                 let mut modmessage = AccountChangeMessage {
-                    output_mode: aopt.copt.output_mode.to_owned().into(),
+                    output_mode: ConsoleOutputMode::Text,
                     action: "account delete".to_string(),
                     result: "deleted".to_string(),
                     src_user: aopt
