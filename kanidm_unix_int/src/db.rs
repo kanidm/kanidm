@@ -317,7 +317,7 @@ impl<'a> DbTxn<'a> {
             .map(|token| {
                 // token convert with json.
                 serde_json::from_slice(token.as_slice()).map_err(|e| {
-                    error!("json error -> {:?}", e);
+                    error!("get_accounts json error -> {:?}", e);
                 })
             })
             .collect()
@@ -325,10 +325,10 @@ impl<'a> DbTxn<'a> {
 
     pub fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), ()> {
         let data = serde_json::to_vec(account).map_err(|e| {
-            error!("json error -> {:?}", e);
+            error!("update_account json error -> {:?}", e);
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
-            error!("i64 convert error -> {:?}", e);
+            error!("update_account i64 conversion error -> {:?}", e);
         })?;
 
         // This is needed because sqlites 'insert or replace into', will null the password field
@@ -345,7 +345,7 @@ impl<'a> DbTxn<'a> {
             }
             )
             .map_err(|e| {
-                debug!("sqlite delete account_t duplicate failure -> {:?}", e);
+                self.sqlite_error("delete account_t duplicate", e);
             })
             .map(|_| ())?;
 
@@ -361,7 +361,7 @@ impl<'a> DbTxn<'a> {
             }
             )
             .map_err(|e| {
-                debug!("sqlite delete account_t duplicate failure -> {:?}", e);
+                self.sqlite_error("delete account_t duplicate",e);
             })?;
 
         if updated == 0 {
