@@ -94,14 +94,15 @@ impl<'a> DbTxn<'a> {
             &self.conn.path()
         );
     }
+
     /// This handles an error coming back from an sqlite transaction and dumps a load of information from it
-    fn sqlite_transaction_error(&self, error: rusqlite::Error, stmt: &rusqlite::Statement) {
+    fn sqlite_transaction_error(&self, error: rusqlite::Error, _stmt: &rusqlite::Statement) {
         error!(
             "sqlite transaction error={:?} db_path={:?}",
             error,
             &self.conn.path(),
         );
-        debug!("Statement: {:?}", stmt);
+        // TODO: one day figure out if there's an easy way to dump the transaction without the token...
     }
 
     pub fn migrate(&self) -> Result<(), ()> {
