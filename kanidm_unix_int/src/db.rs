@@ -97,11 +97,11 @@ impl<'a> DbTxn<'a> {
     /// This handles an error coming back from an sqlite transaction and dumps a load of information from it
     fn sqlite_transaction_error(&self, error: rusqlite::Error, stmt: &rusqlite::Statement) {
         error!(
-            "sqlite transaction error={:?} db_path={:?} statement={:?}",
+            "sqlite transaction error={:?} db_path={:?}",
             error,
             &self.conn.path(),
-            stmt
         );
+        debug!("Statement: {:?}", stmt);
     }
 
     pub fn migrate(&self) -> Result<(), ()> {
@@ -172,7 +172,7 @@ impl<'a> DbTxn<'a> {
     pub fn commit(mut self) -> Result<(), ()> {
         // debug!("Commiting BE txn");
         if self.committed {
-            error!("Invalid state, txn already commited!");
+            error!("Invalid state, SQL transaction was already commited!");
             return Err(());
         }
         self.committed = true;
@@ -181,7 +181,7 @@ impl<'a> DbTxn<'a> {
             .execute("COMMIT TRANSACTION", [])
             .map(|_| ())
             .map_err(|e| {
-                self.sqlite_error("commit failure", e);
+                self.sqlite_error("commit", e);
             })
     }
 
