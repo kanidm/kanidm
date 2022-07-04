@@ -85,13 +85,33 @@ impl<'a> DbTxn<'a> {
         }
     }
 
+    /// This handles an error coming back from an sqlite event and dumps more information from it
+    fn sqlite_error(&self, msg: &str, error: rusqlite::Error) {
+        error!(
+            "sqlite {} error: {:?} db_path={:?}",
+            msg,
+            error,
+            &self.conn.path()
+        );
+    }
+
+    /// This handles an error coming back from an sqlite transaction and dumps a load of information from it
+    fn sqlite_transaction_error(&self, error: rusqlite::Error, _stmt: &rusqlite::Statement) {
+        error!(
+            "sqlite transaction error={:?} db_path={:?}",
+            error,
+            &self.conn.path(),
+        );
+        // TODO: one day figure out if there's an easy way to dump the transaction without the token...
+    }
+
     pub fn migrate(&self) -> Result<(), ()> {
         self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
             .prepare("PRAGMA journal_mode=WAL;")
             .and_then(|mut wal_stmt| wal_stmt.query([]).map(|_| ()))
             .map_err(|e| {
-                error!("sqlite account_t create error -> {:?}", e);
+                self.sqlite_error("account_t create", e);
             })?;
 
         // Setup two tables - one for accounts, one for groups.
@@ -112,7 +132,7 @@ impl<'a> DbTxn<'a> {
                 [],
             )
             .map_err(|e| {
-                error!("sqlite account_t create error -> {:?}", e);
+                self.sqlite_error("account_t create", e);
             })?;
 
         self.conn
@@ -129,7 +149,7 @@ impl<'a> DbTxn<'a> {
                 [],
             )
             .map_err(|e| {
-                error!("sqlite group_t create error -> {:?}", e);
+                self.sqlite_error("group_t create", e);
             })?;
 
         self.conn
@@ -144,7 +164,7 @@ impl<'a> DbTxn<'a> {
                 [],
             )
             .map_err(|e| {
-                error!("sqlite memberof_t create error -> {:?}", e);
+                self.sqlite_error("memberof_t create error", e);
             })?;
 
         Ok(())
@@ -153,7 +173,7 @@ impl<'a> DbTxn<'a> {
     pub fn commit(mut self) -> Result<(), ()> {
         // debug!("Commiting BE txn");
         if self.committed {
-            error!("Invalid state, txn already commited!");
+            error!("Invalid state, SQL transaction was already commited!");
             return Err(());
         }
         self.committed = true;
@@ -162,7 +182,7 @@ impl<'a> DbTxn<'a> {
             .execute("COMMIT TRANSACTION", [])
             .map(|_| ())
             .map_err(|e| {
-                error!("sqlite commit failure -> {:?}", e);
+                self.sqlite_error("commit", e);
             })
     }
 
@@ -170,13 +190,13 @@ impl<'a> DbTxn<'a> {
         self.conn
             .execute("UPDATE group_t SET expiry = 0", [])
             .map_err(|e| {
-                error!("sqlite update group_t failure -> {:?}", e);
+                self.sqlite_error("update group_t", e);
             })?;
 
         self.conn
             .execute("UPDATE account_t SET expiry = 0", [])
             .map_err(|e| {
-                error!("sqlite update account_t failure -> {:?}", e);
+                self.sqlite_error("update account_t", e);
             })?;
 
         Ok(())
@@ -184,13 +204,13 @@ impl<'a> DbTxn<'a> {
 
     pub fn clear_cache(&self) -> Result<(), ()> {
         self.conn.execute("DELETE FROM group_t", []).map_err(|e| {
-            error!("sqlite delete group_t failure -> {:?}", e);
+            self.sqlite_error("delete group_t", e);
         })?;
 
         self.conn
             .execute("DELETE FROM account_t", [])
             .map_err(|e| {
-                error!("sqlite delete group_t failure -> {:?}", e);
+                self.sqlite_error("delete group_t", e);
             })?;
 
         Ok(())
@@ -202,19 +222,19 @@ impl<'a> DbTxn<'a> {
         "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
             )
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare", e);
             })?;
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
             .query_map(&[account_id], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
+                self.sqlite_error("query_map failure", e);
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map failure", e);
                 })
             })
             .collect();
@@ -226,19 +246,19 @@ impl<'a> DbTxn<'a> {
             .conn
             .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare", e);
             })?;
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
             .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
+                self.sqlite_error("query_map", e);
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map", e);
                 })
             })
             .collect();
@@ -278,16 +298,16 @@ impl<'a> DbTxn<'a> {
             .conn
             .prepare("SELECT token FROM account_t")
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare", e);
             })?;
 
         let data_iter = stmt.query_map([], |row| Ok(row.get(0)?)).map_err(|e| {
-            error!("sqlite query_map failure -> {:?}", e);
+            self.sqlite_error("query_map", e);
         })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map", e);
                 })
             })
             .collect();
@@ -298,7 +318,7 @@ impl<'a> DbTxn<'a> {
             .map(|token| {
                 // token convert with json.
                 serde_json::from_slice(token.as_slice()).map_err(|e| {
-                    error!("json error -> {:?}", e);
+                    error!("get_accounts json error -> {:?}", e);
                 })
             })
             .collect()
@@ -306,10 +326,10 @@ impl<'a> DbTxn<'a> {
 
     pub fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), ()> {
         let data = serde_json::to_vec(account).map_err(|e| {
-            error!("json error -> {:?}", e);
+            error!("update_account json error -> {:?}", e);
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
-            error!("i64 convert error -> {:?}", e);
+            error!("update_account i64 conversion error -> {:?}", e);
         })?;
 
         // This is needed because sqlites 'insert or replace into', will null the password field
@@ -326,7 +346,7 @@ impl<'a> DbTxn<'a> {
             }
             )
             .map_err(|e| {
-                debug!("sqlite delete account_t duplicate failure -> {:?}", e);
+                self.sqlite_error("delete account_t duplicate", e);
             })
             .map(|_| ())?;
 
@@ -342,14 +362,14 @@ impl<'a> DbTxn<'a> {
             }
             )
             .map_err(|e| {
-                debug!("sqlite delete account_t duplicate failure -> {:?}", e);
+                self.sqlite_error("delete account_t duplicate",e);
             })?;
 
         if updated == 0 {
             let mut stmt = self.conn
                 .prepare("INSERT INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name, spn=excluded.name, gidnumber=excluded.gidnumber, token=excluded.token, expiry=excluded.expiry")
                 .map_err(|e| {
-                    error!("sqlite prepare error -> {:?}", e);
+                    self.sqlite_error("prepare",e);
                 })?;
 
             stmt.execute(named_params! {
@@ -363,8 +383,8 @@ impl<'a> DbTxn<'a> {
             .map(|r| {
                 debug!("insert -> {:?}", r);
             })
-            .map_err(|e| {
-                error!("sqlite execute error -> {:?}", e);
+            .map_err(|error| {
+                self.sqlite_transaction_error(error, &stmt);
             })?;
         }
 
@@ -375,21 +395,21 @@ impl<'a> DbTxn<'a> {
             .conn
             .prepare("DELETE FROM memberof_t WHERE a_uuid = :a_uuid")
             .map_err(|e| {
-                error!("sqlite prepare error -> {:?}", e);
+                self.sqlite_error("prepare", e);
             })?;
         stmt.execute(&[&account.uuid])
             .map(|r| {
                 debug!("delete memberships -> {:?}", r);
             })
-            .map_err(|e| {
-                error!("sqlite execute error -> {:?}", e);
+            .map_err(|error| {
+                self.sqlite_transaction_error(error, &stmt);
             })?;
 
         let mut stmt = self
             .conn
             .prepare("INSERT INTO memberof_t (a_uuid, g_uuid) VALUES (:a_uuid, :g_uuid)")
             .map_err(|e| {
-                error!("sqlite prepare error -> {:?}", e);
+                self.sqlite_error("prepare", e);
             })?;
         // Now for each group, add the relation.
         account.groups.iter().try_for_each(|g| {
@@ -400,8 +420,8 @@ impl<'a> DbTxn<'a> {
             .map(|r| {
                 debug!("insert membership -> {:?}", r);
             })
-            .map_err(|e| {
-                error!("sqlite execute error -> {:?}", e);
+            .map_err(|error| {
+                self.sqlite_transaction_error(error, &stmt);
             })
         })
     }
@@ -414,7 +434,7 @@ impl<'a> DbTxn<'a> {
             )
             .map(|_| ())
             .map_err(|e| {
-                error!("sqlite memberof_t create error -> {:?}", e);
+                self.sqlite_error("memberof_t create", e);
             })
     }
 
@@ -436,7 +456,7 @@ impl<'a> DbTxn<'a> {
                 },
             )
             .map_err(|e| {
-                error!("sqlite update account_t password failure -> {:?}", e);
+                self.sqlite_error("update account_t password", e);
             })
             .map(|_| ())
     }
@@ -446,19 +466,19 @@ impl<'a> DbTxn<'a> {
             .conn
             .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare", e);
             })?;
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
             .query_map(&[a_uuid], |row| Ok(row.get(0)?))
             .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
+                self.sqlite_error("query_map", e);
             })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map", e);
                 })
             })
             .collect();
@@ -497,19 +517,19 @@ impl<'a> DbTxn<'a> {
         "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
             )
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare",e);
             })?;
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
             .query_map(&[grp_id], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
+                self.sqlite_error("query_map", e);
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map", e);
                 })
             })
             .collect();
@@ -521,19 +541,19 @@ impl<'a> DbTxn<'a> {
             .conn
             .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare", e);
             })?;
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
             .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
+                self.sqlite_error("query_map", e);
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map", e);
                 })
             })
             .collect();
@@ -573,18 +593,18 @@ impl<'a> DbTxn<'a> {
             .conn
             .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare",e);
             })?;
 
         let data_iter = stmt
             .query_map(&[g_uuid], |row| Ok(row.get(0)?))
             .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
+                self.sqlite_error("query_map", e);
             })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map", e);
                 })
             })
             .collect();
@@ -607,16 +627,16 @@ impl<'a> DbTxn<'a> {
             .conn
             .prepare("SELECT token FROM group_t")
             .map_err(|e| {
-                error!("sqlite select prepare failure -> {:?}", e);
+                self.sqlite_error("select prepare", e);
             })?;
 
         let data_iter = stmt.query_map([], |row| Ok(row.get(0)?)).map_err(|e| {
-            error!("sqlite query_map failure -> {:?}", e);
+            self.sqlite_error("query_map", e);
         })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    error!("sqlite map failure -> {:?}", e);
+                    self.sqlite_error("map", e);
                 })
             })
             .collect();
@@ -645,7 +665,7 @@ impl<'a> DbTxn<'a> {
         let mut stmt = self.conn
             .prepare("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
             .map_err(|e| {
-                error!("sqlite prepare error -> {:?}", e);
+                self.sqlite_error("prepare",e);
             })?;
 
         stmt.execute(named_params! {
@@ -660,7 +680,7 @@ impl<'a> DbTxn<'a> {
             debug!("insert -> {:?}", r);
         })
         .map_err(|e| {
-            error!("sqlite execute error -> {:?}", e);
+            self.sqlite_error("execute", e);
         })
     }
 
@@ -669,7 +689,7 @@ impl<'a> DbTxn<'a> {
             .execute("DELETE FROM group_t WHERE uuid = :g_uuid", &[g_uuid])
             .map(|_| ())
             .map_err(|e| {
-                error!("sqlite memberof_t create error -> {:?}", e);
+                self.sqlite_error("memberof_t create", e);
             })
     }
 }
