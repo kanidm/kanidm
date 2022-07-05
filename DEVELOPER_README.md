@@ -78,6 +78,8 @@ vcpkg integrate install
 vcpkg install openssl:x64-windows-static-md
 ```
 
+There's a powershell script in the root directory of the repository which, in concert with `openssl` will generate a config file and certs for testing.
+
 ### Get Involved
 
 To get started, you'll need to fork or branch, and we'll merge based on pull
@@ -157,8 +159,11 @@ Once you have the source code, you need encryption certificates to use with the 
 because without certificates, authentication will fail. 
 
 We recommend using [Let's Encrypt](https://letsencrypt.org), but if this is not 
-possible, please use our insecure certificate tool (`insecure_generate_tls.sh`). The 
-insecure certificate tool creates `/tmp/kanidm` and puts some self-signed certificates there.
+possible, please use our insecure certificate tool (`insecure_generate_tls.sh`). 
+
+__NOTE:__ Windows developers can use `insecure_generate_tls.ps1`, which puts everything (including a templated confi gfile) in `$TEMP\kanidm`. Please adjust paths below to suit.
+
+The insecure certificate tool creates `/tmp/kanidm` and puts some self-signed certificates there.
 
 You can now build and run the server with the commands below. It will use a database 
 in `/tmp/kanidm.db`.

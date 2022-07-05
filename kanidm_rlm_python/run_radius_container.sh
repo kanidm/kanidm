@@ -11,7 +11,7 @@ fi
 echo "Using config file: ${CONFIG_FILE}"
 
 if [ ! -d "/tmp/kanidm/" ]; then
-	echo "Can't find /tmp/kanidm - you might need to run insecure_generate_certs.sh"
+	echo "Can't find /tmp/kanidm - you might need to run insecure_generate_tls.sh"
 fi
 
 echo "Starting the dev container..."
