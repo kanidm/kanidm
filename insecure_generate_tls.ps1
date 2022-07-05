@@ -1,6 +1,7 @@
 
-#
-$KANI_TMP="$TEMP\kanidm"
+$ErrorActionPreference = "Stop"
+
+$KANI_TMP="$Env:TEMP\kanidm\"
 
 $ALTNAME_FILE="${KANI_TMP}altnames.cnf"
 $CACERT="${KANI_TMP}ca.pem"
@@ -10,88 +11,96 @@ $KEYFILE="${KANI_TMP}key.pem"
 $CERTFILE="${KANI_TMP}cert.pem"
 $CSRFILE="${KANI_TMP}cert.csr"
 $CHAINFILE="${KANI_TMP}chain.pem"
-$DHFILE="${KANI_TMP}dh.pem"
+# $DHFILE="${KANI_TMP}dh.pem"
+$CONFIG_FILE="${KANI_TMP}server.toml"
 
-# if [ ! -d "${KANI_TMP}" ]; then
-#     echo "Creating temp kanidm dir: ${KANI_TMP}"
-#     mkdir -p "${KANI_TMP}"
-# fi
 
-# cat > "${ALTNAME_FILE}" << DEVEOF
-# [req]
-# nsComment = "Certificate"
-# distinguished_name  = req_distinguished_name
-# req_extensions = v3_req
+if (Test-Path -Path "$KANI_TMP" ) {
+    Write-Output "Output dir exists at $KANI_TMP"
+} else {
+    Write-Warning "Output dir missing at $KANI_TMP"
+    $result = New-Item -Path "$KANI_TMP" -ItemType Directory
+}
 
-# [ req_distinguished_name ]
 
-# countryName                     = Country Name (2 letter code)
-# countryName_default             = AU
-# countryName_min                 = 2
-# countryName_max                 = 2
+if ( $(Test-Path -Path "examples\insecure_server.toml") -eq $false ) {
+    Write-Error "You need to run this from the base dir of the repo!"
+    exit 1
+}
+# Building the config file
+$CONFIG = Get-Content "examples\insecure_server.toml"
+$CONFIG = $CONFIG -replace "/tmp/kanidm/", "$KANI_TMP"
+$CONFIG = $CONFIG -replace "\\", "/"
 
-# stateOrProvinceName             = State or Province Name (full name)
-# stateOrProvinceName_default     = Queensland
+$CONFIG | Set-Content "${CONFIG_FILE}" -Force
 
-# localityName                    = Locality Name (eg, city)
-# localityName_default            = Brisbane
+$ALTNAME_FILE_CONTENTS = @'
+[req]
+nsComment = "Certificate"
+distinguished_name  = req_distinguished_name
+req_extensions = v3_req
 
-# 0.organizationName              = Organization Name (eg, company)
-# 0.organizationName_default      = INSECURE EXAMPLE
+[ req_distinguished_name ]
 
-# organizationalUnitName          = Organizational Unit Name (eg, section)
-# organizationalUnitName_default =  kanidm
+countryName                     = Country Name (2 letter code)
+countryName_default             = AU
+countryName_min                 = 2
+countryName_max                 = 2
 
-# commonName                      = Common Name (eg, your name or your server\'s hostname)
-# commonName_max                  = 64
-# commonName_default              = localhost
+stateOrProvinceName             = State or Province Name (full name)
+stateOrProvinceName_default     = Queensland
 
-# [ v3_req ]
+localityName                    = Locality Name (eg, city)
+localityName_default            = Brisbane
 
-# # Extensions to add to a certificate request
+0.organizationName              = Organization Name (eg, company)
+0.organizationName_default      = INSECURE EXAMPLE
 
-# basicConstraints = CA:FALSE
-# keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-# subjectAltName = @alt_names
+organizationalUnitName          = Organizational Unit Name (eg, section)
+organizationalUnitName_default =  kanidm
 
-# [alt_names]
-# DNS.1 = localhost
-# IP.1 = 127.0.0.1
+commonName                      = Common Name (eg, your name or your servers hostname)
+commonName_max                  = 64
+commonName_default              = localhost
 
-# DEVEOF
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
 
-# # Make the ca
-# openssl req -x509 -new -newkey rsa:4096 -sha256 \
-#     -keyout "${CAKEY}" \
-#     -out "${CACERT}" \
-#     -days 31 \
-#     -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+'@
 
-# # generate the private key
-# openssl genrsa -out "${KEYFILE}" 4096
+Write-Output "Creating cert template"
+$result = New-Item -Path "$ALTNAME_FILE" -ItemType File -Value "$ALTNAME_FILE_CONTENTS" -Force
 
-# # generate the certficate signing request
-# openssl req -sha256 \
-#     -config "${ALTNAME_FILE}" \
-#     -days 31 \
-#     -new -extensions v3_req \
-#     -key "${KEYFILE}"\
-#     -out "${CSRFILE}"
-# # sign the cert
-# openssl x509 -req -days 31 \
-#     -extfile "${ALTNAME_FILE}" \
-#     -CA "${CACERT}" \
-#     -CAkey "${CAKEY}" \
-#     -CAcreateserial \
-#     -in "${CSRFILE}" \
-#     -out "${CERTFILE}" \
-#     -extensions v3_req -sha256
-# # Create the chain
-# cat "${CERTFILE}" "${CACERT}" > "${CHAINFILE}"
+write-debug $result
 
-# # create the dh file for RADIUS
-# openssl dhparam -in "${CAFILE}" -out "${DHFILE}" 2048
+Write-Output "Generate the CA"
+openssl req -x509 -new -newkey rsa:4096 -sha256 -keyout "${CAKEY}" -out "${CACERT}" -days 31 -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
+if ( $LastExitCode -ne 0  ){
+    exit 1
+}
 
-# echo "Certificate chain is at: ${CHAINFILE}"
-# echo "Private key is at: ${KEYFILE}"
+Write-Output "Generating the private key"
+openssl genrsa -out "${KEYFILE}" 4096
+if ( $LastExitCode -ne 0  ){
+    exit 1
+}
 
+Write-Output "Generating the certficate signing request"
+openssl req -sha256 -config "${ALTNAME_FILE}" -days 31 -new -extensions v3_req -key "${KEYFILE}" -out "${CSRFILE}"
+if ( $LastExitCode -ne 0  ){
+    exit 1
+}
+Write-Output "Signing the certificate"
+openssl x509 -req -days 31 -extfile "${ALTNAME_FILE}" -CA "${CACERT}" -CAkey "${CAKEY}" -CAcreateserial -in "${CSRFILE}" -out "${CERTFILE}" -extensions v3_req -sha256
+
+Write-Output "Creating the certificate chain"
+Get-Content "${CERTFILE}" ,"${CACERT}" | Set-Content "${CHAINFILE}" -Force
+
+Write-Output "Certificate chain is at: ${CHAINFILE}"
+Write-Output "Private key is at: ${KEYFILE}"
+Write-Output "The configuration file is at: ${CONFIG_FILE}"
