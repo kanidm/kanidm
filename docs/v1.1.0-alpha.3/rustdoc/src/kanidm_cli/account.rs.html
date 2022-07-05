@@ -1011,6 +1011,61 @@
 <span id="1006">1006</span>
 <span id="1007">1007</span>
 <span id="1008">1008</span>
+<span id="1009">1009</span>
+<span id="1010">1010</span>
+<span id="1011">1011</span>
+<span id="1012">1012</span>
+<span id="1013">1013</span>
+<span id="1014">1014</span>
+<span id="1015">1015</span>
+<span id="1016">1016</span>
+<span id="1017">1017</span>
+<span id="1018">1018</span>
+<span id="1019">1019</span>
+<span id="1020">1020</span>
+<span id="1021">1021</span>
+<span id="1022">1022</span>
+<span id="1023">1023</span>
+<span id="1024">1024</span>
+<span id="1025">1025</span>
+<span id="1026">1026</span>
+<span id="1027">1027</span>
+<span id="1028">1028</span>
+<span id="1029">1029</span>
+<span id="1030">1030</span>
+<span id="1031">1031</span>
+<span id="1032">1032</span>
+<span id="1033">1033</span>
+<span id="1034">1034</span>
+<span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::password_prompt</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">AccountCredential</span>, <span class="ident">AccountOpt</span>, <span class="ident">AccountPerson</span>, <span class="ident">AccountPosix</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>,
@@ -1020,7 +1075,7 @@
 <span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">Confirm</span>, <span class="ident">Input</span>, <span class="ident">Password</span>};
 <span class="kw">use</span> <span class="ident">kanidm_client::ClientError::Http</span> <span class="kw">as</span> <span class="ident">ClientErrorHttp</span>;
 <span class="kw">use</span> <span class="ident">kanidm_client::KanidmClient</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::messages</span>::{<span class="ident">AccountChangeMessage</span>, <span class="ident">MessageStatus</span>};
+<span class="kw">use</span> <span class="ident">kanidm_proto::messages</span>::{<span class="ident">AccountChangeMessage</span>, <span class="ident">ConsoleOutputMode</span>, <span class="ident">MessageStatus</span>};
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>::{<span class="ident">InvalidAttribute</span>, <span class="ident">PasswordQuality</span>};
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">CUIntentToken</span>, <span class="ident">CURegState</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>};
 <span class="kw">use</span> <span class="ident">qrcode</span>::{<span class="ident">render::unicode</span>, <span class="ident">QrCode</span>};
@@ -1036,7 +1091,7 @@
             <span class="ident">AccountOpt::Radius</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountRadius::Show</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountRadius::Generate</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountRadius::Delete</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+                <span class="ident">AccountRadius::DeleteSecret</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             },
             <span class="ident">AccountOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountPosix::Show</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
@@ -1100,14 +1155,34 @@
                         <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                     }
                 }
-                <span class="ident">AccountRadius::Delete</span>(<span class="ident">aopt</span>) =&gt; {
+                <span class="ident">AccountRadius::DeleteSecret</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modmessage</span> <span class="op">=</span> <span class="ident">AccountChangeMessage</span> {
+                        <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode::Text</span>,
+                        <span class="ident">action</span>: <span class="string">&quot;radius account_delete&quot;</span>.<span class="ident">to_string</span>(),
+                        <span class="ident">result</span>: <span class="string">&quot;deleted&quot;</span>.<span class="ident">to_string</span>(),
+                        <span class="ident">src_user</span>: <span class="ident">aopt</span>
+                            .<span class="ident">copt</span>
+                            .<span class="ident">username</span>
+                            .<span class="ident">to_owned</span>()
+                            .<span class="ident">unwrap_or</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">client</span>.<span class="ident">whoami</span>().<span class="kw">await</span>)),
+                        <span class="ident">dest_user</span>: <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">to_string</span>(),
+                        <span class="ident">status</span>: <span class="ident">MessageStatus::Success</span>,
+                    };
+                    <span class="kw">match</span> <span class="ident">client</span>
                         .<span class="ident">idm_account_radius_credential_delete</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
                         .<span class="kw">await</span>
                     {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    }
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                            <span class="ident">modmessage</span>.<span class="ident">status</span> <span class="op">=</span> <span class="ident">MessageStatus::Failure</span>;
+                            <span class="ident">modmessage</span>.<span class="ident">result</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                        }
+                        <span class="prelude-val">Ok</span>(<span class="ident">result</span>) =&gt; {
+                            <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">result</span>);
+                            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                        }
+                    };
                 }
             }, <span class="comment">// end AccountOpt::Radius</span>
             <span class="ident">AccountOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
@@ -1162,7 +1237,7 @@
                 <span class="ident">AccountPerson::Extend</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result_output</span> <span class="op">=</span> <span class="ident">kanidm_proto::messages::AccountChangeMessage</span> {
-                        <span class="ident">output_mode</span>: <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">output_mode</span>.<span class="ident">to_owned</span>().<span class="ident">into</span>(),
+                        <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode::Text</span>,
                         <span class="ident">action</span>: <span class="ident">String::from</span>(<span class="string">&quot;account_person_extend&quot;</span>),
                         <span class="ident">result</span>: <span class="ident">String::from</span>(<span class="string">&quot;This is a filler message&quot;</span>),
                         <span class="ident">src_user</span>: <span class="ident">aopt</span>
@@ -1234,7 +1309,7 @@
                 <span class="ident">AccountPerson::Set</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result_output</span> <span class="op">=</span> <span class="ident">AccountChangeMessage</span> {
-                        <span class="ident">output_mode</span>: <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">output_mode</span>.<span class="ident">to_owned</span>().<span class="ident">into</span>(),
+                        <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode::Text</span>,
                         <span class="ident">action</span>: <span class="ident">String::from</span>(<span class="string">&quot;account_person set&quot;</span>),
                         <span class="ident">result</span>: <span class="ident">String::from</span>(<span class="string">&quot;&quot;</span>),
                         <span class="ident">src_user</span>: <span class="ident">aopt</span>
@@ -1323,12 +1398,32 @@
             }
             <span class="ident">AccountOpt::Delete</span>(<span class="ident">aopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modmessage</span> <span class="op">=</span> <span class="ident">AccountChangeMessage</span> {
+                    <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode::Text</span>,
+                    <span class="ident">action</span>: <span class="string">&quot;account delete&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">result</span>: <span class="string">&quot;deleted&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">src_user</span>: <span class="ident">aopt</span>
+                        .<span class="ident">copt</span>
+                        .<span class="ident">username</span>
+                        .<span class="ident">to_owned</span>()
+                        .<span class="ident">unwrap_or</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">client</span>.<span class="ident">whoami</span>().<span class="kw">await</span>)),
+                    <span class="ident">dest_user</span>: <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">status</span>: <span class="ident">MessageStatus::Success</span>,
+                };
+                <span class="kw">match</span> <span class="ident">client</span>
                     .<span class="ident">idm_account_delete</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
                     .<span class="kw">await</span>
                 {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>)
-                }
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                        <span class="ident">modmessage</span>.<span class="ident">result</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">modmessage</span>.<span class="ident">status</span> <span class="op">=</span> <span class="ident">MessageStatus::Failure</span>;
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                    }
+                    <span class="prelude-val">Ok</span>(<span class="ident">result</span>) =&gt; {
+                        <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">result</span>);
+                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                    }
+                };
             }
             <span class="ident">AccountOpt::Create</span>(<span class="ident">acopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">acopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
@@ -1346,6 +1441,7 @@
                 <span class="ident">AccountValidity::Show</span>(<span class="ident">ano</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
 
+                    <span class="macro">println!</span>(<span class="string">&quot;user: {}&quot;</span>, <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>());
                     <span class="kw">let</span> <span class="ident">ex</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">client</span>
                         .<span class="ident">idm_account_get_attr</span>(<span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(), <span class="string">&quot;account_expire&quot;</span>)
                         .<span class="kw">await</span>
@@ -1476,9 +1572,9 @@
 <span class="kw">impl</span> <span class="ident">AccountCredential</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">AccountCredential::CreateResetToken</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">AccountCredential::UseResetToken</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">AccountCredential::Update</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">AccountCredential::Reset</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">AccountCredential::CreateResetLink</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
         }
     }
 
@@ -1498,7 +1594,8 @@
                     }
                 }
             }
-            <span class="ident">AccountCredential::Reset</span>(<span class="ident">aopt</span>) =&gt; {
+            <span class="comment">// The account credential use_reset_token CLI</span>
+            <span class="ident">AccountCredential::UseResetToken</span>(<span class="ident">aopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_unauth_client</span>();
                 <span class="kw">let</span> <span class="ident">cuintent_token</span> <span class="op">=</span> <span class="ident">CUIntentToken</span> {
                     <span class="ident">token</span>: <span class="ident">aopt</span>.<span class="ident">token</span>.<span class="ident">clone</span>(),
@@ -1512,11 +1609,20 @@
                         <span class="ident">credential_update_exec</span>(<span class="ident">cusession_token</span>, <span class="ident">custatus</span>, <span class="ident">client</span>).<span class="kw">await</span>
                     }
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error starting credential reset -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="kw">match</span> <span class="ident">e</span> {
+                            <span class="ident">ClientErrorHttp</span>(<span class="ident">status_code</span>, <span class="ident">error</span>, <span class="ident">_kopid</span>) =&gt; {
+                                <span class="macro">eprintln!</span>(
+                                    <span class="string">&quot;Error completing command: HTTP{} - {:?}&quot;</span>,
+                                    <span class="ident">status_code</span>,
+                                    <span class="ident">error</span>.<span class="ident">unwrap</span>()
+                                );
+                            }
+                            <span class="kw">_</span> =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error starting use_reset_token -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                        };
                     }
                 }
             }
-            <span class="ident">AccountCredential::CreateResetLink</span>(<span class="ident">aopt</span>) =&gt; {
+            <span class="ident">AccountCredential::CreateResetToken</span>(<span class="ident">aopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
 
                 <span class="comment">// What&#39;s the client url?</span>
@@ -1530,11 +1636,14 @@
                         <span class="ident">url</span>.<span class="ident">query_pairs_mut</span>()
                             .<span class="ident">append_pair</span>(<span class="string">&quot;token&quot;</span>, <span class="ident">cuintent_token</span>.<span class="ident">token</span>.<span class="ident">as_str</span>());
 
-                        <span class="macro">println!</span>(<span class="string">&quot;success!&quot;</span>);
-                        <span class="macro">println!</span>(
-                            <span class="string">&quot;Send the person one of the following to allow the credential reset&quot;</span>
+                        <span class="macro">debug!</span>(
+                            <span class="string">&quot;Successfully created credential reset token for {}: {}&quot;</span>,
+                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>, <span class="ident">cuintent_token</span>.<span class="ident">token</span>
                         );
-                        <span class="macro">println!</span>(<span class="string">&quot;scan:&quot;</span>);
+                        <span class="macro">println!</span>(
+                            <span class="string">&quot;The person can use one of the following to allow the credential reset&quot;</span>
+                        );
+                        <span class="macro">println!</span>(<span class="string">&quot;\nScan this QR Code:\n&quot;</span>);
                         <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">QrCode::new</span>(<span class="ident">url</span>.<span class="ident">as_str</span>()) {
                             <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
                             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
@@ -1550,9 +1659,9 @@
                         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">image</span>);
 
                         <span class="macro">println!</span>();
-                        <span class="macro">println!</span>(<span class="string">&quot;link: {}&quot;</span>, <span class="ident">url</span>.<span class="ident">as_str</span>());
+                        <span class="macro">println!</span>(<span class="string">&quot;This link: {}&quot;</span>, <span class="ident">url</span>.<span class="ident">as_str</span>());
                         <span class="macro">println!</span>(
-                            <span class="string">&quot;command: kanidm account credential reset {}&quot;</span>,
+                            <span class="string">&quot;Or run this command: kanidm account credential use_reset_token {}&quot;</span>,
                             <span class="ident">cuintent_token</span>.<span class="ident">token</span>
                         );
                         <span class="macro">println!</span>();
@@ -1857,6 +1966,7 @@ commit (save) - Commit the changes to the credential
     <span class="macro">println!</span>(<span class="string">&quot;Can Commit: {}&quot;</span>, <span class="ident">can_commit</span>);
 }
 
+<span class="doccomment">/// This is the REPL for updating a credential for a given account</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">credential_update_exec</span>(
     <span class="ident">session_token</span>: <span class="ident">CUSessionToken</span>,
     <span class="ident">status</span>: <span class="ident">CUStatus</span>,

@@ -2357,7 +2357,7 @@
             <span class="kw">let</span> <span class="ident">intent_token</span> <span class="op">=</span> <span class="ident">CredentialUpdateIntentToken</span> {
                 <span class="ident">intent_id</span>: <span class="ident">intent_token</span>.<span class="ident">token</span>,
             };
-
+            <span class="comment">// TODO: this is throwing a 500 error when a session is already in use, that seems bad?</span>
             <span class="ident">idms_prox_write</span>
                 .<span class="ident">exchange_intent_credential_update</span>(<span class="ident">intent_token</span>, <span class="ident">ct</span>)
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> <span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">tok</span>))

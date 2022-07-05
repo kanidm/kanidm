@@ -556,6 +556,8 @@
 <span id="551">551</span>
 <span id="552">552</span>
 <span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Args</span>, <span class="ident">Subcommand</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -584,9 +586,6 @@
     <span class="doccomment">/// Path to a CA certificate file</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;C&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">ca_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Log format (still in very early development)</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;output&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_OUTPUT&quot;</span>, <span class="ident">default_value</span><span class="op">=</span><span class="string">&quot;text&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">output_mode</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -702,7 +701,8 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AnonTokenOpt</span> {
+<span class="doccomment">/// Command-line options for account credental use_reset_token</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UseResetTokenOpt</span> {
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;token&quot;</span>)]</span>
@@ -721,26 +721,30 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountCredential</span> {
-    <span class="doccomment">/// Interactively update and change the content of the credentials of an account</span>
+    <span class="doccomment">/// Interactively update/change the credentials for an account</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update&quot;</span>)]</span>
     <span class="ident">Update</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Given a reset token, interactively perform a credential reset</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset&quot;</span>)]</span>
-    <span class="ident">Reset</span>(<span class="ident">AnonTokenOpt</span>),
-    <span class="doccomment">/// Create a reset link (token) that can be given to another person so they can</span>
+    <span class="doccomment">/// Using a reset token, interactively reset credentials for a user</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;use_reset_token&quot;</span>)]</span>
+    <span class="ident">UseResetToken</span>(<span class="ident">UseResetTokenOpt</span>),
+    <span class="doccomment">/// Create a reset token that can be given to another person so they can</span>
     <span class="doccomment">/// recover or reset their account credentials.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_reset_link&quot;</span>)]</span>
-    <span class="ident">CreateResetLink</span>(<span class="ident">AccountNamedOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_reset_token&quot;</span>)]</span>
+    <span class="ident">CreateResetToken</span>(<span class="ident">AccountNamedOpt</span>),
 }
 
+<span class="doccomment">/// RADIUS secret management</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountRadius</span> {
+    <span class="doccomment">/// Show the RADIUS secret for a user.</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show_secret&quot;</span>)]</span>
     <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
+    <span class="doccomment">/// Generate a randomized RADIUS secret for a user.</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;generate_secret&quot;</span>)]</span>
     <span class="ident">Generate</span>(<span class="ident">AccountNamedOpt</span>),
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_secret&quot;</span>)]</span>
-    <span class="ident">Delete</span>(<span class="ident">AccountNamedOpt</span>),
+    <span class="doccomment">/// Remove the configured RADIUS secret for the user.</span>
+    <span class="ident">DeleteSecret</span>(<span class="ident">AccountNamedOpt</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
