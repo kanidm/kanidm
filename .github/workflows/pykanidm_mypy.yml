@@ -7,7 +7,7 @@ jobs:
   pykanidm_mypy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
       - name: Set up Python 3.9
