@@ -6,6 +6,9 @@ RUN /usr/sbin/mirrorsorcerer -x; true
 RUN zypper refresh --force
 RUN zypper dup -y
 
+# Set the build profile
+ENV KANIDM_BUILD_PROFILE=container_x86_64_v3
+
 FROM repos AS builder
 LABEL maintainer william@blackhats.net.au
 
