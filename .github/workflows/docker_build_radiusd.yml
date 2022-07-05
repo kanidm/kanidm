@@ -35,7 +35,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push radius
         id: docker_build_radius
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           push: ${{ github.ref == 'refs/heads/master' }}
           platforms: ${{matrix.target}}
