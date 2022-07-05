@@ -33,6 +33,7 @@ use std::str::FromStr;
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, OnlineBackup, ServerRole};
 use kanidm::tracing_tree;
+#[cfg(not(target_family = "windows"))]
 use kanidm::utils::file_permissions_readonly;
 use score::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
@@ -124,6 +125,7 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
 }
 
 /// Gets the user details if we're running in unix-land
+#[cfg(not(target_family = "windows"))]
 fn get_user_details_unix() -> (u32, u32) {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
@@ -270,25 +272,35 @@ async fn main() {
 
             if let Some(i_str) = &(sconfig.tls_chain) {
                 let i_path = PathBuf::from(i_str.as_str());
-                let i_meta = read_file_metadata(&i_path);
                 // TODO: windows support for DB folder permissions checks
+                #[cfg(not(target_family="unix"))]
+                eprintln!("WARNING: permissions checks on windows aren't implemented, cannot check TLS Key at {:?}", i_path);
+
                 #[cfg(target_family="unix")]
-                if !file_permissions_readonly(&i_meta) {
-                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                {
+                    let i_meta = read_file_metadata(&i_path);
+                    if !file_permissions_readonly(&i_meta) {
+                        eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                    }
                 }
             }
 
             if let Some(i_str) = &(sconfig.tls_key) {
                 let i_path = PathBuf::from(i_str.as_str());
-                let i_meta = read_file_metadata(&i_path);
+                // TODO: windows support for DB folder permissions checks
+                #[cfg(not(target_family="unix"))]
+                eprintln!("WARNING: permissions checks on windows aren't implemented, cannot check TLS Key at {:?}", i_path);
+
                 // TODO: windows support for DB folder permissions checks
                 #[cfg(target_family="unix")]
-                if !file_permissions_readonly(&i_meta) {
-                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
-                }
-
-                if i_meta.mode() & 0o007 != 0 {
-                    eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+                {
+                    let i_meta = read_file_metadata(&i_path);
+                    if !file_permissions_readonly(&i_meta) {
+                        eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                    }
+                    if i_meta.mode() & 0o007 != 0 {
+                        eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+                    }
                 }
             }
 
