@@ -158,6 +158,8 @@ async fn main() {
     let mut config = Configuration::new();
     // Check the permissions are OK.
     let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
+
+    #[cfg(target_family="unix")]
     if !file_permissions_readonly(&cfg_meta) {
         eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
         opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
@@ -217,10 +219,15 @@ async fn main() {
             );
             std::process::exit(1);
         }
+
+        // TODO: windows support for DB folder permissions checks
+        #[cfg(target_family="unix")]
         if !file_permissions_readonly(&i_meta) {
             eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
         }
 
+        // TODO: windows support for DB folder permissions checks
+        #[cfg(target_family="unix")]
         if i_meta.mode() & 0o007 != 0 {
             eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
         }
@@ -264,6 +271,8 @@ async fn main() {
             if let Some(i_str) = &(sconfig.tls_chain) {
                 let i_path = PathBuf::from(i_str.as_str());
                 let i_meta = read_file_metadata(&i_path);
+                // TODO: windows support for DB folder permissions checks
+                #[cfg(target_family="unix")]
                 if !file_permissions_readonly(&i_meta) {
                     eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                 }
@@ -272,6 +281,8 @@ async fn main() {
             if let Some(i_str) = &(sconfig.tls_key) {
                 let i_path = PathBuf::from(i_str.as_str());
                 let i_meta = read_file_metadata(&i_path);
+                // TODO: windows support for DB folder permissions checks
+                #[cfg(target_family="unix")]
                 if !file_permissions_readonly(&i_meta) {
                     eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                 }

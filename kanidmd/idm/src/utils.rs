@@ -18,6 +18,8 @@ use std::os::macos::fs::MetadataExt;
 #[cfg(target_os = "windows")]
 use std::os::windows::fs::MetadataExt;
 
+
+#[cfg(target_family = "unix")]
 use users::{get_current_gid, get_current_uid};
 
 #[derive(Debug)]
