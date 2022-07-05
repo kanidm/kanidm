@@ -10,6 +10,7 @@ use uuid::{Builder, Uuid};
 use rand::distributions::Distribution;
 use rand::{thread_rng, Rng};
 
+#[cfg(not(target_family= "windows"))]
 use std::fs::Metadata;
 #[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
