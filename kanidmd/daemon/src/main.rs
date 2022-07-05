@@ -17,7 +17,7 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[cfg(not(target_family = "windows"))] // not needed for windows builds
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 #[cfg(target_family = "windows")] // for windows builds
-use whoami::username;
+use whoami;
 
 use serde::Deserialize;
 use std::fs::{metadata, File, Metadata};
@@ -146,9 +146,19 @@ fn get_user_details_unix() -> (u32, u32) {
     (cuid, ceuid)
 }
 
+/// Get information on the windows username
+#[cfg(target_family="windows")]
+fn get_user_details_windows() {
+    eprintln!("Running on windows, current username is: {:?}", whoami::username);
+}
+
 #[tokio::main]
 async fn main() {
     tracing_tree::main_init();
+
+    // Get information on the windows username
+    #[cfg(target_family="windows")]
+    get_user_details_windows();
 
     // Get info about who we are.
     #[cfg(target_family="unix")]
