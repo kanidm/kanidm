@@ -79,5 +79,4 @@ RUN zypper remove -y busybox-adduser
 
 USER kanidm
 
-ENTRYPOINT [ "/sbin/kanidm" ]
-CMD [ "-c", "/data/kanidm.toml" ]
+CMD [ "/sbin/kanidm", "-c", "/data/kanidm.toml" ]
