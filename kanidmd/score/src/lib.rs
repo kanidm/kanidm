@@ -32,7 +32,7 @@ mod ldaps;
 use async_std::task;
 use compact_jwt::JwsSigner;
 use kanidm::prelude::*;
-#[cfg(not(target_family="windows"))]
+#[cfg(not(target_family = "windows"))]
 use libc::umask;
 
 use kanidm::actors::v1_read::QueryServerReadV1;
@@ -552,8 +552,10 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
         config
     );
     // Setup umask, so that every we touch or create is secure.
-    #[cfg(not(target_family="windows"))]
-    unsafe { umask(0o0027) };
+    #[cfg(not(target_family = "windows"))]
+    unsafe {
+        umask(0o0027)
+    };
 
     // Similar, create a stats task which aggregates statistics from the
     // server as they come in.
