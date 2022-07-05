@@ -114,10 +114,17 @@ impl AccountOpt {
                             debug!("{:?}", result);
                             println!("{}", modmessage);
                         }
+                    };
                 }
             }, // end AccountOpt::Radius
             AccountOpt::Posix { commands } => match commands {
                 AccountPosix::Show(aopt) => {
+                    let client = aopt.copt.to_client().await;
+                    match client
+                        .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
+                        .await
+                    {
+                        Ok(token) => println!("{}", token),
                         Err(e) => {
                             error!("Error -> {:?}", e);
                         }

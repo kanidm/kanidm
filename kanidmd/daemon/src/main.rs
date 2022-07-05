@@ -240,15 +240,15 @@ async fn main() {
 
         // TODO: windows support for DB folder permissions checks
         #[cfg(target_family = "unix")]
-        if !file_permissions_readonly(&i_meta) {
-            eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+        {
+            if !file_permissions_readonly(&i_meta) {
+                eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            }
+            if i_meta.mode() & 0o007 != 0 {
+                eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            }
         }
 
-        // TODO: windows support for DB folder permissions checks
-        #[cfg(target_family = "unix")]
-        if i_meta.mode() & 0o007 != 0 {
-            eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
-        }
     }
 
     config.update_log_level(ll);
