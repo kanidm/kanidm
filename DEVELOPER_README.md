@@ -61,6 +61,23 @@ sudo apt-get install libsqlite3-dev libudev-dev libssl-dev pkg-config libpam0g-d
 
 Tested with Ubuntu 20.04 and 22.04.
 
+#### Windows
+
+You need [rustup](https://rustup.rs/) to install a Rust toolchain.
+
+An easy way to grab the dependencies is to install [vcpkg](https://vcpkg.io/en/getting-started.html).
+
+This is how it works in the automated build:
+
+1. Enable use of installed packages for the user system-wide:
+```shell
+vcpkg integrate install
+```
+2. Install the openssl dependency, which compiles it from source. This downloads all sorts of dependencies, including perl for the build.
+```shell
+vcpkg install openssl:x64-windows-static-md
+```
+
 ### Get Involved
 
 To get started, you'll need to fork or branch, and we'll merge based on pull

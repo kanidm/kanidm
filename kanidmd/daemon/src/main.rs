@@ -14,7 +14,10 @@
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+#[cfg(not(target_family = "windows"))] // not needed for windows builds
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+#[cfg(target_family = "windows")] // for windows builds
+use whoami::username;
 
 use serde::Deserialize;
 use std::fs::{metadata, File, Metadata};
@@ -120,11 +123,8 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    tracing_tree::main_init();
-
-    // Get info about who we are.
+/// Gets the user details if we're running in unix-land
+fn get_user_details_unix() -> (u32, u32) {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
     let cgid = get_current_gid();
@@ -141,24 +141,36 @@ async fn main() {
         eprintln!("ERROR: Refusing to run - uid and euid OR gid and egid must be consistent.");
         std::process::exit(1);
     }
+    (cuid, ceuid)
+}
+
+#[tokio::main]
+async fn main() {
+    tracing_tree::main_init();
+
+    // Get info about who we are.
+    #[cfg(target_family="unix")]
+    let (cuid, ceuid) = get_user_details_unix();
 
     // Read cli args, determine if we should backup/restore
     let opt = KanidmdParser::parse();
 
     let mut config = Configuration::new();
-    // Check the permissions are sane.
+    // Check the permissions are OK.
     let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
     if !file_permissions_readonly(&cfg_meta) {
         eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
         opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
     }
 
+    #[cfg(target_family="unix")]
     if cfg_meta.mode() & 0o007 != 0 {
         eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
         opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
         );
     }
 
+    #[cfg(target_family="unix")]
     if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
         eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
         opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
