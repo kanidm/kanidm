@@ -1287,7 +1287,7 @@ as having TLS present on your communication channels.</p>
 you're 
 using the Tumbleweed release, it's packaged in <code>zypper</code>.</p>
 <p>You will also need some system libraries to build this:</p>
-<pre><code>libudev-devel sqlite3-devel libopenssl-devel npm-default
+<pre><code>libudev-devel sqlite3-devel libopenssl-devel
 </code></pre>
 <h4 id="fedora"><a class="header" href="#fedora">Fedora</a></h4>
 <p>You need to install the Rust toolchain packages:</p>
@@ -1386,12 +1386,12 @@ which can be used directly. This means you don't need to build the Web UI yourse
 <p>The Web UI uses Rust WebAssembly rather than Javascript. To build this you need 
 to set up the environment:</p>
 <pre><code>cargo install wasm-pack
-npm install --global rollup
 </code></pre>
 <p>Then you are able to build the UI:</p>
 <pre><code>cd kanidmd_web_ui/
-./build_wasm.sh
+./build_wasm_dev.sh
 </code></pre>
+<p>To build for release, run <code>build_wasm_release.sh</code>.</p>
 <p>The &quot;developer&quot; profile for kanidmd will automatically use the pkg output in this folder.</p>
 <p>Setting different developer profiles while building is done by setting the 
 environment 
