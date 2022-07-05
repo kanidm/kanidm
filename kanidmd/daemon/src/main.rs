@@ -149,7 +149,7 @@ fn get_user_details_unix() -> (u32, u32) {
 /// Get information on the windows username
 #[cfg(target_family="windows")]
 fn get_user_details_windows() {
-    eprintln!("Running on windows, current username is: {:?}", whoami::username);
+    eprintln!("Running on windows, current username is: {:?}", whoami::username());
 }
 
 #[tokio::main]
