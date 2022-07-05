@@ -169,26 +169,29 @@ async fn main() {
 
     let mut config = Configuration::new();
     // Check the permissions are OK.
-    let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
-
     #[cfg(target_family="unix")]
-    if !file_permissions_readonly(&cfg_meta) {
-        eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
-    }
+    {
+        let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
 
-    #[cfg(target_family="unix")]
-    if cfg_meta.mode() & 0o007 != 0 {
-        eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
-        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
-        );
-    }
+        #[cfg(target_family="unix")]
+        if !file_permissions_readonly(&cfg_meta) {
+            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+            opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
+        }
 
-    #[cfg(target_family="unix")]
-    if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-        eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
-        );
+        #[cfg(target_family="unix")]
+        if cfg_meta.mode() & 0o007 != 0 {
+            eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
+            opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
+            );
+        }
+
+        #[cfg(target_family="unix")]
+        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+            eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+            opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
+            );
+        }
     }
 
     // Read our config
