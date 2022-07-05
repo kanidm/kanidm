@@ -248,3 +248,25 @@ docker run --rm -it \
 ```
 
 This assumes you have a `config.ini` file in the current working directory.
+
+## Building the Book
+
+You'll need `mdbook` to build the book:
+
+```shell
+cargo install mdbook
+```
+
+To build it:
+
+```shell
+cd kanidm_book
+mdbook build
+```
+
+Or to run a local webserver:
+
+```shell
+cd kanidm_book
+mdbook serve
+````

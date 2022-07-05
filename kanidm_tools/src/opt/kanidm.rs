@@ -26,9 +26,6 @@ pub struct CommonOpt {
     /// Path to a CA certificate file
     #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
-    /// Log format (still in very early development)
-    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
-    pub output_mode: String,
 }
 
 #[derive(Debug, Args)]
@@ -144,7 +141,8 @@ pub struct AccountNamedTagPkOpt {
 }
 
 #[derive(Debug, Args)]
-pub struct AnonTokenOpt {
+/// Command-line options for account credental use_reset_token
+pub struct UseResetTokenOpt {
     #[clap(flatten)]
     copt: CommonOpt,
     #[clap(name = "token")]
@@ -163,26 +161,30 @@ pub struct AccountCreateOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountCredential {
-    /// Interactively update and change the content of the credentials of an account
+    /// Interactively update/change the credentials for an account
     #[clap(name = "update")]
     Update(AccountNamedOpt),
-    /// Given a reset token, interactively perform a credential reset
-    #[clap(name = "reset")]
-    Reset(AnonTokenOpt),
-    /// Create a reset link (token) that can be given to another person so they can
+    /// Using a reset token, interactively reset credentials for a user
+    #[clap(name = "use_reset_token")]
+    UseResetToken(UseResetTokenOpt),
+    /// Create a reset token that can be given to another person so they can
     /// recover or reset their account credentials.
-    #[clap(name = "create_reset_link")]
-    CreateResetLink(AccountNamedOpt),
+    #[clap(name = "create_reset_token")]
+    CreateResetToken(AccountNamedOpt),
 }
 
+/// RADIUS secret management
 #[derive(Debug, Subcommand)]
 pub enum AccountRadius {
+    /// Show the RADIUS secret for a user.
     #[clap(name = "show_secret")]
     Show(AccountNamedOpt),
+    /// Generate a randomized RADIUS secret for a user.
     #[clap(name = "generate_secret")]
     Generate(AccountNamedOpt),
     #[clap(name = "delete_secret")]
-    Delete(AccountNamedOpt),
+    /// Remove the configured RADIUS secret for the user.
+    DeleteSecret(AccountNamedOpt),
 }
 
 #[derive(Debug, Args)]
