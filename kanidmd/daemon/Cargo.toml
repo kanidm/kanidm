@@ -21,13 +21,15 @@ kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
 score = { path = "../score" }
 clap = { version = "^3.2", features = ["derive", "env"] }
-users = "^0.11.0"
 serde = { version = "^1.0.138", features = ["derive"] }
 tokio = { version = "^1.19.1", features = ["rt-multi-thread", "macros", "signal"] }
 toml = "0.5.9"
-whoami = "^1.2.1"
 
+
+[target.'cfg(target_family = "windows")'.dependencies]
+whoami = "^1.2.1"
 [target.'cfg(not(target_family = "windows"))'.dependencies]
+users = "^0.11.0"
 tikv-jemallocator = "0.5"
 
 [build-dependencies]

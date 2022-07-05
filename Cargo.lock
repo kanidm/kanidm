@@ -2136,6 +2136,7 @@ dependencies = [
  "validator",
  "webauthn-authenticator-rs",
  "webauthn-rs",
+ "whoami",
  "zxcvbn",
 ]
 
