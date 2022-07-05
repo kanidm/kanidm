@@ -1,5 +1,5 @@
 ---
-name: Container - Kanidmd
+name: Container - Kanidm
 
 # this will build regardless,
 # but only push to the container registry
@@ -12,14 +12,14 @@ name: Container - Kanidmd
       - master
 
 jobs:
-  kanidmd_build:
+  kanidm_build:
     runs-on: ubuntu-latest
     continue-on-error: true # yolo
     strategy:
       fail-fast: false
       matrix:
         target:
-          # - linux/arm64
+          - linux/arm64
           - linux/amd64
     if: github.event_name == 'push'
     steps:
@@ -36,15 +36,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push kanidmd
-        id: docker_build_kanidmd
+        id: docker_build_kanidm
         uses: docker/build-push-action@v2
         with:
           push: ${{ github.ref == 'refs/heads/master' }}
           platforms: ${{matrix.target}}
           # https://github.com/docker/build-push-action/issues/254
-          tags: ghcr.io/kanidm/kanidmd:devel
+          tags: ghcr.io/kanidm/kanidm:devel
           build-args: |
-            "KANIDM_BUILD_PROFILE=developer"
             "KANIDM_FEATURES="
             "KANIDM_BUILD_OPTIONS=-j1"
-          file: kanidmd/Dockerfile
+          file: kanidm_tools/Dockerfile

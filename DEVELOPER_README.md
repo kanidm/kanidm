@@ -33,7 +33,7 @@ using the Tumbleweed release, it's packaged in `zypper`.
 
 You will also need some system libraries to build this:
 
-    libudev-devel sqlite3-devel libopenssl-devel npm-default
+    libudev-devel sqlite3-devel libopenssl-devel
 
 #### Fedora
 
@@ -177,12 +177,13 @@ The Web UI uses Rust WebAssembly rather than Javascript. To build this you need
 to set up the environment:
 
     cargo install wasm-pack
-    npm install --global rollup
 
 Then you are able to build the UI:
 
     cd kanidmd_web_ui/
-    ./build_wasm.sh
+    ./build_wasm_dev.sh
+
+To build for release, run `build_wasm_release.sh`.
 
 The "developer" profile for kanidmd will automatically use the pkg output in this folder.
 
