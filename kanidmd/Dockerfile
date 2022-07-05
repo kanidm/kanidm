@@ -6,11 +6,8 @@ RUN /usr/sbin/mirrorsorcerer -x; true
 RUN zypper refresh --force
 RUN zypper dup -y
 
-# Set the build profile
-ENV KANIDM_BUILD_PROFILE=container_x86_64_v3
 
 FROM repos AS builder
-LABEL maintainer william@blackhats.net.au
 
 RUN zypper install -y \
         cargo \
@@ -34,6 +31,9 @@ ARG KANIDM_BUILD_OPTIONS=""
 RUN mkdir /scratch
 RUN echo $KANIDM_BUILD_PROFILE
 RUN echo $KANIDM_FEATURES
+
+# Set the build profile
+ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
 
 ENV CARGO_HOME=/scratch/.cargo
 ENV RUSTFLAGS="-Clinker=clang"
@@ -66,17 +66,16 @@ RUN if [ -z "${KANIDM_FEATURES}" ]; then \
     --target-dir="/usr/src/kanidm/target/" \
     --release; \
 else \
- cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
- --target-dir="/usr/src/kanidm/target/" \
- --features="${KANIDM_FEATURES}" \
- --release; \
+  cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
+    --target-dir="/usr/src/kanidm/target/" \
+    --features="${KANIDM_FEATURES}" \
+    --release; \
 fi
 RUN if [ "${SCCACHE_REDIS}" != "" ]; then sccache -s; fi
 
 RUN ls -al /usr/src/kanidm/target/release
 
 FROM repos
-LABEL maintainer william@blackhats.net.au
 
 RUN zypper install -y \
         timezone \
