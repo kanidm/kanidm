@@ -248,7 +248,6 @@ async fn main() {
                 eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
             }
         }
-
     }
 
     config.update_log_level(ll);
