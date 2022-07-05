@@ -40,7 +40,6 @@ r2d2 = "^0.8.9"
 r2d2_sqlite = "^0.20.0"
 rand = "^0.8.5"
 regex = "^1.5.6"
-rusqlite = "^0.27.0"
 saffron = "^0.1.0"
 serde = { version = "^1.0.138", features = ["derive"] }
 serde_cbor = "^0.11.2"
@@ -63,9 +62,18 @@ validator = { version = "^0.15.0", features = ["phone"] }
 webauthn-rs = "^0.3.2"
 zxcvbn = "^2.2.1"
 
+# because windows really can't build without the bundled one
+[target.'cfg(target_family = "windows")'.dependencies.rusqlite]
+version = "^0.27.0"
+features = ["bundled"]
+
+[target.'cfg(not(target_family = "windows"))'.dependencies.rusqlite]
+version = "^0.27.0"
 
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = "^1.2.1"
+
+
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 users = "^0.11.0"
 
