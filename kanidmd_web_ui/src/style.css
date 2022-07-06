@@ -20,7 +20,8 @@ body {
 
 .form-signin {
   /* width: 100%; */
-  max-width: 680px;
+  /* max-width: 50%; */
+  padding: 2.0em;
   margin: auto;
 }
 
