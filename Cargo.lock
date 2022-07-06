@@ -1046,6 +1046,7 @@ dependencies = [
  "tokio",
  "toml",
  "users",
+ "whoami",
 ]
 
 [[package]]
@@ -2069,6 +2070,7 @@ dependencies = [
  "validator",
  "webauthn-authenticator-rs",
  "webauthn-rs",
+ "whoami",
  "zxcvbn",
 ]
 
@@ -2252,6 +2254,7 @@ version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "898745e570c7d0453cc1fbc4a701eb6c662ed54e8fec8b7d14be137ebeeb9d14"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -4469,6 +4472,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d743fdedc5c64377b5fc2bc036b01c7fd642205a0d96356034ae3404d49eb7fb"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "whoami"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "524b58fa5a20a2fb3014dd6358b70e6579692a56ef6fce928834e488f42f65e8"
+dependencies = [
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

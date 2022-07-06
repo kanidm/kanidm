@@ -28,7 +28,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release -p kanidm_client -p kanidm_tools -p orca
+          args: --release -p kanidm_client -p kanidm_tools -p orca -p daemon
   windows_test_kanidm:
     runs-on: windows-latest
     steps:
@@ -47,4 +47,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: -p kanidm_client -p kanidm_tools -p orca
+          args: -p kanidm_client -p kanidm_tools -p orca -p daemon -p score

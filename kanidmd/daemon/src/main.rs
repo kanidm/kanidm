@@ -14,7 +14,10 @@
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
+#[cfg(not(target_family = "windows"))] // not needed for windows builds
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+#[cfg(target_family = "windows")] // for windows builds
+use whoami;
 
 use serde::Deserialize;
 use std::fs::{metadata, File, Metadata};
@@ -30,6 +33,7 @@ use std::str::FromStr;
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, OnlineBackup, ServerRole};
 use kanidm::tracing_tree;
+#[cfg(not(target_family = "windows"))]
 use kanidm::utils::file_permissions_readonly;
 use score::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
@@ -120,11 +124,9 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    tracing_tree::main_init();
-
-    // Get info about who we are.
+/// Gets the user details if we're running in unix-land
+#[cfg(not(target_family = "windows"))]
+fn get_user_details_unix() -> (u32, u32) {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
     let cgid = get_current_gid();
@@ -141,28 +143,58 @@ async fn main() {
         eprintln!("ERROR: Refusing to run - uid and euid OR gid and egid must be consistent.");
         std::process::exit(1);
     }
+    (cuid, ceuid)
+}
+
+/// Get information on the windows username
+#[cfg(target_family = "windows")]
+fn get_user_details_windows() {
+    eprintln!(
+        "Running on windows, current username is: {:?}",
+        whoami::username()
+    );
+}
+
+#[tokio::main]
+async fn main() {
+    tracing_tree::main_init();
+
+    // Get information on the windows username
+    #[cfg(target_family = "windows")]
+    get_user_details_windows();
+
+    // Get info about who we are.
+    #[cfg(target_family = "unix")]
+    let (cuid, ceuid) = get_user_details_unix();
 
     // Read cli args, determine if we should backup/restore
     let opt = KanidmdParser::parse();
 
     let mut config = Configuration::new();
-    // Check the permissions are sane.
-    let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
-    if !file_permissions_readonly(&cfg_meta) {
-        eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
-    }
+    // Check the permissions are OK.
+    #[cfg(target_family = "unix")]
+    {
+        let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
 
-    if cfg_meta.mode() & 0o007 != 0 {
-        eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
-        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
-        );
-    }
+        #[cfg(target_family = "unix")]
+        if !file_permissions_readonly(&cfg_meta) {
+            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+            opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
+        }
 
-    if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-        eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
-        );
+        #[cfg(target_family = "unix")]
+        if cfg_meta.mode() & 0o007 != 0 {
+            eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
+            opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
+            );
+        }
+
+        #[cfg(target_family = "unix")]
+        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+            eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+            opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
+            );
+        }
     }
 
     // Read our config
@@ -205,12 +237,16 @@ async fn main() {
             );
             std::process::exit(1);
         }
-        if !file_permissions_readonly(&i_meta) {
-            eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
-        }
 
-        if i_meta.mode() & 0o007 != 0 {
-            eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+        // TODO: windows support for DB folder permissions checks
+        #[cfg(target_family = "unix")]
+        {
+            if !file_permissions_readonly(&i_meta) {
+                eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            }
+            if i_meta.mode() & 0o007 != 0 {
+                eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            }
         }
     }
 
@@ -251,21 +287,35 @@ async fn main() {
 
             if let Some(i_str) = &(sconfig.tls_chain) {
                 let i_path = PathBuf::from(i_str.as_str());
-                let i_meta = read_file_metadata(&i_path);
-                if !file_permissions_readonly(&i_meta) {
-                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                // TODO: windows support for DB folder permissions checks
+                #[cfg(not(target_family = "unix"))]
+                eprintln!("WARNING: permissions checks on windows aren't implemented, cannot check TLS Key at {:?}", i_path);
+
+                #[cfg(target_family = "unix")]
+                {
+                    let i_meta = read_file_metadata(&i_path);
+                    if !file_permissions_readonly(&i_meta) {
+                        eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                    }
                 }
             }
 
             if let Some(i_str) = &(sconfig.tls_key) {
                 let i_path = PathBuf::from(i_str.as_str());
-                let i_meta = read_file_metadata(&i_path);
-                if !file_permissions_readonly(&i_meta) {
-                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
-                }
+                // TODO: windows support for DB folder permissions checks
+                #[cfg(not(target_family = "unix"))]
+                eprintln!("WARNING: permissions checks on windows aren't implemented, cannot check TLS Key at {:?}", i_path);
 
-                if i_meta.mode() & 0o007 != 0 {
-                    eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+                // TODO: windows support for DB folder permissions checks
+                #[cfg(target_family = "unix")]
+                {
+                    let i_meta = read_file_metadata(&i_path);
+                    if !file_permissions_readonly(&i_meta) {
+                        eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                    }
+                    if i_meta.mode() & 0o007 != 0 {
+                        eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+                    }
                 }
             }
 
