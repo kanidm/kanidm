@@ -225,6 +225,8 @@
 <span id="220">220</span>
 <span id="221">221</span>
 <span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
 <span class="kw">use</span> <span class="ident">std::io::ErrorKind</span>;
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
@@ -237,14 +239,16 @@
 <span class="kw">use</span> <span class="ident">rand::distributions::Distribution</span>;
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">thread_rng</span>, <span class="ident">Rng</span>};
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>))]</span>
 <span class="kw">use</span> <span class="ident">std::fs::Metadata</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">std::os::linux::fs::MetadataExt</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;macos&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">std::os::macos::fs::MetadataExt</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">std::os::windows::fs::MetadataExt</span>;
+<span class="comment">// #[cfg(target_os = &quot;windows&quot;)]</span>
+<span class="comment">// use std::os::windows::fs::MetadataExt;</span>
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">users</span>::{<span class="ident">get_current_gid</span>, <span class="ident">get_current_uid</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>

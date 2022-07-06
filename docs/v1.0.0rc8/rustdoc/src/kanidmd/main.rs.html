@@ -369,6 +369,56 @@
 <span id="364">364</span>
 <span id="365">365</span>
 <span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -385,7 +435,10 @@
 <span class="attribute">#[<span class="ident">global_allocator</span>]</span>
 <span class="kw">static</span> <span class="ident">ALLOC</span>: <span class="ident">tikv_jemallocator::Jemalloc</span> <span class="op">=</span> <span class="ident">tikv_jemallocator::Jemalloc</span>;
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>))]</span> <span class="comment">// not needed for windows builds</span>
 <span class="kw">use</span> <span class="ident">users</span>::{<span class="ident">get_current_gid</span>, <span class="ident">get_current_uid</span>, <span class="ident">get_effective_gid</span>, <span class="ident">get_effective_uid</span>};
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)]</span> <span class="comment">// for windows builds</span>
+<span class="kw">use</span> <span class="ident">whoami</span>;
 
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::fs</span>::{<span class="ident">metadata</span>, <span class="ident">File</span>, <span class="ident">Metadata</span>};
@@ -401,6 +454,7 @@
 <span class="kw">use</span> <span class="ident">kanidm::audit::LogLevel</span>;
 <span class="kw">use</span> <span class="ident">kanidm::config</span>::{<span class="ident">Configuration</span>, <span class="ident">OnlineBackup</span>, <span class="ident">ServerRole</span>};
 <span class="kw">use</span> <span class="ident">kanidm::tracing_tree</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>))]</span>
 <span class="kw">use</span> <span class="ident">kanidm::utils::file_permissions_readonly</span>;
 <span class="kw">use</span> <span class="ident">score</span>::{
     <span class="ident">backup_server_core</span>, <span class="ident">create_server_core</span>, <span class="ident">dbscan_get_id2entry_core</span>, <span class="ident">dbscan_list_id2entry_core</span>,
@@ -491,11 +545,9 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="ident">tracing_tree::main_init</span>();
-
-    <span class="comment">// Get info about who we are.</span>
+<span class="doccomment">/// Gets the user details if we&#39;re running in unix-land</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>))]</span>
+<span class="kw">fn</span> <span class="ident">get_user_details_unix</span>() -&gt; (<span class="ident">u32</span>, <span class="ident">u32</span>) {
     <span class="kw">let</span> <span class="ident">cuid</span> <span class="op">=</span> <span class="ident">get_current_uid</span>();
     <span class="kw">let</span> <span class="ident">ceuid</span> <span class="op">=</span> <span class="ident">get_effective_uid</span>();
     <span class="kw">let</span> <span class="ident">cgid</span> <span class="op">=</span> <span class="ident">get_current_gid</span>();
@@ -512,28 +564,58 @@
         <span class="macro">eprintln!</span>(<span class="string">&quot;ERROR: Refusing to run - uid and euid OR gid and egid must be consistent.&quot;</span>);
         <span class="ident">std::process::exit</span>(<span class="number">1</span>);
     }
+    (<span class="ident">cuid</span>, <span class="ident">ceuid</span>)
+}
+
+<span class="doccomment">/// Get information on the windows username</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)]</span>
+<span class="kw">fn</span> <span class="ident">get_user_details_windows</span>() {
+    <span class="macro">eprintln!</span>(
+        <span class="string">&quot;Running on windows, current username is: {:?}&quot;</span>,
+        <span class="ident">whoami::username</span>()
+    );
+}
+
+<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="ident">tracing_tree::main_init</span>();
+
+    <span class="comment">// Get information on the windows username</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)]</span>
+    <span class="ident">get_user_details_windows</span>();
+
+    <span class="comment">// Get info about who we are.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+    <span class="kw">let</span> (<span class="ident">cuid</span>, <span class="ident">ceuid</span>) <span class="op">=</span> <span class="ident">get_user_details_unix</span>();
 
     <span class="comment">// Read cli args, determine if we should backup/restore</span>
     <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">KanidmdParser::parse</span>();
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">Configuration::new</span>();
-    <span class="comment">// Check the permissions are sane.</span>
-    <span class="kw">let</span> <span class="ident">cfg_meta</span> <span class="op">=</span> <span class="ident">read_file_metadata</span>(<span class="kw-2">&amp;</span>(<span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>));
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">cfg_meta</span>) {
-        <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>,
-        <span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>));
-    }
+    <span class="comment">// Check the permissions are OK.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+    {
+        <span class="kw">let</span> <span class="ident">cfg_meta</span> <span class="op">=</span> <span class="ident">read_file_metadata</span>(<span class="kw-2">&amp;</span>(<span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>));
 
-    <span class="kw">if</span> <span class="ident">cfg_meta</span>.<span class="ident">mode</span>() <span class="op">&amp;</span> <span class="number">0o007</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-        <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>,
-        <span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>)
-        );
-    }
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">cfg_meta</span>) {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>,
+            <span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>));
+        }
 
-    <span class="kw">if</span> <span class="ident">cfg_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">cuid</span> <span class="op">|</span><span class="op">|</span> <span class="ident">cfg_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">ceuid</span> {
-        <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...&quot;</span>,
-        <span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>)
-        );
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+        <span class="kw">if</span> <span class="ident">cfg_meta</span>.<span class="ident">mode</span>() <span class="op">&amp;</span> <span class="number">0o007</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>,
+            <span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>)
+            );
+        }
+
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+        <span class="kw">if</span> <span class="ident">cfg_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">cuid</span> <span class="op">|</span><span class="op">|</span> <span class="ident">cfg_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">ceuid</span> {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...&quot;</span>,
+            <span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>)
+            );
+        }
     }
 
     <span class="comment">// Read our config</span>
@@ -576,12 +658,16 @@
             );
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         }
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">i_meta</span>) {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!&quot;</span>, <span class="ident">db_par_path_buf</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>));
-        }
 
-        <span class="kw">if</span> <span class="ident">i_meta</span>.<span class="ident">mode</span>() <span class="op">&amp;</span> <span class="number">0o007</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: DB folder {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>, <span class="ident">db_par_path_buf</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>));
+        <span class="comment">// TODO: windows support for DB folder permissions checks</span>
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+        {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">i_meta</span>) {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!&quot;</span>, <span class="ident">db_par_path_buf</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>));
+            }
+            <span class="kw">if</span> <span class="ident">i_meta</span>.<span class="ident">mode</span>() <span class="op">&amp;</span> <span class="number">0o007</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: DB folder {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>, <span class="ident">db_par_path_buf</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;invalid file path&quot;</span>));
+            }
         }
     }
 
@@ -622,21 +708,35 @@
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">i_str</span>) <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">sconfig</span>.<span class="ident">tls_chain</span>) {
                 <span class="kw">let</span> <span class="ident">i_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">i_str</span>.<span class="ident">as_str</span>());
-                <span class="kw">let</span> <span class="ident">i_meta</span> <span class="op">=</span> <span class="ident">read_file_metadata</span>(<span class="kw-2">&amp;</span><span class="ident">i_path</span>);
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">i_meta</span>) {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>, <span class="ident">i_str</span>);
+                <span class="comment">// TODO: windows support for DB folder permissions checks</span>
+                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>))]</span>
+                <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions checks on windows aren&#39;t implemented, cannot check TLS Key at {:?}&quot;</span>, <span class="ident">i_path</span>);
+
+                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+                {
+                    <span class="kw">let</span> <span class="ident">i_meta</span> <span class="op">=</span> <span class="ident">read_file_metadata</span>(<span class="kw-2">&amp;</span><span class="ident">i_path</span>);
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">i_meta</span>) {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>, <span class="ident">i_str</span>);
+                    }
                 }
             }
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">i_str</span>) <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">sconfig</span>.<span class="ident">tls_key</span>) {
                 <span class="kw">let</span> <span class="ident">i_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">i_str</span>.<span class="ident">as_str</span>());
-                <span class="kw">let</span> <span class="ident">i_meta</span> <span class="op">=</span> <span class="ident">read_file_metadata</span>(<span class="kw-2">&amp;</span><span class="ident">i_path</span>);
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">i_meta</span>) {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>, <span class="ident">i_str</span>);
-                }
+                <span class="comment">// TODO: windows support for DB folder permissions checks</span>
+                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>))]</span>
+                <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions checks on windows aren&#39;t implemented, cannot check TLS Key at {:?}&quot;</span>, <span class="ident">i_path</span>);
 
-                <span class="kw">if</span> <span class="ident">i_meta</span>.<span class="ident">mode</span>() <span class="op">&amp;</span> <span class="number">0o007</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>, <span class="ident">i_str</span>);
+                <span class="comment">// TODO: windows support for DB folder permissions checks</span>
+                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+                {
+                    <span class="kw">let</span> <span class="ident">i_meta</span> <span class="op">=</span> <span class="ident">read_file_metadata</span>(<span class="kw-2">&amp;</span><span class="ident">i_path</span>);
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">i_meta</span>) {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>, <span class="ident">i_str</span>);
+                    }
+                    <span class="kw">if</span> <span class="ident">i_meta</span>.<span class="ident">mode</span>() <span class="op">&amp;</span> <span class="number">0o007</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>, <span class="ident">i_str</span>);
+                    }
                 }
             }
 

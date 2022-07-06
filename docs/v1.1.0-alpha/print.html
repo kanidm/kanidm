@@ -1305,6 +1305,21 @@ using the Tumbleweed release, it's packaged in <code>zypper</code>.</p>
 <pre><code class="language-shell">sudo apt-get install libsqlite3-dev libudev-dev libssl-dev pkg-config libpam0g-dev
 </code></pre>
 <p>Tested with Ubuntu 20.04 and 22.04.</p>
+<h4 id="windows"><a class="header" href="#windows">Windows</a></h4>
+<p>You need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>
+<p>An easy way to grab the dependencies is to install <a href="https://vcpkg.io/en/getting-started.html">vcpkg</a>.</p>
+<p>This is how it works in the automated build:</p>
+<ol>
+<li>Enable use of installed packages for the user system-wide:</li>
+</ol>
+<pre><code class="language-shell">vcpkg integrate install
+</code></pre>
+<ol start="2">
+<li>Install the openssl dependency, which compiles it from source. This downloads all sorts of dependencies, including perl for the build.</li>
+</ol>
+<pre><code class="language-shell">vcpkg install openssl:x64-windows-static-md
+</code></pre>
+<p>There's a powershell script in the root directory of the repository which, in concert with <code>openssl</code> will generate a config file and certs for testing.</p>
 <h3 id="get-involved"><a class="header" href="#get-involved">Get Involved</a></h3>
 <p>To get started, you'll need to fork or branch, and we'll merge based on pull
 requests.</p>
@@ -1358,8 +1373,9 @@ have issues, you can always stop and reset with:</p>
 <p>Once you have the source code, you need encryption certificates to use with the server, 
 because without certificates, authentication will fail. </p>
 <p>We recommend using <a href="https://letsencrypt.org">Let's Encrypt</a>, but if this is not 
-possible, please use our insecure certificate tool (<code>insecure_generate_tls.sh</code>). The 
-insecure certificate tool creates <code>/tmp/kanidm</code> and puts some self-signed certificates there.</p>
+possible, please use our insecure certificate tool (<code>insecure_generate_tls.sh</code>). </p>
+<p><strong>NOTE:</strong> Windows developers can use <code>insecure_generate_tls.ps1</code>, which puts everything (including a templated confi gfile) in <code>$TEMP\kanidm</code>. Please adjust paths below to suit.</p>
+<p>The insecure certificate tool creates <code>/tmp/kanidm</code> and puts some self-signed certificates there.</p>
 <p>You can now build and run the server with the commands below. It will use a database 
 in <code>/tmp/kanidm.db</code>.</p>
 <p>Create the initial database and generate an <code>admin</code> username:</p>
