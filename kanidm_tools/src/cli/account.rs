@@ -190,6 +190,7 @@ impl AccountOpt {
                     {
                         // TODO: JSON output for account person extend.
                         Ok(_) => {
+                            result_output.status =  kanidm_proto::messages::MessageStatus::Success;
                             result_output.result = format!(
                                 "Successfully extended the user {}.",
                                 aopt.aopts.account_id
