@@ -420,7 +420,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn exchange_intent_credential_update(
         &mut self,
         token: CredentialUpdateIntentToken,
-        //TODO: rename ct to something... else?
         current_time: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let CredentialUpdateIntentToken { intent_id } = token;

@@ -749,7 +749,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);
                         }
                         None => {
-                            // TODO: remove this log message from #860
                             admin_error!(
                                 "Invalid Attribute {} for entry - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
                                 attr_name.to_string(),

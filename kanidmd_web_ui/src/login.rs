@@ -764,6 +764,8 @@ impl Component for LoginApp {
 
         // May need to set these classes?
         // <body class="html-body form-body">
+        // TODO: add the domain_display_name here
+
         html! {
           <main class="form-signin">
             <div class="container">

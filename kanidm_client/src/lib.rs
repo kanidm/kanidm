@@ -1883,7 +1883,7 @@ impl KanidmClient {
         r.and_then(|mut v| v.pop().ok_or(ClientError::EmptyResponse))
     }
 
-    // ==== domain_info (aka domain)
+    /// Sets the domain display name using a PUT request
     pub async fn idm_domain_set_display_name(
         &self,
         new_display_name: &str,

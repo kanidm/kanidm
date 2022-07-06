@@ -392,8 +392,8 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    /// Get a single entry by it's UUID. This is heavily relied on for internal
-    /// server operations, especially in login and acp checks for acp.
+    /// Get a single entry by its UUID. This is used heavily for internal
+    /// server operations, especially in login and ACP checks.
     fn internal_search_uuid(
         &self,
         uuid: &Uuid,
@@ -955,6 +955,8 @@ impl QueryServer {
         let d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
             d_name: domain_name.clone(),
+            // we set the domain_display_name to the configuration file's domain_name
+            // here because the database is not started, so we cannot pull it from there.
             d_display: domain_name,
         }));
 

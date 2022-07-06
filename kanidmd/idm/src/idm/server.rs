@@ -1694,7 +1694,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let issuer = self
             .qs_write
             .get_db_domain_display_name()
-            .expect("reg_account_webauthn_init to retrieve issuer");
+            .expect("reg_account_webauthn_init failed to retrieve issuer");
 
         let (session, mfa_reg_next) =
             MfaRegSession::webauthn_new(origin, account, label, self.webauthn, issuer)?;
