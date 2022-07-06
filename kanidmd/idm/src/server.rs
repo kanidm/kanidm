@@ -1484,7 +1484,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Delete them - this is a TRUE delete, no going back now!
             self.be_txn
-                .reap_tombstones(&self.cid)
+                .reap_tombstones(&cid)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Tombstone purge operation failed (backend)");
                     e

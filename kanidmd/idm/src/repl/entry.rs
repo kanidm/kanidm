@@ -4,8 +4,7 @@ use crate::valueset;
 use kanidm_proto::v1::ConsistencyError;
 
 use crate::entry::{compare_attrs, Eattrs};
-use crate::modify::ModifyValid;
-use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
+use crate::schema::SchemaTransaction;
 
 use std::collections::btree_map::Keys;
 use std::collections::BTreeMap;
@@ -481,12 +480,14 @@ impl EntryChangelog {
         self.changes.keys()
     }
 
+    /*
     fn insert_anchor(&mut self, cid: Cid, entry_state: State) {
         // When we insert an anchor, we have to remove all subsequent anchors (but not
         // the preceeding ones.)
         let _ = self.anchors.split_off(&cid);
         self.anchors.insert(cid.clone(), entry_state);
     }
+    */
 
     pub fn trim_up_to(&mut self, cid: &Cid) -> Result<(), OperationError> {
         // Build a new anchor that is equal or less than this cid.
@@ -516,7 +517,7 @@ impl EntryChangelog {
 #[cfg(test)]
 mod tests {
     use crate::entry::Eattrs;
-    use crate::prelude::*;
+    // use crate::prelude::*;
     use crate::repl::cid::Cid;
     use crate::repl::entry::{Change, EntryChangelog, State, Transition};
     use crate::schema::{Schema, SchemaTransaction};

@@ -109,14 +109,14 @@ pub trait ReplicationUpdateVectorTransaction {
             }
         }
 
-        while let Some((ck, cv)) = &check_next {
+        while let Some((ck, _cv)) = &check_next {
             admin_warn!("{:?} is NOT consistent! CID missing from RUV", ck);
             debug_assert!(false);
             results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
             check_next = check_iter.next();
         }
 
-        while let Some((sk, sv)) = &snap_next {
+        while let Some((sk, _sv)) = &snap_next {
             admin_warn!("{:?} is NOT consistent! CID should not exist in RUV", sk);
             debug_assert!(false);
             results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
@@ -195,7 +195,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
 
     pub fn ruv_idls(&self) -> IDLBitRange {
         let mut idl = IDLBitRange::new();
-        self.data.iter().map(|(cid, ex_idl)| {
+        self.data.iter().for_each(|(_cid, ex_idl)| {
             idl = ex_idl as &_ | &idl;
         });
         idl

@@ -1566,8 +1566,12 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    pub fn seal(self, schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
-        let EntryValid { cid, uuid, eclog } = self.valid;
+    pub fn seal(self, _schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
+        let EntryValid {
+            cid: _,
+            uuid,
+            eclog,
+        } = self.valid;
 
         Entry {
             valid: EntrySealed { uuid, eclog },
@@ -2190,18 +2194,6 @@ where
             .eclog
             .add_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
         self.add_ava_int(attr, value)
-    }
-
-    /// Merge an existing value set into this attributes value set. If they are not
-    /// the same type, an error is returned. If no attribute exists, then this valueset is
-    /// cloned "as is".
-    fn merge_ava(&mut self, attr: &str, valueset: &ValueSet) -> Result<(), OperationError> {
-        if let Some(vs) = self.attrs.get_mut(attr) {
-            vs.merge(valueset)
-        } else {
-            self.attrs.insert(AttrString::from(attr), valueset.clone());
-            Ok(())
-        }
     }
 
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
