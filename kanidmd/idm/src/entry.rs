@@ -1017,6 +1017,10 @@ impl Entry<EntrySealed, EntryCommitted> {
         self
     }
 
+    pub fn get_changelog_mut(&mut self) -> &mut EntryChangelog {
+        &mut self.valid.eclog
+    }
+
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
     pub fn insert_claim(&mut self, value: &str) {
@@ -1432,6 +1436,16 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let uuid = attrs.get("uuid").and_then(|vs| vs.to_uuid_single())?;
 
+        /*
+         * ⚠️  ==== The Hack Zoen ==== ⚠️
+         *
+         * For now to make replication work, we are synthesising an in-memory change
+         * log, pinned to "the last time the entry was modified" as it's "create time".
+         *
+         * This means that a simple restart of the server flushes and resets the cl
+         * content. In the future though, this will actually be "part of" the entry
+         * and loaded from disk proper.
+         */
         let cid = attrs
             .get("last_modified_cid")
             .and_then(|vs| vs.as_cid_set())
@@ -1584,6 +1598,10 @@ impl<STATE> Entry<EntrySealed, STATE> {
 
     pub fn get_uuid(&self) -> Uuid {
         self.valid.uuid
+    }
+
+    pub fn get_changelog(&self) -> &EntryChangelog {
+        &self.valid.eclog
     }
 
     #[cfg(test)]

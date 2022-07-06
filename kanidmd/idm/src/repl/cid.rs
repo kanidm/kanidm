@@ -1,5 +1,6 @@
 use kanidm_proto::v1::OperationError;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -9,6 +10,12 @@ pub struct Cid {
     pub ts: Duration,
     pub d_uuid: Uuid,
     pub s_uuid: Uuid,
+}
+
+impl fmt::Display for Cid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}-{}-{}", self.ts.as_nanos(), self.d_uuid, self.s_uuid)
+    }
 }
 
 impl Cid {
@@ -28,10 +35,15 @@ impl Cid {
 
     #[cfg(test)]
     pub unsafe fn new_zero() -> Self {
+        Self::new_count(0)
+    }
+
+    #[cfg(test)]
+    pub unsafe fn new_count(c: u64) -> Self {
         Cid {
             d_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
             s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
-            ts: Duration::new(0, 0),
+            ts: Duration::new(c, 0),
         }
     }
 

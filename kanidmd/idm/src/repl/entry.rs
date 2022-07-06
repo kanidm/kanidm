@@ -7,9 +7,17 @@ use crate::entry::{compare_attrs, Eattrs};
 use crate::modify::ModifyValid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 
+use std::collections::btree_map::Keys;
 use std::collections::BTreeMap;
+
 use std::fmt;
+use std::ops::Bound;
 use std::ops::Bound::*;
+
+lazy_static! {
+    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
+    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
+}
 
 #[derive(Debug, Clone)]
 pub struct EntryChangelog {
@@ -35,7 +43,7 @@ impl fmt::Display for EntryChangelog {
 /// A change defines the transitions that occured within this Cid (transaction). A change is applied
 /// as a whole, or rejected during the replay process.
 #[derive(Debug, Clone)]
-struct Change {
+pub struct Change {
     s: Vec<Transition>,
 }
 
@@ -124,6 +132,10 @@ impl State {
                     trace!("Live + Recycle -> Recycled");
                     state = State::Recycled(attrs.clone());
                 }
+                (State::Live(_), Transition::Tombstone(attrs)) => {
+                    trace!("Live + Tombstone -> Tombstone");
+                    state = State::Tombstone(attrs.clone());
+                }
                 (State::Recycled(attrs), Transition::Revive) => {
                     trace!("Recycled + Revive -> Live");
                     state = State::Live(attrs.clone());
@@ -160,7 +172,6 @@ impl State {
                 | (State::NonExistant, Transition::Tombstone(_))
                 | (State::Live(_), Transition::Create(_))
                 | (State::Live(_), Transition::Revive)
-                | (State::Live(_), Transition::Tombstone(_))
                 | (State::Recycled(_), Transition::Create(_))
                 | (State::Recycled(_), Transition::Recycle)
                 | (State::Recycled(_), Transition::ModifyPresent(_, _))
@@ -198,13 +209,39 @@ impl EntryChangelog {
     pub fn new_without_schema(cid: Cid, attrs: Eattrs) -> Self {
         // I think we need to reduce the attrs based on what is / is not replicated.?
 
-        let anchors = btreemap![(cid.clone(), State::NonExistant)];
-        let changes = btreemap![(
-            cid,
-            Change {
-                s: vec![Transition::Create(attrs)]
-            }
-        )];
+        // We need to pick a state that reflects the current state WRT to tombstone
+        // or recycled!
+        let class = attrs.get("class");
+
+        let (anchors, changes) = if class
+            .as_ref()
+            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .unwrap_or(false)
+        {
+            (
+                btreemap![(cid.clone(), State::Tombstone(attrs))],
+                BTreeMap::new(),
+            )
+        } else if class
+            .as_ref()
+            .map(|c| c.contains(&PVCLASS_RECYCLED as &PartialValue))
+            .unwrap_or(false)
+        {
+            (
+                btreemap![(cid.clone(), State::Recycled(attrs))],
+                BTreeMap::new(),
+            )
+        } else {
+            (
+                btreemap![(cid.clone(), State::NonExistant)],
+                btreemap![(
+                    cid,
+                    Change {
+                        s: vec![Transition::Create(attrs)]
+                    }
+                )],
+            )
+        };
 
         EntryChangelog { anchors, changes }
     }
@@ -300,19 +337,34 @@ impl EntryChangelog {
     /// Replay our changes from and including the replay Cid, up to the latest point
     /// in time. We also return a vector of *rejected* Cid's showing what is in the
     /// change log that is considered invalid.
-    fn replay(&self, replay_cid: &Cid) -> Result<(State, Vec<Cid>), OperationError> {
+    fn replay(
+        &self,
+        from_cid: Bound<&Cid>,
+        to_cid: Bound<&Cid>,
+    ) -> Result<(State, Vec<Cid>), OperationError> {
         // Select the anchor_cid that is *earlier* or *equals* to the replay_cid.
 
         // if not found, we are *unable to* perform this replay which indicates a problem!
+        let (anchor_cid, anchor) = if matches!(from_cid, Unbounded) {
+            // If the from is unbounded, and to is unbounded, we want
+            // the earliest anchor possible.
 
-        let (anchor_cid, anchor) = self
-            .anchors
-            .range((Unbounded, Included(replay_cid)))
-            .next_back()
-            .ok_or_else(|| {
-                admin_error!(?replay_cid, "Failed to locate anchor");
-                OperationError::ReplReplayFailure
-            })?;
+            // If from is unbounded and to is bounded, we want the earliest
+            // possible.
+            self.anchors.iter().next()
+        } else {
+            // If from has a bound, we want an anchor "earlier than" from, regardless
+            // of the to bound state.
+            self.anchors.range((Unbounded, from_cid)).next_back()
+        }
+        .ok_or_else(|| {
+            admin_error!(
+                ?from_cid,
+                ?to_cid,
+                "Failed to locate anchor in replay range"
+            );
+            OperationError::ReplReplayFailure
+        })?;
 
         trace!(?anchor_cid, ?anchor);
 
@@ -321,7 +373,7 @@ impl EntryChangelog {
         let mut rejected_cid = Vec::new();
 
         // For each change
-        for (change_cid, change) in self.changes.range((Included(replay_cid), Unbounded)) {
+        for (change_cid, change) in self.changes.range((Included(anchor_cid), to_cid)) {
             // Apply the change.
             trace!(?change_cid, ?change);
 
@@ -371,7 +423,7 @@ impl EntryChangelog {
 
         // For each anchor (we only needs it's change id.)
         for cid in self.anchors.keys() {
-            match self.replay(cid) {
+            match self.replay(Included(cid), Unbounded) {
                 Ok((entry_state, rejected)) => {
                     trace!(?rejected);
 
@@ -403,6 +455,61 @@ impl EntryChangelog {
         }
 
         debug_assert!(results.is_empty());
+    }
+
+    pub fn contains_tail_cid(&self, cid: &Cid) -> bool {
+        if let Some(tail_cid) = self.changes.keys().next_back() {
+            if tail_cid == cid {
+                return true;
+            }
+        };
+        false
+    }
+
+    pub fn can_delete(&self) -> bool {
+        // Changelog should be empty.
+        // should have a current anchor state of tombstone.
+        self.changes.is_empty()
+            && matches!(self.anchors.values().next_back(), Some(State::Tombstone(_)))
+    }
+
+    pub fn is_live(&self) -> bool {
+        !matches!(self.anchors.values().next_back(), Some(State::Tombstone(_)))
+    }
+
+    pub fn cid_iter(&self) -> Keys<Cid, Change> {
+        self.changes.keys()
+    }
+
+    fn insert_anchor(&mut self, cid: Cid, entry_state: State) {
+        // When we insert an anchor, we have to remove all subsequent anchors (but not
+        // the preceeding ones.)
+        let _ = self.anchors.split_off(&cid);
+        self.anchors.insert(cid.clone(), entry_state);
+    }
+
+    pub fn trim_up_to(&mut self, cid: &Cid) -> Result<(), OperationError> {
+        // Build a new anchor that is equal or less than this cid.
+        // In other words, the cid we are trimming to, should be remaining
+        // in the CL, and we should have an anchor that preceeds it.
+        let (entry_state, rejected) = self.replay(Unbounded, Excluded(cid)).map_err(|e| {
+            error!(?e);
+            e
+        })?;
+        trace!(?rejected);
+        // Add the entry_state as an anchor. Use the CID we just
+        // trimmed to.
+
+        // insert_anchor will remove anything to the right, we also need to
+        // remove everything to the left, so just clear.
+        let _ = self.anchors.clear();
+        self.anchors.insert(cid.clone(), entry_state);
+
+        // And now split the CL.
+        let mut right = self.changes.split_off(cid);
+        std::mem::swap(&mut right, &mut self.changes);
+        // We can trace what we drop later?
+        Ok(())
     }
 }
 

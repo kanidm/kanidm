@@ -220,7 +220,7 @@ pub trait QueryServerTransaction<'a> {
 
             // NOTE: We currently can't build search plugins due to the inability to hand
             // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
-            // plugis, because all data transforms should be in the write path.
+            // plugins, because all data transforms should be in the write path.
 
             let res = self.get_be_txn().search(lims, &vfr).map_err(|e| {
                 admin_error!(?e, "backend failure");
@@ -866,7 +866,6 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         // Verify all our entries. Weird flex I know, but it's needed for verifying
         // the entry changelogs are consistent to their entries.
-
         let schema = self.get_schema();
 
         spanned!("server::verify", {
@@ -879,9 +878,10 @@ impl<'a> QueryServerReadTransaction<'a> {
             for e in all_entries {
                 e.verify(schema, &mut results)
             }
-        });
 
-        // Verify the RUV to the entry changelogs now:
+            // Verify the RUV to the entry changelogs now.
+            self.get_be_txn().verify_ruv(&mut results);
+        });
 
         // Ok entries passed, lets move on to the content.
         // Most of our checks are in the plugins, so we let them
@@ -1073,7 +1073,7 @@ impl QueryServer {
     }
 
     pub fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
-        // First, check our database version - attempt to do an initial indexing
+        // Check our database version - attempt to do an initial indexing
         // based on the in memory configuration
         //
         // If we ever change the core in memory schema, or the schema that we ship
@@ -1083,7 +1083,6 @@ impl QueryServer {
         // A major reason here to split to multiple transactions is to allow schema
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
-
         let reindex_write_1 = task::block_on(self.write_async(ts));
         reindex_write_1
             .upgrade_reindex(SYSTEM_INDEX_VERSION)
@@ -1262,10 +1261,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
             // We may change from ce.entries later to something else?
-            let commit_cand = self.be_txn.create(norm_cand).map_err(|e| {
+            let commit_cand = self.be_txn.create(&self.cid, norm_cand).map_err(|e| {
                 admin_error!("betxn create failure {:?}", e);
                 e
             })?;
+
+            // RUV-TODO
+            // Update the ruv here with the state of the newely created entries.
+
             // Run any post plugins
 
             Plugins::run_post_create(self, &commit_cand, ce).map_err(|e| {
@@ -1403,12 +1406,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let del_cand: Vec<Entry<_, _>> = res?;
 
             self.be_txn
-                .modify(&pre_candidates, &del_cand)
+                .modify(&self.cid, &pre_candidates, &del_cand)
                 .map_err(|e| {
                     // be_txn is dropped, ie aborted here.
                     admin_error!("Delete operation failed (backend), {:?}", e);
                     e
                 })?;
+
+            // RUV-TODO
+            // Update the RUV with the state of the altered entries.
 
             // Post delete plugs
             Plugins::run_post_delete(self, &del_cand, de).map_err(|e| {
@@ -1470,24 +1476,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn purge_tombstones(&self) -> Result<(), OperationError> {
         spanned!("server::purge_tombstones", {
-            // delete everything that is a tombstone.
+            // purge everything that is a tombstone.
             let cid = self.cid.sub_secs(CHANGELOG_MAX_AGE).map_err(|e| {
                 admin_error!("Unable to generate search cid {:?}", e);
                 e
             })?;
-            let ts = self.internal_search(filter_all!(f_and!([
-                f_eq("class", PVCLASS_TOMBSTONE.clone()),
-                f_lt("last_modified_cid", PartialValue::new_cid(cid)),
-            ])))?;
-
-            if ts.is_empty() {
-                admin_info!("No Tombstones present - purge operation success");
-                return Ok(());
-            }
 
             // Delete them - this is a TRUE delete, no going back now!
             self.be_txn
-                .delete(&ts)
+                .reap_tombstones(&self.cid)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Tombstone purge operation failed (backend)");
                     e
@@ -1535,7 +1532,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Backend Modify
             self.be_txn
-                .modify(&rc, &tombstone_cand)
+                .modify(&self.cid, &rc, &tombstone_cand)
                 .map_err(|e| {
                     admin_error!("Purge recycled operation failed (backend), {:?}", e);
                     e
@@ -1543,6 +1540,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|_| {
                     admin_info!("Purge recycled operation success");
                 })
+
+            // RUV-TODO
+            // Update the state of the RUV here!
         })
     }
 
@@ -1922,11 +1922,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Backend Modify
             self.be_txn
-                .modify(&pre_candidates, &norm_cand)
+                .modify(&self.cid, &pre_candidates, &norm_cand)
                 .map_err(|e| {
                     admin_error!("Modify operation failed (backend), {:?}", e);
                     e
                 })?;
+
+            // RUV-TODO
+            // Update the state of the RUV here
 
             // Post Plugins
             //
@@ -2093,11 +2096,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Backend Modify
             self.be_txn
-                .modify(&pre_candidates, &norm_cand)
+                .modify(&self.cid, &pre_candidates, &norm_cand)
                 .map_err(|e| {
                     admin_error!("Modify operation failed (backend), {:?}", e);
                     e
                 })?;
+
+            // RUV-TODO
+            // Update the satte of the RUV here!
 
             if !self.changed_schema.get() {
                 self.changed_schema.set(
@@ -2216,11 +2222,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Write them back.
             self.be_txn
-                .modify(&pre_candidates, &norm_cand)
+                .modify(&self.cid, &pre_candidates, &norm_cand)
                 .map_err(|e| {
                     admin_error!("migrate_2_to_3 modification failure -> {:?}", e);
                     e
                 })
+
+            // RUV-TODO
+            // Update the state of the RUV here!
 
             // Complete
         })

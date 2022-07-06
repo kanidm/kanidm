@@ -58,6 +58,7 @@ pub enum ConsistencyError {
     BackendAllIdsSync,
     BackendIndexSync,
     ChangelogDesynchronised(u64),
+    RuvInconsistent(String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -145,6 +146,8 @@ pub enum OperationError {
     Webauthn,
     Wait(time::OffsetDateTime),
     ReplReplayFailure,
+    ReplEntryNotChanged,
+    ReplInvalidRUVState,
 }
 
 impl PartialEq for OperationError {
