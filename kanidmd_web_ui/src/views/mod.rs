@@ -15,15 +15,20 @@ use web_sys::{Request, RequestInit, RequestMode, Response};
 
 mod apps;
 mod components;
+mod profile;
 mod security;
 
 use apps::AppsApp;
+use profile::ProfileApp;
 use security::SecurityApp;
 
 #[derive(Routable, PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
     #[at("/ui/view/apps")]
     Apps,
+
+    #[at("/ui/view/profile")]
+    Profile,
 
     #[at("/ui/view/security")]
     Security,
@@ -73,6 +78,7 @@ fn switch(route: &ViewRoute) -> Html {
 
     match route {
         ViewRoute::Apps => html! { <AppsApp /> },
+        ViewRoute::Profile => html! { <ProfileApp token={ token } /> },
         ViewRoute::Security => html! { <SecurityApp token={ token } /> },
         ViewRoute::NotFound => html! {
             <Redirect<Route> to={Route::NotFound}/>
@@ -218,6 +224,13 @@ impl ViewsApp {
                       <Link<ViewRoute> classes="nav-link" to={ViewRoute::Apps}>
                         <span data-feather="file"></span>
                         { "Apps" }
+                      </Link<ViewRoute>>
+                    </li>
+
+                    <li class="nav-item">
+                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
+                        <span data-feather="file"></span>
+                        { "Profile" }
                       </Link<ViewRoute>>
                     </li>
 
