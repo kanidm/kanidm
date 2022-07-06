@@ -1886,15 +1886,13 @@ impl KanidmClient {
     // ==== domain_info (aka domain)
     pub async fn idm_domain_set_display_name(
         &self,
-        new_display_name: String,
-    ) -> Result<Entry, ClientError> {
-        let r: Result<Vec<Entry>, ClientError> = self
-            .perform_put_request(
-                "/v1/domain/_attr/domain_display_name",
-                vec![new_display_name],
-            )
-            .await;
-        r.and_then(|mut v| v.pop().ok_or(ClientError::EmptyResponse))
+        new_display_name: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            "/v1/domain/_attr/domain_display_name",
+            vec![new_display_name.to_string()],
+        )
+        .await
     }
 
     pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {

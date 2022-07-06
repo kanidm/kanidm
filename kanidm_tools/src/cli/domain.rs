@@ -17,10 +17,10 @@ impl DomainOpt {
                 );
                 let client = opt.copt.to_client().await;
                 match client
-                    .idm_domain_set_display_name(opt.new_display_name.clone())
+                    .idm_domain_set_display_name(&opt.new_display_name)
                     .await
                 {
-                    Ok(result) => println!("{}", result),
+                    Ok(_) => println!("Success"),
                     Err(e) => eprintln!("{:?}", e),
                 }
             }

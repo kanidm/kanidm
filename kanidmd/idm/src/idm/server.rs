@@ -300,6 +300,7 @@ impl IdmServer {
     }
 
     /// Perform a blocking read transaction on the database.
+    #[cfg(test)]
     pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
         task::block_on(self.proxy_read_async())
     }
@@ -317,17 +318,6 @@ impl IdmServer {
     #[cfg(test)]
     pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
         task::block_on(self.proxy_write_async(ts))
-    }
-
-    /// Tries to pull the domain display name from the database. If it's not set,
-    /// then pull the domain_name because we fall back to that. If that fails
-    /// then throw the error and give up.
-    pub fn get_domain_display_name(&self) -> String {
-        #[allow(clippy::expect_used)]
-        self.proxy_read()
-            .qs_read
-            .get_db_domain_display_name()
-            .expect("Failed to pull domain_display_name from database")
     }
 
     pub async fn proxy_write_async(&self, ts: Duration) -> IdmServerProxyWriteTransaction<'_> {

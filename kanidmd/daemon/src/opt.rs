@@ -40,7 +40,7 @@ struct RecoverAccountOpt {
 
 
 #[derive(Debug, Subcommand)]
-enum SystemSettingsCmds {
+enum DomainSettingsCmds {
     #[clap(name="domain_display_name")]
     /// Set the domain's human-facing display name
     SetDomainDisplayName(SetDomainDisplayNameOpt),
@@ -159,10 +159,10 @@ enum KanidmdOpt {
         #[clap(subcommand)]
         commands: DbCommands,
     },
-    /// Change system settings
+    /// Change domain settings
     #[clap(name = "set")]
-    SystemSettings {
+    DomainSettings {
         #[clap(subcommand)]
-        commands: SystemSettingsCmds,
+        commands: DomainSettingsCmds,
     },
 }

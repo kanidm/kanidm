@@ -411,7 +411,7 @@ pub fn set_domain_display_name(
             return Err(e);
         }
     };
-    // setup the qs - *with out* init of the migrations and schema.
+    // setup the qs
     let qs = match setup_qs(be, schema, config) {
         Ok(t) => t,
         Err(e) => {
@@ -706,7 +706,6 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
         }
     };
 
-    let domain_display_name = format!("{}", &idms.get_domain_display_name());
     // Arc the idms and ldap
     let idms_arc = Arc::new(idms);
     let ldap_arc = Arc::new(ldap);
@@ -776,7 +775,6 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
             status_ref,
             server_write_ref,
             server_read_ref,
-            domain_display_name,
         )?;
 
         admin_info!("ready to rock! 🪨 ");

@@ -229,7 +229,7 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
       "EQUALITY"
     ],
     "unique": [
-      "true"
+      "false"
     ],
     "multivalue": [
       "false"
@@ -241,7 +241,7 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
       "UTF8STRING"
     ],
     "uuid": [
-      "00000000-0000-0000-0000-ffffff000042"
+      "00000000-0000-0000-0000-ffff00000098"
     ]
   }
 }"#;
@@ -1077,6 +1077,7 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "name",
         "domain_uuid",
         "domain_name",
+        "domain_display_name",
         "fernet_private_key_str",
         "es256_private_key_der"
       ],
@@ -1156,9 +1157,6 @@ pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = &r#"
       "systemmay": [
         "description",
         "badlist_password"
-      ],
-      "systemmust" : [
-        "domain_display_name"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000060"

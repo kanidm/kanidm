@@ -58,6 +58,7 @@ lazy_static! {
 struct DomainInfo {
     d_uuid: Uuid,
     d_name: String,
+    d_display: String,
 }
 
 #[derive(Clone)]
@@ -143,10 +144,7 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_domain_name(&self) -> &str;
 
-    /// Pulls the domain display name from the DB
-    /// [self.get_db_domain_display_name] fails back to pulling the domain
-    /// name from the database, if that fails it's all gone bad.
-    fn get_domain_display_name(&self) -> String;
+    fn get_domain_display_name(&self) -> &str;
 
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
@@ -738,36 +736,17 @@ pub trait QueryServerTransaction<'a> {
     /// then pull the domain_name because we fall back to that. If that fails
     /// then throw the error and give up.
     fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
-        admin_debug!(
-            "qst get_db_domain_display_name Attempting to pull domain_display_name from database"
-        );
-        let display_name_value = self.internal_search_uuid(&UUID_SYSTEM_CONFIG).and_then(|e| {
-            trace!(?e);
-            e.get_ava_single_utf8("domain_display_name")
-                .map(str::to_string)
-                .ok_or(OperationError::InvalidEntryState)
-        });
-
-        match display_name_value {
-            Ok(value) => {
-                admin_debug!(
-                    "qst get_db_domain_display_name Success, we got the domain_display_name value from the database: {}",
-                    value
-                );
-                Ok(value)
-            }
-            Err(error) => {
-                admin_error!(
-                    ?error,
-                    "Error getting domain_display_name, falling back to domain_name"
-                );
-                // prefix the domain name with Kanidm
-                match self.get_db_domain_name() {
-                    Ok(domain) => Ok(format!("Kanidm {}", domain)),
-                    Err(e) => Err(e),
-                }
-            }
-        }
+        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+            .and_then(|e| {
+                trace!(?e);
+                e.get_ava_single_utf8("domain_display_name")
+                    .map(str::to_string)
+                    .ok_or(OperationError::InvalidEntryState)
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Error getting domain name");
+                e
+            })
     }
 
     fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
@@ -865,18 +844,8 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.d_info.d_name
     }
 
-    /// Pulls the domain display name from the DB
-    /// [self.get_db_domain_display_name] fails back to pulling the domain
-    /// name from the database, if that fails it's all gone bad.
-    fn get_domain_display_name(&self) -> String {
-        // TODO: lol this is really terrible
-        match self.get_db_domain_display_name() {
-            Ok(value) => value,
-            Err(err) => {
-                admin_error!("Failed to get_db_domain_display_name: {:?}", err);
-                format!("Kanidm {}", self.get_domain_name())
-            }
-        }
+    fn get_domain_display_name(&self) -> &str {
+        &self.d_info.d_display
     }
 }
 
@@ -961,18 +930,8 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.d_info.d_name
     }
 
-    /// Pulls the domain display name from the DB
-    /// [self.get_db_domain_display_name] fails back to pulling the domain
-    /// name from the database, if that fails it's all gone bad.
-    fn get_domain_display_name(&self) -> String {
-        // TODO: lol this is really terrible
-        match self.get_db_domain_display_name() {
-            Ok(value) => value,
-            Err(err) => {
-                admin_error!("Failed to get_db_domain_display_name: {:?}", err);
-                format!("Kanidm {}", self.get_domain_name())
-            }
-        }
+    fn get_domain_display_name(&self) -> &str {
+        &self.d_info.d_display
     }
 }
 
@@ -995,7 +954,8 @@ impl QueryServer {
 
         let d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
-            d_name: domain_name,
+            d_name: domain_name.clone(),
+            d_display: domain_name,
         }));
 
         // log_event!(log, "Starting query worker ...");
@@ -2758,6 +2718,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         spanned!("server::reload_domain_info", {
             let domain_name = self.get_db_domain_name()?;
+            let display_name = self.get_db_domain_display_name()?;
             let mut_d_info = self.d_info.get_mut();
             if mut_d_info.d_name != domain_name {
                 admin_warn!(
@@ -2770,6 +2731,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 );
                 mut_d_info.d_name = domain_name;
             }
+            mut_d_info.d_display = display_name;
             Ok(())
         })
     }

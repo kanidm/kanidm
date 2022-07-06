@@ -1934,7 +1934,9 @@ mod tests {
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
-            Err(SchemaError::InvalidAttribute("zzzzz".to_string()))
+            Err(SchemaError::InvalidAttribute(
+                "systemmay missing attribute: zzzzz".to_string()
+            ))
         );
 
         let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = unsafe {

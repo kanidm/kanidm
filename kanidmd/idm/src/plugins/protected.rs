@@ -197,14 +197,14 @@ mod tests {
             "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
             "acp_modify_class": ["system", "domain_info"],
             "acp_modify_removedattr": [
-                "class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
+                "class", "displayname", "may", "must", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
                 ],
             "acp_modify_presentattr": [
-                "class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
+                "class", "displayname", "may", "must", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
                 ],
             "acp_create_class": ["object", "person", "system", "domain_info"],
             "acp_create_attr": [
-                "name", "class", "description", "displayname", "domain_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"
+                "name", "class", "description", "displayname", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"
                 ]
         }
     }"#;
@@ -338,6 +338,7 @@ mod tests {
                 "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
                 "description": ["Demonstration of a remote domain's info being created for uuid generation in test_modify_domain"],
                 "domain_name": ["example.net.au"],
+                "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
                 "es256_private_key_der" : ["MTIz"]
@@ -377,6 +378,7 @@ mod tests {
                 "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
                 "description": ["Demonstration of a remote domain's info being created for uuid generation in test_ext_create_domain"],
                 "domain_name": ["example.net.au"],
+                "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
                 "es256_private_key_der" : ["MTIz"]
@@ -407,6 +409,7 @@ mod tests {
                 "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
                 "description": ["Demonstration of a remote domain's info being created for uuid generation in test_delete_domain"],
                 "domain_name": ["example.net.au"],
+                "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
                 "es256_private_key_der" : ["MTIz"]

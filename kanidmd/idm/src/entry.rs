@@ -675,7 +675,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             }
 
             if extensible {
-                // ladmin_warning!("Extensible Object In Use!");
                 ne.attrs.iter().try_for_each(|(attr_name, avas)| {
                     match schema_attributes.get(attr_name) {
                         Some(a_schema) => {
@@ -695,10 +694,14 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             }
                         }
                         None => {
-                            // TODO: remove this log message from #860
-                            admin_error!("Invalid Attribute {} for extensible object, not in list {:?}", attr_name.to_string(), schema_attributes);
-                            trace!(?attr_name, "extensible -> SchemaError::InvalidAttribute");
-                            Err(SchemaError::InvalidAttribute(format!("systemmust: {}", attr_name.to_string())))
+                            admin_error!(
+                                "Invalid Attribute {}, undefined in schema_attributes",
+                                attr_name.to_string()
+                            );
+                            Err(SchemaError::InvalidAttribute(format!(
+                                "undefined in schema_attributes: {}",
+                                attr_name.to_string()
+                            )))
                         }
                     }
                 })?;
@@ -747,9 +750,16 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         }
                         None => {
                             // TODO: remove this log message from #860
-                            admin_error!("Invalid Attribute {} for extensible object in may list {:?}", attr_name.to_string(), schema_attributes);
+                            admin_error!(
+                                "Invalid Attribute {} for entry - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
+                                attr_name.to_string(),
+                                may.keys().collect::<Vec<_>>()
+                            );
                             trace!(?attr_name, "SchemaError::InvalidAttribute");
-                            Err(SchemaError::InvalidAttribute(format!("systemmay missing attribute: {}", attr_name.to_string())))
+                            Err(SchemaError::InvalidAttribute(format!(
+                                "systemmay missing attribute: {}",
+                                attr_name.to_string()
+                            )))
                         }
                     }
                 })?;

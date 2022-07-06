@@ -106,11 +106,11 @@ impl KanidmdOpt {
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::GetId2Entry(dopt),
             } => &dopt.commonopts,
-            KanidmdOpt::SystemSettings {
-                commands: SystemSettingsCmds::SetDomainDisplayName(sopt),
+            KanidmdOpt::DomainSettings {
+                commands: DomainSettingsCmds::SetDomainDisplayName(sopt),
             } => &sopt.commonopts,
-            KanidmdOpt::SystemSettings {
-                commands: SystemSettingsCmds::DomainChange(sopt),
+            KanidmdOpt::DomainSettings {
+                commands: DomainSettingsCmds::DomainChange(sopt),
             } => &sopt,
             KanidmdOpt::Database {
                 commands: DbCommands::Verify(sopt),
@@ -427,8 +427,8 @@ async fn main() {
             eprintln!("👀 db scan - get id2 entry - {}", dopt.id);
             dbscan_get_id2entry_core(&config, dopt.id);
         }
-        KanidmdOpt::SystemSettings {
-            commands: SystemSettingsCmds::SetDomainDisplayName(sopt),
+        KanidmdOpt::DomainSettings {
+            commands: DomainSettingsCmds::SetDomainDisplayName(sopt),
         } => {
             eprintln!(
                 "system settings: set domain_display_name - {:?}",
@@ -436,8 +436,8 @@ async fn main() {
             );
             set_domain_display_name(&config, sopt.domain_display_name.as_str()).unwrap();
         }
-        KanidmdOpt::SystemSettings {
-            commands: SystemSettingsCmds::DomainChange(_dopt),
+        KanidmdOpt::DomainSettings {
+            commands: DomainSettingsCmds::DomainChange(_dopt),
         } => {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
             domain_rename_core(&config);

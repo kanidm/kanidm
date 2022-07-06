@@ -296,10 +296,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         // - stash the current state of all associated credentials
         let primary = account.primary.clone();
+        // Stash the issuer for some UI elements
+        let issuer = self.qs_write.get_domain_display_name().to_string();
+
         // - store account policy (if present)
         let session = CredentialUpdateSession {
-            issuer: self.qs_write.get_domain_display_name(),
             account,
+            issuer,
             intent_token_id,
             primary,
             mfaregstate: MfaRegState::None,

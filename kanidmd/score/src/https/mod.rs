@@ -34,8 +34,6 @@ pub struct AppState {
     // Store the token management parts.
     pub jws_signer: std::sync::Arc<JwsSigner>,
     pub jws_validator: std::sync::Arc<JwsValidator>,
-    // Domain Display Name, this ... could be an issue?
-    pub domain_display_name: String,
 }
 
 /// This is for the tide_compression middleware so that we only compress certain content types.
@@ -187,7 +185,12 @@ pub fn to_tide_response<T: Serialize>(
 
 // Handle the various end points we need to expose
 async fn index_view(req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+
+    let domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).await;
+
     let mut res = tide::Response::new(200);
+    res.insert_header("X-KANIDM-OPID", hvalue);
 
     res.set_content_type("text/html;charset=utf-8");
 
@@ -209,7 +212,7 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
         <body>
         </body>
     </html>
-        "#, req.state().domain_display_name.as_str())
+        "#, domain_display_name.as_str())
     );
 
     Ok(res)
@@ -364,7 +367,6 @@ pub fn create_https_server(
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
-    domain_display_name: String,
 ) -> Result<(), ()> {
     let jws_validator = jws_signer.get_validator().map_err(|e| {
         error!(?e, "Failed to get jws validator");
@@ -379,7 +381,6 @@ pub fn create_https_server(
         qe_r_ref,
         jws_signer,
         jws_validator,
-        domain_display_name: domain_display_name.to_owned(),
     });
 
     // tide::log::with_level(tide::log::LevelFilter::Debug);

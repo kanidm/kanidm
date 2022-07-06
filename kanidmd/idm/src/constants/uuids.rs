@@ -169,6 +169,8 @@ pub const _UUID_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000096");
 pub const _UUID_SCHEMA_CLASS_OAUTH2_CONSENT_SCOPE_MAP: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000097");
+pub const _UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000098");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
