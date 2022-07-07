@@ -126,11 +126,15 @@ pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
         },
     ];
 
+    let start_url = match req.host() {
+        Some(value) => format!("https://{}/", value).clone(),
+        None => String::from("/")
+    };
 
     let manifest_struct = Manifest {
         short_name: domain_display_name.as_str(),
         name: domain_display_name.as_str(),
-        start_url: "/", // TODO: this needs to be the frontend URL, can't get this yet
+        start_url: start_url.as_str(),
         display_mode: DisplayMode::MinimalUi,
         description: None,
         orientation: None,
