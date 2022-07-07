@@ -9,9 +9,9 @@
    id="svg1084"
    sodipodi:docname="logo-square.svg"
    inkscape:version="1.2 (dc2aeda, 2022-05-15)"
-   inkscape:export-filename="logo-192.png"
-   inkscape:export-xdpi="35.446156"
-   inkscape:export-ydpi="35.446156"
+   inkscape:export-filename="logo-180.png"
+   inkscape:export-xdpi="33.75"
+   inkscape:export-ydpi="33.75"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -33,8 +33,8 @@
      showgrid="false"
      showguides="true"
      inkscape:zoom="1"
-     inkscape:cx="229.5"
-     inkscape:cy="299.5"
+     inkscape:cx="234.5"
+     inkscape:cy="304.5"
      inkscape:window-width="1389"
      inkscape:window-height="847"
      inkscape:window-x="51"
@@ -95,7 +95,8 @@
      height="135.46666"
      x="0"
      y="0"
-     inkscape:label="background" />
+     inkscape:label="background"
+     sodipodi:insensitive="true" />
   <g
      id="layer1"
      transform="matrix(0.91407203,0,0,0.91407203,-34.121105,-24.362694)"
