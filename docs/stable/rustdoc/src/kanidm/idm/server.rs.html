@@ -4059,12 +4059,6 @@
 <span id="4054">4054</span>
 <span id="4055">4055</span>
 <span id="4056">4056</span>
-<span id="4057">4057</span>
-<span id="4058">4058</span>
-<span id="4059">4059</span>
-<span id="4060">4060</span>
-<span id="4061">4061</span>
-<span id="4062">4062</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -5757,10 +5751,7 @@
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
         <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="ident">wre</span>.<span class="ident">label</span>.<span class="ident">clone</span>();
 
-        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">qs_write</span>
-            .<span class="ident">get_domain_display_name</span>()
-            .<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">get_domain_display_name</span>().<span class="ident">to_string</span>();
 
         <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">mfa_reg_next</span>) <span class="op">=</span>
             <span class="ident">MfaRegSession::webauthn_new</span>(<span class="ident">origin</span>, <span class="ident">account</span>, <span class="ident">label</span>, <span class="self">self</span>.<span class="ident">webauthn</span>, <span class="ident">issuer</span>)<span class="question-mark">?</span>;
@@ -5869,10 +5860,7 @@
 
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">gte</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
 
-        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">qs_write</span>
-            .<span class="ident">get_domain_display_name</span>()
-            .<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">get_domain_display_name</span>().<span class="ident">to_string</span>();
 
         <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">next</span>) <span class="op">=</span> <span class="ident">MfaRegSession::totp_new</span>(<span class="ident">origin</span>, <span class="ident">account</span>, <span class="ident">issuer</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to start totp MfaRegSession {:?}&quot;</span>, <span class="ident">e</span>);

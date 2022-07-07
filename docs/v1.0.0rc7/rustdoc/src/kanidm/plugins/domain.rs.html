@@ -135,6 +135,20 @@
 <span id="130">130</span>
 <span id="131">131</span>
 <span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
 </pre><pre class="rust"><code><span class="comment">// Manage and generate domain uuid&#39;s and/or trust related domain</span>
 <span class="comment">// management.</span>
 
@@ -214,7 +228,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -222,6 +236,20 @@
             <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DOMAIN_INFO</span>)
                 <span class="op">&amp;&amp;</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVUUID_DOMAIN_INFO</span>)
             {
+                <span class="comment">// We only apply this if one isn&#39;t provided.</span>
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">e</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;domain_name&quot;</span>) {
+                    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">Value::new_iname</span>(<span class="ident">qs</span>.<span class="ident">get_domain_name</span>());
+                    <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;domain_name&quot;</span>, <span class="ident">once</span>(<span class="ident">n</span>));
+                    <span class="macro">trace!</span>(<span class="string">&quot;plugin_domain: Applying domain_name transform&quot;</span>);
+                }
+                <span class="comment">// create the domain_display_name if it&#39;s missing</span>
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">e</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;domain_display_name&quot;</span>) {
+                    <span class="kw">let</span> <span class="ident">domain_display_name</span> <span class="op">=</span> <span class="ident">Value::new_utf8</span>(<span class="macro">format!</span>(<span class="string">&quot;Kanidm {}&quot;</span>, <span class="ident">qs</span>.<span class="ident">get_domain_name</span>()));
+                    <span class="macro">security_info!</span>(<span class="string">&quot;plugin_domain: setting default domain_display_name to {:?}&quot;</span>, <span class="ident">domain_display_name</span>);
+
+                    <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;domain_display_name&quot;</span>, <span class="ident">once</span>(<span class="ident">domain_display_name</span>));
+                }
+
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">e</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;fernet_private_key_str&quot;</span>) {
                     <span class="macro">security_info!</span>(<span class="string">&quot;regenerating domain token encryption key&quot;</span>);
                     <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">fernet::Fernet::generate_key</span>();

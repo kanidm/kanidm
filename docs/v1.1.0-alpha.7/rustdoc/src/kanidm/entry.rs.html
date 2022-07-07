@@ -2857,6 +2857,9 @@
 <span id="2852">2852</span>
 <span id="2853">2853</span>
 <span id="2854">2854</span>
+<span id="2855">2855</span>
+<span id="2856">2856</span>
+<span id="2857">2857</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
 <span class="doccomment">//!</span>
@@ -3578,7 +3581,10 @@
             });
 
             <span class="kw">if</span> <span class="op">!</span><span class="ident">missing_must</span>.<span class="ident">is_empty</span>() {
-                <span class="macro">admin_warn!</span>(<span class="string">&quot;Validation error, the following required (must) attributes are missing - {:?}&quot;</span>, <span class="ident">missing_must</span>);
+                <span class="macro">admin_warn!</span>(
+                    <span class="string">&quot;Validation error, the following required (must) attributes are missing - {:?}&quot;</span>,
+                    <span class="ident">missing_must</span>
+                );
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SchemaError::MissingMustAttribute</span>(<span class="ident">missing_must</span>));
             }
 
