@@ -456,7 +456,8 @@ pub const JSON_DOMAIN_INFO_V1: &str = r#"{
         "class": ["object", "domain_info", "system"],
         "name": ["domain_local"],
         "uuid": ["00000000-0000-0000-0000-ffffff000025"],
-        "description": ["This local domain's info and metadata object."]
+        "description": ["This local domain's info and metadata object."],
+        "version": ["1"]
     }
 }"#;
 

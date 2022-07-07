@@ -1079,7 +1079,8 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "domain_name",
         "domain_display_name",
         "fernet_private_key_str",
-        "es256_private_key_der"
+        "es256_private_key_der",
+        "version"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000052"

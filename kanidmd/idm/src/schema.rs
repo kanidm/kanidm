@@ -1255,12 +1255,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("System metadata object class"),
                     systemmay: vec![],
                     may: vec![],
-                    systemmust: vec![
-                        AttrString::from("version"),
-                        // Needed when we implement principalnames?
-                        // String::from("domain"),
-                        // String::from("hostname"),
-                    ],
+                    systemmust: vec![AttrString::from("version")],
                     must: vec![],
                 },
             );
@@ -1934,9 +1929,7 @@ mod tests {
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
-            Err(SchemaError::AttributeNotValidForClass(
-                "zzzzz".to_string()
-            ))
+            Err(SchemaError::AttributeNotValidForClass("zzzzz".to_string()))
         );
 
         let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = unsafe {

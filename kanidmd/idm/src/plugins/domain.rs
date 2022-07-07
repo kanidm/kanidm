@@ -77,7 +77,7 @@ impl Plugin for Domain {
     }
 
     fn pre_modify(
-        _qs: &QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -85,6 +85,20 @@ impl Plugin for Domain {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
+                // We only apply this if one isn't provided.
+                if !e.attribute_pres("domain_name") {
+                    let n = Value::new_iname(qs.get_domain_name());
+                    e.set_ava("domain_name", once(n));
+                    trace!("plugin_domain: Applying domain_name transform");
+                }
+                // create the domain_display_name if it's missing
+                if !e.attribute_pres("domain_display_name") {
+                    let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
+                    security_info!("plugin_domain: setting default domain_display_name to {:?}", domain_display_name);
+
+                    e.set_ava("domain_display_name", once(domain_display_name));
+                }
+
                 if !e.attribute_pres("fernet_private_key_str") {
                     security_info!("regenerating domain token encryption key");
                     let k = fernet::Fernet::generate_key();
