@@ -253,6 +253,11 @@
 <span id="248">248</span>
 <span id="249">249</span>
 <span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">compiled_uuid::uuid</span>;
@@ -374,7 +379,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_POSIXACCOUNT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000057&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_POSIXGROUP</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000058&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_BADLIST_PASSWORD</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000059&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_SYSTEM_CONFIG</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000060&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_SYSTEM_CONFIG</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000060&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_LOGINSHELL</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000061&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_UNIX_PASSWORD</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000062&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_LAST_MOD_CID</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000063&quot;</span>);
@@ -424,6 +429,8 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000096&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_OAUTH2_CONSENT_SCOPE_MAP</span>: <span class="ident">Uuid</span> <span class="op">=</span>
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000097&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000098&quot;</span>);
 
 <span class="comment">// System and domain infos</span>
 <span class="comment">// I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.</span>
@@ -467,7 +474,10 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000024&quot;</span>);
 <span class="comment">// Skip 25 - see domain info.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000026&quot;</span>);
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">STR_UUID_SYSTEM_CONFIG</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;00000000-0000-0000-0000-ffffff000027&quot;</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SYSTEM_CONFIG</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000027&quot;</span>);
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000028&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000029&quot;</span>);

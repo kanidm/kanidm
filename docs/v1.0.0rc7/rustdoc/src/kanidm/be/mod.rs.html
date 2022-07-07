@@ -2952,6 +2952,9 @@
 <span id="2947">2947</span>
 <span id="2948">2948</span>
 <span id="2949">2949</span>
+<span id="2950">2950</span>
+<span id="2951">2951</span>
+<span id="2952">2952</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
 <span class="doccomment">//! of the server, which are all enforced at higher levels. The role of the backend</span>
@@ -4404,18 +4407,21 @@
         }
     }
 
+    <span class="doccomment">/// This generates a new domain UUID and stores it into the database,</span>
+    <span class="doccomment">/// returning the new UUID</span>
     <span class="kw">fn</span> <span class="ident">reset_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">nsid</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">write_db_d_uuid</span>(<span class="ident">nsid</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">nsid</span>)
     }
 
+    <span class="doccomment">/// This pulls the domain UUID from the database</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">match</span> <span class="self">self</span>
             .<span class="ident">get_idlayer</span>()
             .<span class="ident">get_db_d_uuid</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;DBLayer Error!!!&quot;</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;DBLayer Error retrieving Domain UUID!!!&quot;</span>)
         {
             <span class="prelude-val">Some</span>(<span class="ident">d_uuid</span>) =&gt; <span class="ident">d_uuid</span>,
             <span class="prelude-val">None</span> =&gt; <span class="self">self</span>.<span class="ident">reset_db_d_uuid</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to regenerate D_UUID&quot;</span>),

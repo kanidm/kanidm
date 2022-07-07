@@ -2598,6 +2598,18 @@
 <span id="2593">2593</span>
 <span id="2594">2594</span>
 <span id="2595">2595</span>
+<span id="2596">2596</span>
+<span id="2597">2597</span>
+<span id="2598">2598</span>
+<span id="2599">2599</span>
+<span id="2600">2600</span>
+<span id="2601">2601</span>
+<span id="2602">2602</span>
+<span id="2603">2603</span>
+<span id="2604">2604</span>
+<span id="2605">2605</span>
+<span id="2606">2606</span>
+<span id="2607">2607</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Access Control Profiles</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This is a pretty important and security sensitive part of the code - it&#39;s</span>
@@ -3499,15 +3511,27 @@
                 <span class="comment">// is already checked above.</span>
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">requested_pres</span>.<span class="ident">is_subset</span>(<span class="kw-2">&amp;</span><span class="ident">allowed_pres</span>) {
                     <span class="macro">security_access!</span>(<span class="string">&quot;requested_pres is not a subset of allowed&quot;</span>);
-                    <span class="macro">security_access!</span>(<span class="string">&quot;{:?} !⊆ {:?}&quot;</span>, <span class="ident">requested_pres</span>, <span class="ident">allowed_pres</span>);
+                    <span class="macro">security_access!</span>(
+                        <span class="string">&quot;requested_pres: {:?} !⊆ allowed: {:?}&quot;</span>,
+                        <span class="ident">requested_pres</span>,
+                        <span class="ident">allowed_pres</span>
+                    );
                     <span class="bool-val">false</span>
                 } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">requested_rem</span>.<span class="ident">is_subset</span>(<span class="kw-2">&amp;</span><span class="ident">allowed_rem</span>) {
                     <span class="macro">security_access!</span>(<span class="string">&quot;requested_rem is not a subset of allowed&quot;</span>);
-                    <span class="macro">security_access!</span>(<span class="string">&quot;{:?} !⊆ {:?}&quot;</span>, <span class="ident">requested_rem</span>, <span class="ident">allowed_rem</span>);
+                    <span class="macro">security_access!</span>(
+                        <span class="string">&quot;requested_rem: {:?} !⊆ allowed: {:?}&quot;</span>,
+                        <span class="ident">requested_rem</span>,
+                        <span class="ident">allowed_rem</span>
+                    );
                     <span class="bool-val">false</span>
                 } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">requested_classes</span>.<span class="ident">is_subset</span>(<span class="kw-2">&amp;</span><span class="ident">allowed_classes</span>) {
                     <span class="macro">security_access!</span>(<span class="string">&quot;requested_classes is not a subset of allowed&quot;</span>);
-                    <span class="macro">security_access!</span>(<span class="string">&quot;{:?} !⊆ {:?}&quot;</span>, <span class="ident">requested_classes</span>, <span class="ident">allowed_classes</span>);
+                    <span class="macro">security_access!</span>(
+                        <span class="string">&quot;requested_classes: {:?} !⊆ allowed: {:?}&quot;</span>,
+                        <span class="ident">requested_classes</span>,
+                        <span class="ident">allowed_classes</span>
+                    );
                     <span class="bool-val">false</span>
                 } <span class="kw">else</span> {
                     <span class="macro">security_access!</span>(<span class="string">&quot;passed pres, rem, classes check.&quot;</span>);

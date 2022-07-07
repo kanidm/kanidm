@@ -459,7 +459,45 @@
 <span id="454">454</span>
 <span id="455">455</span>
 <span id="456">456</span>
-</pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_ADMIN_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+</pre><pre class="rust"><code><span class="doccomment">///! Constant Entries for the IDM</span>
+
+<span class="doccomment">/// Builtin System Admin account.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_ADMIN_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;account&quot;, &quot;memberof&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;admin&quot;],
@@ -469,6 +507,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin IDM Admin account.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ADMIN_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;account&quot;, &quot;memberof&quot;, &quot;object&quot;],
@@ -479,6 +518,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin IDM Administrators Group.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ADMINS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -489,6 +529,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin System Administrators Group.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SYSTEM_ADMINS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -499,8 +540,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// groups</span>
 <span class="comment">// * People read managers</span>
+<span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) read permissions.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -510,7 +551,9 @@
         &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000003&quot;]
     }
 }&quot;#</span>;
+
 <span class="comment">// * People write managers</span>
+<span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -522,6 +565,8 @@
         ]
     }
 }&quot;#</span>;
+
+<span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) write permissions.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -535,6 +580,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -544,6 +590,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin IDM Group for allowing the ability to extend accounts to have the &quot;person&quot; flag set.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -566,6 +613,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_PEOPLE_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -575,6 +623,8 @@
         &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000029&quot;]
     }
 }&quot;#</span>;
+
+<span class="doccomment">/// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -586,6 +636,8 @@
         ]
     }
 }&quot;#</span>;
+
+<span class="doccomment">/// Builtin IDM Group for extending high privilege accounts to be people.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -600,6 +652,7 @@
 
 <span class="comment">// * group write manager (no read, everyone has read via the anon, etc)</span>
 <span class="comment">// IDM_GROUP_CREATE_PRIV</span>
+<span class="doccomment">/// Builtin IDM Group for granting elevated group write and lifecycle permissions.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_GROUP_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -678,6 +731,7 @@
 }&quot;#</span>;
 <span class="comment">// * RADIUS servers</span>
 
+<span class="doccomment">/// Builtin IDM Group for RADIUS secret write for all non-hp accounts.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -688,6 +742,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin IDM Group for RADIUS secret reading for all non-hp accounts.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SECRET_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -698,6 +753,7 @@
     }
 }&quot;#</span>;
 
+<span class="doccomment">/// Builtin IDM Group for RADIUS server access delegation.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SERVERS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -719,6 +775,7 @@
         ]
     }
 }&quot;#</span>;
+
 <span class="comment">// * high priv account write manager</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
@@ -731,6 +788,8 @@
         ]
     }
 }&quot;#</span>;
+
+<span class="doccomment">/// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -742,6 +801,8 @@
         ]
     }
 }&quot;#</span>;
+
+<span class="doccomment">/// Builtin IDM Group for granting account unix extend permissions for high privilege accounts.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -751,6 +812,7 @@
         &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000019&quot;]
     }
 }&quot;#</span>;
+
 <span class="comment">// * Schema write manager</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_SCHEMA_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
@@ -763,6 +825,7 @@
         ]
     }
 }&quot;#</span>;
+
 <span class="comment">// * ACP read/write manager</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ACP_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
@@ -773,7 +836,8 @@
         &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000019&quot;]
     }
 }&quot;#</span>;
-<span class="comment">// * HP Group Management</span>
+
+<span class="comment">// Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_GROUP_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -783,6 +847,8 @@
         &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000019&quot;]
     }
 }&quot;#</span>;
+
+<span class="doccomment">/// Builtin IDM Group for granting elevated group write privileges for high privilege groups.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_GROUP_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -794,6 +860,8 @@
         ]
     }
 }&quot;#</span>;
+
+<span class="doccomment">/// Builtin IDM Group for granting unix group extension permissions for high privilege groups.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -805,7 +873,8 @@
         ]
     }
 }&quot;#</span>;
-<span class="comment">// Who can configure this domain?</span>
+
+<span class="doccomment">/// Builtin IDM Group for granting local domain administration rights and trust administration rights</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_DOMAIN_ADMINS</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -817,6 +886,7 @@
         ]
     }
 }&quot;#</span>;
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -829,7 +899,7 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// This must be the last group to init to include the UUID of the other high priv groups.</span>
+<span class="doccomment">/// This must be the last group to init to include the UUID of the other high priv groups.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HIGH_PRIVILEGE_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],

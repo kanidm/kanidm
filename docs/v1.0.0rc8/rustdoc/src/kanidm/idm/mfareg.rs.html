@@ -217,6 +217,14 @@
 <span id="212">212</span>
 <span id="213">213</span>
 <span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::totp</span>::{<span class="ident">Totp</span>, <span class="ident">TOTP_DEFAULT_STEP</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity::IdentityId</span>;
@@ -277,26 +285,30 @@
     <span class="kw">pub</span> <span class="ident">account</span>: <span class="ident">Account</span>,
     <span class="comment">// What state is the reg process in?</span>
     <span class="ident">state</span>: <span class="ident">MfaRegState</span>,
+    <span class="comment">// Human-facing name of the Domain</span>
+    <span class="ident">issuer</span>: <span class="ident">String</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">MfaRegSession</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">totp_new</span>(
         <span class="ident">origin</span>: <span class="ident">IdentityId</span>,
         <span class="ident">account</span>: <span class="ident">Account</span>,
+        <span class="ident">issuer</span>: <span class="ident">String</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">MfaRegNext</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Based on the req, init our session, and the return the next step.</span>
         <span class="comment">// Store the ID of the event that start&#39;s the attempt</span>
         <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="ident">Totp::generate_secure</span>(<span class="ident">TOTP_DEFAULT_STEP</span>);
 
         <span class="kw">let</span> <span class="ident">accountname</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">name</span>.<span class="ident">as_str</span>();
-        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>();
-        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">MfaRegNext::TotpCheck</span>(<span class="ident">token</span>.<span class="ident">to_proto</span>(<span class="ident">accountname</span>, <span class="ident">issuer</span>));
+
+        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">MfaRegNext::TotpCheck</span>(<span class="ident">token</span>.<span class="ident">to_proto</span>(<span class="ident">accountname</span>, <span class="ident">issuer</span>.<span class="ident">as_str</span>()));
 
         <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">MfaRegState::TotpInit</span>(<span class="ident">token</span>);
         <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">MfaRegSession</span> {
             <span class="ident">origin</span>,
             <span class="ident">account</span>,
             <span class="ident">state</span>,
+            <span class="ident">issuer</span>,
         };
         <span class="prelude-val">Ok</span>((<span class="ident">s</span>, <span class="ident">next</span>))
     }
@@ -326,23 +338,24 @@
                     }
                 } <span class="kw">else</span> {
                     <span class="comment">// What if it&#39;s a broken authenticator app? Google authenticator</span>
-                    <span class="comment">// and authy both force sha1 and ignore the algo we send. So lets</span>
+                    <span class="comment">// and authy both force sha1 and ignore the algo we send. So let&#39;s</span>
                     <span class="comment">// check that just in case.</span>
 
                     <span class="kw">let</span> <span class="ident">token_sha1</span> <span class="op">=</span> <span class="ident">token</span>.<span class="ident">clone</span>().<span class="ident">downgrade_to_legacy</span>();
 
                     <span class="kw">if</span> <span class="ident">token_sha1</span>.<span class="ident">verify</span>(<span class="ident">chal</span>, <span class="ident">ct</span>) {
-                        <span class="comment">// Greeeaaaaaatttt it&#39;s a broken app. Let&#39;s check the user</span>
+                        <span class="comment">// Greeeaaaaaatttt. It&#39;s a broken app. Let&#39;s check the user</span>
                         <span class="comment">// knows this is broken, before we proceed.</span>
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nstate</span> <span class="op">=</span> <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">token_sha1</span>);
                         <span class="ident">mem::swap</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">state</span>, <span class="kw-2">&amp;mut</span> <span class="ident">nstate</span>);
                         <span class="prelude-val">Ok</span>((<span class="ident">MfaRegNext::TotpInvalidSha1</span>, <span class="prelude-val">None</span>))
                     } <span class="kw">else</span> {
-                        <span class="comment">// Prooobbably a bad code or typo then. Lte them try again.</span>
+                        <span class="comment">// Probably a bad code or typo then. Let them try again.</span>
                         <span class="kw">let</span> <span class="ident">accountname</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">account</span>.<span class="ident">name</span>.<span class="ident">as_str</span>();
-                        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">account</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>();
                         <span class="prelude-val">Ok</span>((
-                            <span class="ident">MfaRegNext::TotpCheck</span>(<span class="ident">token</span>.<span class="ident">to_proto</span>(<span class="ident">accountname</span>, <span class="ident">issuer</span>)),
+                            <span class="ident">MfaRegNext::TotpCheck</span>(
+                                <span class="ident">token</span>.<span class="ident">to_proto</span>(<span class="ident">accountname</span>, <span class="self">self</span>.<span class="ident">issuer</span>.<span class="ident">as_str</span>()),
+                            ),
                             <span class="prelude-val">None</span>,
                         ))
                     }
@@ -384,6 +397,7 @@
         <span class="ident">account</span>: <span class="ident">Account</span>,
         <span class="ident">label</span>: <span class="ident">String</span>,
         <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
+        <span class="ident">issuer</span>: <span class="ident">String</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">MfaRegNext</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Setup the registration.</span>
         <span class="kw">let</span> (<span class="ident">chal</span>, <span class="ident">reg_state</span>) <span class="op">=</span> <span class="ident">webauthn</span>
@@ -398,6 +412,8 @@
             <span class="ident">origin</span>,
             <span class="ident">account</span>,
             <span class="ident">state</span>,
+            <span class="comment">// this isn&#39;t used in webauthn... yet?</span>
+            <span class="ident">issuer</span>,
         };
         <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">MfaRegNext::WebauthnChallenge</span>(<span class="ident">chal</span>);
         <span class="prelude-val">Ok</span>((<span class="ident">s</span>, <span class="ident">next</span>))

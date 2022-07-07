@@ -2743,6 +2743,7 @@
 <span id="2738">2738</span>
 <span id="2739">2739</span>
 <span id="2740">2740</span>
+<span id="2741">2741</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -2790,6 +2791,7 @@
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">CLASS_OAUTH2_BASIC</span>: <span class="ident">PartialValue</span> <span class="op">=</span>
         <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>);
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">URL_SERVICE_DOCUMENTATION</span>: <span class="ident">Url</span> <span class="op">=</span>
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="ident">Url::parse</span>(<span class="string">&quot;https://kanidm.github.io/kanidm/master/integrations/oauth2.html&quot;</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;Failed to parse oauth2 service documentation url&quot;</span>);
 }

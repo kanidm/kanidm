@@ -683,6 +683,7 @@
 <span id="678">678</span>
 <span id="679">679</span>
 <span id="680">680</span>
+<span id="681">681</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -724,6 +725,7 @@
 <span class="kw">use</span> <span class="ident">kanidm_client::KanidmClientBuilder</span>;
 
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::cache::CacheLayer</span>;
+<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>, <span class="ident">TaskRequest</span>, <span class="ident">TaskResponse</span>};
 
@@ -1107,7 +1109,7 @@
         }
     }
 
-    <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>);
+    <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>);
     <span class="kw">let</span> <span class="ident">unixd_path_str</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">unixd_path</span>.<span class="ident">to_str</span>() {
         <span class="prelude-val">Some</span>(<span class="ident">cps</span>) =&gt; <span class="ident">cps</span>,
         <span class="prelude-val">None</span> =&gt; {

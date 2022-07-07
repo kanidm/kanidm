@@ -586,7 +586,7 @@
                     }
                 })
                 .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">DbValueSetV2::Utf8</span>(<span class="ident">vs</span>))
+            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Utf8</span>)
         }
         <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Iutf8</span>(<span class="kw">_</span>)) =&gt; {
             <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>

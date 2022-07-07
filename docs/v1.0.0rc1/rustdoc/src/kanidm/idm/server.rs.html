@@ -4051,6 +4051,20 @@
 <span id="4046">4046</span>
 <span id="4047">4047</span>
 <span id="4048">4048</span>
+<span id="4049">4049</span>
+<span id="4050">4050</span>
+<span id="4051">4051</span>
+<span id="4052">4052</span>
+<span id="4053">4053</span>
+<span id="4054">4054</span>
+<span id="4055">4055</span>
+<span id="4056">4056</span>
+<span id="4057">4057</span>
+<span id="4058">4058</span>
+<span id="4059">4059</span>
+<span id="4060">4060</span>
+<span id="4061">4061</span>
+<span id="4062">4062</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -4137,7 +4151,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServer</span> {
     <span class="comment">// There is a good reason to keep this single thread - it</span>
     <span class="comment">// means that limits to sessions can be easily applied and checked to</span>
-    <span class="comment">// variaous accounts, and we have a good idea of how to structure the</span>
+    <span class="comment">// various accounts, and we have a good idea of how to structure the</span>
     <span class="comment">// in memory caches related to locking.</span>
     <span class="ident">session_ticket</span>: <span class="ident">Semaphore</span>,
     <span class="ident">sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">AuthSessionMutex</span><span class="op">&gt;</span>,
@@ -4352,11 +4366,13 @@
         }
     }
 
+    <span class="doccomment">/// Perform a blocking read transaction on the database.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">proxy_read</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) -&gt; <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">proxy_read_async</span>())
     }
 
+    <span class="doccomment">/// Read from the database, in a transaction.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">proxy_read_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="ident">IdmServerProxyReadTransaction</span> {
             <span class="ident">qs_read</span>: <span class="self">self</span>.<span class="ident">qs</span>.<span class="ident">read_async</span>().<span class="kw">await</span>,
@@ -5741,13 +5757,19 @@
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
         <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="ident">wre</span>.<span class="ident">label</span>.<span class="ident">clone</span>();
 
-        <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">next</span>) <span class="op">=</span> <span class="ident">MfaRegSession::webauthn_new</span>(<span class="ident">origin</span>, <span class="ident">account</span>, <span class="ident">label</span>, <span class="self">self</span>.<span class="ident">webauthn</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">qs_write</span>
+            .<span class="ident">get_domain_display_name</span>()
+            .<span class="ident">to_string</span>();
 
-        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">next</span>.<span class="ident">to_proto</span>(<span class="ident">sessionid</span>);
+        <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">mfa_reg_next</span>) <span class="op">=</span>
+            <span class="ident">MfaRegSession::webauthn_new</span>(<span class="ident">origin</span>, <span class="ident">account</span>, <span class="ident">label</span>, <span class="self">self</span>.<span class="ident">webauthn</span>, <span class="ident">issuer</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">mfa_reg_next</span>.<span class="ident">to_proto</span>(<span class="ident">sessionid</span>);
 
         <span class="comment">// Add session to tree</span>
         <span class="self">self</span>.<span class="ident">mfareg_sessions</span>.<span class="ident">insert</span>(<span class="ident">sessionid</span>, <span class="ident">session</span>);
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="string">&quot;Start mfa reg session&quot;</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="string">&quot;Started mfa reg session for webauthn&quot;</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
     }
 
@@ -5846,7 +5868,13 @@
         <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">ct</span>, <span class="self">self</span>.<span class="ident">sid</span>);
 
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">gte</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
-        <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">next</span>) <span class="op">=</span> <span class="ident">MfaRegSession::totp_new</span>(<span class="ident">origin</span>, <span class="ident">account</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+
+        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">qs_write</span>
+            .<span class="ident">get_domain_display_name</span>()
+            .<span class="ident">to_string</span>();
+
+        <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">next</span>) <span class="op">=</span> <span class="ident">MfaRegSession::totp_new</span>(<span class="ident">origin</span>, <span class="ident">account</span>, <span class="ident">issuer</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to start totp MfaRegSession {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">e</span>
         })<span class="question-mark">?</span>;
@@ -5855,7 +5883,7 @@
 
         <span class="comment">// Add session to tree</span>
         <span class="self">self</span>.<span class="ident">mfareg_sessions</span>.<span class="ident">insert</span>(<span class="ident">sessionid</span>, <span class="ident">session</span>);
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="string">&quot;Start mfa reg session&quot;</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="string">&quot;Started totp mfa reg session&quot;</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
     }
 
@@ -5868,7 +5896,7 @@
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">vte</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
         <span class="kw">let</span> <span class="ident">chal</span> <span class="op">=</span> <span class="ident">vte</span>.<span class="ident">chal</span>;
 
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="string">&quot;Attempting to find mfareg_session&quot;</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="string">&quot;Attempting to find totp mfareg_session&quot;</span>);
 
         <span class="kw">let</span> (<span class="ident">next</span>, <span class="ident">opt_cred</span>) <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">mfareg_sessions</span>
@@ -5887,7 +5915,7 @@
                 .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>)
                 .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Session within transaction vanished!&quot;</span>);
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Session within totp reg transaction vanished!&quot;</span>);
                     <span class="ident">e</span>
                 })<span class="question-mark">?</span>;
             <span class="comment">// reg the token</span>

@@ -174,6 +174,7 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
+<span id="172">172</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -192,6 +193,7 @@
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lazy_static</span>;
 
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::client_sync::call_daemon_blocking</span>;
+<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>, <span class="ident">NssGroup</span>, <span class="ident">NssUser</span>};
 
@@ -205,7 +207,7 @@
 <span class="kw">impl</span> <span class="ident">PasswdHooks</span> <span class="kw">for</span> <span class="ident">KanidmPasswd</span> {
     <span class="kw">fn</span> <span class="ident">get_all_entries</span>() -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
+            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
@@ -223,7 +225,7 @@
 
     <span class="kw">fn</span> <span class="ident">get_entry_by_uid</span>(<span class="ident">uid</span>: <span class="ident">libc::uid_t</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
+            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
@@ -243,7 +245,7 @@
 
     <span class="kw">fn</span> <span class="ident">get_entry_by_name</span>(<span class="ident">name</span>: <span class="ident">String</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
+            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
@@ -268,7 +270,7 @@
 <span class="kw">impl</span> <span class="ident">GroupHooks</span> <span class="kw">for</span> <span class="ident">KanidmGroup</span> {
     <span class="kw">fn</span> <span class="ident">get_all_entries</span>() -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
+            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
@@ -286,7 +288,7 @@
 
     <span class="kw">fn</span> <span class="ident">get_entry_by_gid</span>(<span class="ident">gid</span>: <span class="ident">libc::gid_t</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
+            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
@@ -306,7 +308,7 @@
 
     <span class="kw">fn</span> <span class="ident">get_entry_by_name</span>(<span class="ident">name</span>: <span class="ident">String</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
+            <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;

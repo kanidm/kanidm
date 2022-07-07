@@ -337,6 +337,7 @@
 <span id="332">332</span>
 <span id="333">333</span>
 <span id="334">334</span>
+<span id="335">335</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -362,6 +363,7 @@
 <span class="kw">use</span> <span class="ident">std::ffi::CStr</span>;
 <span class="comment">// use std::os::raw::c_char;</span>
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::client_sync::call_daemon_blocking</span>;
+<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>};
 
@@ -395,7 +397,7 @@
 
 <span class="kw">fn</span> <span class="ident">get_cfg</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmUnixdConfig</span>, <span class="ident">PamResultCode</span><span class="op">&gt;</span> {
     <span class="ident">KanidmUnixdConfig::new</span>()
-        .<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>)
+        .<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>)
         .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>)
 }
 

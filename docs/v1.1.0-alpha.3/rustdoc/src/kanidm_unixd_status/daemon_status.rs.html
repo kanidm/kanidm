@@ -70,6 +70,7 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
+<span id="68">68</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -92,6 +93,7 @@
 <span class="comment">// use futures::executor::block_on;</span>
 
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::client_sync::call_daemon_blocking</span>;
+<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>};
 
@@ -106,7 +108,7 @@
 
     <span class="macro">trace!</span>(<span class="string">&quot;Starting cache status tool ...&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>)
+    <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>)
     {
         <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
         <span class="prelude-val">Err</span>(<span class="ident">_e</span>) =&gt; {

@@ -248,6 +248,7 @@
 <span id="243">243</span>
 <span id="244">244</span>
 <span id="245">245</span>
+<span id="246">246</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of</span>
 <span class="doccomment">//! variables that determine how our backends, query server, and frontends are configured.</span>
 <span class="doccomment">//!</span>
@@ -350,6 +351,7 @@
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Configuration</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;address: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">address</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;domain: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">domain</span>))
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldapaddress</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">la</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ldap address: {}, &quot;</span>, <span class="ident">la</span>),
                 <span class="prelude-val">None</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ldap address: disabled, &quot;</span>),

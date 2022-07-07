@@ -780,57 +780,11 @@
 <span id="775">775</span>
 <span id="776">776</span>
 <span id="777">777</span>
-<span id="778">778</span>
-<span id="779">779</span>
-<span id="780">780</span>
-<span id="781">781</span>
-<span id="782">782</span>
-<span id="783">783</span>
-<span id="784">784</span>
-<span id="785">785</span>
-<span id="786">786</span>
-<span id="787">787</span>
-<span id="788">788</span>
-<span id="789">789</span>
-<span id="790">790</span>
-<span id="791">791</span>
-<span id="792">792</span>
-<span id="793">793</span>
-<span id="794">794</span>
-<span id="795">795</span>
-<span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-</pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
+</pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">middleware</span>;
+<span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
+<span class="kw">use</span> <span class="ident"><span class="self">self</span>::middleware</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::oauth2</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::v1</span>::<span class="kw-2">*</span>;
 
@@ -1012,17 +966,23 @@
 }
 
 <span class="comment">// Handle the various end points we need to expose</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">index_view</span>(<span class="ident">_req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">index_view</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+
+    <span class="kw">let</span> <span class="ident">domain_display_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">qe_r_ref</span>.<span class="ident">get_domain_display_name</span>(<span class="ident">eventid</span>).<span class="kw">await</span>;
+
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
+    <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
 
     <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="string">&quot;text/html;charset=utf-8&quot;</span>);
-    <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="string">r#&quot;
+
+    <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="macro">format!</span>(<span class="string">r#&quot;
     &lt;!DOCTYPE html&gt;
     &lt;html lang=&quot;en&quot;&gt;
         &lt;head&gt;
             &lt;meta charset=&quot;utf-8&quot;/&gt;
             &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width&quot;&gt;
-            &lt;title&gt;Kanidm&lt;/title&gt;
+            &lt;title&gt;{}&lt;/title&gt;
             &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/external/bootstrap.min.css&quot; integrity=&quot;sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC&quot;/&gt;
             &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/style.css&quot;/&gt;
             &lt;script src=&quot;/pkg/external/bootstrap.bundle.min.js&quot; integrity=&quot;sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM&quot;&gt;&lt;/script&gt;
@@ -1034,7 +994,7 @@
         &lt;body&gt;
         &lt;/body&gt;
     &lt;/html&gt;
-        &quot;#</span>,
+        &quot;#</span>, <span class="ident">domain_display_name</span>.<span class="ident">as_str</span>())
     );
 
     <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
@@ -1074,6 +1034,7 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
+<span class="doccomment">/// Sets Cache-Control headers on static content endpoints</span>
 <span class="kw">struct</span> <span class="ident">StaticContentMiddleware</span>;
 
 <span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
@@ -1090,6 +1051,12 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
+<span class="doccomment">/// Adds the folloing headers to responses</span>
+<span class="doccomment">/// - x-frame-options</span>
+<span class="doccomment">/// - x-content-type-options</span>
+<span class="doccomment">/// - cross-origin-resource-policy</span>
+<span class="doccomment">/// - cross-origin-embedder-policy</span>
+<span class="doccomment">/// - cross-origin-opener-policy</span>
 <span class="kw">struct</span> <span class="ident">StrictResponseMiddleware</span>;
 
 <span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
@@ -1100,79 +1067,14 @@
         <span class="ident">next</span>: <span class="ident">tide::Next</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">State</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">tide::Result</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">next</span>.<span class="ident">run</span>(<span class="ident">request</span>).<span class="kw">await</span>;
-        <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;x-frame-options&quot;</span>, <span class="string">&quot;deny&quot;</span>);
-        <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;x-content-type-options&quot;</span>, <span class="string">&quot;nosniff&quot;</span>);
-        <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;cross-origin-resource-policy&quot;</span>, <span class="string">&quot;same-origin&quot;</span>);
         <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;cross-origin-embedder-policy&quot;</span>, <span class="string">&quot;require-corp&quot;</span>);
         <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;cross-origin-opener-policy&quot;</span>, <span class="string">&quot;same-origin&quot;</span>);
+        <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;cross-origin-resource-policy&quot;</span>, <span class="string">&quot;same-origin&quot;</span>);
+        <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;x-content-type-options&quot;</span>, <span class="string">&quot;nosniff&quot;</span>);
+        <span class="ident">response</span>.<span class="ident">insert_header</span>(<span class="string">&quot;x-frame-options&quot;</span>, <span class="string">&quot;deny&quot;</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">response</span>)
     }
 }
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">struct</span> <span class="ident">UIContentSecurityPolicyResponseMiddleware</span> {
-    <span class="comment">// The sha384 hash of /pkg/wasmloader.js</span>
-    <span class="kw">pub</span> <span class="ident">integrity_wasmloader</span>: <span class="ident">String</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">UIContentSecurityPolicyResponseMiddleware</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">integrity_wasmloader</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">return</span> <span class="self">Self</span> {
-            <span class="ident">integrity_wasmloader</span>,
-        };
-    }
-}
-
-<span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">State</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span> <span class="ident">tide::Middleware</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>
-    <span class="kw">for</span> <span class="ident">UIContentSecurityPolicyResponseMiddleware</span>
-{
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">request</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>,
-        <span class="ident">next</span>: <span class="ident">tide::Next</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">State</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">tide::Result</span> {
-        <span class="comment">// This updates the UI body with the integrity hash value for the wasmloader.js file, and adds content-security-policy headers.</span>
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">next</span>.<span class="ident">run</span>(<span class="ident">request</span>).<span class="kw">await</span>;
-
-        <span class="comment">// grab the body we&#39;re intending to return at this point</span>
-        <span class="kw">let</span> <span class="ident">body_str</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">take_body</span>().<span class="ident">into_string</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="comment">// update it with the hash</span>
-        <span class="ident">response</span>.<span class="ident">set_body</span>(<span class="ident">body_str</span>.<span class="ident">replace</span>(<span class="string">&quot;==WASMHASH==&quot;</span>, <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>()));
-        <span class="ident">response</span>.<span class="ident">insert_header</span>(
-            <span class="comment">/* content-security-policy headers tell the browser what to trust
-                https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
-
-                In this case we&#39;re only trusting the same server that the page is
-                loaded from, and adding a hash of wasmloader.js, which is the main script
-                we should be loading, and should be really secure about that!
-
-            */</span>
-            <span class="comment">// TODO: consider scraping the other js files that wasm-pack builds and including them too</span>
-            <span class="string">&quot;content-security-policy&quot;</span>,
-            <span class="macro">vec!</span>[
-                <span class="string">&quot;default-src &#39;self&#39;&quot;</span>,
-                <span class="comment">// we need unsafe-eval because of WASM things</span>
-                <span class="macro">format!</span>(
-                    <span class="string">&quot;script-src &#39;self&#39; &#39;sha384-{}&#39; &#39;unsafe-eval&#39;&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">integrity_wasmloader</span>.<span class="ident">as_str</span>()
-                )
-                .<span class="ident">as_str</span>(),
-                <span class="string">&quot;form-action https: &#39;self&#39;&quot;</span>, <span class="comment">// to allow for OAuth posts</span>
-                <span class="comment">// we are not currently using workers so it can be blocked</span>
-                <span class="string">&quot;worker-src &#39;none&#39;&quot;</span>,
-                <span class="comment">// TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only</span>
-                <span class="comment">// &quot;report-to &#39;none&#39;&quot;, // unsupported by a lot of things still, but mozilla&#39;s saying report-uri is deprecated?</span>
-                <span class="string">&quot;report-uri &#39;none&#39;&quot;</span>,
-                <span class="string">&quot;base-uri &#39;self&#39;&quot;</span>,
-            ]
-            .<span class="ident">join</span>(<span class="string">&quot;;&quot;</span>),
-        );
-
-        <span class="prelude-val">Ok</span>(<span class="ident">response</span>)
-    }
-}
-
 <span class="kw">struct</span> <span class="ident">StrictRequestMiddleware</span>;
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">StrictRequestMiddleware</span> {
@@ -1318,10 +1220,12 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">static_tserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">StaticContentMiddleware::default</span>());
+
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">UIContentSecurityPolicyResponseMiddleware::new</span>(
             <span class="ident">generate_integrity_hash</span>(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>).<span class="ident">to_owned</span>() <span class="op">+</span> <span class="string">&quot;/wasmloader.js&quot;</span>)
                 .<span class="ident">unwrap</span>(),
         ));
+
         <span class="comment">// The compression middleware needs to be the last one added before routes</span>
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">compress_middleware</span>.<span class="ident">clone</span>());
 

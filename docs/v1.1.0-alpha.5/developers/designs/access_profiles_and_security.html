@@ -1,0 +1,558 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Access Profiles - Kanidm Administration</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="../../favicon.png">
+        <link rel="stylesheet" href="../../css/variables.css">
+        <link rel="stylesheet" href="../../css/general.css">
+        <link rel="stylesheet" href="../../css/chrome.css">
+        <link rel="stylesheet" href="../../css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../../highlight.css">
+        <link rel="stylesheet" href="../../tomorrow-night.css">
+        <link rel="stylesheet" href="../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../../intro.html"><strong aria-hidden="true">1.</strong> Introduction to Kanidm</a></li><li class="chapter-item expanded "><a href="../../installing_the_server.html"><strong aria-hidden="true">2.</strong> Installing the Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../server_configuration.html"><strong aria-hidden="true">2.1.</strong> Server Configuration</a></li><li class="chapter-item expanded "><a href="../../security_hardening.html"><strong aria-hidden="true">2.2.</strong> Security Hardening</a></li></ol></li><li class="chapter-item expanded "><a href="../../client_tools.html"><strong aria-hidden="true">3.</strong> Client Tools</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../installing_client_tools.html"><strong aria-hidden="true">3.1.</strong> Installing client tools</a></li></ol></li><li class="chapter-item expanded "><a href="../../accounts_and_groups.html"><strong aria-hidden="true">4.</strong> Accounts and Groups</a></li><li class="chapter-item expanded "><a href="../../administrivia.html"><strong aria-hidden="true">5.</strong> Administrative Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../monitoring.html"><strong aria-hidden="true">5.1.</strong> Monitoring the platform</a></li><li class="chapter-item expanded "><a href="../../password_quality.html"><strong aria-hidden="true">5.2.</strong> Password Quality and Badlisting</a></li><li class="chapter-item expanded "><a href="../../posix_accounts.html"><strong aria-hidden="true">5.3.</strong> POSIX Accounts and Groups</a></li><li class="chapter-item expanded "><a href="../../ssh_key_dist.html"><strong aria-hidden="true">5.4.</strong> SSH Key Distribution</a></li><li class="chapter-item expanded "><a href="../../recycle_bin.html"><strong aria-hidden="true">5.5.</strong> The Recycle Bin</a></li><li class="chapter-item expanded "><a href="../../why_tls.html"><strong aria-hidden="true">5.6.</strong> Why TLS?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">For Developers</li><li class="chapter-item expanded "><a href="../../DEVELOPER_README.html"><strong aria-hidden="true">6.</strong> Developer Guide</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">7.</strong> Design Documents</div></li><li><ol class="section"><li class="chapter-item expanded "><a href="../../developers/designs/access_profiles_and_security.html" class="active"><strong aria-hidden="true">7.1.</strong> Access Profiles</a></li></ol></li><li class="chapter-item expanded "><a href="../../developers/python.html"><strong aria-hidden="true">8.</strong> Python Module</a></li><li class="chapter-item expanded "><a href="../../developers/radius.html"><strong aria-hidden="true">9.</strong> RADIUS Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="../../integrations/oauth2.html"><strong aria-hidden="true">10.</strong> Oauth2</a></li><li class="chapter-item expanded "><a href="../../integrations/pam_and_nsswitch.html"><strong aria-hidden="true">11.</strong> PAM and nsswitch</a></li><li class="chapter-item expanded "><a href="../../integrations/radius.html"><strong aria-hidden="true">12.</strong> RADIUS</a></li><li class="chapter-item expanded "><a href="../../integrations/ldap.html"><strong aria-hidden="true">13.</strong> LDAP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integration Examples</li><li class="chapter-item expanded "><a href="../../examples/k8s_ingress_example.html"><strong aria-hidden="true">14.</strong> Kubernetes Ingress</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Kanidm Administration</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/kanidm/kanidm" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/kanidm/kanidm/edit/master/kanidm_book/src/developers/designs/access_profiles_and_security.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="access-profiles"><a class="header" href="#access-profiles">Access Profiles</a></h1>
+<p>Access Profiles (ACPs) are a way of expressing the set of actions which accounts are 
+permitted to perform on database records (<code>object</code>) in the system.</p>
+<p>As a result, there are specific requirements to what these can control and how they are
+expressed.</p>
+<p>Access profiles define an action of <code>allow</code> or <code>deny</code>: <code>deny</code> has priority over <code>allow</code> 
+and will override even if applicable. They should only be created by system access profiles
+because certain changes must be denied.</p>
+<p>Access profiles are stored as entries and are dynamically loaded into a structure that is
+more efficent for use at runtime. <code>Schema</code> and its transactions are a similar implementation.</p>
+<h2 id="search-requirements"><a class="header" href="#search-requirements">Search Requirements</a></h2>
+<p>A search access profile must be able to limit:</p>
+<ol>
+<li>the content of a search request and its scope.</li>
+<li>the set of data returned from the objects visible.</li>
+</ol>
+<p>An example:</p>
+<blockquote>
+<p>Alice should only be able to search for objects where the class is <code>person</code> 
+and the object is a memberOf the group called &quot;visible&quot;. </p>
+<p>Alice should only be able to see those the attribute <code>displayName</code> for those 
+users (not their <code>legalName</code>), and their public <code>email</code>.</p>
+</blockquote>
+<p>Worded a bit differently. You need permission over the scope of entries, you need to be able
+to read the attribute to filter on it, and you need to be able to read the attribute to recieve
+it in the result entry.</p>
+<p>If Alice searches for <code>(&amp;(name=william)(secretdata=x))</code>, we should not allow this to
+proceed because Alice doesn't have the rights to read secret data, so they should not be allowed
+to filter on it. How does this work with two overlapping ACPs? For example: one that allows read
+of name and description to class = group, and one that allows name to user. We don't want to
+say <code>(&amp;(name=x)(description=foo))</code> and it to be allowed, because we don't know the target class
+of the filter. Do we &quot;unmatch&quot; all users because they have no access to the filter components? (Could
+be done by inverting and putting in an AndNot of the non-matchable overlaps). Or do we just
+filter our description from the users returned (But that implies they DID match, which is a disclosure).</p>
+<p>More concrete:</p>
+<pre><code class="language-yaml">search {
+    action: allow
+    targetscope: Eq(&quot;class&quot;, &quot;group&quot;)
+    targetattr: name
+    targetattr: description
+}
+
+search {
+    action: allow
+    targetscope: Eq(&quot;class&quot;, &quot;user&quot;)
+    targetattr: name
+}
+
+SearchRequest {
+    ...
+    filter: And: {
+        Pres(&quot;name&quot;),
+        Pres(&quot;description&quot;),
+    }
+}
+</code></pre>
+<p>A potential defense is:</p>
+<pre><code class="language-yaml">acp class group: Pres(name) and Pres(desc) both in target attr, allow
+acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
+</code></pre>
+<p>So the filter now is:</p>
+<pre><code class="language-yaml">And: {
+    AndNot: {
+        Eq(&quot;class&quot;, &quot;user&quot;)
+    },
+    And: {
+        Pres(&quot;name&quot;),
+        Pres(&quot;description&quot;),
+    },
+}
+</code></pre>
+<p>This would now only allow access to the <code>name</code> and <code>description</code> of the class <code>group</code>.</p>
+<p>If we extend this to a third, this would work. A more complex example:</p>
+<pre><code class="language-yaml">search {
+    action: allow
+    targetscope: Eq(&quot;class&quot;, &quot;group&quot;)
+    targetattr: name
+    targetattr: description
+}
+
+search {
+    action: allow
+    targetscope: Eq(&quot;class&quot;, &quot;user&quot;)
+    targetattr: name
+}
+
+search {
+    action: allow
+    targetscope: And(Eq(&quot;class&quot;, &quot;user&quot;), Eq(&quot;name&quot;, &quot;william&quot;))
+    targetattr: description
+}
+</code></pre>
+<p>Now we have a single user where we can read <code>description</code>. So the compiled filter above as:</p>
+<pre><code class="language-yaml">And: {
+    AndNot: {
+        Eq(&quot;class&quot;, &quot;user&quot;)
+    },
+    And: {
+        Pres(&quot;name&quot;),
+        Pres(&quot;description&quot;),
+    },
+}
+</code></pre>
+<p>This would now be invalid, first, because we would see that <code>class=user</code> and <code>william</code> has no name
+so that would be excluded also. We also may not even have &quot;class=user&quot; in the second ACP, so we can't
+use subset filter matching to merge the two.</p>
+<p>As a result, I think the only possible valid solution is to perform the initial filter, then determine
+on the candidates if we <em>could</em> have have valid access to filter on all required attributes. IE
+this means even with an index look up, we still are required to perform some filter application
+on the candidates.</p>
+<p>I think this will mean on a possible candidate, we have to apply all ACP, then create a union of
+the resulting targetattrs, and then compared that set into the set of attributes in the filter.</p>
+<p>This will be slow on large candidate sets (potentially), but could be sped up with parallelism, caching
+or other methods. However, in the same step, we can also apply the step of extracting only the allowed
+read target attrs, so this is a valuable exercise.</p>
+<h2 id="delete-requirements"><a class="header" href="#delete-requirements">Delete Requirements</a></h2>
+<p>A <code>delete</code> profile must contain the <code>content</code> and <code>scope</code> of a delete.</p>
+<p>An example:</p>
+<blockquote>
+<p>Alice should only be able to delete objects where the <code>memberOf</code> is
+<code>purgeable</code>, and where they are not marked as <code>protected</code>.</p>
+</blockquote>
+<h2 id="create-requirements"><a class="header" href="#create-requirements">Create Requirements</a></h2>
+<p>A <code>create</code> profile defines the following limits to what objects can be created, through the combination of filters and atttributes.</p>
+<p>An example: </p>
+<blockquote>
+<p>Alice should only be able to create objects where the <code>class</code> is <code>group</code>, and can
+only name the group, but they cannot add members to the group.</p>
+</blockquote>
+<p>An example of a content requirement could be something like &quot;the value of an attribute must pass a regular expression filter&quot;. 
+This could limit a user to creating a group of any name, except where the group's name contains &quot;admin&quot;. 
+This a contrived example which is also possible with filtering, but more complex requirements are possible.</p>
+<p>For example, we want to be able to limit the classes that someone <em>could</em> create on an object
+because classes often are used in security rules.</p>
+<h2 id="modify-requirements"><a class="header" href="#modify-requirements">Modify Requirements</a></h2>
+<p>A <code>modify</code> profile defines the following limits:</p>
+<ul>
+<li>a filter for which objects can be modified,</li>
+<li>a set of attributes which can be modified.</li>
+</ul>
+<p>A <code>modify</code> profile defines a limit on the <code>modlist</code> actions. </p>
+<p>For example: you may only be allowed to ensure <code>presence</code> of a value. (Modify allowing purge, not-present, and presence).</p>
+<p>Content requirements (see <a href="#create-requirements">Create Requirements</a>) are out of scope at the moment.</p>
+<p>An example:</p>
+<blockquote>
+<p>Alice should only be able to modify a user's password if that user is a member of the
+students group.</p>
+</blockquote>
+<p><strong>Note:</strong> <code>modify</code> does not imply <code>read</code> of the attribute. Care should be taken that we don't disclose
+the current value in any error messages if the operation fails.</p>
+<h2 id="targeting-requirements"><a class="header" href="#targeting-requirements">Targeting Requirements</a></h2>
+<p>The <code>target</code> of an access profile should be a filter defining the objects that this applies to.</p>
+<p>The filter limit for the profiles of what they are acting on requires a single special operation
+which is the concept of &quot;targeting self&quot;. </p>
+<p>For example: we could define a rule that says &quot;members of group X are allowed self-write to the <code>mobilePhoneNumber</code> attribute&quot;.</p>
+<p>An extension to the filter code could allow an extra filter enum of <code>self</code>, that would allow this
+to operate correctly, and would consume the entry in the event as the target of &quot;Self&quot;. This would
+be best implemented as a compilation of <code>self -&gt; eq(uuid, self.uuid)</code>.</p>
+<h2 id="implementation-details"><a class="header" href="#implementation-details">Implementation Details</a></h2>
+<p>CHANGE: Receiver should be a group, and should be single value/multivalue? Can <em>only</em> be a group.</p>
+<p>Example profiles:</p>
+<pre><code class="language-yaml">search {
+    action: allow
+    receiver: Eq(&quot;memberof&quot;, &quot;admins&quot;)
+    targetscope: Pres(&quot;class&quot;)
+    targetattr: legalName
+    targetattr: displayName
+    description: Allow admins to read all users names
+}
+
+search {
+    action: allow
+    receiver: Self
+    targetscope: Self
+    targetattr: homeAddress
+    description: Allow everyone to read only their own homeAddress
+}
+
+delete {
+    action: allow
+    receiver: Or(Eq(&quot;memberof&quot;, &quot;admins), Eq(&quot;memberof&quot;, &quot;servicedesk&quot;))
+    targetscope: Eq(&quot;memberof&quot;, &quot;tempaccount&quot;)
+    description: Allow admins or servicedesk to delete any member of &quot;temp accounts&quot;.
+}
+
+// This difference in targetscope behaviour could be justification to change the keyword here
+// to prevent confusion.
+create {
+    action: allow
+    receiver: Eq(&quot;name&quot;, &quot;alice&quot;)
+    targetscope: And(Eq(&quot;class&quot;, &quot;person&quot;), Eq(&quot;location&quot;, &quot;AU&quot;))
+    createattr: location
+    createattr: legalName
+    createattr: mail
+    createclass: person
+    createclass: object
+    description: Allow alice to make new persons, only with class person+object, and only set
+        the attributes mail, location and legalName. The created object must conform to targetscope
+}
+
+modify {
+    action: allow
+    receiver: Eq(&quot;name&quot;, &quot;claire&quot;)
+    targetscope: And(Eq(&quot;class&quot;, &quot;group&quot;), Eq(&quot;name&quot;, &quot;admins&quot;))
+    presentattr: member
+    description: Allow claire to promote people as members of the admins group.
+}
+
+modify {
+    action: allow
+    receiver: Eq(&quot;name&quot;, &quot;claire&quot;)
+    targetscope: And(Eq(&quot;class&quot;, &quot;person&quot;), Eq(&quot;memberof&quot;, &quot;students&quot;))
+    presentattr: sshkeys
+    presentattr: class
+    targetclass: unixuser
+    description: Allow claire to modify persons in the students group, and to grant them the
+        class of unixuser (only this class can be granted!). Subsequently, she may then give
+        the sshkeys values as a modification.
+}
+
+modify {
+    action: allow
+    receiver: Eq(&quot;name&quot;, &quot;alice&quot;)
+    targetscope: Eq(&quot;memberof&quot;, &quot;students&quot;)
+    removedattr: sshkeys
+    description: Allow allice to purge or remove sshkeys from members of the students group,
+        but not add new ones
+}
+
+modify {
+    action: allow
+    receiver: Eq(&quot;name&quot;, &quot;alice&quot;)
+    targetscope: Eq(&quot;memberof&quot;, &quot;students&quot;)
+    removedattr: sshkeys
+    presentattr: sshkeys
+    description: Allow alice full control over the ssh keys attribute on members of students.
+}
+
+// This may not be valid: Perhaps if &lt;*&gt;attr: is on modify/create, then targetclass, must
+// must be set, else class is considered empty.
+//
+// This profile could in fact be an invalid example, because presentattr: class, but not
+// targetclass, so nothing could be granted.
+modify {
+    action: allow
+    receiver: Eq(&quot;name&quot;, &quot;alice&quot;)
+    targetscope: Eq(&quot;memberof&quot;, &quot;students&quot;)
+    presentattr: class
+    description: Allow alice to grant any class to members of students.
+}
+</code></pre>
+<h2 id="formalised-schema"><a class="header" href="#formalised-schema">Formalised Schema</a></h2>
+<p>A complete schema would be:</p>
+<h3 id="attributes"><a class="header" href="#attributes">Attributes</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Single/Multi</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td>acp_allow</td><td>single value</td><td>bool</td><td></td></tr>
+<tr><td>acp_enable</td><td>single value</td><td>bool</td><td>This ACP is enabled</td></tr>
+<tr><td>acp_receiver</td><td>single value</td><td>filter</td><td>???</td></tr>
+<tr><td>acp_targetscope</td><td>single value</td><td>filter</td><td>???</td></tr>
+<tr><td>acp_search_attr</td><td>multi value</td><td>utf8 case insense</td><td>A list of attributes that can be searched.</td></tr>
+<tr><td>acp_create_class</td><td>multi value</td><td>utf8 case insense</td><td>Object classes in which an object can be created.</td></tr>
+<tr><td>acp_create_attr</td><td>multi value</td><td>utf8 case insense</td><td>Attribute Entries that can be created.</td></tr>
+<tr><td>acp_modify_removedattr</td><td>multi value</td><td>utf8 case insense</td><td>Modify if removed?</td></tr>
+<tr><td>acp_modify_presentattr</td><td>multi value</td><td>utf8 case insense</td><td>???</td></tr>
+<tr><td>acp_modify_class</td><td>multi value</td><td>utf8 case insense</td><td>???</td></tr>
+</tbody></table>
+</div>
+<h3 id="classes"><a class="header" href="#classes">Classes</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Must Have</th><th>May Have</th></tr></thead><tbody>
+<tr><td>access_control_profile</td><td><code>[acp_receiver, acp_targetscope]</code></td><td><code>[description, acp_allow]</code></td></tr>
+<tr><td>access_control_search</td><td><code>[acp_search_attr]</code></td><td></td></tr>
+<tr><td>access_control_delete</td><td></td><td></td></tr>
+<tr><td>access_control_modify</td><td></td><td><code>[acp_modify_removedattr, acp_modify_presentattr, acp_modify_class]</code></td></tr>
+<tr><td>access_control_create</td><td></td><td><code>[acp_create_class, acp_create_attr]</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>Important</strong>: empty sets really mean empty sets! </p>
+<p>The ACP code will assert that both <code>access_control_profile</code> <em>and</em> one of the <code>search/delete/modify/create</code> 
+classes exists on an ACP. An important factor of this design is now the ability to <em>compose</em> 
+multiple ACP's into a single entry allowing a <code>create/delete/modify</code> to exist! However, each one must 
+still list their respective actions to allow proper granularity.</p>
+<h2 id="search-application"><a class="header" href="#search-application">&quot;Search&quot; Application</a></h2>
+<p>The set of access controls is checked, and the set where receiver matches the current identified
+user is collected. These then are added to the users requested search as:</p>
+<pre><code>And(&lt;User Search Request&gt;, Or(&lt;Set of Search Profile Filters))
+</code></pre>
+<p>In this manner, the search security is easily applied, as if the targets to conform to one of the
+required search profile filters, the outer <code>And</code> condition is nullified and no results returned.</p>
+<p>Once complete, in the translation of the entry -&gt; proto_entry, each access control and its allowed
+set of attrs has to be checked to determine what of that entry can be displayed. Consider there are
+three entries, A, B, C. An ACI that allows read of &quot;name&quot; on A, B exists, and a read of &quot;mail&quot; on
+B, C. The correct behaviour is then:</p>
+<pre><code>A: name
+B: name, mail
+C: mail
+</code></pre>
+<p>So this means that the <code>entry -&gt; proto entry</code> part is likely the most expensive part of the access
+control operation, but also one of the most important. It may be possible to compile to some kind
+of faster method, but initially a simple version is needed.</p>
+<h2 id="delete-application"><a class="header" href="#delete-application">&quot;Delete&quot; Application</a></h2>
+<p>Delete is similar to search, however there is the risk that the user may say something like:</p>
+<pre><code>Pres(&quot;class&quot;).
+</code></pre>
+<p>Were we to approach this like search, this would then have &quot;every thing the identified user
+is allowed to delete, is deleted&quot;. A consideration here is that <code>Pres(&quot;class&quot;)</code> would delete &quot;all&quot;
+objects in the directory, but with the access control present, it would limit the deletion to the
+set of allowed deletes.</p>
+<p>In a sense this is a correct behaviour - they were allowed to delete everything they asked to
+delete. However, in another it's not valid: the request was broad and they were not allowed access
+to delete everything they requested.</p>
+<p>The possible abuse vector here is that an attacker could then use delete requests to enumerate the 
+existence of entries in the database that they do not have access to. This requires someone to have 
+the delete privilege which in itself is very high level of access, so this risk may be minimal.</p>
+<p>So the choices are:</p>
+<ol>
+<li>Treat it like search and allow the user to delete what they are allowed to delete, 
+but ignore other objects</li>
+<li>Deny the request because their delete was too broad, and they must specify a valid deletion request.</li>
+</ol>
+<p>Option #2 seems more correct because the <code>delete</code> request is an explicit request, not a request where
+you want partial results. Imagine someone wants to delete users A and B at the same time, but only
+has access to A. They want this request to fail so they KNOW B was not deleted, rather than it
+succeed and have B still exist with a partial delete status.</p>
+<p>However, a possible issue is that Option #2 means that a delete request of
+<code>And(Eq(attr, allowed_attribute), Eq(attr, denied))</code>,  which is rejected may indicate presence of the 
+<code>denied</code> attribute. So option #1 may help in preventing a security risk of information disclosure.</p>
+<!-- TODO
+@yaleman: not always, it could indicate that the attribute doesn't exist so it's an invalid filter, but
+    that would depend if the response was "invalid" in both cases, or "invalid" / "refused"
+-->
+<p>This is also a concern for modification, where the modification attempt may or may not
+fail depending on the entries and if you can/can't see them.</p>
+<p><strong>IDEA:</strong> You can only <code>delete</code>/<code>modify</code> within the read scope you have. If you can't
+read it (based on the read rules of <code>search</code>), you can't <code>delete</code> it. This is in addition to the filter
+rules of the <code>delete</code> applying as well. So performing a <code>delete</code> of <code>Pres(class)</code>, will only delete
+in your <code>read</code> scope and will never disclose if you are denied access.</p>
+<!-- TODO
+@yaleman: This goes back to the commentary on Option #2 and feels icky like SQL's `DELETE FROM <table>` just deleting everything. It's more complex from the client - you have to search for a set of things to delete - then delete them.
+Explicitly listing the objects you want to delete feels.... way less bad. This applies to modifies too.  😁
+-->
+<h2 id="create-application"><a class="header" href="#create-application">&quot;Create&quot; Application</a></h2>
+<p>Create seems like the easiest to apply. Ensure that only the attributes in <code>createattr</code> are in the
+<code>createevent</code>, ensure the classes only contain the set in <code>createclass</code>, then finally apply
+<code>filter_no_index</code> to the entry to entry. If all of this passes, the create is allowed.</p>
+<p>A key point is that there is no union of <code>create</code> ACI's - the WHOLE ACI must pass, not parts of
+multiple. This means if a control say &quot;allows creating group with member&quot; and &quot;allows creating
+user with name&quot;, creating a group with <code>name</code> is not allowed - despite your ability to create
+an entry with <code>name</code>, its classes don't match. This way, the administrator of the service can define
+create controls with specific intent for how they will be used without the risk of two
+controls causing unintended effects (<code>users</code> that are also <code>groups</code>, or allowing invalid values.</p>
+<p>An important consideration is how to handle overlapping ACI. If two ACI <em>could</em> match the create
+should we enforce both conditions are upheld? Or only a single upheld ACI allows the create?</p>
+<p>In some cases it may not be possible to satisfy both, and that would block creates. The intent
+of the access profile is that &quot;something like this CAN&quot; be created, so I believe that provided
+only a single control passes, the create should be allowed.</p>
+<h2 id="modify-application"><a class="header" href="#modify-application">&quot;Modify&quot; Application</a></h2>
+<p>Modify is similar to Create, however we specifically filter on the <code>modlist</code> action of <code>present</code>,
+<code>removed</code> or <code>purged</code> with the action. The rules of create still apply; provided all requirements
+of the modify are permitted, then it is allowed once at least one profile allows the change.</p>
+<p>A key difference is that if the modify ACP lists multiple <code>presentattr</code> types, the modify request 
+is valid if it is only modifying one attribute. IE we say <code>presentattr: name, email</code>, but we
+only attempt to modify <code>email</code>.</p>
+<h2 id="considerations"><a class="header" href="#considerations">Considerations</a></h2>
+<ul>
+<li>When should access controls be applied? During an operation, we only validate schema after
+pre* Plugin application, so likely it has to be &quot;at that point&quot;, to ensure schema-based 
+validity of the entries that are allowed to be changed.</li>
+<li>Self filter keyword should compile to <code>eq(&quot;uuid&quot;,  &quot;....&quot;)</code>. When do we do this and how?</li>
+<li><code>memberof</code> could take <code>name</code> or <code>uuid</code>, we need to be able to resolve this correctly, but this is 
+likely an issue in <code>memberof</code> which needs to be addressed, ie <code>memberof uuid</code> vs <code>memberof attr</code>.</li>
+<li>Content controls in <code>create</code> and <code>modify</code> will be important to get right to avoid the security issues
+of LDAP access controls. Given that <code>class</code> has special importance, it's only right to give it extra
+consideration in these controls.</li>
+<li>In the future when <code>recyclebin</code> is added, a <code>re-animation</code> access profile should be created allowing
+revival of entries given certain conditions of the entry we are attempting to revive. A service-desk user
+should not be able to revive a deleted high-privilege user.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../DEVELOPER_README.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="../../developers/python.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../DEVELOPER_README.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="../../developers/python.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="../../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>

@@ -1421,6 +1421,10 @@
 <span id="1416">1416</span>
 <span id="1417">1417</span>
 <span id="1418">1418</span>
+<span id="1419">1419</span>
+<span id="1420">1420</span>
+<span id="1421">1421</span>
+<span id="1422">1422</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbentry::DbEntry</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbentry::DbIdentSpn</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">BackendConfig</span>, <span class="ident">IdList</span>, <span class="ident">IdRawEntry</span>, <span class="ident">IdxKey</span>, <span class="ident">IdxSlope</span>};
@@ -1645,7 +1649,11 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::get_idl&quot;</span>, {
             <span class="kw">if</span> <span class="op">!</span>(<span class="self">self</span>.<span class="ident">exists_idx</span>(<span class="ident">attr</span>, <span class="ident">itype</span>)<span class="question-mark">?</span>) {
-                <span class="macro">filter_error!</span>(<span class="string">&quot;Index {:?} {:?} not found&quot;</span>, <span class="ident">itype</span>, <span class="ident">attr</span>);
+                <span class="macro">filter_error!</span>(
+                    <span class="string">&quot;IdlSqliteTransaction: Index {:?} {:?} not found&quot;</span>,
+                    <span class="ident">itype</span>,
+                    <span class="ident">attr</span>
+                );
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             }
             <span class="comment">// The table exists - lets now get the actual index itself.</span>

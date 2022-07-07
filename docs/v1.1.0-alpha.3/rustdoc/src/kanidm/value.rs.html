@@ -1825,6 +1825,8 @@
 <span id="1820">1820</span>
 <span id="1821">1821</span>
 <span id="1822">1822</span>
+<span id="1823">1823</span>
+<span id="1824">1824</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of</span>
 <span class="doccomment">//! the [`Value`] module allow storage and transformation of various types of input into strongly</span>
 <span class="doccomment">//! typed values, allows their comparison, filtering and more. It also has the code for serialising</span>
@@ -2557,7 +2559,9 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Value</span> {
     <span class="ident">Utf8</span>(<span class="ident">String</span>),
+    <span class="comment">// Case insensitive string</span>
     <span class="ident">Iutf8</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// Case insensitive Name for a thing?</span>
     <span class="ident">Iname</span>(<span class="ident">String</span>),
     <span class="ident">Uuid</span>(<span class="ident">Uuid</span>),
     <span class="ident">Bool</span>(<span class="ident">bool</span>),

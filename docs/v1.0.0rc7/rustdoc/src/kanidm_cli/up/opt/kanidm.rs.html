@@ -558,6 +558,17 @@
 <span id="553">553</span>
 <span id="554">554</span>
 <span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Args</span>, <span class="ident">Subcommand</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -1034,10 +1045,21 @@
     <span class="ident">DisableLegacyCrypto</span>(<span class="ident">Named</span>),
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Args</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OptSetDomainDisplayName</span>{
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
+    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;new_display_Name&quot;</span>)]</span>
+    <span class="ident">new_display_name</span>: <span class="ident">String</span>,
+}
+
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DomainOpt</span> {
+    <span class="attribute">#[<span class="ident">clap</span>[<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_domain_display_name&quot;</span>]</span>]
+    <span class="doccomment">/// Set the domain display name</span>
+    <span class="ident">SetDomainDisplayName</span>(<span class="ident">OptSetDomainDisplayName</span>),
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
-    <span class="doccomment">/// Show information about this systems domain</span>
+    <span class="doccomment">/// Show information about this system&#39;s domain</span>
     <span class="ident">Show</span>(<span class="ident">CommonOpt</span>),
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_token_key&quot;</span>)]</span>
     <span class="doccomment">/// Reset this domain token signing key. This will cause all user sessions to be</span>

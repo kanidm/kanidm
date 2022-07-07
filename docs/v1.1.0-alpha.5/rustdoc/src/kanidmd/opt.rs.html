@@ -137,6 +137,27 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
 </pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
@@ -175,6 +196,33 @@
     <span class="ident">name</span>: <span class="ident">String</span>,
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
+}
+
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
+<span class="kw">enum</span> <span class="ident">DomainSettingsCmds</span> {
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;rename&quot;</span>)]</span>
+    <span class="doccomment">/// Change the IDM domain name</span>
+    <span class="ident">DomainChange</span>(<span class="ident">CommonOpt</span>),
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
+<span class="kw">enum</span> <span class="ident">DbCommands</span> {
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;vacuum&quot;</span>)]</span>
+    <span class="doccomment">/// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)</span>
+    <span class="ident">Vacuum</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;backup&quot;</span>)]</span>
+    <span class="doccomment">/// Backup the database content (offline)</span>
+    <span class="ident">Backup</span>(<span class="ident">BackupOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;restore&quot;</span>)]</span>
+    <span class="doccomment">/// Restore the database content (offline)</span>
+    <span class="ident">Restore</span>(<span class="ident">RestoreOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;verify&quot;</span>)]</span>
+    <span class="doccomment">/// Verify database and entity consistency.</span>
+    <span class="ident">Verify</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reindex&quot;</span>)]</span>
+    <span class="doccomment">/// Reindex the database (offline)</span>
+    <span class="ident">Reindex</span>(<span class="ident">CommonOpt</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -241,34 +289,28 @@ struct DbScanGetIndex {
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;configtest&quot;</span>)]</span>
     <span class="doccomment">/// Test the IDM Server configuration, without starting network listeners.</span>
     <span class="ident">ConfigTest</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;backup&quot;</span>)]</span>
-    <span class="doccomment">/// Backup the database content (offline)</span>
-    <span class="ident">Backup</span>(<span class="ident">BackupOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;restore&quot;</span>)]</span>
-    <span class="doccomment">/// Restore the database content (offline)</span>
-    <span class="ident">Restore</span>(<span class="ident">RestoreOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;verify&quot;</span>)]</span>
-    <span class="doccomment">/// Verify database and entity consistency.</span>
-    <span class="ident">Verify</span>(<span class="ident">CommonOpt</span>),
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;recover_account&quot;</span>)]</span>
     <span class="doccomment">/// Recover an account&#39;s password</span>
     <span class="ident">RecoverAccount</span>(<span class="ident">RecoverAccountOpt</span>),
     <span class="comment">// #[clap(name = &quot;reset_server_id&quot;)]</span>
     <span class="comment">// ResetServerId(CommonOpt),</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reindex&quot;</span>)]</span>
-    <span class="doccomment">/// Reindex the database (offline)</span>
-    <span class="ident">Reindex</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;vacuum&quot;</span>)]</span>
-    <span class="doccomment">/// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)</span>
-    <span class="ident">Vacuum</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain_name_change&quot;</span>)]</span>
-    <span class="doccomment">/// Change the IDM domain name</span>
-    <span class="ident">DomainChange</span>(<span class="ident">CommonOpt</span>),
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;db_scan&quot;</span>)]</span>
     <span class="doccomment">/// Inspect the internal content of the database datastructures.</span>
     <span class="ident">DbScan</span> {
         <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
         <span class="ident">commands</span>: <span class="ident">DbScanOpt</span>,
+    },
+    <span class="doccomment">/// Database maintenance, backups, restoration etc.</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;database&quot;</span>)]</span>
+    <span class="ident">Database</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">DbCommands</span>,
+    },
+    <span class="doccomment">/// Change domain settings</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain&quot;</span>)]</span>
+    <span class="ident">DomainSettings</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">DomainSettingsCmds</span>,
     },
 }
 </code></pre></div>

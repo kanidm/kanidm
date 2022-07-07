@@ -132,6 +132,7 @@
 <span id="127">127</span>
 <span id="128">128</span>
 <span id="129">129</span>
+<span id="130">130</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::subscriber::TreeIo</span>;
@@ -249,7 +250,8 @@
             <span class="ident">TreeIo::Stdout</span> =&gt; <span class="string">&quot;console stdout&quot;</span>,
             <span class="ident">TreeIo::Stderr</span> =&gt; <span class="string">&quot;console stderr&quot;</span>,
             <span class="ident">TreeIo::File</span>(<span class="kw-2">ref</span> <span class="ident">path</span>) =&gt; <span class="ident">path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="macro">panic!</span>(<span class="string">&quot;File path isn&#39;t UTF-8, cannot write to file: {:#?}&quot;</span>, <span class="ident">path</span>)
+                <span class="macro">eprintln!</span>(<span class="string">&quot;File path isn&#39;t UTF-8, cannot write logs to: {:#?}&quot;</span>, <span class="ident">path</span>);
+                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
                 <span class="comment">// warn!(</span>
                 <span class="comment">//     &quot;File path isn&#39;t UTF-8, logging to stderr instead: {:#?}&quot;,</span>
                 <span class="comment">//     path</span>

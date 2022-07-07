@@ -263,6 +263,7 @@
 <span id="258">258</span>
 <span id="259">259</span>
 <span id="260">260</span>
+<span id="261">261</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -297,6 +298,7 @@
 <span class="kw">use</span> <span class="ident">tokio_util::codec::Framed</span>;
 <span class="kw">use</span> <span class="ident">tokio_util::codec</span>::{<span class="ident">Decoder</span>, <span class="ident">Encoder</span>};
 
+<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">HomeDirectoryInfo</span>, <span class="ident">TaskRequest</span>, <span class="ident">TaskResponse</span>};
 
@@ -479,7 +481,7 @@
 
     <span class="ident">tracing_subscriber::fmt::init</span>();
 
-    <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>);
+    <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>);
     <span class="kw">let</span> <span class="ident">unixd_path_str</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">unixd_path</span>.<span class="ident">to_str</span>() {
         <span class="prelude-val">Some</span>(<span class="ident">cps</span>) =&gt; <span class="ident">cps</span>,
         <span class="prelude-val">None</span> =&gt; {

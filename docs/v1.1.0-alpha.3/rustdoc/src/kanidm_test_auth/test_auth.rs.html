@@ -84,6 +84,7 @@
 <span id="79">79</span>
 <span id="80">80</span>
 <span id="81">81</span>
+<span id="82">82</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
@@ -93,6 +94,7 @@
 <span class="kw">use</span> <span class="ident">futures::executor::block_on</span>;
 
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::client::call_daemon</span>;
+<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>};
 
@@ -115,7 +117,7 @@
     <span class="macro">debug!</span>(<span class="string">&quot;Starting pam auth tester tool ...&quot;</span>);
 
     <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">KanidmUnixdConfig::new</span>()
-        .<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>)
+        .<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>)
         .<span class="ident">expect</span>(<span class="string">&quot;Failed to parse /etc/kanidm/unixd&quot;</span>);
 
     <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter unix password: &quot;</span>).<span class="ident">unwrap</span>();

@@ -1220,6 +1220,9 @@
 <span id="1215">1215</span>
 <span id="1216">1216</span>
 <span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
 </pre><pre class="rust"><code><span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
@@ -2192,20 +2195,23 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;uuid\&quot;,\&quot;00000000-0000-0000-0000-ffffff000025\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
         &quot;acp_search_attr&quot;: [
-            &quot;name&quot;,
-            &quot;uuid&quot;,
+            &quot;domain_display_name&quot;,
             &quot;domain_name&quot;,
             &quot;domain_ssid&quot;,
             &quot;domain_uuid&quot;,
+            &quot;es256_private_key_der&quot;,
             &quot;fernet_private_key_str&quot;,
-            &quot;es256_private_key_der&quot;
+            &quot;name&quot;,
+            &quot;uuid&quot;
         ],
         &quot;acp_modify_removedattr&quot;: [
+            &quot;domain_display_name&quot;,
             &quot;domain_ssid&quot;,
-            &quot;fernet_private_key_str&quot;,
-            &quot;es256_private_key_der&quot;
+            &quot;es256_private_key_der&quot;,
+            &quot;fernet_private_key_str&quot;
         ],
         &quot;acp_modify_presentattr&quot;: [
+            &quot;domain_display_name&quot;,
             &quot;domain_ssid&quot;
         ]
     }

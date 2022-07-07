@@ -4219,6 +4219,68 @@
 <span id="4214">4214</span>
 <span id="4215">4215</span>
 <span id="4216">4216</span>
+<span id="4217">4217</span>
+<span id="4218">4218</span>
+<span id="4219">4219</span>
+<span id="4220">4220</span>
+<span id="4221">4221</span>
+<span id="4222">4222</span>
+<span id="4223">4223</span>
+<span id="4224">4224</span>
+<span id="4225">4225</span>
+<span id="4226">4226</span>
+<span id="4227">4227</span>
+<span id="4228">4228</span>
+<span id="4229">4229</span>
+<span id="4230">4230</span>
+<span id="4231">4231</span>
+<span id="4232">4232</span>
+<span id="4233">4233</span>
+<span id="4234">4234</span>
+<span id="4235">4235</span>
+<span id="4236">4236</span>
+<span id="4237">4237</span>
+<span id="4238">4238</span>
+<span id="4239">4239</span>
+<span id="4240">4240</span>
+<span id="4241">4241</span>
+<span id="4242">4242</span>
+<span id="4243">4243</span>
+<span id="4244">4244</span>
+<span id="4245">4245</span>
+<span id="4246">4246</span>
+<span id="4247">4247</span>
+<span id="4248">4248</span>
+<span id="4249">4249</span>
+<span id="4250">4250</span>
+<span id="4251">4251</span>
+<span id="4252">4252</span>
+<span id="4253">4253</span>
+<span id="4254">4254</span>
+<span id="4255">4255</span>
+<span id="4256">4256</span>
+<span id="4257">4257</span>
+<span id="4258">4258</span>
+<span id="4259">4259</span>
+<span id="4260">4260</span>
+<span id="4261">4261</span>
+<span id="4262">4262</span>
+<span id="4263">4263</span>
+<span id="4264">4264</span>
+<span id="4265">4265</span>
+<span id="4266">4266</span>
+<span id="4267">4267</span>
+<span id="4268">4268</span>
+<span id="4269">4269</span>
+<span id="4270">4270</span>
+<span id="4271">4271</span>
+<span id="4272">4272</span>
+<span id="4273">4273</span>
+<span id="4274">4274</span>
+<span id="4275">4275</span>
+<span id="4276">4276</span>
+<span id="4277">4277</span>
+<span id="4278">4278</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4279,6 +4341,7 @@
 <span class="kw">struct</span> <span class="ident">DomainInfo</span> {
     <span class="ident">d_uuid</span>: <span class="ident">Uuid</span>,
     <span class="ident">d_name</span>: <span class="ident">String</span>,
+    <span class="ident">d_display</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
@@ -4363,6 +4426,8 @@
     <span class="kw">fn</span> <span class="ident">get_domain_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span>;
 
     <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span>;
+
+    <span class="kw">fn</span> <span class="ident">get_domain_display_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span>;
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::mut_from_ref</span>)]</span>
     <span class="kw">fn</span> <span class="ident">get_resolve_filter_cache</span>(
@@ -4527,7 +4592,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>())))
     }
 
-    <span class="comment">// From internal, generate an exists event and dispatch</span>
+    <span class="doccomment">/// From internal, generate an &quot;exists&quot; event and dispatch</span>
     <span class="kw">fn</span> <span class="ident">internal_exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_exists&quot;</span>, {
             <span class="comment">// Check the filter</span>
@@ -4566,7 +4631,7 @@
         })
     }
 
-    <span class="comment">// this applys ACP to filter result entries.</span>
+    <span class="doccomment">/// Applies ACP to filter result entries.</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_ext_valid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">f_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
@@ -4610,8 +4675,8 @@
         })
     }
 
-    <span class="comment">// Get a single entry by it&#39;s UUID. This is heavily relied on for internal</span>
-    <span class="comment">// server operations, especially in login and acp checks for acp.</span>
+    <span class="doccomment">/// Get a single entry by its UUID. This is used heavily for internal</span>
+    <span class="doccomment">/// server operations, especially in login and ACP checks.</span>
     <span class="kw">fn</span> <span class="ident">internal_search_uuid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
@@ -4935,6 +5000,7 @@
         }
     }
 
+    <span class="doccomment">/// Pull the domain name from the database</span>
     <span class="kw">fn</span> <span class="ident">get_db_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -5043,6 +5109,10 @@
     <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_name</span>
     }
+
+    <span class="kw">fn</span> <span class="ident">get_domain_display_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_display</span>
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -5121,13 +5191,18 @@
         <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_uuid</span>
     }
 
+    <span class="doccomment">/// Gets the in-memory domain_name element</span>
     <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_name</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_domain_display_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_display</span>
     }
 }
 
 <span class="kw">impl</span> <span class="ident">QueryServer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">be</span>: <span class="ident">Backend</span>, <span class="ident">schema</span>: <span class="ident">Schema</span>, <span class="ident">d_name</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">be</span>: <span class="ident">Backend</span>, <span class="ident">schema</span>: <span class="ident">Schema</span>, <span class="ident">domain_name</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> (<span class="ident">s_uuid</span>, <span class="ident">d_uuid</span>) <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">wr</span> <span class="op">=</span> <span class="ident">be</span>.<span class="ident">write</span>();
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> (<span class="ident">wr</span>.<span class="ident">get_db_s_uuid</span>(), <span class="ident">wr</span>.<span class="ident">get_db_d_uuid</span>());
@@ -5139,11 +5214,17 @@
 
         <span class="kw">let</span> <span class="ident">pool_size</span> <span class="op">=</span> <span class="ident">be</span>.<span class="ident">get_pool_size</span>();
 
-        <span class="macro">info!</span>(<span class="string">&quot;Server UUID -&gt; {:?}&quot;</span>, <span class="ident">s_uuid</span>);
-        <span class="macro">info!</span>(<span class="string">&quot;Domain UUID -&gt; {:?}&quot;</span>, <span class="ident">d_uuid</span>);
-        <span class="macro">info!</span>(<span class="string">&quot;Domain Name -&gt; {:?}&quot;</span>, <span class="ident">d_name</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;Server UUID -&gt; {:?}&quot;</span>, <span class="ident">s_uuid</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;Domain UUID -&gt; {:?}&quot;</span>, <span class="ident">d_uuid</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;Domain Name -&gt; {:?}&quot;</span>, <span class="ident">domain_name</span>);
 
-        <span class="kw">let</span> <span class="ident">d_info</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">DomainInfo</span> { <span class="ident">d_uuid</span>, <span class="ident">d_name</span> }));
+        <span class="kw">let</span> <span class="ident">d_info</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">DomainInfo</span> {
+            <span class="ident">d_uuid</span>,
+            <span class="ident">d_name</span>: <span class="ident">domain_name</span>.<span class="ident">clone</span>(),
+            <span class="comment">// we set the domain_display_name to the configuration file&#39;s domain_name</span>
+            <span class="comment">// here because the database is not started, so we cannot pull it from there.</span>
+            <span class="ident">d_display</span>: <span class="ident">domain_name</span>,
+        }));
 
         <span class="comment">// log_event!(log, &quot;Starting query worker ...&quot;);</span>
         <span class="ident">QueryServer</span> {
@@ -5159,7 +5240,7 @@
                     .<span class="ident">set_size</span>(<span class="ident">RESOLVE_FILTER_CACHE_MAX</span>, <span class="ident">RESOLVE_FILTER_CACHE_LOCAL</span>)
                     .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
                     .<span class="ident">build</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failer to build resolve_filter_cache&quot;</span>),
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to build resolve_filter_cache&quot;</span>),
             ),
         }
     }
@@ -5401,6 +5482,8 @@
             <span class="comment">// NOTE: This is how you map from Vec&lt;Result&lt;T&gt;&gt; to Result&lt;Vec&lt;T&gt;&gt;</span>
             <span class="comment">// remember, that you only get the first error and the iter terminates.</span>
 
+            <span class="comment">// eprintln!(&quot;{:?}&quot;, candidates);</span>
+
             <span class="comment">// Now, normalise AND validate!</span>
 
             <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">candidates</span>
@@ -5408,7 +5491,7 @@
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                     <span class="ident">e</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">admin_error!</span>(<span class="string">&quot;Schema Violation -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;Schema Violation in create validate {:?}&quot;</span>, <span class="ident">e</span>);
                             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
                         })
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -5554,7 +5637,7 @@
                     <span class="ident">e</span>.<span class="ident">into_recycled</span>()
                         .<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Schema Violation&quot;</span>);
+                            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Schema Violation in delete validate&quot;</span>);
                             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
                         })
                         <span class="comment">// seal if it worked.</span>
@@ -5685,7 +5768,7 @@
                     <span class="ident">e</span>.<span class="ident">to_tombstone</span>(<span class="self">self</span>.<span class="ident">cid</span>.<span class="ident">clone</span>())
                         .<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">admin_error!</span>(<span class="string">&quot;Schema Violationi {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;Schema Violation in purge_recycled validate: {:?}&quot;</span>, <span class="ident">e</span>);
                             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
                         })
                         <span class="comment">// seal if it worked.</span>
@@ -5725,7 +5808,10 @@
             )]);
 
             <span class="kw">let</span> <span class="ident">m_valid</span> <span class="op">=</span> <span class="ident">modlist</span>.<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;revive recycled modlist Schema Violation {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">admin_error!</span>(
+                    <span class="string">&quot;Schema Violation in revive recycled modlist validate: {:?}&quot;</span>,
+                    <span class="ident">e</span>
+                );
                 <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
             })<span class="question-mark">?</span>;
 
@@ -5868,7 +5954,7 @@
             <span class="comment">// Pre mod plugins</span>
             <span class="comment">// We should probably supply the pre-post cands here.</span>
             <span class="ident">Plugins::run_pre_modify</span>(<span class="self">self</span>, <span class="kw-2">&amp;mut</span> <span class="ident">candidates</span>, <span class="ident">me</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Modify operation failed (plugin), {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Pre-Modify operation failed (plugin), {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })<span class="question-mark">?</span>;
 
@@ -5884,7 +5970,10 @@
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                     <span class="ident">e</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">admin_error!</span>(<span class="string">&quot;Schema Violation {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="macro">admin_error!</span>(
+                                <span class="string">&quot;Schema Violation in validation of modify_pre_apply {:?}&quot;</span>,
+                                <span class="ident">e</span>
+                            );
                             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
                         })
                         .<span class="ident">map</span>(<span class="ident">Entry::seal</span>)
@@ -5922,7 +6011,7 @@
             <span class="comment">// memberOf actually wants the pre cand list and the norm_cand list to see what</span>
             <span class="comment">// changed. Could be optimised, but this is correct still ...</span>
             <span class="ident">Plugins::run_post_modify</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">pre_candidates</span>, <span class="kw-2">&amp;</span><span class="ident">norm_cand</span>, <span class="ident">me</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Modify operation failed (plugin), {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Post-Modify operation failed (plugin), {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })<span class="question-mark">?</span>;
 
@@ -6055,7 +6144,10 @@
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                     <span class="ident">e</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">admin_error!</span>(<span class="string">&quot;Schema Violation {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="macro">admin_error!</span>(
+                                <span class="string">&quot;Schema Violation in internal_batch_modify validate: {:?}&quot;</span>,
+                                <span class="ident">e</span>
+                            );
                             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
                         })
                         .<span class="ident">map</span>(<span class="ident">Entry::seal</span>)
@@ -6492,6 +6584,8 @@
         <span class="comment">// Load in all the &quot;core&quot; schema, that we already have in &quot;memory&quot;.</span>
         <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">schema</span>.<span class="ident">to_entries</span>();
 
+        <span class="comment">// admin_debug!(&quot;Dumping schemas: {:?}&quot;, entries);</span>
+
         <span class="comment">// internal_migrate_or_create.</span>
         <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">entries</span>.<span class="ident">into_iter</span>().<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;init schema entry&quot;</span>);
@@ -6518,6 +6612,7 @@
             <span class="ident">JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL</span>,
             <span class="ident">JSON_SCHEMA_ATTR_RADIUS_SECRET</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_NAME</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_UUID</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_SSID</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY</span>,
@@ -6887,14 +6982,29 @@
         })
     }
 
+    <span class="kw">fn</span> <span class="ident">get_db_domain_display_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
+                <span class="ident">e</span>.<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;domain_display_name&quot;</span>)
+                    .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
+                    .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
+            })
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Error getting domain display name&quot;</span>);
+                <span class="ident">e</span>
+            })
+    }
+
+    <span class="doccomment">/// Pulls the domain name from the database and updates the DomainInfo data in memory</span>
     <span class="kw">fn</span> <span class="ident">reload_domain_info</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::reload_domain_info&quot;</span>, {
             <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_db_domain_name</span>()<span class="question-mark">?</span>;
-
+            <span class="kw">let</span> <span class="ident">display_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_db_domain_display_name</span>()<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">mut_d_info</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">get_mut</span>();
             <span class="kw">if</span> <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">domain_name</span> {
                 <span class="macro">admin_warn!</span>(
-                    <span class="string">&quot;Using database configured domain name {} - was {}&quot;</span>,
+                    <span class="string">&quot;Using domain name from the database {} - was {} in memory&quot;</span>,
                     <span class="ident">domain_name</span>,
                     <span class="ident">mut_d_info</span>.<span class="ident">d_name</span>,
                 );
@@ -6903,8 +7013,22 @@
                 );
                 <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">=</span> <span class="ident">domain_name</span>;
             }
+            <span class="ident">mut_d_info</span>.<span class="ident">d_display</span> <span class="op">=</span> <span class="ident">display_name</span>;
             <span class="prelude-val">Ok</span>(())
         })
+    }
+
+    <span class="doccomment">/// Initiate a domain display name change process. This isn&#39;t particularly scary</span>
+    <span class="doccomment">/// because it&#39;s just a wibbly human-facing thing, not used for secure</span>
+    <span class="doccomment">/// activities (yet)</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_domain_display_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_domain_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">modl</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge_and_set</span>(
+            <span class="string">&quot;domain_display_name&quot;</span>,
+            <span class="ident">Value::new_utf8</span>(<span class="ident">new_domain_name</span>.<span class="ident">to_string</span>()),
+        );
+        <span class="kw">let</span> <span class="ident">udi</span> <span class="op">=</span> <span class="ident">PVUUID_DOMAIN_INFO</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">udi</span>));
+        <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>, <span class="kw-2">&amp;</span><span class="ident">modl</span>)
     }
 
     <span class="doccomment">/// Initiate a domain rename process. This is generally an internal function but it&#39;s</span>
