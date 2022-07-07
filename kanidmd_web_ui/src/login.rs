@@ -476,7 +476,6 @@ impl Component for LoginApp {
             };
         }
 
-        //TODO: remember to strip the above things on destroy maybe
         LoginApp {
             inputvalue,
             session_id: "".to_string(),
