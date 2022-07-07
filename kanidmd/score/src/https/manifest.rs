@@ -132,7 +132,7 @@ pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
     };
 
     let manifest_struct = Manifest {
-        short_name: domain_display_name.as_str(),
+        short_name: "Kanidm",
         name: domain_display_name.as_str(),
         start_url: start_url.as_str(),
         display_mode: DisplayMode::MinimalUi,
