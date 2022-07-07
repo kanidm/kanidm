@@ -1,6 +1,6 @@
 ///! Builds a Progressive Web App Manifest page.
 // Thanks to the webmanifest crate for a lot of this code
-use crate::https::AppState;
+use crate::https::{AppState, RequestExtensions};
 use serde::{Deserialize, Serialize};
 
 /// The MIME type for `.webmanifest` files.
@@ -94,10 +94,11 @@ enum DisplayMode {
 }
 
 /// Generates a manifest.json file for progressive web app usag
-pub async fn manifest(_req: tide::Request<AppState>) -> tide::Result {
+pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
+    let (eventid, _) = req.new_eventid();
+    let domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).await;
 
-    let name = "Kanidm";
     let icons = vec![
         ManifestIcon {
             sizes: String::from("512x512"),
@@ -124,10 +125,12 @@ pub async fn manifest(_req: tide::Request<AppState>) -> tide::Result {
             purpose: Some(String::from("maskable")),
         },
     ];
+
+
     let manifest_struct = Manifest {
-        short_name: name,
-        name,
-        start_url: "/", // TODO: this needs to be the frontend URL
+        short_name: domain_display_name.as_str(),
+        name: domain_display_name.as_str(),
+        start_url: "/", // TODO: this needs to be the frontend URL, can't get this yet
         display_mode: DisplayMode::MinimalUi,
         description: None,
         orientation: None,

@@ -779,9 +779,6 @@ pub fn create_https_server(
             let tlsl = TlsListener::new(address, x_ref);
             */
 
-            // adds Content-Security-Policy Headers when running in HTTPS
-            // TODO: make this only apply to /ui/
-
             tokio::spawn(async move {
                 if let Err(e) = tserver.listen(tlsl).await {
                     error!(
