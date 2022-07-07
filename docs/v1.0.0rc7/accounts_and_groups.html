@@ -160,19 +160,21 @@ administrative actions. These include groups for account management, person mana
 and sensitive data), group management, and more.</p>
 <h2 id="recovering-the-initial-idm_admin-account"><a class="header" href="#recovering-the-initial-idm_admin-account">Recovering the Initial idm_admin Account</a></h2>
 <p>By default the idm_admin user has no password, and can not be accessed. You should recover it with the
-admin (system admin) account. We recommend the use of the &quot;recover_account&quot; functionality as it provides a high strength, random password.</p>
+admin (system admin) account.</p>
 <table>
 <tr>
-<td>
-<img src="/images/kani-warning.png" style="float:left">
-</td>
-<td>Warning: The server must not be running at this point, as it requires exclusive access to the database.</td>
+    <td rowspan=2><img src="/images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong></strong></td>
+    </tr>
+<tr>
+    <td>Warning: The server must not be running at this point, as it requires exclusive access to the database.</td>
 </tr>
 </table>
+<p>We recommend the use of the &quot;recover_account&quot; functionality as it provides a high strength, random password.</p>
 <pre><code class="language-shell">kanidmd recover_account -c /etc/kanidm/server.toml -n idm_admin
 Successfully recovered account 'idm_admin' - password reset to -&gt; j9YUv...
 </code></pre>
-<p>To do this in Docker, you'll neeD to stop the existing container and run it with &quot;bash&quot; as the &quot;command&quot; argument, to get a shell, then run the <code>kanidmd</code> command above.</p>
+<p>To do this in Docker, you'll need to stop the existing container and run it with <code>bash</code> as the &quot;command&quot; argument, to get a shell, then run the <code>kanidmd</code> command above.</p>
 <p>For example, if I'm using the developer image in my test environment:</p>
 <pre><code class="language-shell">docker run --rm -it \
     -v/tmp/kanidm:/data\

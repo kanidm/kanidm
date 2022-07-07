@@ -1066,6 +1066,7 @@
 <span id="1061">1061</span>
 <span id="1062">1062</span>
 <span id="1063">1063</span>
+<span id="1064">1064</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::password_prompt</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">AccountCredential</span>, <span class="ident">AccountOpt</span>, <span class="ident">AccountPerson</span>, <span class="ident">AccountPosix</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>,
@@ -1258,6 +1259,7 @@
                     {
                         <span class="comment">// TODO: JSON output for account person extend.</span>
                         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                            <span class="ident">result_output</span>.<span class="ident">status</span> <span class="op">=</span> <span class="ident">kanidm_proto::messages::MessageStatus::Success</span>;
                             <span class="ident">result_output</span>.<span class="ident">result</span> <span class="op">=</span> <span class="macro">format!</span>(
                                 <span class="string">&quot;Successfully extended the user {}.&quot;</span>,
                                 <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>

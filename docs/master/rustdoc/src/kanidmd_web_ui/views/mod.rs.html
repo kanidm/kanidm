@@ -281,6 +281,19 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
@@ -298,15 +311,20 @@
 
 <span class="kw">mod</span> <span class="ident">apps</span>;
 <span class="kw">mod</span> <span class="ident">components</span>;
+<span class="kw">mod</span> <span class="ident">profile</span>;
 <span class="kw">mod</span> <span class="ident">security</span>;
 
 <span class="kw">use</span> <span class="ident">apps::AppsApp</span>;
+<span class="kw">use</span> <span class="ident">profile::ProfileApp</span>;
 <span class="kw">use</span> <span class="ident">security::SecurityApp</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Routable</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ViewRoute</span> {
     <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/apps&quot;</span>)]</span>
     <span class="ident">Apps</span>,
+
+    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/profile&quot;</span>)]</span>
+    <span class="ident">Profile</span>,
 
     <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/security&quot;</span>)]</span>
     <span class="ident">Security</span>,
@@ -356,6 +374,7 @@
 
     <span class="kw">match</span> <span class="ident">route</span> {
         <span class="ident">ViewRoute::Apps</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">AppsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
+        <span class="ident">ViewRoute::Profile</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">ProfileApp</span> <span class="ident">token</span><span class="op">=</span>{ <span class="ident">token</span> } <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">ViewRoute::Security</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">SecurityApp</span> <span class="ident">token</span><span class="op">=</span>{ <span class="ident">token</span> } <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">ViewRoute::NotFound</span> =&gt; <span class="macro">html!</span> {
             <span class="op">&lt;</span><span class="ident">Redirect</span><span class="op">&lt;</span><span class="ident">Route</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">Route::NotFound</span>}<span class="op">/</span><span class="op">&gt;</span>
@@ -501,6 +520,13 @@
                       <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;nav-link&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">ViewRoute::Apps</span>}<span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">data</span><span class="op">-</span><span class="ident">feather</span><span class="op">=</span><span class="string">&quot;file&quot;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
                         { <span class="string">&quot;Apps&quot;</span> }
+                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+
+                    <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;nav-item&quot;</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;nav-link&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">ViewRoute::Profile</span>}<span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">data</span><span class="op">-</span><span class="ident">feather</span><span class="op">=</span><span class="string">&quot;file&quot;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
+                        { <span class="string">&quot;Profile&quot;</span> }
                       <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
 

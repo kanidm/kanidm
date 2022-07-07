@@ -780,33 +780,59 @@
 <span id="775">775</span>
 <span id="776">776</span>
 <span id="777">777</span>
-</pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">middleware</span>;
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+</pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
+<span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
+<span class="kw">use</span> <span class="ident"><span class="self">self</span>::manifest::manifest</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::middleware</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::oauth2</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::v1</span>::<span class="kw-2">*</span>;
 
+<span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>, <span class="ident">JwsUnverified</span>, <span class="ident">JwsValidator</span>};
 <span class="kw">use</span> <span class="ident">kanidm::actors::v1_read::QueryServerReadV1</span>;
 <span class="kw">use</span> <span class="ident">kanidm::actors::v1_write::QueryServerWriteV1</span>;
 <span class="kw">use</span> <span class="ident">kanidm::config</span>::{<span class="ident">ServerRole</span>, <span class="ident">TlsConfiguration</span>};
 <span class="kw">use</span> <span class="ident">kanidm::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">kanidm::status::StatusActor</span>;
-
+<span class="kw">use</span> <span class="ident">kanidm::tracing_tree::TreeMiddleware</span>;
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::fs::canonicalize</span>;
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-
-<span class="kw">use</span> <span class="ident">kanidm::tracing_tree::TreeMiddleware</span>;
 <span class="kw">use</span> <span class="ident">tide_compress::CompressMiddleware</span>;
 <span class="kw">use</span> <span class="ident">tide_openssl::TlsListener</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>};
-
-<span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>, <span class="ident">JwsUnverified</span>, <span class="ident">JwsValidator</span>};
+<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AppState</span> {
@@ -965,36 +991,65 @@
     })
 }
 
-<span class="comment">// Handle the various end points we need to expose</span>
+<span class="doccomment">/// Returns a generic robots.txt</span>
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">robots_txt</span>(<span class="ident">_req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
+
+    <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="string">&quot;text/plain&quot;</span>);
+    <span class="ident">res</span>.<span class="ident">set_body</span>(
+        <span class="string">r#&quot;
+User-agent: *
+Disallow: /
+&quot;#</span>,
+    );
+    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+}
+
+<span class="doccomment">/// The web UI at / for Kanidm</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">index_view</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
     <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
 
     <span class="kw">let</span> <span class="ident">domain_display_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">qe_r_ref</span>.<span class="ident">get_domain_display_name</span>(<span class="ident">eventid</span>).<span class="kw">await</span>;
-
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
     <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
 
     <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="string">&quot;text/html;charset=utf-8&quot;</span>);
-
     <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="macro">format!</span>(<span class="string">r#&quot;
-    &lt;!DOCTYPE html&gt;
-    &lt;html lang=&quot;en&quot;&gt;
-        &lt;head&gt;
-            &lt;meta charset=&quot;utf-8&quot;/&gt;
-            &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width&quot;&gt;
-            &lt;title&gt;{}&lt;/title&gt;
-            &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/external/bootstrap.min.css&quot; integrity=&quot;sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC&quot;/&gt;
-            &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/style.css&quot;/&gt;
-            &lt;script src=&quot;/pkg/external/bootstrap.bundle.min.js&quot; integrity=&quot;sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM&quot;&gt;&lt;/script&gt;
-            &lt;script type=&quot;module&quot; type=&quot;text/javascript&quot; src=&quot;/pkg/wasmloader.js&quot; integrity=&quot;sha384-==WASMHASH==&quot;&gt;
-            &lt;/script&gt;
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+    &lt;head&gt;
+        &lt;meta charset=&quot;utf-8&quot;/&gt;
+        &lt;meta name=&quot;theme-color&quot; content=&quot;white&quot; /&gt;
+        &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width&quot; /&gt;
+        &lt;title&gt;{}&lt;/title&gt;
 
-            &lt;link rel=&quot;icon&quot; href=&quot;/pkg/img/favicon.png&quot; /&gt;
-        &lt;/head&gt;
-        &lt;body&gt;
-        &lt;/body&gt;
-    &lt;/html&gt;
-        &quot;#</span>, <span class="ident">domain_display_name</span>.<span class="ident">as_str</span>())
+        &lt;link rel=&quot;icon&quot; href=&quot;/pkg/img/favicon.png&quot; /&gt;
+        &lt;link rel=&quot;manifest&quot; href=&quot;/manifest.webmanifest&quot; /&gt;
+        &lt;link rel=&quot;apple-touch-icon&quot; href=&quot;/pkg/img/logo-256.png&quot; /&gt;
+        &lt;link rel=&quot;apple-touch-icon&quot; sizes=&quot;180x180&quot; href=&quot;/pkg/img/logo-180.png&quot; /&gt;
+        &lt;link rel=&quot;apple-touch-icon&quot; sizes=&quot;192x192&quot; href=&quot;/pkg/img/logo-192.png&quot; /&gt;
+        &lt;link rel=&quot;apple-touch-icon&quot; sizes=&quot;512x512&quot; href=&quot;/pkg/img/logo-square.svg&quot; /&gt;
+        &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/external/bootstrap.min.css&quot; integrity=&quot;sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC&quot;/&gt;
+        &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/style.css&quot;/&gt;
+
+        &lt;script src=&quot;/pkg/external/bootstrap.bundle.min.js&quot; integrity=&quot;sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM&quot;&gt;&lt;/script&gt;
+        &lt;script type=&quot;module&quot; type=&quot;text/javascript&quot; src=&quot;/pkg/wasmloader.js&quot; integrity=&quot;sha384-==WASMHASH==&quot;&gt;&lt;/script&gt;
+    &lt;/head&gt;
+    &lt;body class=&quot;flex-column d-flex h-100&quot;&gt;
+        &lt;main class=&quot;flex-shrink-0 form-signin&quot;&gt;
+        &lt;center&gt;
+            &lt;img src=&quot;/pkg/img/logo-square.svg&quot; alt=&quot;Kanidm&quot; class=&quot;kanidm_logo&quot;/&gt;
+            &lt;h3&gt;Kanidm is loading, please wait... &lt;/h3&gt;
+        &lt;/center&gt;
+        &lt;/main&gt;
+        &lt;footer class=&quot;footer mt-auto py-3 bg-light text-end&quot;&gt;
+            &lt;div class=&quot;container&quot;&gt;
+                &lt;span class=&quot;text-muted&quot;&gt;Powered by &lt;a href=&quot;https://kanidm.com&quot;&gt;Kanidm&lt;/a&gt;&lt;/span&gt;
+            &lt;/div&gt;
+        &lt;/footer&gt;
+    &lt;/body&gt;
+&lt;/html&gt;&quot;#</span>, <span class="ident">domain_display_name</span>.<span class="ident">as_str</span>()
+    )
     );
 
     <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
@@ -1230,6 +1285,8 @@
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">compress_middleware</span>.<span class="ident">clone</span>());
 
         <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
+        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/robots.txt&quot;</span>).<span class="ident">get</span>(<span class="ident">robots_txt</span>);
+        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/manifest.webmanifest&quot;</span>).<span class="ident">get</span>(<span class="ident">manifest</span>);
         <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/ui/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
         <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/ui/*&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
 
@@ -1530,9 +1587,6 @@
             let x_ref = Box::leak(x);
             let tlsl = TlsListener::new(address, x_ref);
             */</span>
-
-            <span class="comment">// adds Content-Security-Policy Headers when running in HTTPS</span>
-            <span class="comment">// TODO: make this only apply to /ui/</span>
 
             <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">listen</span>(<span class="ident">tlsl</span>).<span class="kw">await</span> {

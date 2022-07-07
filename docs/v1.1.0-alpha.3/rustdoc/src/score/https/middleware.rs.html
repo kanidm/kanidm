@@ -68,92 +68,10 @@
 <span id="63">63</span>
 <span id="64">64</span>
 <span id="65">65</span>
-<span id="66">66</span>
-<span id="67">67</span>
-<span id="68">68</span>
-<span id="69">69</span>
-<span id="70">70</span>
-<span id="71">71</span>
-<span id="72">72</span>
-<span id="73">73</span>
-<span id="74">74</span>
-<span id="75">75</span>
-<span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
-<span id="88">88</span>
-<span id="89">89</span>
-<span id="90">90</span>
-<span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
-<span id="100">100</span>
-<span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-</pre><pre class="rust"><code><span class="doccomment">///! Middleware for the tide web server</span>
-
-<span class="comment">//TODO: decide if this is still needed</span>
-<span class="comment">// #[derive(Default)]</span>
-<span class="comment">// /// Injects the domain_display_name where it needs to</span>
-<span class="comment">// pub struct KanidmDisplayNameMiddleware {</span>
-<span class="comment">//     domain_display_name: String,</span>
-<span class="comment">// }</span>
-
-<span class="comment">// // // TODO: finish this for #860</span>
-<span class="comment">// // #[async_trait::async_trait]</span>
-<span class="comment">// // impl&lt;State: Clone + Send + Sync + &#39;static&gt; tide::Middleware&lt;State&gt; for KanidmDisplayNameMiddleware {</span>
-<span class="comment">// //     async fn handle(</span>
-<span class="comment">// //         &amp;self,</span>
-<span class="comment">// //         request: tide::Request&lt;State&gt;,</span>
-<span class="comment">// //         next: tide::Next&lt;&#39;_, State&gt;,</span>
-<span class="comment">// //     ) -&gt; tide::Result {</span>
-<span class="comment">// //         let mut response = next.run(request).await;</span>
-<span class="comment">// //         // grab the body we&#39;re intending to return at this point</span>
-<span class="comment">// //         let body_str = response.take_body().into_string().await?;</span>
-<span class="comment">// //         // update it with the hash</span>
-<span class="comment">// //         // TODO: #860 make this a const so we can change it and not typo it later</span>
-<span class="comment">// //         response.set_body(body_str.replace(</span>
-<span class="comment">// //             &quot;===DOMAIN_DISPLAY_NAME===&quot;,</span>
-<span class="comment">// //             self.domain_display_name.as_str(),</span>
-<span class="comment">// //         ));</span>
-<span class="comment">// //         Ok(response)</span>
-<span class="comment">// //     }</span>
-<span class="comment">// // }</span>
-
-<span class="comment">// impl KanidmDisplayNameMiddleware {</span>
-<span class="comment">//     /// Pulls the domain_display_name from the qs on web server start, so we can</span>
-<span class="comment">//     /// set it in pages</span>
-<span class="comment">//     pub fn new(domain_display_name: String) -&gt; Self {</span>
-<span class="comment">//         KanidmDisplayNameMiddleware {</span>
-<span class="comment">//             // TODO: #860 work out how to get this out :D</span>
-<span class="comment">//             domain_display_name: domain_display_name,</span>
-<span class="comment">//         }</span>
-<span class="comment">//     }</span>
-<span class="comment">// }</span>
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="doccomment">/// This tide MiddleWare adds headers like Content-Security-Policy</span>
 <span class="doccomment">/// and similar families. If it keeps adding more things then</span>
-<span class="doccomment">/// probably rename the middlewre :)</span>
+<span class="doccomment">/// probably rename the middleware :)</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UIContentSecurityPolicyResponseMiddleware</span> {
     <span class="comment">// The sha384 hash of /pkg/wasmloader.js</span>
     <span class="kw">pub</span> <span class="ident">integrity_wasmloader</span>: <span class="ident">String</span>,
