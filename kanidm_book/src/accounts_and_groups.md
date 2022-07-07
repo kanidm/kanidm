@@ -27,24 +27,21 @@ and sensitive data), group management, and more.
 ## Recovering the Initial idm_admin Account
 
 By default the idm_admin user has no password, and can not be accessed. You should recover it with the
-admin (system admin) account. We recommend the use of the "recover_account" functionality as it provides a high strength, random password.
+admin (system admin) account.
 
-<table>
-<tr>
-<td>
-<img src="/images/kani-warning.png" style="float:left">
-</td>
-<td>Warning: The server must not be running at this point, as it requires exclusive access to the database.</td>
-</tr>
-</table>
+{{#template  
+    templates/kani-warning.md
+    text=Warning: The server must not be running at this point, as it requires exclusive access to the database.
+}}
 
+We recommend the use of the "recover_account" functionality as it provides a high strength, random password.
 
 ```shell
 kanidmd recover_account -c /etc/kanidm/server.toml -n idm_admin
 Successfully recovered account 'idm_admin' - password reset to -> j9YUv...
 ```
 
-To do this in Docker, you'll neeD to stop the existing container and run it with "bash" as the "command" argument, to get a shell, then run the `kanidmd` command above.
+To do this in Docker, you'll need to stop the existing container and run it with `bash` as the "command" argument, to get a shell, then run the `kanidmd` command above.
 
 For example, if I'm using the developer image in my test environment:
 

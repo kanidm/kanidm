@@ -1,30 +1,29 @@
+mod manifest;
 mod middleware;
 mod oauth2;
 mod v1;
 
+use self::manifest::manifest;
 use self::middleware::*;
 use self::oauth2::*;
 use self::v1::*;
 
+use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
 use kanidm::actors::v1_read::QueryServerReadV1;
 use kanidm::actors::v1_write::QueryServerWriteV1;
 use kanidm::config::{ServerRole, TlsConfiguration};
 use kanidm::prelude::*;
 use kanidm::status::StatusActor;
-
+use kanidm::tracing_tree::TreeMiddleware;
 use regex::Regex;
 use serde::Serialize;
 use std::fs::canonicalize;
 use std::path::PathBuf;
 use std::str::FromStr;
-use uuid::Uuid;
-
-use kanidm::tracing_tree::TreeMiddleware;
 use tide_compress::CompressMiddleware;
 use tide_openssl::TlsListener;
 use tracing::{error, info};
-
-use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -183,36 +182,65 @@ pub fn to_tide_response<T: Serialize>(
     })
 }
 
-// Handle the various end points we need to expose
+/// Returns a generic robots.txt
+async fn robots_txt(_req: tide::Request<AppState>) -> tide::Result {
+    let mut res = tide::Response::new(200);
+
+    res.set_content_type("text/plain");
+    res.set_body(
+        r#"
+User-agent: *
+Disallow: /
+"#,
+    );
+    Ok(res)
+}
+
+/// The web UI at / for Kanidm
 async fn index_view(req: tide::Request<AppState>) -> tide::Result {
+    let mut res = tide::Response::new(200);
     let (eventid, hvalue) = req.new_eventid();
 
     let domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).await;
-
-    let mut res = tide::Response::new(200);
     res.insert_header("X-KANIDM-OPID", hvalue);
 
     res.set_content_type("text/html;charset=utf-8");
-
     res.set_body(format!(r#"
-    <!DOCTYPE html>
-    <html lang="en">
-        <head>
-            <meta charset="utf-8"/>
-            <meta name="viewport" content="width=device-width">
-            <title>{}</title>
-            <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
-            <link rel="stylesheet" href="/pkg/style.css"/>
-            <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
-            <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH==">
-            </script>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="theme-color" content="white" />
+        <meta name="viewport" content="width=device-width" />
+        <title>{}</title>
 
-            <link rel="icon" href="/pkg/img/favicon.png" />
-        </head>
-        <body>
-        </body>
-    </html>
-        "#, domain_display_name.as_str())
+        <link rel="icon" href="/pkg/img/favicon.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/pkg/img/logo-256.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/pkg/img/logo-180.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/pkg/img/logo-192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/pkg/img/logo-square.svg" />
+        <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
+        <link rel="stylesheet" href="/pkg/style.css"/>
+
+        <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
+        <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH=="></script>
+    </head>
+    <body class="flex-column d-flex h-100">
+        <main class="flex-shrink-0 form-signin">
+        <center>
+            <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+            <h3>Kanidm is loading, please wait... </h3>
+        </center>
+        </main>
+        <footer class="footer mt-auto py-3 bg-light text-end">
+            <div class="container">
+                <span class="text-muted">Powered by <a href="https://kanidm.com">Kanidm</a></span>
+            </div>
+        </footer>
+    </body>
+</html>"#, domain_display_name.as_str()
+    )
     );
 
     Ok(res)
@@ -448,6 +476,8 @@ pub fn create_https_server(
         static_tserver.with(compress_middleware.clone());
 
         static_tserver.at("/").get(index_view);
+        static_tserver.at("/robots.txt").get(robots_txt);
+        static_tserver.at("/manifest.webmanifest").get(manifest);
         static_tserver.at("/ui/").get(index_view);
         static_tserver.at("/ui/*").get(index_view);
 
@@ -748,9 +778,6 @@ pub fn create_https_server(
             let x_ref = Box::leak(x);
             let tlsl = TlsListener::new(address, x_ref);
             */
-
-            // adds Content-Security-Policy Headers when running in HTTPS
-            // TODO: make this only apply to /ui/
 
             tokio::spawn(async move {
                 if let Err(e) = tserver.listen(tlsl).await {

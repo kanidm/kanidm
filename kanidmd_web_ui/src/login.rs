@@ -43,6 +43,7 @@ enum LoginState {
     Authenticated,
 }
 
+const CLASSES_TO_ADD: &[&str] = &["flex-column", "d-flex", "h-100"];
 pub enum LoginAppMsg {
     Input(String),
     Restart,
@@ -222,7 +223,7 @@ impl LoginApp {
                         </p>
                     </div>
                     <div class="container">
-                        <ul style="list-style-type: none;">
+                        <ul class="list-unstyled">
                             { for allowed.iter()
                                 .enumerate()
                                 .map(|(idx, allow)| self.render_auth_allowed(ctx, idx, allow)) }
@@ -240,7 +241,7 @@ impl LoginApp {
                         </p>
                     </div>
                     <div class="container">
-                        <form
+                        <form class="row g-3"
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
                                 console::log!("login::view_state -> Password - prevent_default()".to_string());
                                 e.prevent_default();
@@ -248,6 +249,7 @@ impl LoginApp {
                             } ) }
                             action="javascript:void(0);"
                         >
+                        <div class="col-12">
                             <input
                                 id="autofocus"
                                 type="password"
@@ -256,7 +258,12 @@ impl LoginApp {
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 disabled={ !enable }
                             />
-                            <button type="submit" class="btn btn-dark" disabled={ !enable }>{" Submit "}</button>
+                            </div>
+                            <div class="col-12">
+                            <center>
+                                <button type="submit" class="btn btn-dark" disabled={ !enable }>{" Submit "}</button>
+                            </center>
+                            </div>
                         </form>
                     </div>
                     </>
@@ -458,14 +465,16 @@ impl Component for LoginApp {
             .cookie()
             .expect_throw("failed to access page cookies");
         console::log!("cookies".to_string());
-        console::log!(cookie.to_string());
+        console::log!(cookie);
 
         let state = LoginState::Init(true);
         // startConfetti();
 
-        if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
-            console::log!(format!("class_list add error -> {:?}", e));
-        };
+        for x in CLASSES_TO_ADD {
+            if let Err(e) = crate::utils::body().class_list().add_1(x) {
+                console::log!(format!("class_list add error -> {:?}", e));
+            };
+        }
 
         LoginApp {
             inputvalue,
@@ -767,26 +776,38 @@ impl Component for LoginApp {
         // TODO: add the domain_display_name here
 
         html! {
-          <main class="form-signin">
-            <div class="container">
-                <center>
-                    <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
-                    <h2>{ "Kanidm Alpha" } </h2>
-                </center>
-            </div>
+        <>
+        <main class="flex-shrink-0 form-signin">
+            <center>
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                <h3>{ "Kanidm idm.example.com" } </h3>
+            </center>
             { self.view_state(ctx) }
-          </main>
-        }
+        </main>
+        <footer class="footer mt-auto py-3 bg-light text-end">
+            <div class="container">
+                <span class="text-muted">{ "Powered by "  }<a href="https://kanidm.com">{ "Kanidm" }</a></span>
+            </div>
+        </footer>
+        </>
+                }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("login::destroy".to_string());
-        if let Err(e) = crate::utils::body()
-            .class_list()
-            .remove_1("form-signin-body")
-        {
-            console::log!(format!("class_list remove error -> {:?}", e));
+
+        for x in CLASSES_TO_ADD {
+            if let Err(e) = crate::utils::body().class_list().remove_1(x) {
+                console::log!(format!("class_list remove error -> {:?}", e));
+            };
         }
+
+        // if let Err(e) = crate::utils::body()
+        //     .class_list()
+        //     .remove_1("form-signin-body")
+        // {
+        //     console::log!(format!("class_list remove error -> {:?}", e));
+        // }
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
