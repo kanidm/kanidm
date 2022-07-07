@@ -165,14 +165,8 @@ impl Totp {
 
     pub fn to_proto(&self, accountname: &str, issuer: &str) -> ProtoTotp {
         ProtoTotp {
-            accountname: accountname
-                .replace(":", "")
-                .replace("%3A", "")
-                .replace(" ", "%20"),
-            issuer: issuer
-                .replace(":", "")
-                .replace("%3A", "")
-                .replace(" ", "%20"),
+            accountname: accountname.to_string(),
+            issuer: issuer.to_string(),
             secret: self.secret.clone(),
             step: self.step,
             algo: match self.algo {

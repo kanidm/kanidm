@@ -19,4 +19,4 @@ webauthn-rs = { version = "^0.3.2", default-features = false, features = ["wasm"
 # Can not upgrade due to breaking timezone apis.
 time = { version = "=0.2.27", features = ["serde", "std"] }
 url = { version = "^2.2.2", features = ["serde"] }
-
+urlencoding = "2.1.0"
