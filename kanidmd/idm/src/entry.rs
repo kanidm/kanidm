@@ -316,6 +316,8 @@ impl Entry<EntryInit, EntryNew> {
             }
             // str -> Proto entry
             let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
+                // We probably shouldn't print ES here because that would allow users
+                // to inject content into our logs :)
                 admin_error!(?e, "SerdeJson Failure");
                 OperationError::SerdeJsonError
             })?;
@@ -420,7 +422,7 @@ impl Entry<EntryInit, EntryNew> {
                         )
                         )
                     }
-                    "displayname" | "description" => {
+                    "displayname" | "description" | "domain_display_name" => {
                         valueset::from_value_iter(
                         vs.into_iter().map(|v| Value::new_utf8(v))
                         )
@@ -569,8 +571,8 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 
-    /// Validate that this entry and it's attribute-value sets are conformant to the systems
-    /// schema and the releant syntaxes.
+    /// Validate that this entry and its attribute-value sets are conformant to the system's'
+    /// schema and the relevant syntaxes.
     pub fn validate(
         self,
         schema: &dyn SchemaTransaction,
@@ -618,9 +620,15 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             match entry_classes.as_iutf8_iter() {
                 Some(cls_iter) => cls_iter.for_each(|s| match schema_classes.get(s) {
                     Some(x) => classes.push(x),
-                    None => invalid_classes.push(s.to_string()),
+                    None => {
+                        admin_debug!("invalid class: {:?}", s);
+                        invalid_classes.push(s.to_string())
+                    }
                 }),
-                None => invalid_classes.push("corrupt class attribute".to_string()),
+                None => {
+                    admin_debug!("corrupt class attribute in: {:?}", entry_classes);
+                    invalid_classes.push("corrupt class attribute".to_string())
+                }
             };
 
             if !invalid_classes.is_empty() {
@@ -664,23 +672,21 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             });
 
             if !missing_must.is_empty() {
+                admin_warn!("Validation error, the following required (must) attributes are missing - {:?}", missing_must);
                 return Err(SchemaError::MissingMustAttribute(missing_must));
             }
 
             if extensible {
-                // ladmin_warning!("Extensible Object In Use!");
                 ne.attrs.iter().try_for_each(|(attr_name, avas)| {
                     match schema_attributes.get(attr_name) {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
                             if a_schema.phantom {
-                                /*
-                                lrequest_error!(
-                                    "Attempt to add phantom attribute to extensible: {}",
+                                admin_warn!(
+                                    "Rejecting attempt to add phantom attribute to extensible object: {}",
                                     attr_name
                                 );
-                                */
                                 Err(SchemaError::PhantomAttribute(attr_name.to_string()))
                             } else {
                                 a_schema.validate_ava(attr_name.as_str(), avas)
@@ -688,9 +694,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             }
                         }
                         None => {
-                            // lrequest_error!("Invalid Attribute {} for extensible object", attr_name);
-                            trace!(?attr_name, "extensible -> SchemaError::InvalidAttribute");
-                            Err(SchemaError::InvalidAttribute(attr_name.to_string()))
+                            admin_error!(
+                                "Invalid Attribute {}, undefined in schema_attributes",
+                                attr_name.to_string()
+                            );
+                            Err(SchemaError::InvalidAttribute(
+                                attr_name.to_string()
+                            ))
                         }
                     }
                 })?;
@@ -699,9 +709,9 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // not allowed to exist in the class, which means a phantom attribute can't
                 // be in the may/must set, and would FAIL our normal checks anyway.
 
-                // We clone string here, but it's so we can check all
-                // the values in "may" ar here - so we can't avoid this look up. What we
-                // could do though, is have &String based on the schemaattribute though?;
+                // The set of "may" is a combination of may and must, since we have already
+                // asserted that all must requirements are fufilled. This allows us to
+                // perform extended attribute checking in a single pass.
                 let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
                     .iter()
                     // Join our class systemmmust + must + systemmay + may into one.
@@ -738,9 +748,14 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);
                         }
                         None => {
-                            // lrequest_error!("Invalid Attribute {} for may+must set", attr_name);
-                            trace!(?attr_name, "SchemaError::InvalidAttribute");
-                            Err(SchemaError::InvalidAttribute(attr_name.to_string()))
+                            admin_error!(
+                                "{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
+                                attr_name.to_string(),
+                                may.keys().collect::<Vec<_>>()
+                            );
+                            Err(SchemaError::AttributeNotValidForClass(
+                                attr_name.to_string()
+                            ))
                         }
                     }
                 })?;

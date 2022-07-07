@@ -71,7 +71,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Utf8(vs))
+            vs.map(DbValueSetV2::Utf8)
         }
         Some(DbValueV1::Iutf8(_)) => {
             let vs: Result<Vec<_>, _> = viter

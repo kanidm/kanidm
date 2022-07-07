@@ -38,6 +38,33 @@ struct RecoverAccountOpt {
     commonopts: CommonOpt,
 }
 
+
+#[derive(Debug, Subcommand)]
+enum DomainSettingsCmds {
+    #[clap(name = "rename")]
+    /// Change the IDM domain name
+    DomainChange(CommonOpt),
+}
+
+#[derive(Debug, Subcommand)]
+enum DbCommands {
+    #[clap(name = "vacuum")]
+    /// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)
+    Vacuum(CommonOpt),
+    #[clap(name = "backup")]
+    /// Backup the database content (offline)
+    Backup(BackupOpt),
+    #[clap(name = "restore")]
+    /// Restore the database content (offline)
+    Restore(RestoreOpt),
+    #[clap(name = "verify")]
+    /// Verify database and entity consistency.
+    Verify(CommonOpt),
+    #[clap(name = "reindex")]
+    /// Reindex the database (offline)
+    Reindex(CommonOpt),
+}
+
 #[derive(Debug, Args)]
 struct DbScanListIndex {
     /// The name of the index to list
@@ -102,33 +129,27 @@ enum KanidmdOpt {
     #[clap(name = "configtest")]
     /// Test the IDM Server configuration, without starting network listeners.
     ConfigTest(CommonOpt),
-    #[clap(name = "backup")]
-    /// Backup the database content (offline)
-    Backup(BackupOpt),
-    #[clap(name = "restore")]
-    /// Restore the database content (offline)
-    Restore(RestoreOpt),
-    #[clap(name = "verify")]
-    /// Verify database and entity consistency.
-    Verify(CommonOpt),
     #[clap(name = "recover_account")]
     /// Recover an account's password
     RecoverAccount(RecoverAccountOpt),
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
-    #[clap(name = "reindex")]
-    /// Reindex the database (offline)
-    Reindex(CommonOpt),
-    #[clap(name = "vacuum")]
-    /// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)
-    Vacuum(CommonOpt),
-    #[clap(name = "domain_name_change")]
-    /// Change the IDM domain name
-    DomainChange(CommonOpt),
     #[clap(name = "db_scan")]
     /// Inspect the internal content of the database datastructures.
     DbScan {
         #[clap(subcommand)]
         commands: DbScanOpt,
+    },
+    /// Database maintenance, backups, restoration etc.
+    #[clap(name = "database")]
+    Database {
+        #[clap(subcommand)]
+        commands: DbCommands,
+    },
+    /// Change domain settings
+    #[clap(name = "domain")]
+    DomainSettings {
+        #[clap(subcommand)]
+        commands: DomainSettingsCmds,
     },
 }

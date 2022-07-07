@@ -222,7 +222,11 @@ pub trait IdlSqliteTransaction {
     ) -> Result<Option<IDLBitRange>, OperationError> {
         spanned!("be::idl_sqlite::get_idl", {
             if !(self.exists_idx(attr, itype)?) {
-                filter_error!("Index {:?} {:?} not found", itype, attr);
+                filter_error!(
+                    "IdlSqliteTransaction: Index {:?} {:?} not found",
+                    itype,
+                    attr
+                );
                 return Ok(None);
             }
             // The table exists - lets now get the actual index itself.

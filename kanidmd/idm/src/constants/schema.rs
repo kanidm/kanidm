@@ -214,6 +214,38 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
       ]
     }
 }"#;
+
+pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
+  "attrs": {
+    "class": [
+      "object",
+      "system",
+      "attributetype"
+    ],
+    "description": [
+      "The user-facing display name of the Kanidm domain."
+    ],
+    "index": [
+      "EQUALITY"
+    ],
+    "unique": [
+      "false"
+    ],
+    "multivalue": [
+      "false"
+    ],
+    "attributename": [
+      "domain_display_name"
+    ],
+    "syntax": [
+      "UTF8STRING"
+    ],
+    "uuid": [
+      "00000000-0000-0000-0000-ffff00000098"
+    ]
+  }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_DOMAIN_UUID: &str = r#"{
     "attrs": {
       "class": [
@@ -1045,6 +1077,7 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "name",
         "domain_uuid",
         "domain_name",
+        "domain_display_name",
         "fernet_private_key_str",
         "es256_private_key_der"
       ],
@@ -1107,7 +1140,7 @@ pub const JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
   }
 "#;
 
-pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
+pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = &r#"
   {
     "attrs": {
       "class": [

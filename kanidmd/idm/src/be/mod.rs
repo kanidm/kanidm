@@ -1450,18 +1450,21 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
+    /// This generates a new domain UUID and stores it into the database,
+    /// returning the new UUID
     fn reset_db_d_uuid(&self) -> Result<Uuid, OperationError> {
         let nsid = Uuid::new_v4();
         self.get_idlayer().write_db_d_uuid(nsid)?;
         Ok(nsid)
     }
 
+    /// This pulls the domain UUID from the database
     pub fn get_db_d_uuid(&self) -> Uuid {
         #[allow(clippy::expect_used)]
         match self
             .get_idlayer()
             .get_db_d_uuid()
-            .expect("DBLayer Error!!!")
+            .expect("DBLayer Error retrieving Domain UUID!!!")
         {
             Some(d_uuid) => d_uuid,
             None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),

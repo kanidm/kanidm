@@ -7,6 +7,7 @@ use clap::Parser;
 use futures::executor::block_on;
 
 use kanidm_unix_common::client::call_daemon;
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
@@ -29,7 +30,7 @@ async fn main() {
     debug!("Starting pam auth tester tool ...");
 
     let cfg = KanidmUnixdConfig::new()
-        .read_options_from_optional_config("/etc/kanidm/unixd")
+        .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
         .expect("Failed to parse /etc/kanidm/unixd");
 
     let password = rpassword::prompt_password("Enter unix password: ").unwrap();

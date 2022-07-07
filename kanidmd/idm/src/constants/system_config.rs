@@ -1,4 +1,5 @@
-// This is seperated because the password badlist section may become very long
+/// Default entries for system_config
+/// This is seperated because the password badlist section may become very long
 pub const JSON_SYSTEM_CONFIG_V1: &str = r####"{
     "attrs": {
         "class": ["object", "system_config", "system"],

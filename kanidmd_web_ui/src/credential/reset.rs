@@ -40,6 +40,8 @@ pub enum Msg {
         emsg: String,
         kopid: Option<String>,
     },
+    // TODO: use this? :)
+    #[allow(dead_code)]
     Ignore,
 }
 
@@ -68,6 +70,8 @@ enum State {
 
 pub struct CredentialResetApp {
     state: State,
+    // TODO: I'm sure past-William had a plan for this 🚌
+    #[allow(dead_code)]
     eventbus: Box<dyn Bridge<EventBus>>,
 }
 

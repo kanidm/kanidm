@@ -35,6 +35,9 @@ jobs:
           toolchain: stable
 
       - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: mdbook-template
 
       - name: Make all the books
         run: |

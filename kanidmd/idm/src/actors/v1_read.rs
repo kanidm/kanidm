@@ -1306,6 +1306,20 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "trace",
+        name = "domain_display_name",
+        skip(self, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn get_domain_display_name(&self, eventid: Uuid) -> String {
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = spanned!("actors::v1_read::handle<DomainDisplayName>", {
+            idms_prox_read.qs_read.get_domain_display_name().to_string()
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
         name = "auth_valid",
         skip(self, uat, eventid)
         fields(uuid = ?eventid)

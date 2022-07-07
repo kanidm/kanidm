@@ -58,6 +58,7 @@ lazy_static! {
 struct DomainInfo {
     d_uuid: Uuid,
     d_name: String,
+    d_display: String,
 }
 
 #[derive(Clone)]
@@ -142,6 +143,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_uuid(&self) -> Uuid;
 
     fn get_domain_name(&self) -> &str;
+
+    fn get_domain_display_name(&self) -> &str;
 
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
@@ -306,7 +309,7 @@ pub trait QueryServerTransaction<'a> {
             .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.as_hyphenated())))
     }
 
-    // From internal, generate an exists event and dispatch
+    /// From internal, generate an "exists" event and dispatch
     fn internal_exists(&self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
         spanned!("server::internal_exists", {
             // Check the filter
@@ -345,7 +348,7 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // this applys ACP to filter result entries.
+    /// Applies ACP to filter result entries.
     fn impersonate_search_ext_valid(
         &self,
         f_valid: Filter<FilterValid>,
@@ -389,8 +392,8 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // Get a single entry by it's UUID. This is heavily relied on for internal
-    // server operations, especially in login and acp checks for acp.
+    /// Get a single entry by its UUID. This is used heavily for internal
+    /// server operations, especially in login and ACP checks.
     fn internal_search_uuid(
         &self,
         uuid: &Uuid,
@@ -714,6 +717,7 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    /// Pull the domain name from the database
     fn get_db_domain_name(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
             .and_then(|e| {
@@ -822,6 +826,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     fn get_domain_name(&self) -> &str {
         &self.d_info.d_name
     }
+
+    fn get_domain_display_name(&self) -> &str {
+        &self.d_info.d_display
+    }
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -900,13 +908,18 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         self.d_info.d_uuid
     }
 
+    /// Gets the in-memory domain_name element
     fn get_domain_name(&self) -> &str {
         &self.d_info.d_name
+    }
+
+    fn get_domain_display_name(&self) -> &str {
+        &self.d_info.d_display
     }
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema, d_name: String) -> Self {
+    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
         let (s_uuid, d_uuid) = {
             let wr = be.write();
             let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
@@ -918,11 +931,17 @@ impl QueryServer {
 
         let pool_size = be.get_pool_size();
 
-        info!("Server UUID -> {:?}", s_uuid);
-        info!("Domain UUID -> {:?}", d_uuid);
-        info!("Domain Name -> {:?}", d_name);
+        debug!("Server UUID -> {:?}", s_uuid);
+        debug!("Domain UUID -> {:?}", d_uuid);
+        debug!("Domain Name -> {:?}", domain_name);
 
-        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name }));
+        let d_info = Arc::new(CowCell::new(DomainInfo {
+            d_uuid,
+            d_name: domain_name.clone(),
+            // we set the domain_display_name to the configuration file's domain_name
+            // here because the database is not started, so we cannot pull it from there.
+            d_display: domain_name,
+        }));
 
         // log_event!(log, "Starting query worker ...");
         QueryServer {
@@ -938,7 +957,7 @@ impl QueryServer {
                     .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
                     .set_reader_quiesce(true)
                     .build()
-                    .expect("Failer to build resolve_filter_cache"),
+                    .expect("Failed to build resolve_filter_cache"),
             ),
         }
     }
@@ -1180,6 +1199,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
             // remember, that you only get the first error and the iter terminates.
 
+            // eprintln!("{:?}", candidates);
+
             // Now, normalise AND validate!
 
             let res: Result<Vec<Entry<EntrySealed, EntryNew>>, OperationError> = candidates
@@ -1187,7 +1208,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation -> {:?}", e);
+                            admin_error!("Schema Violation in create validate {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
                         .map(|e| {
@@ -1333,7 +1354,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.into_recycled()
                         .validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!(err = ?e, "Schema Violation");
+                            admin_error!(err = ?e, "Schema Violation in delete validate");
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
@@ -1464,7 +1485,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.to_tombstone(self.cid.clone())
                         .validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violationi {:?}", e);
+                            admin_error!("Schema Violation in purge_recycled validate: {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
@@ -1504,7 +1525,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             )]);
 
             let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-                admin_error!("revive recycled modlist Schema Violation {:?}", e);
+                admin_error!(
+                    "Schema Violation in revive recycled modlist validate: {:?}",
+                    e
+                );
                 OperationError::SchemaViolation(e)
             })?;
 
@@ -1647,7 +1671,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Pre mod plugins
             // We should probably supply the pre-post cands here.
             Plugins::run_pre_modify(self, &mut candidates, me).map_err(|e| {
-                admin_error!("Modify operation failed (plugin), {:?}", e);
+                admin_error!("Pre-Modify operation failed (plugin), {:?}", e);
                 e
             })?;
 
@@ -1663,7 +1687,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation {:?}", e);
+                            admin_error!(
+                                "Schema Violation in validation of modify_pre_apply {:?}",
+                                e
+                            );
                             OperationError::SchemaViolation(e)
                         })
                         .map(Entry::seal)
@@ -1701,7 +1728,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // memberOf actually wants the pre cand list and the norm_cand list to see what
             // changed. Could be optimised, but this is correct still ...
             Plugins::run_post_modify(self, &pre_candidates, &norm_cand, me).map_err(|e| {
-                admin_error!("Modify operation failed (plugin), {:?}", e);
+                admin_error!("Post-Modify operation failed (plugin), {:?}", e);
                 e
             })?;
 
@@ -1834,7 +1861,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
-                            admin_error!("Schema Violation {:?}", e);
+                            admin_error!(
+                                "Schema Violation in internal_batch_modify validate: {:?}",
+                                e
+                            );
                             OperationError::SchemaViolation(e)
                         })
                         .map(Entry::seal)
@@ -2271,6 +2301,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
 
+        // admin_debug!("Dumping schemas: {:?}", entries);
+
         // internal_migrate_or_create.
         let r: Result<_, _> = entries.into_iter().try_for_each(|e| {
             trace!(?e, "init schema entry");
@@ -2297,6 +2329,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
             JSON_SCHEMA_ATTR_RADIUS_SECRET,
             JSON_SCHEMA_ATTR_DOMAIN_NAME,
+            JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
             JSON_SCHEMA_ATTR_DOMAIN_UUID,
             JSON_SCHEMA_ATTR_DOMAIN_SSID,
             JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
@@ -2666,14 +2699,29 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
+        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+            .and_then(|e| {
+                trace!(?e);
+                e.get_ava_single_utf8("domain_display_name")
+                    .map(str::to_string)
+                    .ok_or(OperationError::InvalidEntryState)
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Error getting domain display name");
+                e
+            })
+    }
+
+    /// Pulls the domain name from the database and updates the DomainInfo data in memory
     fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         spanned!("server::reload_domain_info", {
             let domain_name = self.get_db_domain_name()?;
-
+            let display_name = self.get_db_domain_display_name()?;
             let mut_d_info = self.d_info.get_mut();
             if mut_d_info.d_name != domain_name {
                 admin_warn!(
-                    "Using database configured domain name {} - was {}",
+                    "Using domain name from the database {} - was {} in memory",
                     domain_name,
                     mut_d_info.d_name,
                 );
@@ -2682,8 +2730,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 );
                 mut_d_info.d_name = domain_name;
             }
+            mut_d_info.d_display = display_name;
             Ok(())
         })
+    }
+
+    /// Initiate a domain display name change process. This isn't particularly scary
+    /// because it's just a wibbly human-facing thing, not used for secure
+    /// activities (yet)
+    pub fn set_domain_display_name(&self, new_domain_name: &str) -> Result<(), OperationError> {
+        let modl = ModifyList::new_purge_and_set(
+            "domain_display_name",
+            Value::new_utf8(new_domain_name.to_string()),
+        );
+        let udi = PVUUID_DOMAIN_INFO.clone();
+        let filt = filter_all!(f_eq("uuid", udi));
+        self.internal_modify(&filt, &modl)
     }
 
     /// Initiate a domain rename process. This is generally an internal function but it's

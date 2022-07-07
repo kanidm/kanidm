@@ -1,3 +1,6 @@
+///! Constant Entries for the IDM
+
+/// Builtin System Admin account.
 pub const JSON_ADMIN_V1: &str = r#"{
     "attrs": {
         "class": ["account", "memberof", "object"],
@@ -8,6 +11,7 @@ pub const JSON_ADMIN_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin IDM Admin account.
 pub const JSON_IDM_ADMIN_V1: &str = r#"{
     "attrs": {
         "class": ["account", "memberof", "object"],
@@ -18,6 +22,7 @@ pub const JSON_IDM_ADMIN_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin IDM Administrators Group.
 pub const JSON_IDM_ADMINS_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -28,6 +33,7 @@ pub const JSON_IDM_ADMINS_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin System Administrators Group.
 pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -38,8 +44,8 @@ pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
     }
 }"#;
 
-// groups
 // * People read managers
+/// Builtin IDM Group for granting elevated people (personal data) read permissions.
 pub const JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -49,7 +55,9 @@ pub const JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000003"]
     }
 }"#;
+
 // * People write managers
+/// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.
 pub const JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -61,6 +69,8 @@ pub const JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
+/// Builtin IDM Group for granting elevated people (personal data) write permissions.
 pub const JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -74,6 +84,7 @@ pub const JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.
 pub const JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -83,6 +94,7 @@ pub const JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin IDM Group for allowing the ability to extend accounts to have the "person" flag set.
 pub const JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -105,6 +117,7 @@ pub const JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.
 pub const JSON_IDM_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -114,6 +127,8 @@ pub const JSON_IDM_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000029"]
     }
 }"#;
+
+/// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.
 pub const JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -125,6 +140,8 @@ pub const JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
+/// Builtin IDM Group for extending high privilege accounts to be people.
 pub const JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -139,6 +156,7 @@ pub const JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
 
 // * group write manager (no read, everyone has read via the anon, etc)
 // IDM_GROUP_CREATE_PRIV
+/// Builtin IDM Group for granting elevated group write and lifecycle permissions.
 pub const JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -217,6 +235,7 @@ pub const JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
 }"#;
 // * RADIUS servers
 
+/// Builtin IDM Group for RADIUS secret write for all non-hp accounts.
 pub const JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -227,6 +246,7 @@ pub const JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin IDM Group for RADIUS secret reading for all non-hp accounts.
 pub const JSON_IDM_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -237,6 +257,7 @@ pub const JSON_IDM_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 
+/// Builtin IDM Group for RADIUS server access delegation.
 pub const JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -258,6 +279,7 @@ pub const JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
 // * high priv account write manager
 pub const JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
@@ -270,6 +292,8 @@ pub const JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
+/// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.
 pub const JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -281,6 +305,8 @@ pub const JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
+/// Builtin IDM Group for granting account unix extend permissions for high privilege accounts.
 pub const JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -290,6 +316,7 @@ pub const JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000019"]
     }
 }"#;
+
 // * Schema write manager
 pub const JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
@@ -302,6 +329,7 @@ pub const JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
 // * ACP read/write manager
 pub const JSON_IDM_ACP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
@@ -312,7 +340,8 @@ pub const JSON_IDM_ACP_MANAGE_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000019"]
     }
 }"#;
-// * HP Group Management
+
+// Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.
 pub const JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -322,6 +351,8 @@ pub const JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000019"]
     }
 }"#;
+
+/// Builtin IDM Group for granting elevated group write privileges for high privilege groups.
 pub const JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -333,6 +364,8 @@ pub const JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
+/// Builtin IDM Group for granting unix group extension permissions for high privilege groups.
 pub const JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -344,7 +377,8 @@ pub const JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-// Who can configure this domain?
+
+/// Builtin IDM Group for granting local domain administration rights and trust administration rights
 pub const JSON_DOMAIN_ADMINS: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -356,6 +390,7 @@ pub const JSON_DOMAIN_ADMINS: &str = r#"{
         ]
     }
 }"#;
+
 pub const JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -368,7 +403,7 @@ pub const JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// This must be the last group to init to include the UUID of the other high priv groups.
+/// This must be the last group to init to include the UUID of the other high priv groups.
 pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],

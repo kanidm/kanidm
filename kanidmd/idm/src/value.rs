@@ -730,7 +730,9 @@ impl PartialValue {
 #[derive(Clone, Debug)]
 pub enum Value {
     Utf8(String),
+    // Case insensitive string
     Iutf8(String),
+    /// Case insensitive Name for a thing?
     Iname(String),
     Uuid(Uuid),
     Bool(bool),

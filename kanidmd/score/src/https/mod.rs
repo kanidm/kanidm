@@ -1,6 +1,8 @@
+mod middleware;
 mod oauth2;
 mod v1;
 
+use self::middleware::*;
 use self::oauth2::*;
 use self::v1::*;
 
@@ -182,17 +184,23 @@ pub fn to_tide_response<T: Serialize>(
 }
 
 // Handle the various end points we need to expose
-async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
+async fn index_view(req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+
+    let domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).await;
+
     let mut res = tide::Response::new(200);
+    res.insert_header("X-KANIDM-OPID", hvalue);
 
     res.set_content_type("text/html;charset=utf-8");
-    res.set_body(r#"
+
+    res.set_body(format!(r#"
     <!DOCTYPE html>
     <html lang="en">
         <head>
             <meta charset="utf-8"/>
             <meta name="viewport" content="width=device-width">
-            <title>Kanidm</title>
+            <title>{}</title>
             <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
             <link rel="stylesheet" href="/pkg/style.css"/>
             <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
@@ -204,7 +212,7 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
         <body>
         </body>
     </html>
-        "#,
+        "#, domain_display_name.as_str())
     );
 
     Ok(res)
@@ -244,6 +252,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Cacheable
 }
 
 #[derive(Default)]
+/// Sets Cache-Control headers on static content endpoints
 struct StaticContentMiddleware;
 
 #[async_trait::async_trait]
@@ -260,6 +269,12 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticCon
 }
 
 #[derive(Default)]
+/// Adds the folloing headers to responses
+/// - x-frame-options
+/// - x-content-type-options
+/// - cross-origin-resource-policy
+/// - cross-origin-embedder-policy
+/// - cross-origin-opener-policy
 struct StrictResponseMiddleware;
 
 #[async_trait::async_trait]
@@ -270,79 +285,14 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRes
         next: tide::Next<'_, State>,
     ) -> tide::Result {
         let mut response = next.run(request).await;
-        response.insert_header("x-frame-options", "deny");
-        response.insert_header("x-content-type-options", "nosniff");
-        response.insert_header("cross-origin-resource-policy", "same-origin");
         response.insert_header("cross-origin-embedder-policy", "require-corp");
         response.insert_header("cross-origin-opener-policy", "same-origin");
+        response.insert_header("cross-origin-resource-policy", "same-origin");
+        response.insert_header("x-content-type-options", "nosniff");
+        response.insert_header("x-frame-options", "deny");
         Ok(response)
     }
 }
-#[derive(Default)]
-struct UIContentSecurityPolicyResponseMiddleware {
-    // The sha384 hash of /pkg/wasmloader.js
-    pub integrity_wasmloader: String,
-}
-
-impl UIContentSecurityPolicyResponseMiddleware {
-    fn new(integrity_wasmloader: String) -> Self {
-        return Self {
-            integrity_wasmloader,
-        };
-    }
-}
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
-    for UIContentSecurityPolicyResponseMiddleware
-{
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        // This updates the UI body with the integrity hash value for the wasmloader.js file, and adds content-security-policy headers.
-
-        let mut response = next.run(request).await;
-
-        // grab the body we're intending to return at this point
-        let body_str = response.take_body().into_string().await?;
-        // update it with the hash
-        response.set_body(body_str.replace("==WASMHASH==", self.integrity_wasmloader.as_str()));
-        response.insert_header(
-            /* content-security-policy headers tell the browser what to trust
-                https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
-
-                In this case we're only trusting the same server that the page is
-                loaded from, and adding a hash of wasmloader.js, which is the main script
-                we should be loading, and should be really secure about that!
-
-            */
-            // TODO: consider scraping the other js files that wasm-pack builds and including them too
-            "content-security-policy",
-            vec![
-                "default-src 'self'",
-                // we need unsafe-eval because of WASM things
-                format!(
-                    "script-src 'self' 'sha384-{}' 'unsafe-eval'",
-                    self.integrity_wasmloader.as_str()
-                )
-                .as_str(),
-                "form-action https: 'self'", // to allow for OAuth posts
-                // we are not currently using workers so it can be blocked
-                "worker-src 'none'",
-                // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
-                // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
-                "report-uri 'none'",
-                "base-uri 'self'",
-            ]
-            .join(";"),
-        );
-
-        Ok(response)
-    }
-}
-
 struct StrictRequestMiddleware;
 
 impl Default for StrictRequestMiddleware {
@@ -488,10 +438,12 @@ pub fn create_https_server(
 
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
+
         static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
             generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
                 .unwrap(),
         ));
+
         // The compression middleware needs to be the last one added before routes
         static_tserver.with(compress_middleware.clone());
 

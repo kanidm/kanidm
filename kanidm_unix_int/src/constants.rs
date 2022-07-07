@@ -1,5 +1,6 @@
 use crate::unix_config::{HomeAttr, UidAttr};
 
+pub const DEFAULT_CONFIG_PATH: &str = "/etc/kanidm/unixd";
 pub const DEFAULT_SOCK_PATH: &str = "/var/run/kanidm-unixd/sock";
 pub const DEFAULT_TASK_SOCK_PATH: &str = "/var/run/kanidm-unixd/task_sock";
 pub const DEFAULT_DB_PATH: &str = "/var/cache/kanidm-unixd/kanidm.cache.db";

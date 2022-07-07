@@ -2,11 +2,11 @@
 Schema References
 -----------------
 
-On top of normal schema, it is sometimes necessary for objects to be able to refer to each other.
-The classic example of groups containing members, and memberof which is a reverse lookup of these
-relationships. In order to improve the clarity and performance of these types, instead of having
-them simply as free-utf8 fields that require upkeep, we should have a dedicated reference type in
-the schema.
+On top of normal schema, it is sometimes necessary for objects to be able to refer
+to each other. The classic example of groups containing members, and memberof which
+is a reverse lookup of these relationships. In order to improve the clarity and
+performance of these types, instead of having them simply as free-utf8 fields that
+require upkeep, we should have a dedicated reference type in the schema.
 
 Benefits
 --------

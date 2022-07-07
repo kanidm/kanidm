@@ -58,26 +58,30 @@ pub(crate) struct MfaRegSession {
     pub account: Account,
     // What state is the reg process in?
     state: MfaRegState,
+    // Human-facing name of the Domain
+    issuer: String,
 }
 
 impl MfaRegSession {
     pub fn totp_new(
         origin: IdentityId,
         account: Account,
+        issuer: String,
     ) -> Result<(Self, MfaRegNext), OperationError> {
         // Based on the req, init our session, and the return the next step.
         // Store the ID of the event that start's the attempt
         let token = Totp::generate_secure(TOTP_DEFAULT_STEP);
 
         let accountname = account.name.as_str();
-        let issuer = account.spn.as_str();
-        let next = MfaRegNext::TotpCheck(token.to_proto(accountname, issuer));
+
+        let next = MfaRegNext::TotpCheck(token.to_proto(accountname, issuer.as_str()));
 
         let state = MfaRegState::TotpInit(token);
         let s = MfaRegSession {
             origin,
             account,
             state,
+            issuer,
         };
         Ok((s, next))
     }
@@ -107,23 +111,24 @@ impl MfaRegSession {
                     }
                 } else {
                     // What if it's a broken authenticator app? Google authenticator
-                    // and authy both force sha1 and ignore the algo we send. So lets
+                    // and authy both force sha1 and ignore the algo we send. So let's
                     // check that just in case.
 
                     let token_sha1 = token.clone().downgrade_to_legacy();
 
                     if token_sha1.verify(chal, ct) {
-                        // Greeeaaaaaatttt it's a broken app. Let's check the user
+                        // Greeeaaaaaatttt. It's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
                         let mut nstate = MfaRegState::TotpInvalidSha1(token_sha1);
                         mem::swap(&mut self.state, &mut nstate);
                         Ok((MfaRegNext::TotpInvalidSha1, None))
                     } else {
-                        // Prooobbably a bad code or typo then. Lte them try again.
+                        // Probably a bad code or typo then. Let them try again.
                         let accountname = self.account.name.as_str();
-                        let issuer = self.account.spn.as_str();
                         Ok((
-                            MfaRegNext::TotpCheck(token.to_proto(accountname, issuer)),
+                            MfaRegNext::TotpCheck(
+                                token.to_proto(accountname, self.issuer.as_str()),
+                            ),
                             None,
                         ))
                     }
@@ -165,6 +170,7 @@ impl MfaRegSession {
         account: Account,
         label: String,
         webauthn: &Webauthn<WebauthnDomainConfig>,
+        issuer: String,
     ) -> Result<(Self, MfaRegNext), OperationError> {
         // Setup the registration.
         let (chal, reg_state) = webauthn
@@ -179,6 +185,8 @@ impl MfaRegSession {
             origin,
             account,
             state,
+            // this isn't used in webauthn... yet?
+            issuer,
         };
         let next = MfaRegNext::WebauthnChallenge(chal);
         Ok((s, next))

@@ -84,7 +84,7 @@ type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
-    // variaous accounts, and we have a good idea of how to structure the
+    // various accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
     session_ticket: Semaphore,
     sessions: BptreeMap<Uuid, AuthSessionMutex>,
@@ -299,11 +299,13 @@ impl IdmServer {
         }
     }
 
+    /// Perform a blocking read transaction on the database.
     #[cfg(test)]
     pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
         task::block_on(self.proxy_read_async())
     }
 
+    /// Read from the database, in a transaction.
     pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
@@ -1688,13 +1690,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&wre.ident.origin).into();
         let label = wre.label.clone();
 
-        let (session, next) = MfaRegSession::webauthn_new(origin, account, label, self.webauthn)?;
+        let issuer = self
+            .qs_write
+            .get_domain_display_name()
+            .to_string();
 
-        let next = next.to_proto(sessionid);
+        let (session, mfa_reg_next) =
+            MfaRegSession::webauthn_new(origin, account, label, self.webauthn, issuer)?;
+
+        let next = mfa_reg_next.to_proto(sessionid);
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
-        trace!(?sessionid, "Start mfa reg session");
+        trace!(?sessionid, "Started mfa reg session for webauthn");
         Ok(next)
     }
 
@@ -1793,7 +1801,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sessionid = uuid_from_duration(ct, self.sid);
 
         let origin = (&gte.ident.origin).into();
-        let (session, next) = MfaRegSession::totp_new(origin, account).map_err(|e| {
+
+        let issuer = self
+            .qs_write
+            .get_domain_display_name()
+            .to_string();
+
+        let (session, next) = MfaRegSession::totp_new(origin, account, issuer).map_err(|e| {
             admin_error!("Unable to start totp MfaRegSession {:?}", e);
             e
         })?;
@@ -1802,7 +1816,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
-        trace!(?sessionid, "Start mfa reg session");
+        trace!(?sessionid, "Started totp mfa reg session");
         Ok(next)
     }
 
@@ -1815,7 +1829,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&vte.ident.origin).into();
         let chal = vte.chal;
 
-        trace!(?sessionid, "Attempting to find mfareg_session");
+        trace!(?sessionid, "Attempting to find totp mfareg_session");
 
         let (next, opt_cred) = self
             .mfareg_sessions
@@ -1834,7 +1848,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .remove(&sessionid)
                 .ok_or(OperationError::InvalidState)
                 .map_err(|e| {
-                    admin_error!("Session within transaction vanished!");
+                    admin_error!("Session within totp reg transaction vanished!");
                     e
                 })?;
             // reg the token

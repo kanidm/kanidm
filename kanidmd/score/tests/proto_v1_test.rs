@@ -591,6 +591,20 @@ async fn test_server_rest_domain_lifecycle() {
     // check get and get the ssid and domain info
     let nssid = rsclient.idm_domain_get_ssid().await.unwrap();
     assert!(nssid == "new_ssid");
+
+    // Change the domain display name
+    rsclient
+        .idm_domain_set_display_name("Super Cool Crabz")
+        .await
+        .unwrap();
+    let dlocal = rsclient.idm_domain_get().await.unwrap();
+    assert!(
+        dlocal
+            .attrs
+            .get("domain_display_name")
+            .and_then(|v| v.get(0))
+            == Some(&"Super Cool Crabz".to_string())
+    );
 }
 
 #[tokio::test]

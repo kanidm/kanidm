@@ -156,7 +156,7 @@ Second, change `domain` and `origin` in `server.toml`.
 Third, trigger the database domain rename process.
 
     docker run --rm -i -t -v kanidmd:/data \
-        kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml
+        kanidm/server:latest /sbin/kanidmd domain rename -c /data/server.toml
 
 Finally, you can now start your instance again.
 

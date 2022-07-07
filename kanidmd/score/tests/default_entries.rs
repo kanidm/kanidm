@@ -530,6 +530,7 @@ async fn test_default_entries_rbac_admins_schema_entries() {
         "primary_credential",
         "radius_secret",
         "domain_name",
+        "domain_display_name",
         "domain_uuid",
         "domain_ssid",
         "gidnumber",

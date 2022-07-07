@@ -53,6 +53,7 @@ pub struct CredentialUpdateSessionToken {
     pub token_enc: String,
 }
 
+/// The current state of MFA registration
 enum MfaRegState {
     None,
     TotpInit(Totp),
@@ -73,6 +74,7 @@ impl fmt::Debug for MfaRegState {
 }
 
 pub(crate) struct CredentialUpdateSession {
+    issuer: String,
     // Current credentials - these are on the Account!
     account: Account,
     //
@@ -125,6 +127,7 @@ impl fmt::Debug for MfaRegStateStatus {
 #[derive(Debug)]
 pub struct CredentialUpdateSessionStatus {
     spn: String,
+    // The target user's display name
     displayname: String,
     // ttl: Duration,
     //
@@ -165,7 +168,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
-                    token.to_proto(session.account.name.as_str(), session.account.spn.as_str()),
+                    token.to_proto(session.account.name.as_str(), session.issuer.as_str()),
                 ),
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
                 MfaRegState::TotpInvalidSha1(_, _) => MfaRegStateStatus::TotpInvalidSha1,
@@ -293,9 +296,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         // - stash the current state of all associated credentials
         let primary = account.primary.clone();
+        // Stash the issuer for some UI elements
+        let issuer = self.qs_write.get_domain_display_name().to_string();
+
         // - store account policy (if present)
         let session = CredentialUpdateSession {
             account,
+            issuer,
             intent_token_id,
             primary,
             mfaregstate: MfaRegState::None,
@@ -413,7 +420,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn exchange_intent_credential_update(
         &mut self,
         token: CredentialUpdateIntentToken,
-        ct: Duration,
+        current_time: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let CredentialUpdateIntentToken { intent_id } = token;
 
@@ -476,7 +483,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     "Rejecting Update Session - Intent Token does not exist (replication delay?)",
                 );
                 return Err(OperationError::Wait(
-                    OffsetDateTime::unix_epoch() + (ct + Duration::from_secs(150)),
+                    OffsetDateTime::unix_epoch() + (current_time + Duration::from_secs(150)),
                 ));
             }
         };
@@ -501,7 +508,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 session_id,
                 session_ttl,
             }) => {
-                if ct > *session_ttl {
+                if current_time > *session_ttl {
                     // The former session has expired, continue.
                     security_info!(
                         ?entry,
@@ -522,8 +529,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
             Some(IntentTokenState::Valid { max_ttl }) => {
                 // Check the TTL
-                if ct >= *max_ttl {
-                    trace!(?ct, ?max_ttl);
+                if current_time >= *max_ttl {
+                    trace!(?current_time, ?max_ttl);
                     security_info!(%account.uuid, "intent has expired");
                     return Err(OperationError::SessionExpired);
                 } else {
@@ -550,7 +557,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // We need to pin the id from the intent token into the credential to ensure it's not re-used
 
         // Need to change this to the expiry time, so we can purge up to.
-        let session_id = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
+        let session_id = uuid_from_duration(current_time + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
         let mut modlist = ModifyList::new();
 
@@ -565,7 +572,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 IntentTokenState::InProgress {
                     max_ttl,
                     session_id,
-                    session_ttl: ct + MAXIMUM_CRED_UPDATE_TTL,
+                    session_ttl: current_time + MAXIMUM_CRED_UPDATE_TTL,
                 },
             ),
         ));
@@ -584,7 +591,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(session_id, Some(intent_id), account, ct)
+        self.create_credupdate_session(session_id, Some(intent_id), account, current_time)
     }
 
     pub fn init_credential_update(
@@ -594,9 +601,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         spanned!("idm::server::credupdatesession<Init>", {
             let account = self.validate_init_credential_update(event.target, &event.ident)?;
-
             // ==== AUTHORISATION CHECKED ===
-
             // This is the expiry time, so that our cleanup task can "purge up to now" rather
             // than needing to do calculations.
             let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
@@ -1034,12 +1039,12 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     Ok(session.deref().into())
                 } else {
                     // What if it's a broken authenticator app? Google authenticator
-                    // and authy both force sha1 and ignore the algo we send. So lets
+                    // and Authy both force SHA1 and ignore the algo we send. So let's
                     // check that just in case.
                     let token_sha1 = totp_token.clone().downgrade_to_legacy();
 
                     if token_sha1.verify(totp_chal, &ct) {
-                        // Greeeaaaaaatttt it's a broken app. Let's check the user
+                        // Greeeaaaaaatttt. It's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
                         session.mfaregstate =
                             MfaRegState::TotpInvalidSha1(totp_token.clone(), token_sha1);

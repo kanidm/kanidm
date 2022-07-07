@@ -32,6 +32,7 @@ use tokio::time;
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
 
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{HomeDirectoryInfo, TaskRequest, TaskResponse};
 
@@ -214,7 +215,7 @@ async fn main() {
 
     tracing_subscriber::fmt::init();
 
-    let unixd_path = Path::new("/etc/kanidm/unixd");
+    let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
     let unixd_path_str = match unixd_path.to_str() {
         Some(cps) => cps,
         None => {

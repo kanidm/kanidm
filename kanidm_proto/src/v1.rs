@@ -21,6 +21,7 @@ pub enum SchemaError {
     MissingMustAttribute(Vec<String>),
     InvalidAttribute(String),
     InvalidAttributeSyntax(String),
+    AttributeNotValidForClass(String),
     EmptyFilter,
     Corrupted,
     PhantomAttribute(String),
@@ -776,6 +777,7 @@ impl fmt::Display for TotpAlgo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TotpSecret {
     pub accountname: String,
+    /// User-facing name of the system, issuer of the TOTP
     pub issuer: String,
     pub secret: Vec<u8>,
     pub algo: TotpAlgo,

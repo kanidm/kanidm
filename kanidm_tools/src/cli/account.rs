@@ -9,7 +9,7 @@ use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::{InvalidAttribute, PasswordQuality};
-use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus};
+use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
 use qrcode::{render::unicode, QrCode};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
@@ -661,7 +661,7 @@ impl FromStr for CUAction {
 
 async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
     // First, submit the server side gen.
-    let totp_secret = match client
+    let totp_secret: TotpSecret = match client
         .idm_account_credential_update_init_totp(session_token)
         .await
     {
