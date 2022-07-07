@@ -1,16 +1,16 @@
+use crate::https::JavaScriptFile;
+
 #[derive(Default)]
 /// This tide MiddleWare adds headers like Content-Security-Policy
 /// and similar families. If it keeps adding more things then
 /// probably rename the middleware :)
 pub struct UIContentSecurityPolicyResponseMiddleware {
     // The sha384 hash of /pkg/wasmloader.js
-    pub integrity_wasmloader: String,
+    pub hashes: Vec<JavaScriptFile>,
 }
 impl UIContentSecurityPolicyResponseMiddleware {
-    pub fn new(integrity_wasmloader: String) -> Self {
-        return Self {
-            integrity_wasmloader,
-        };
+    pub fn new(hashes: Vec<JavaScriptFile>) -> Self {
+        return Self { hashes };
     }
 }
 
@@ -26,10 +26,13 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
     ) -> tide::Result {
         let mut response = next.run(request).await;
 
-        // grab the body we're intending to return at this point
-        let body_str = response.take_body().into_string().await?;
-        // update it with the hash
-        response.set_body(body_str.replace("==WASMHASH==", self.integrity_wasmloader.as_str()));
+        // a list of hashes of js files that we're sending to the user
+        let hashes: Vec<String> = self
+            .hashes
+            .iter()
+            .map(|j| format!("'{}'", j.hash))
+            .collect();
+
         response.insert_header(
             /* content-security-policy headers tell the browser what to trust
                 https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
@@ -39,16 +42,11 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                 we should be loading, and should be really secure about that!
 
             */
-            // TODO: consider scraping the other js files that wasm-pack builds and including them too
             "content-security-policy",
             vec![
                 "default-src 'self'",
                 // we need unsafe-eval because of WASM things
-                format!(
-                    "script-src 'self' 'sha384-{}' 'unsafe-eval'",
-                    self.integrity_wasmloader.as_str()
-                )
-                .as_str(),
+                format!("script-src 'self' {} 'unsafe-eval'", hashes.join(" ")).as_str(),
                 "form-action https: 'self'", // to allow for OAuth posts
                 // we are not currently using workers so it can be blocked
                 "worker-src 'none'",
@@ -61,5 +59,117 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
         );
 
         Ok(response)
+    }
+}
+
+#[derive(Default)]
+pub struct NoCacheMiddleware;
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for NoCacheMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("Cache-Control", "no-store, max-age=0");
+        response.insert_header("Pragma", "no-cache");
+        Ok(response)
+    }
+}
+
+#[derive(Default)]
+pub struct CacheableMiddleware;
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for CacheableMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("Cache-Control", "max-age=60,must-revalidate,private");
+        Ok(response)
+    }
+}
+
+#[derive(Default)]
+/// Sets Cache-Control headers on static content endpoints
+pub struct StaticContentMiddleware;
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticContentMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("Cache-Control", "max-age=3600,private");
+        Ok(response)
+    }
+}
+
+#[derive(Default)]
+/// Adds the folloing headers to responses
+/// - x-frame-options
+/// - x-content-type-options
+/// - cross-origin-resource-policy
+/// - cross-origin-embedder-policy
+/// - cross-origin-opener-policy
+pub struct StrictResponseMiddleware;
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictResponseMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("cross-origin-embedder-policy", "require-corp");
+        response.insert_header("cross-origin-opener-policy", "same-origin");
+        response.insert_header("cross-origin-resource-policy", "same-origin");
+        response.insert_header("x-content-type-options", "nosniff");
+        response.insert_header("x-frame-options", "deny");
+        Ok(response)
+    }
+}
+struct StrictRequestMiddleware;
+
+impl Default for StrictRequestMiddleware {
+    fn default() -> Self {
+        StrictRequestMiddleware {}
+    }
+}
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRequestMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let proceed = request
+            .header("sec-fetch-site")
+            .map(|hv| {
+                matches!(hv.as_str(), "same-origin" | "same-site" | "none")
+                    || (request.header("sec-fetch-mode").map(|v| v.as_str()) == Some("navigate")
+                        && request.method() == tide::http::Method::Get
+                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("object")
+                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("embed"))
+            })
+            .unwrap_or(true);
+
+        if proceed {
+            Ok(next.run(request).await)
+        } else {
+            Err(tide::Error::from_str(
+                tide::StatusCode::MethodNotAllowed,
+                "StrictRequestViolation",
+            ))
+        }
     }
 }

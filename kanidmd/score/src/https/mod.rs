@@ -26,6 +26,46 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 #[derive(Clone)]
+pub struct JavaScriptFile {
+    // Relative to the pkg/ dir
+    filepath: &'static str,
+    // SHA384 hash of the file
+    hash: String,
+    // if it's a module add the "type"
+    filetype: Option<String>,
+}
+
+impl std::fmt::Display for JavaScriptFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
+        // TODO YOLO this
+        let typestr = match &self.filetype {
+            Some(value) => format!("type=\"{}\"", value),
+            _ => "".to_string(),
+        };
+        f.write_str(format!(r#"<script src=\"/pkg/{}\" {}"#, &self.filepath, typestr,).as_str())
+    }
+}
+
+impl JavaScriptFile {
+    /// grab the hash for use in CSP headers
+    pub fn as_csp_hash(self) -> String {
+        self.hash
+    }
+
+    /// returns a <script tag
+    fn as_tag(self) -> String {
+        let typeattr = match self.filetype {
+            Some(val) => format!("type=\"{}\" ", val),
+            _ => String::from(""),
+        };
+        format!(
+            r#"<script src="/pkg/{}" integrity="{}" {}></script>"#,
+            self.filepath, self.hash, typeattr,
+        )
+    }
+}
+
+#[derive(Clone)]
 pub struct AppState {
     pub status_ref: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
@@ -33,6 +73,8 @@ pub struct AppState {
     // Store the token management parts.
     pub jws_signer: std::sync::Arc<JwsSigner>,
     pub jws_validator: std::sync::Arc<JwsValidator>,
+    /// The SHA384 hashes of javascript files we're going to serve to users
+    pub js_files: Vec<JavaScriptFile>,
 }
 
 /// This is for the tide_compression middleware so that we only compress certain content types.
@@ -182,7 +224,7 @@ pub fn to_tide_response<T: Serialize>(
     })
 }
 
-/// Returns a generic robots.txt
+/// Returns a generic robots.txt blocking all bots
 async fn robots_txt(_req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
 
@@ -205,6 +247,14 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
     res.insert_header("X-KANIDM-OPID", hvalue);
 
     res.set_content_type("text/html;charset=utf-8");
+    let jsfiles: Vec<String> = req
+        .state()
+        .to_owned()
+        .js_files
+        .into_iter()
+        .map(|j| j.as_tag())
+        .collect();
+    let jstags = jsfiles.join(" ");
     res.set_body(format!(r#"
 <!DOCTYPE html>
 <html lang="en">
@@ -223,8 +273,8 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
         <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
         <link rel="stylesheet" href="/pkg/style.css"/>
 
-        <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
-        <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH=="></script>
+        {}
+
     </head>
     <body class="flex-column d-flex h-100">
         <main class="flex-shrink-0 form-signin">
@@ -239,123 +289,13 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
             </div>
         </footer>
     </body>
-</html>"#, domain_display_name.as_str()
+</html>"#,
+    domain_display_name.as_str(),
+    jstags,
     )
     );
 
     Ok(res)
-}
-
-#[derive(Default)]
-struct NoCacheMiddleware;
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for NoCacheMiddleware {
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        let mut response = next.run(request).await;
-        response.insert_header("Cache-Control", "no-store, max-age=0");
-        response.insert_header("Pragma", "no-cache");
-        Ok(response)
-    }
-}
-
-#[derive(Default)]
-struct CacheableMiddleware;
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for CacheableMiddleware {
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        let mut response = next.run(request).await;
-        response.insert_header("Cache-Control", "max-age=60,must-revalidate,private");
-        Ok(response)
-    }
-}
-
-#[derive(Default)]
-/// Sets Cache-Control headers on static content endpoints
-struct StaticContentMiddleware;
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticContentMiddleware {
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        let mut response = next.run(request).await;
-        response.insert_header("Cache-Control", "max-age=3600,private");
-        Ok(response)
-    }
-}
-
-#[derive(Default)]
-/// Adds the folloing headers to responses
-/// - x-frame-options
-/// - x-content-type-options
-/// - cross-origin-resource-policy
-/// - cross-origin-embedder-policy
-/// - cross-origin-opener-policy
-struct StrictResponseMiddleware;
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictResponseMiddleware {
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        let mut response = next.run(request).await;
-        response.insert_header("cross-origin-embedder-policy", "require-corp");
-        response.insert_header("cross-origin-opener-policy", "same-origin");
-        response.insert_header("cross-origin-resource-policy", "same-origin");
-        response.insert_header("x-content-type-options", "nosniff");
-        response.insert_header("x-frame-options", "deny");
-        Ok(response)
-    }
-}
-struct StrictRequestMiddleware;
-
-impl Default for StrictRequestMiddleware {
-    fn default() -> Self {
-        StrictRequestMiddleware {}
-    }
-}
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRequestMiddleware {
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        let proceed = request
-            .header("sec-fetch-site")
-            .map(|hv| {
-                matches!(hv.as_str(), "same-origin" | "same-site" | "none")
-                    || (request.header("sec-fetch-mode").map(|v| v.as_str()) == Some("navigate")
-                        && request.method() == tide::http::Method::Get
-                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("object")
-                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("embed"))
-            })
-            .unwrap_or(true);
-
-        if proceed {
-            Ok(next.run(request).await)
-        } else {
-            Err(tide::Error::from_str(
-                tide::StatusCode::MethodNotAllowed,
-                "StrictRequestViolation",
-            ))
-        }
-    }
 }
 
 /// Generates the integrity hash for a file based on a filename
@@ -380,7 +320,7 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
             };
             let shasum =
                 openssl::hash::hash(openssl::hash::MessageDigest::sha384(), &filecontents).unwrap();
-            Ok(format!("{}", openssl::base64::encode_block(&shasum)))
+            Ok(format!("sha384-{}", openssl::base64::encode_block(&shasum)))
         }
     }
 }
@@ -404,12 +344,44 @@ pub fn create_https_server(
     let jws_validator = std::sync::Arc::new(jws_validator);
     let jws_signer = std::sync::Arc::new(jws_signer);
 
+    let mut js_files: Vec<JavaScriptFile> = Vec::new();
+
+    if !matches!(role, ServerRole::WriteReplicaNoUI) {
+        // let's set up the list of js module hashes
+        for filepath in ["wasmloader.js"] {
+            js_files.push(JavaScriptFile {
+                filepath,
+                hash: generate_integrity_hash(format!(
+                    "{}/{}",
+                    env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
+                    filepath,
+                ))
+                .unwrap(),
+                filetype: Some("module".to_string()),
+            });
+        }
+        // let's set up the list of non-module hashes
+        for filepath in ["external/bootstrap.bundle.min.js"] {
+            js_files.push(JavaScriptFile {
+                filepath,
+                hash: generate_integrity_hash(format!(
+                    "{}/{}",
+                    env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
+                    filepath,
+                ))
+                .unwrap(),
+                filetype: Some("module".to_string()),
+            });
+        }
+    };
+
     let mut tserver = tide::Server::with_state(AppState {
         status_ref,
         qe_w_ref,
         qe_r_ref,
         jws_signer,
         jws_validator,
+        js_files: js_files.to_owned(),
     });
 
     // tide::log::with_level(tide::log::LevelFilter::Debug);
@@ -468,10 +440,7 @@ pub fn create_https_server(
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
 
-        static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
-            generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
-                .unwrap(),
-        ));
+        static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(js_files));
 
         // The compression middleware needs to be the last one added before routes
         static_tserver.with(compress_middleware.clone());
