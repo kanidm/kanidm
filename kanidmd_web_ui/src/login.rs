@@ -43,6 +43,7 @@ enum LoginState {
     Authenticated,
 }
 
+const CLASSES_TO_ADD: &[&str] = &["flex-column", "d-flex", "h-100"];
 pub enum LoginAppMsg {
     Input(String),
     Restart,
@@ -464,30 +465,16 @@ impl Component for LoginApp {
             .cookie()
             .expect_throw("failed to access page cookies");
         console::log!("cookies".to_string());
-        console::log!(cookie.to_string());
+        console::log!(cookie);
 
         let state = LoginState::Init(true);
         // startConfetti();
 
-        if let Err(e) = crate::utils::body().class_list()
-        // .add_1("form-signin-body")
-        .add_1("d-flex")
-        {
-            console::log!(format!("class_list add error -> {:?}", e));
-        };
-
-        if let Err(e) = crate::utils::body().class_list()
-        .add_1("flex-column")
-        {
-            console::log!(format!("class_list add error -> {:?}", e));
-        };
-
-        if let Err(e) = crate::utils::body().class_list()
-        .add_1("h-100")
-        {
-            console::log!(format!("class_list add error -> {:?}", e));
-        };
-
+        for x in CLASSES_TO_ADD {
+            if let Err(e) = crate::utils::body().class_list().add_1(x) {
+                console::log!(format!("class_list add error -> {:?}", e));
+            };
+        }
 
         //TODO: remember to strip the above things on destroy maybe
         LoginApp {
@@ -790,39 +777,38 @@ impl Component for LoginApp {
         // TODO: add the domain_display_name here
 
         html! {
-<>
-    <main class="flex-shrink-0">
-        <div class="container-sm d-inline-flex justify-content-center">
-            <div class="mt-5">
-                <div class="row">
-                    <div class="col">
-                        <center>
-                            <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
-                            <h3>{ "Kanidm idm.example.com" } </h3>
-                        </center>
-                        { self.view_state(ctx) }
-                    </div>
-                </div>
+        <>
+        <main class="flex-shrink-0 form-signin">
+            <center>
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                <h3>{ "Kanidm idm.example.com" } </h3>
+            </center>
+            { self.view_state(ctx) }
+        </main>
+        <footer class="footer mt-auto py-3 bg-light text-end">
+            <div class="container">
+                <span class="text-muted">{ "Powered by "  }<a href="https://kanidm.com">{ "Kanidm" }</a></span>
             </div>
-        </div>
-    </main>
-    <footer class="footer mt-auto py-3 bg-light">
-        <div class="container">
-            <span class="text-muted">{ "Powered by Kanidm" }</span>
-        </div>
-    </footer>
-</>
-        }
+        </footer>
+        </>
+                }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("login::destroy".to_string());
-        if let Err(e) = crate::utils::body()
-            .class_list()
-            .remove_1("form-signin-body")
-        {
-            console::log!(format!("class_list remove error -> {:?}", e));
+
+        for x in CLASSES_TO_ADD {
+            if let Err(e) = crate::utils::body().class_list().remove_1(x) {
+                console::log!(format!("class_list remove error -> {:?}", e));
+            };
         }
+
+        // if let Err(e) = crate::utils::body()
+        //     .class_list()
+        //     .remove_1("form-signin-body")
+        // {
+        //     console::log!(format!("class_list remove error -> {:?}", e));
+        // }
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {

@@ -150,7 +150,9 @@ impl Component for CredentialResetApp {
         let next_state = match (msg, &self.state) {
             (Msg::Ignore, _) => None,
             (Msg::TokenSubmit, State::TokenInput) => {
-                let token = utils::get_value_from_element_id("autofocus").expect("No token");
+                #[allow(clippy::expect_used)]
+                let token = utils::get_value_from_element_id("autofocus")
+                    .expect("Unable to find autofocus element");
 
                 ctx.link().send_future(async {
                     match Self::exchange_intent_token(token).await {
