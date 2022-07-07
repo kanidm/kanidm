@@ -62,15 +62,7 @@ pub fn get_value_from_element_id(id: &str) -> Option<String> {
         .map(|element| element.value())
 }
 
-#[wasm_bindgen(inline_js = "export function modal_hide(m) {
-    var elem = document.getElementById(m);
-    var modal = bootstrap.Modal.getInstance(elem);
-    modal.hide();
-}")]
+#[wasm_bindgen(raw_module = "/pkg/wasmloader.js")]
 extern "C" {
-    fn modal_hide(m: &str);
-}
-
-pub fn modal_hide_by_id(id: &str) {
-    modal_hide(id);
+    pub fn modal_hide_by_id(m: &str);
 }

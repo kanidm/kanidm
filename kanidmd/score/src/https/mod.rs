@@ -358,6 +358,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictReq
     }
 }
 
+/// Generates the integrity hash for a file based on a filename
 pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
     let wasm_filepath = PathBuf::from(filename);
     match wasm_filepath.exists() {

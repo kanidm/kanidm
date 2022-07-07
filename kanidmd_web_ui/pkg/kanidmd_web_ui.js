@@ -1,4 +1,4 @@
-import { modal_hide } from './snippets/kanidmd_web_ui-273c66c330cf4c44/inline0.js';
+import { modal_hide_by_id } from '/pkg/wasmloader.js';
 
 let wasm;
 
@@ -367,8 +367,8 @@ async function load(module, imports) {
 function getImports() {
     const imports = {};
     imports.wbg = {};
-    imports.wbg.__wbg_modalhide_673016763df325bd = function() { return logError(function (arg0, arg1) {
-        modal_hide(getStringFromWasm0(arg0, arg1));
+    imports.wbg.__wbg_modalhidebyid_b9efcd5f48cb1c79 = function() { return logError(function (arg0, arg1) {
+        modal_hide_by_id(getStringFromWasm0(arg0, arg1));
     }, arguments) };
     imports.wbg.__wbindgen_json_serialize = function(arg0, arg1) {
         const obj = getObject(arg1);
@@ -866,15 +866,15 @@ function getImports() {
         const ret = wasm.memory;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper19331 = function() { return logError(function (arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper19330 = function() { return logError(function (arg0, arg1, arg2) {
         const ret = makeClosure(arg0, arg1, 1306, __wbg_adapter_30);
         return addHeapObject(ret);
     }, arguments) };
-    imports.wbg.__wbindgen_closure_wrapper23261 = function() { return logError(function (arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper23260 = function() { return logError(function (arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1331, __wbg_adapter_33);
         return addHeapObject(ret);
     }, arguments) };
-    imports.wbg.__wbindgen_closure_wrapper23862 = function() { return logError(function (arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper23861 = function() { return logError(function (arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1357, __wbg_adapter_36);
         return addHeapObject(ret);
     }, arguments) };
