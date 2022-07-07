@@ -204,7 +204,7 @@ mod tests {
                 ],
             "acp_create_class": ["object", "person", "system", "domain_info"],
             "acp_create_attr": [
-                "name", "class", "description", "displayname", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"
+                "name", "class", "description", "displayname", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der", "version"
                 ]
         }
     }"#;
@@ -343,7 +343,8 @@ mod tests {
                 "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
-                "es256_private_key_der" : ["MTIz"]
+                "es256_private_key_der" : ["MTIz"],
+                "version": ["1"]
             }
         }"#,
         );
@@ -384,7 +385,8 @@ mod tests {
                 "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
-                "es256_private_key_der" : ["MTIz"]
+                "es256_private_key_der" : ["MTIz"],
+                "version": ["1"]
             }
         }"#,
         );
@@ -415,7 +417,8 @@ mod tests {
                 "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
-                "es256_private_key_der" : ["MTIz"]
+                "es256_private_key_der" : ["MTIz"],
+                "version": ["1"]
             }
         }"#,
         );

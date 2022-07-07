@@ -719,7 +719,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             });
 
             if !missing_must.is_empty() {
-                admin_warn!("Validation error, the following required (must) attributes are missing - {:?}", missing_must);
+                admin_warn!(
+                    "Validation error, the following required (must) attributes are missing - {:?}",
+                    missing_must
+                );
                 return Err(SchemaError::MissingMustAttribute(missing_must));
             }
 

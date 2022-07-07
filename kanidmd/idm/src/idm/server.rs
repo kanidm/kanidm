@@ -1690,10 +1690,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&wre.ident.origin).into();
         let label = wre.label.clone();
 
-        let issuer = self
-            .qs_write
-            .get_domain_display_name()
-            .to_string();
+        let issuer = self.qs_write.get_domain_display_name().to_string();
 
         let (session, mfa_reg_next) =
             MfaRegSession::webauthn_new(origin, account, label, self.webauthn, issuer)?;
@@ -1802,10 +1799,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let origin = (&gte.ident.origin).into();
 
-        let issuer = self
-            .qs_write
-            .get_domain_display_name()
-            .to_string();
+        let issuer = self.qs_write.get_domain_display_name().to_string();
 
         let (session, next) = MfaRegSession::totp_new(origin, account, issuer).map_err(|e| {
             admin_error!("Unable to start totp MfaRegSession {:?}", e);
