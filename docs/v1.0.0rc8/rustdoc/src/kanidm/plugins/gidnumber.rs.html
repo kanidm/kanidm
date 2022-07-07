@@ -354,6 +354,9 @@
 <span id="349">349</span>
 <span id="350">350</span>
 <span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
 </pre><pre class="rust"><code><span class="comment">// A plugin that generates gid numbers on types that require them for posix</span>
 <span class="comment">// support.</span>
 
@@ -546,6 +549,7 @@
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
             <span class="macro">modlist!</span>([<span class="ident">m_pres</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_class</span>(<span class="string">&quot;posixgroup&quot;</span>))]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
                 <span class="ident">qs_write</span>,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,
@@ -578,6 +582,7 @@
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
             <span class="macro">modlist!</span>([<span class="ident">m_purge</span>(<span class="string">&quot;gidnumber&quot;</span>)]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
                 <span class="ident">qs_write</span>,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,
@@ -613,6 +618,7 @@
                 <span class="ident">m_pres</span>(<span class="string">&quot;gidnumber&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_uint32</span>(<span class="number">2000</span>))
             ]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
                 <span class="ident">qs_write</span>,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,

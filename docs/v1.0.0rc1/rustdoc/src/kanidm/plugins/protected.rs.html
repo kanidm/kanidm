@@ -436,6 +436,9 @@
 <span id="431">431</span>
 <span id="432">432</span>
 <span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
 </pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements</span>
 <span class="comment">// may only have certain modifications performed.</span>
 
@@ -702,6 +705,7 @@
                 <span class="ident">m_pres</span>(<span class="string">&quot;displayname&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_utf8s</span>(<span class="string">&quot;system test&quot;</span>)),
             ]),
             <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -732,6 +736,7 @@
                 <span class="ident">m_pres</span>(<span class="string">&quot;must&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_iutf8</span>(<span class="string">&quot;name&quot;</span>)),
             ]),
             <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -798,6 +803,7 @@
                 <span class="ident">m_pres</span>(<span class="string">&quot;domain_ssid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_utf8s</span>(<span class="string">&quot;NewExampleWifi&quot;</span>)),
             ]),
             <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }

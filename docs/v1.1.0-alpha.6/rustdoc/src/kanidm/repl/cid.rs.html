@@ -133,8 +133,30 @@
 <span id="128">128</span>
 <span id="129">129</span>
 <span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
@@ -144,6 +166,12 @@
     <span class="kw">pub</span> <span class="ident">ts</span>: <span class="ident">Duration</span>,
     <span class="kw">pub</span> <span class="ident">d_uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">s_uuid</span>: <span class="ident">Uuid</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Cid</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}-{}-{}&quot;</span>, <span class="self">self</span>.<span class="ident">ts</span>.<span class="ident">as_nanos</span>(), <span class="self">self</span>.<span class="ident">d_uuid</span>, <span class="self">self</span>.<span class="ident">s_uuid</span>)
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">Cid</span> {
@@ -163,10 +191,24 @@
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_zero</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new_count</span>(<span class="number">0</span>)
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_count</span>(<span class="ident">c</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Cid</span> {
             <span class="ident">d_uuid</span>: <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>).<span class="ident">unwrap</span>(),
             <span class="ident">s_uuid</span>: <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>).<span class="ident">unwrap</span>(),
-            <span class="ident">ts</span>: <span class="ident">Duration::new</span>(<span class="number">0</span>, <span class="number">0</span>),
+            <span class="ident">ts</span>: <span class="ident">Duration::new</span>(<span class="ident">c</span>, <span class="number">0</span>),
+        }
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_random_s_d</span>(<span class="ident">ts</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Cid</span> {
+            <span class="ident">d_uuid</span>: <span class="ident">Uuid::new_v4</span>(),
+            <span class="ident">s_uuid</span>: <span class="ident">Uuid::new_v4</span>(),
+            <span class="ident">ts</span>,
         }
     }
 

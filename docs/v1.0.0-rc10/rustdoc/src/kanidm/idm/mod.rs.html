@@ -29,6 +29,18 @@
 <span id="24">24</span>
 <span id="25">25</span>
 <span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Identity Management components that are layered ontop of the [QueryServer](crate::server::QueryServer). These allow</span>
 <span class="doccomment">//! rich and expressive events and transformations that are lowered into the correct/relevant</span>
 <span class="doccomment">//! actions in the [QueryServer](crate::server::QueryServer). Generally this is where &quot;Identity Management&quot; policy and code</span>
@@ -48,12 +60,24 @@
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthMech</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="kw">use</span> <span class="ident">std::fmt</span>;
+
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthState</span> {
     <span class="ident">Choose</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>),
     <span class="ident">Continue</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>),
     <span class="ident">Denied</span>(<span class="ident">String</span>),
     <span class="ident">Success</span>(<span class="ident">String</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">AuthState</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">AuthState::Choose</span>(<span class="ident">mechs</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Choose({:?})&quot;</span>, <span class="ident">mechs</span>),
+            <span class="ident">AuthState::Continue</span>(<span class="ident">allow</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Continue({:?})&quot;</span>, <span class="ident">allow</span>),
+            <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Denied({:?})&quot;</span>, <span class="ident">reason</span>),
+            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Success&quot;</span>),
+        }
+    }
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidm" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>

@@ -767,6 +767,27 @@
 <span id="762">762</span>
 <span id="763">763</span>
 <span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
 </pre><pre class="rust"><code><span class="macro">macro_rules!</span> <span class="ident">setup_test</span> {
     () =&gt; {{
         <span class="comment">/*
@@ -1044,6 +1065,7 @@
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_filter</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_list</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span>:<span class="ident">expr</span>,
+        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">pre_hook</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>:<span class="ident">expr</span>
     ) =&gt; {{
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">Backend</span>, <span class="ident">BackendConfig</span>};
@@ -1053,6 +1075,14 @@
 
         <span class="macro">spanned!</span>(<span class="string">&quot;plugins::macros::run_modify_test&quot;</span>, {
             <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>);
+
+            {
+                <span class="kw">let</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
+                <span class="macro">spanned!</span>(<span class="string">&quot;plugins::macros::run_modify_test -&gt; pre_test hook&quot;</span>, {
+                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">pre_hook</span>(<span class="kw-2">&amp;</span><span class="ident">qs_write</span>)
+                });
+                <span class="ident">qs_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;commit failure!&quot;</span>);
+            }
 
             <span class="kw">let</span> <span class="ident">me</span> <span class="op">=</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span> {
                 <span class="prelude-val">None</span> =&gt; <span class="kw">unsafe</span> { <span class="ident">ModifyEvent::new_internal_invalid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_filter</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_list</span>) },
@@ -1136,6 +1166,18 @@
             <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
             <span class="macro">assert!</span>(<span class="ident">ver</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>);
         });
+    }};
+}
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="macro">macro_rules!</span> <span class="ident">run_entrychangelog_test</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>:<span class="ident">expr</span>) =&gt; {{
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="ident">schema_outer</span> <span class="op">=</span> <span class="ident">Schema::new</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to init schema&quot;</span>);
+
+        <span class="kw">let</span> <span class="ident">schema_txn</span> <span class="op">=</span> <span class="ident">schema_outer</span>.<span class="ident">read</span>();
+
+        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>(<span class="kw-2">&amp;</span><span class="ident">schema_txn</span>)
     }};
 }
 

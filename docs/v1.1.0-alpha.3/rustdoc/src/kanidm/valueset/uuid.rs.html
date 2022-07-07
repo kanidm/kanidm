@@ -293,6 +293,10 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaAttribute</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset::uuid_to_proto_string</span>;
@@ -469,8 +473,12 @@
     <span class="kw">where</span>
         <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Uuid</span><span class="op">&gt;</span>,
     {
-        <span class="kw">let</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-        <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetRefer</span> { <span class="ident">set</span> }))
+        <span class="kw">let</span> <span class="ident">set</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
+        <span class="kw">if</span> <span class="ident">set</span>.<span class="ident">is_empty</span>() {
+            <span class="prelude-val">None</span>
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetRefer</span> { <span class="ident">set</span> }))
+        }
     }
 }
 

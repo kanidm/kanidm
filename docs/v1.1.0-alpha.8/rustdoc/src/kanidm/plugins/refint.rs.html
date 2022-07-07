@@ -765,6 +765,21 @@
 <span id="760">760</span>
 <span id="761">761</span>
 <span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity</span>
 <span class="comment">//</span>
 <span class="comment">// Given an entry, modification or change, ensure that all referential links</span>
@@ -1171,6 +1186,7 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -1201,6 +1217,7 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -1249,6 +1266,7 @@
                 ),
             ]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -1286,6 +1304,7 @@
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
             <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>))]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -1315,6 +1334,7 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -1325,7 +1345,7 @@
         <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
-                &quot;class&quot;: [&quot;group&quot;, &quot;recycled&quot;],
+                &quot;class&quot;: [&quot;group&quot;],
                 &quot;name&quot;: [&quot;testgroup_a&quot;],
                 &quot;description&quot;: [&quot;testgroup&quot;],
                 &quot;uuid&quot;: [&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;]
@@ -1356,6 +1376,16 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+                <span class="comment">// Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a</span>
+                <span class="kw">let</span> <span class="ident">de_sin</span> <span class="op">=</span> <span class="kw">unsafe</span> {
+                    <span class="ident"><span class="kw">crate</span>::event::DeleteEvent::new_internal_invalid</span>(<span class="macro">filter!</span>(<span class="macro">f_or!</span>([<span class="ident">f_eq</span>(
+                        <span class="string">&quot;name&quot;</span>,
+                        <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>)
+                    )])))
+                };
+                <span class="macro">assert!</span>(<span class="ident">qs</span>.<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="ident">de_sin</span>).<span class="ident">is_ok</span>());
+            },
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }

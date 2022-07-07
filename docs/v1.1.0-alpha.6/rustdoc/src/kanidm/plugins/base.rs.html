@@ -682,6 +682,9 @@
 <span id="677">677</span>
 <span id="678">678</span>
 <span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plugins::Plugin</span>;
 <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
@@ -1204,6 +1207,7 @@
                 <span class="ident">Value::from</span>(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>)
             )]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -1233,6 +1237,7 @@
                 <span class="ident">PartialValue::new_uuids</span>(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
@@ -1259,6 +1264,7 @@
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))),
             <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>))]),
             <span class="prelude-val">None</span>,
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
             <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }

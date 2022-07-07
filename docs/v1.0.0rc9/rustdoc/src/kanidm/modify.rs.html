@@ -243,7 +243,6 @@
 <span id="238">238</span>
 <span id="239">239</span>
 <span id="240">240</span>
-<span id="241">241</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Modification expressions and validation. This is how `ModifyEvents` store and</span>
 <span class="doccomment">//! express the series of Modifications that should be applied. These are expressed</span>
 <span class="doccomment">//! as &quot;states&quot; on what attribute-values should appear as within the `Entry`</span>
@@ -262,12 +261,12 @@
 <span class="kw">use</span> <span class="ident">smartstring::alias::String</span> <span class="kw">as</span> <span class="ident">AttrString</span>;
 <span class="kw">use</span> <span class="ident">std::slice</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyValid</span>;
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyInvalid</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Modify</span> {
     <span class="comment">// This value *should* exist.</span>
@@ -305,7 +304,7 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">VALID</span><span class="op">&gt;</span> {
     <span class="comment">// This is never read, it&#39;s just used for state machine enforcement.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
@@ -453,8 +452,7 @@
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">into_valid</span>(<span class="self">self</span>) -&gt; <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">into_valid</span>(<span class="self">self</span>) -&gt; <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span> {
         <span class="ident">ModifyList</span> {
             <span class="ident">valid</span>: <span class="ident">ModifyValid</span>,
             <span class="ident">mods</span>: <span class="self">self</span>.<span class="ident">mods</span>,

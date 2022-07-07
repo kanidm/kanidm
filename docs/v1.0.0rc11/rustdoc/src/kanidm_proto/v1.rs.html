@@ -994,6 +994,11 @@
 <span id="989">989</span>
 <span id="990">990</span>
 <span id="991">991</span>
+<span id="992">992</span>
+<span id="993">993</span>
+<span id="994">994</span>
+<span id="995">995</span>
+<span id="996">996</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
@@ -1053,6 +1058,8 @@
     <span class="ident">SqliteIntegrityFailure</span>,
     <span class="ident">BackendAllIdsSync</span>,
     <span class="ident">BackendIndexSync</span>,
+    <span class="ident">ChangelogDesynchronised</span>(<span class="ident">u64</span>),
+    <span class="ident">RuvInconsistent</span>(<span class="ident">String</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
@@ -1139,6 +1146,9 @@
     <span class="ident">QueueDisconnected</span>,
     <span class="ident">Webauthn</span>,
     <span class="ident">Wait</span>(<span class="ident">time::OffsetDateTime</span>),
+    <span class="ident">ReplReplayFailure</span>,
+    <span class="ident">ReplEntryNotChanged</span>,
+    <span class="ident">ReplInvalidRUVState</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">OperationError</span> {
