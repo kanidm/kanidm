@@ -520,6 +520,7 @@ mod tests {
                 Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -549,6 +550,7 @@ mod tests {
                 PartialValue::new_uuids("f15a7219-1d15-44e3-a7b4-bec899c07788").unwrap()
             )]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -575,6 +577,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("uuid"))]),
             None,
+            |_| {},
             |_| {}
         );
     }

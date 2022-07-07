@@ -598,7 +598,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 let entry = self.qs_read.internal_search_uuid(&euuid)?;
 
                 security_info!(
-                    ?entry,
+                    name = %init.name,
                     uuid = %euuid,
                     "Initiating Authentication Session",
                 );

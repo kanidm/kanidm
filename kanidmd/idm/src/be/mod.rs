@@ -28,6 +28,12 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use uuid::Uuid;
 
+use crate::repl::cid::Cid;
+use crate::repl::ruv::{
+    ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
+    ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
+};
+
 pub mod dbentry;
 pub mod dbvalue;
 mod idl_arc_sqlite;
@@ -104,17 +110,24 @@ impl BackendConfig {
 
 #[derive(Clone)]
 pub struct Backend {
+    /// This is the actual datastorage layer.
     idlayer: Arc<IdlArcSqlite>,
     /// This is a copy-on-write cache of the index metadata that has been
     /// extracted from attributes set, in the correct format for the backend
-    /// to consume.
+    /// to consume. We use it to extract indexes from entries during write paths
+    /// and to allow the front end to know what indexes exist during a read.
     idxmeta: Arc<CowCell<IdxMeta>>,
+    /// The current state of the replication update vector. This is effectively a
+    /// time series index of the full list of all changelog entries and what entries
+    /// that are part of that change.
+    ruv: Arc<ReplicationUpdateVector>,
     cfg: BackendConfig,
 }
 
 pub struct BackendReadTransaction<'a> {
     idlayer: UnsafeCell<IdlArcSqliteReadTransaction<'a>>,
     idxmeta: CowCellReadTxn<IdxMeta>,
+    ruv: UnsafeCell<ReplicationUpdateVectorReadTransaction<'a>>,
 }
 
 unsafe impl<'a> Sync for BackendReadTransaction<'a> {}
@@ -124,6 +137,7 @@ unsafe impl<'a> Send for BackendReadTransaction<'a> {}
 pub struct BackendWriteTransaction<'a> {
     idlayer: UnsafeCell<IdlArcSqliteWriteTransaction<'a>>,
     idxmeta: CowCellReadTxn<IdxMeta>,
+    ruv: UnsafeCell<ReplicationUpdateVectorWriteTransaction<'a>>,
     idxmeta_wr: CowCellWriteTxn<'a, IdxMeta>,
 }
 
@@ -149,9 +163,12 @@ impl IdRawEntry {
 
 pub trait BackendTransaction {
     type IdlLayerType: IdlArcSqliteTransaction;
-
     #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut Self::IdlLayerType;
+
+    type RuvType: ReplicationUpdateVectorTransaction;
+    #[allow(clippy::mut_from_ref)]
+    fn get_ruv(&self) -> &mut Self::RuvType;
 
     fn get_idxmeta_ref(&self) -> &IdxMeta;
 
@@ -788,6 +805,21 @@ pub trait BackendTransaction {
         }
     }
 
+    fn verify_ruv(&self, results: &mut Vec<Result<(), ConsistencyError>>) {
+        // The way we verify this is building a whole second RUV and then comparing it.
+        let idl = IdList::AllIds;
+        let entries = match self.get_idlayer().get_identry(&idl) {
+            Ok(ent) => ent,
+            Err(e) => {
+                results.push(Err(ConsistencyError::Unknown));
+                admin_error!(?e, "get_identry failed");
+                return;
+            }
+        };
+
+        self.get_ruv().verify(&entries, results);
+    }
+
     fn backup(&self, dst_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
@@ -867,6 +899,13 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
         unsafe { &mut (*self.idlayer.get()) }
     }
 
+    type RuvType = ReplicationUpdateVectorReadTransaction<'a>;
+
+    #[allow(clippy::mut_from_ref)]
+    fn get_ruv(&self) -> &mut ReplicationUpdateVectorReadTransaction<'a> {
+        unsafe { &mut (*self.ruv.get()) }
+    }
+
     fn get_idxmeta_ref(&self) -> &IdxMeta {
         &self.idxmeta
     }
@@ -901,6 +940,13 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
         unsafe { &mut (*self.idlayer.get()) }
     }
 
+    type RuvType = ReplicationUpdateVectorWriteTransaction<'a>;
+
+    #[allow(clippy::mut_from_ref)]
+    fn get_ruv(&self) -> &mut ReplicationUpdateVectorWriteTransaction<'a> {
+        unsafe { &mut (*self.ruv.get()) }
+    }
+
     fn get_idxmeta_ref(&self) -> &IdxMeta {
         &self.idxmeta
     }
@@ -909,6 +955,7 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 impl<'a> BackendWriteTransaction<'a> {
     pub fn create(
         &self,
+        cid: &Cid,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         spanned!("be::create", {
@@ -916,6 +963,19 @@ impl<'a> BackendWriteTransaction<'a> {
                 admin_error!("No entries provided to BE to create, invalid server call!");
                 return Err(OperationError::EmptyRequest);
             }
+
+            // Check that every entry has a change associated
+            // that matches the cid?
+            entries.iter().try_for_each(|e| {
+                if e.get_changelog().contains_tail_cid(cid) {
+                    Ok(())
+                } else {
+                    admin_error!(
+                        "Entry changelog does not contain a change related to this transaction"
+                    );
+                    Err(OperationError::ReplEntryNotChanged)
+                }
+            })?;
 
             let idlayer = self.get_idlayer();
             // Now, assign id's to all the new entries.
@@ -928,6 +988,12 @@ impl<'a> BackendWriteTransaction<'a> {
                     e.into_sealed_committed_id(id_max)
                 })
                 .collect();
+
+            // All good, lets update the RUV.
+            // This auto compresses.
+            let ruv_idl = IDLBitRange::from_iter(c_entries.iter().map(|e| e.get_id()));
+
+            self.get_ruv().insert_change(cid.clone(), ruv_idl)?;
 
             idlayer.write_identries(c_entries.iter())?;
 
@@ -944,8 +1010,9 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn modify(
         &self,
+        cid: &Cid,
         pre_entries: &[Arc<EntrySealedCommitted>],
-        post_entries: &[Entry<EntrySealed, EntryCommitted>],
+        post_entries: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
         spanned!("be::modify", {
             if post_entries.is_empty() || pre_entries.is_empty() {
@@ -955,36 +1022,21 @@ impl<'a> BackendWriteTransaction<'a> {
 
             assert!(post_entries.len() == pre_entries.len());
 
-            /*
-            // Assert the Id's exist on the entry, and serialise them.
-            // Now, that means the ID must be > 0!!!
-            let ser_entries: Result<Vec<IdEntry>, _> = post_entries
-                .iter()
-                .map(|e| {
-                    let id = i64::try_from(e.get_id())
-                        .map_err(|_| OperationError::InvalidEntryId)
-                        .and_then(|id| {
-                            if id == 0 {
-                                Err(OperationError::InvalidEntryId)
-                            } else {
-                                Ok(id)
-                            }
-                        })?;
+            post_entries.iter().try_for_each(|e| {
+                if e.get_changelog().contains_tail_cid(cid) {
+                    Ok(())
+                } else {
+                    admin_error!(
+                        "Entry changelog does not contain a change related to this transaction"
+                    );
+                    Err(OperationError::ReplEntryNotChanged)
+                }
+            })?;
 
-                    Ok(IdEntry { id, data: e.clone() })
-                })
-                .collect();
-
-            let ser_entries = try_audit!( ser_entries);
-
-            // Simple: If the list of id's is not the same as the input list, we are missing id's
-            //
-            // The entry state checks prevent this from really ever being triggered, but we
-            // still prefer paranoia :)
-            if post_entries.len() != ser_entries.len() {
-                return Err(OperationError::InvalidEntryState);
-            }
-            */
+            // All good, lets update the RUV.
+            // This auto compresses.
+            let ruv_idl = IDLBitRange::from_iter(post_entries.iter().map(|e| e.get_id()));
+            self.get_ruv().insert_change(cid.clone(), ruv_idl)?;
 
             // Now, given the list of id's, update them
             self.get_idlayer().write_identries(post_entries.iter())?;
@@ -998,23 +1050,81 @@ impl<'a> BackendWriteTransaction<'a> {
         })
     }
 
-    pub fn delete(&self, entries: &[Arc<EntrySealedCommitted>]) -> Result<(), OperationError> {
-        spanned!("be::delete", {
+    pub fn reap_tombstones(&self, cid: &Cid) -> Result<usize, OperationError> {
+        spanned!("be::reap_tombstones", {
+            // We plan to clear the RUV up to this cid. So we need to build an IDL
+            // of all the entries we need to examine.
+            let idl = self.get_ruv().trim_up_to(cid).map_err(|e| {
+                admin_error!(?e, "failed to trim RUV to {:?}", cid);
+                e
+            })?;
+
+            let entries = self
+                .get_idlayer()
+                .get_identry(&IdList::Indexed(idl))
+                .map_err(|e| {
+                    admin_error!(?e, "get_identry failed");
+                    e
+                })?;
+
             if entries.is_empty() {
-                admin_error!("No entries provided to BE to delete, invalid server call!");
-                return Err(OperationError::EmptyRequest);
+                admin_info!("No entries affected - reap_tombstones operation success");
+                return Ok(0);
             }
 
-            // Assert the id's exist on the entry.
-            let id_list = entries.iter().map(|e| e.get_id());
+            // Now that we have a list of entries we need to partition them into
+            // two sets. The entries that are tombstoned and ready to reap_tombstones, and
+            // the entries that need to have their change logs trimmed.
 
-            // Now, given the list of id's, delete them.
-            self.get_idlayer().delete_identry(id_list)?;
+            // First we trim changelogs. Go through each entry, and trim the CL, and write it back.
+            let mut entries: Vec<_> = entries.iter().map(|er| er.as_ref().clone()).collect();
+
+            entries
+                .iter_mut()
+                .try_for_each(|e| e.get_changelog_mut().trim_up_to(cid))?;
+
+            // Write down the cl trims
+            self.get_idlayer().write_identries(entries.iter())?;
+
+            let (tombstones, leftover): (Vec<_>, Vec<_>) = entries
+                .into_iter()
+                .partition(|e| e.get_changelog().can_delete());
+
+            // Assert that anything leftover still either is *alive* OR is a tombstone
+            // and has entries in the RUV!
+            let ruv_idls = self.get_ruv().ruv_idls();
+
+            if !leftover
+                .iter()
+                .all(|e| e.get_changelog().is_live() || ruv_idls.contains(e.get_id()))
+            {
+                admin_error!("Left over entries may be orphaned due to missing RUV entries");
+                return Err(OperationError::ReplInvalidRUVState);
+            }
+
+            // Now setup to reap_tombstones the tombstones. Remember, in the post cleanup, it's could
+            // now have been trimmed to a point we can purge them!
+
+            // Assert the id's exist on the entry.
+            let id_list: IDLBitRange = tombstones.iter().map(|e| e.get_id()).collect();
+
+            // Ensure nothing here exists in the RUV index, else it means
+            // we didn't trim properly, or some other state violation has occured.
+            if !((&ruv_idls & &id_list).is_empty()) {
+                admin_error!("RUV still contains entries that are going to be removed.");
+                return Err(OperationError::ReplInvalidRUVState);
+            }
+
+            // Now, given the list of id's, reap_tombstones them.
+            let sz = id_list.len();
+            self.get_idlayer().delete_identry(id_list.into_iter())?;
 
             // Finally, purge the indexes from the entries we removed.
-            entries
+            tombstones
                 .iter()
-                .try_for_each(|e| self.entry_index(Some(e), None))
+                .try_for_each(|e| self.entry_index(Some(e), None))?;
+
+            Ok(sz)
         })
     }
 
@@ -1416,17 +1526,41 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
+    pub fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
+        // Rebuild the ruv!
+        spanned!("server::ruv_rebuild", {
+            // For now this has to read from all the entries in the DB, but in the future
+            // we'll actually store this properly (?). If it turns out this is really fast
+            // we may just rebuild this always on startup.
+
+            // NOTE: An important detail is that we don't rely on indexes here!
+
+            let idl = IdList::AllIds;
+            let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
+                admin_error!(?e, "get_identry failed");
+                e
+            })?;
+
+            self.get_ruv().rebuild(&entries)?;
+
+            Ok(())
+        })
+    }
+
     pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
             idlayer,
             idxmeta: _,
+            ruv,
             idxmeta_wr,
         } = self;
 
         // Unwrap the Cell we have finished with it.
         let idlayer = idlayer.into_inner();
+        let ruv = ruv.into_inner();
 
         idlayer.commit().map(|()| {
+            ruv.commit();
             idxmeta_wr.commit();
         })
     }
@@ -1539,12 +1673,18 @@ impl Backend {
             })
             .collect();
 
+        // RUV-TODO
+        // Load the replication update vector here. For now we rebuild every startup
+        // from the database.
+        let ruv = Arc::new(ReplicationUpdateVector::default());
+
         // this has a ::memory() type, but will path == "" work?
         spanned!("be::new", {
             let idlayer = Arc::new(IdlArcSqlite::new(&cfg, vacuum)?);
             let be = Backend {
                 cfg,
                 idlayer,
+                ruv,
                 idxmeta: Arc::new(CowCell::new(IdxMeta::new(idxkeys))),
             };
 
@@ -1552,17 +1692,26 @@ impl Backend {
             // In this case we can use an empty idx meta because we don't
             // access any parts of
             // the indexing subsystem here.
-            let r = {
-                let mut idl_write = be.idlayer.write();
-                idl_write.setup().and_then(|_| idl_write.commit())
-            };
+            let mut idl_write = be.idlayer.write();
+            idl_write
+                .setup()
+                .and_then(|_| idl_write.commit())
+                .map_err(|e| {
+                    admin_error!(?e, "Failed to setup idlayer");
+                    e
+                })?;
 
-            trace!("be new setup: {:?}", r);
+            // Now rebuild the ruv.
+            let mut be_write = be.write();
+            be_write
+                .ruv_rebuild()
+                .and_then(|_| be_write.commit())
+                .map_err(|e| {
+                    admin_error!(?e, "Failed to reload ruv");
+                    e
+                })?;
 
-            match r {
-                Ok(_) => Ok(be),
-                Err(e) => Err(e),
-            }
+            Ok(be)
         })
     }
 
@@ -1579,6 +1728,7 @@ impl Backend {
         BackendReadTransaction {
             idlayer: UnsafeCell::new(self.idlayer.read()),
             idxmeta: self.idxmeta.read(),
+            ruv: UnsafeCell::new(self.ruv.read()),
         }
     }
 
@@ -1586,6 +1736,7 @@ impl Backend {
         BackendWriteTransaction {
             idlayer: UnsafeCell::new(self.idlayer.write()),
             idxmeta: self.idxmeta.read(),
+            ruv: UnsafeCell::new(self.ruv.write()),
             idxmeta_wr: self.idxmeta.write(),
         }
     }
@@ -1628,8 +1779,16 @@ mod tests {
     use super::{DbBackup, IdxKey};
     use crate::identity::Limits;
     use crate::prelude::*;
+    use crate::repl::cid::Cid;
     use crate::value::{IndexType, PartialValue, Value};
     use std::time::Duration;
+
+    lazy_static! {
+        static ref CID_ZERO: Cid = unsafe { Cid::new_zero() };
+        static ref CID_ONE: Cid = unsafe { Cid::new_count(1) };
+        static ref CID_TWO: Cid = unsafe { Cid::new_count(2) };
+        static ref CID_THREE: Cid = unsafe { Cid::new_count(3) };
+    }
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -1683,7 +1842,7 @@ mod tests {
         ($be:expr, $ent:expr) => {{
             let ei = unsafe { $ent.clone().into_sealed_committed() };
             let filt = unsafe {
-                ei.filter_from_attrs(&vec![AttrString::from("userid")])
+                ei.filter_from_attrs(&vec![AttrString::from("uuid")])
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
@@ -1725,7 +1884,7 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             trace!("Simple Create");
 
-            let empty_result = be.create(Vec::new());
+            let empty_result = be.create(&CID_ZERO, Vec::new());
             trace!("{:?}", empty_result);
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
@@ -1734,7 +1893,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e = unsafe { e.into_sealed_new() };
 
-            let single_result = be.create(vec![e.clone()]);
+            let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
             assert!(single_result.is_ok());
 
@@ -1753,7 +1912,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e = unsafe { e.into_sealed_new() };
 
-            let single_result = be.create(vec![e.clone()]);
+            let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
@@ -1790,7 +1949,7 @@ mod tests {
             let ve1 = unsafe { e1.clone().into_sealed_new() };
             let ve2 = unsafe { e2.clone().into_sealed_new() };
 
-            assert!(be.create(vec![ve1, ve2]).is_ok());
+            assert!(be.create(&CID_ZERO, vec![ve1, ve2]).is_ok());
             assert!(entry_exists!(be, e1));
             assert!(entry_exists!(be, e2));
 
@@ -1810,9 +1969,11 @@ mod tests {
             // This is now impossible due to the state machine design.
             // However, with some unsafe ....
             let ue1 = unsafe { e1.clone().into_sealed_committed() };
-            assert!(be.modify(&vec![Arc::new(ue1.clone())], &vec![ue1]).is_err());
+            assert!(be
+                .modify(&CID_ZERO, &vec![Arc::new(ue1.clone())], &vec![ue1])
+                .is_err());
             // Modify none
-            assert!(be.modify(&vec![], &vec![]).is_err());
+            assert!(be.modify(&CID_ZERO, &vec![], &vec![]).is_err());
 
             // Make some changes to r1, r2.
             let pre1 = unsafe { Arc::new(r1.clone().into_sealed_committed()) };
@@ -1826,7 +1987,9 @@ mod tests {
             let vr2 = unsafe { r2.into_sealed_committed() };
 
             // Modify single
-            assert!(be.modify(&vec![pre1.clone()], &vec![vr1.clone()]).is_ok());
+            assert!(be
+                .modify(&CID_ZERO, &vec![pre1.clone()], &vec![vr1.clone()])
+                .is_ok());
             // Assert no other changes
             assert!(entry_attr_pres!(be, vr1, "desc"));
             assert!(!entry_attr_pres!(be, vr2, "desc"));
@@ -1834,6 +1997,7 @@ mod tests {
             // Modify both
             assert!(be
                 .modify(
+                    &CID_ZERO,
                     &vec![Arc::new(vr1.clone()), pre2.clone()],
                     &vec![vr1.clone(), vr2.clone()]
                 )
@@ -1867,7 +2031,7 @@ mod tests {
             let ve2 = unsafe { e2.clone().into_sealed_new() };
             let ve3 = unsafe { e3.clone().into_sealed_new() };
 
-            assert!(be.create(vec![ve1, ve2, ve3]).is_ok());
+            assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
             assert!(entry_exists!(be, e2));
             assert!(entry_exists!(be, e3));
@@ -1882,36 +2046,60 @@ mod tests {
             let r2 = results.remove(0);
             let r3 = results.remove(0);
 
-            // Delete one
-            assert!(be.delete(&vec![r1.clone()]).is_ok());
-            assert!(!entry_exists!(be, r1.as_ref()));
+            // Deletes nothing, all entries are live.
+            assert!(matches!(be.reap_tombstones(&CID_ZERO), Ok(0)));
 
-            // delete none (no match filter)
-            assert!(be.delete(&vec![]).is_err());
+            // Put them into the tombstone state, and write that down.
+            // This sets up the RUV with the changes.
+            let r1_ts = unsafe { r1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
 
-            // Delete with no id
-            // WARNING: Normally, this isn't possible, but we are pursposefully breaking
-            // the state machine rules here!!!!
-            let mut e4: Entry<EntryInit, EntryNew> = Entry::new();
-            e4.add_ava("userid", Value::from("amy"));
-            e4.add_ava("uuid", Value::from("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"));
+            assert!(be
+                .modify(&CID_ONE, &vec![r1.clone(),], &vec![r1_ts.clone()])
+                .is_ok());
 
-            let ve4 = unsafe { Arc::new(e4.clone().into_sealed_committed()) };
+            let r2_ts = unsafe { r2.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
+            let r3_ts = unsafe { r3.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
 
-            assert!(be.delete(&vec![ve4]).is_err());
+            assert!(be
+                .modify(
+                    &CID_TWO,
+                    &vec![r2.clone(), r3.clone()],
+                    &vec![r2_ts.clone(), r3_ts.clone()]
+                )
+                .is_ok());
 
-            assert!(entry_exists!(be, r2.as_ref()));
-            assert!(entry_exists!(be, r3.as_ref()));
+            // The entry are now tombstones, but is still in the ruv. This is because we
+            // targeted CID_ZERO, not ONE.
+            assert!(matches!(be.reap_tombstones(&CID_ZERO), Ok(0)));
 
-            // delete batch
-            assert!(be.delete(&vec![r2.clone(), r3.clone()]).is_ok());
+            assert!(entry_exists!(be, r1_ts));
+            assert!(entry_exists!(be, r2_ts));
+            assert!(entry_exists!(be, r3_ts));
 
-            assert!(!entry_exists!(be, r2.as_ref()));
-            assert!(!entry_exists!(be, r3.as_ref()));
+            assert!(matches!(be.reap_tombstones(&CID_ONE), Ok(0)));
 
-            // delete none (no entries left)
-            // see fn delete for why this is ok, not err
-            assert!(be.delete(&vec![r2.clone(), r3.clone()]).is_ok());
+            assert!(entry_exists!(be, r1_ts));
+            assert!(entry_exists!(be, r2_ts));
+            assert!(entry_exists!(be, r3_ts));
+
+            assert!(matches!(be.reap_tombstones(&CID_TWO), Ok(1)));
+
+            assert!(!entry_exists!(be, r1_ts));
+            assert!(entry_exists!(be, r2_ts));
+            assert!(entry_exists!(be, r3_ts));
+
+            assert!(matches!(be.reap_tombstones(&CID_THREE), Ok(2)));
+
+            assert!(!entry_exists!(be, r1_ts));
+            assert!(!entry_exists!(be, r2_ts));
+            assert!(!entry_exists!(be, r3_ts));
+
+            // Nothing left
+            assert!(matches!(be.reap_tombstones(&CID_THREE), Ok(0)));
+
+            assert!(!entry_exists!(be, r1_ts));
+            assert!(!entry_exists!(be, r2_ts));
+            assert!(!entry_exists!(be, r3_ts));
         });
     }
 
@@ -1945,7 +2133,7 @@ mod tests {
             let ve2 = unsafe { e2.clone().into_sealed_new() };
             let ve3 = unsafe { e3.clone().into_sealed_new() };
 
-            assert!(be.create(vec![ve1, ve2, ve3]).is_ok());
+            assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
             assert!(entry_exists!(be, e2));
             assert!(entry_exists!(be, e3));
@@ -2000,7 +2188,7 @@ mod tests {
             let ve2 = unsafe { e2.clone().into_sealed_new() };
             let ve3 = unsafe { e3.clone().into_sealed_new() };
 
-            assert!(be.create(vec![ve1, ve2, ve3]).is_ok());
+            assert!(be.create(&CID_ZERO, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(be, e1));
             assert!(entry_exists!(be, e2));
             assert!(entry_exists!(be, e3));
@@ -2089,7 +2277,7 @@ mod tests {
             e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
-            be.create(vec![e1.clone(), e2.clone()]).unwrap();
+            be.create(&CID_ZERO, vec![e1.clone(), e2.clone()]).unwrap();
 
             // purge indexes
             be.purge_idxs().unwrap();
@@ -2181,8 +2369,9 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(vec![e1.clone()]).unwrap();
-            let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
+            let rset = be.create(&CID_ZERO, vec![e1.clone()]).unwrap();
+            let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
+            let e1 = rset.pop().unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
 
@@ -2203,8 +2392,12 @@ mod tests {
             assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::from("william"))));
             assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
 
-            // == Now we delete, and assert we removed the items.
-            be.delete(&rset).unwrap();
+            // == Now we reap_tombstones, and assert we removed the items.
+            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            assert!(be
+                .modify(&CID_ONE, &vec![e1.clone()], &vec![e1_ts.clone()])
+                .is_ok());
+            be.reap_tombstones(&CID_TWO).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
 
@@ -2249,12 +2442,25 @@ mod tests {
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
             let e3 = unsafe { e3.into_sealed_new() };
 
-            let mut rset = be.create(vec![e1.clone(), e2.clone(), e3.clone()]).unwrap();
+            let mut rset = be
+                .create(&CID_ZERO, vec![e1.clone(), e2.clone(), e3.clone()])
+                .unwrap();
             rset.remove(1);
-            let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
+            let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
+            let e1 = rset.pop().unwrap();
+            let e3 = rset.pop().unwrap();
 
             // Now remove e1, e3.
-            be.delete(&rset).unwrap();
+            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let e3_ts = unsafe { e3.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            assert!(be
+                .modify(
+                    &CID_ONE,
+                    &vec![e1.clone(), e3.clone()],
+                    &vec![e1_ts.clone(), e3_ts.clone()]
+                )
+                .is_ok());
+            be.reap_tombstones(&CID_TWO).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
 
@@ -2303,7 +2509,7 @@ mod tests {
             e1.add_ava("ta", Value::from("test"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(vec![e1.clone()]).unwrap();
+            let rset = be.create(&CID_ZERO, vec![e1.clone()]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
@@ -2317,7 +2523,7 @@ mod tests {
 
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
-            be.modify(&rset, &vec![ce1]).unwrap();
+            be.modify(&CID_ZERO, &rset, &vec![ce1]).unwrap();
 
             // Now check the idls
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
@@ -2349,7 +2555,7 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(vec![e1.clone()]).unwrap();
+            let rset = be.create(&CID_ZERO, vec![e1.clone()]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
@@ -2359,7 +2565,7 @@ mod tests {
             ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
-            be.modify(&rset, &vec![ce1]).unwrap();
+            be.modify(&CID_ZERO, &rset, &vec![ce1]).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
 
@@ -2412,7 +2618,7 @@ mod tests {
             e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
             let e2 = unsafe { e2.into_sealed_new() };
 
-            let _rset = be.create(vec![e1.clone(), e2.clone()]).unwrap();
+            let _rset = be.create(&CID_ZERO, vec![e1.clone(), e2.clone()]).unwrap();
             // Test fully unindexed
             let f_un =
                 unsafe { filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william"))) };
@@ -2729,7 +2935,9 @@ mod tests {
             e3.add_ava("tb", Value::from("2"));
             let e3 = unsafe { e3.into_sealed_new() };
 
-            let _rset = be.create(vec![e1.clone(), e2.clone(), e3.clone()]).unwrap();
+            let _rset = be
+                .create(&CID_ZERO, vec![e1.clone(), e2.clone(), e3.clone()])
+                .unwrap();
 
             // If the slopes haven't been generated yet, there are some hardcoded values
             // that we can use instead. They aren't generated until a first re-index.
@@ -2813,7 +3021,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
             let e = unsafe { e.into_sealed_new() };
-            let single_result = be.create(vec![e.clone()]);
+            let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
             assert!(single_result.is_ok());
             let filt = unsafe {
@@ -2849,7 +3057,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
             let e = unsafe { e.into_sealed_new() };
-            let single_result = be.create(vec![e.clone()]);
+            let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
 
             let filt = unsafe {
@@ -2907,7 +3115,7 @@ mod tests {
             e.add_ava("nonexist", Value::from("x"));
             e.add_ava("nonexist", Value::from("y"));
             let e = unsafe { e.into_sealed_new() };
-            let single_result = be.create(vec![e.clone()]);
+            let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
 
             // Reindex so we have things in place for our query

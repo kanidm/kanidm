@@ -132,17 +132,14 @@ impl ValueSetT for ValueSetCredential {
         )
     }
 
-    fn equal(&self, _other: &ValueSet) -> bool {
+    fn equal(&self, other: &ValueSet) -> bool {
         // Looks like we may not need this?
-        false
-        /*
         if let Some(other) = other.as_credential_map() {
             &self.map == other
         } else {
-            debug_assert!(false);
+            // debug_assert!(false);
             false
         }
-        */
     }
 
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {

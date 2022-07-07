@@ -404,6 +404,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -434,6 +435,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -482,6 +484,7 @@ mod tests {
                 ),
             ]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -519,6 +522,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"))]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -548,6 +552,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -558,7 +563,7 @@ mod tests {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["group", "recycled"],
+                "class": ["group"],
                 "name": ["testgroup_a"],
                 "description": ["testgroup"],
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
@@ -589,6 +594,16 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
+            |qs: &QueryServerWriteTransaction| {
+                // Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a
+                let de_sin = unsafe {
+                    crate::event::DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+                        "name",
+                        PartialValue::new_iname("testgroup_a")
+                    )])))
+                };
+                assert!(qs.delete(&de_sin).is_ok());
+            },
             |_| {}
         );
     }

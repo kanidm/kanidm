@@ -49,37 +49,54 @@ fn do_memberof(
     tgte.add_ava("class", CLASS_MEMBEROF.clone());
     // Clear the dmo + mos, we will recreate them now.
     // This is how we handle deletes/etc.
-    tgte.pop_ava("memberof");
-    tgte.pop_ava("directmemberof");
+    tgte.purge_ava("memberof");
+    tgte.purge_ava("directmemberof");
+
+    // What are our direct and indirect mos?
+    let dmo = ValueSetRefer::from_iter(groups.iter().map(|g| g.get_uuid()));
+
+    let mut mo = ValueSetRefer::from_iter(
+        groups
+            .iter()
+            .filter_map(|g| {
+                g.get_ava_set("memberof")
+                    .and_then(|s| s.as_refer_set())
+                    .map(|s| s.iter())
+            })
+            .flatten()
+            .copied(),
+    );
+
     // Add all the direct mo's and mos.
-    let r: Result<(), _> = groups.iter().try_for_each(|g| {
-        // TODO: Change add_ava to remove this alloc/clone.
-        let dmo = Value::new_refer(g.get_uuid());
-        tgte.add_ava("directmemberof", dmo.clone());
-        tgte.add_ava("memberof", dmo);
+    if let Some(dmo) = dmo {
+        // We need to clone this else type checker gets real sad.
+        tgte.set_ava_set("directmemberof", dmo.clone());
 
-        if let Some(vs) = g.get_ava_set("memberof") {
-            tgte.merge_ava("memberof", vs)
+        if let Some(mo) = &mut mo {
+            let dmo = dmo as ValueSet;
+            mo.merge(&dmo)?;
         } else {
-            Ok(())
-        }
-    });
+            // Means MO is empty, so we need to duplicate dmo to allow things to
+            // proceed.
+            mo = Some(dmo.clone());
+        };
+    };
 
-    if r.is_err() {
-        admin_error!("Invalid valueset type -> {:?}", r);
-    } else {
-        trace!(
-            "Updating {:?} to be dir mo {:?}",
-            uuid,
-            tgte.get_ava_set("directmemberof")
-        );
-        trace!(
-            "Updating {:?} to be mo {:?}",
-            uuid,
-            tgte.get_ava_set("memberof")
-        );
+    if let Some(mo) = mo {
+        tgte.set_ava_set("memberof", mo);
     }
-    r
+
+    trace!(
+        "Updating {:?} to be dir mo {:?}",
+        uuid,
+        tgte.get_ava_set("directmemberof")
+    );
+    trace!(
+        "Updating {:?} to be mo {:?}",
+        uuid,
+        tgte.get_ava_set("memberof")
+    );
+    Ok(())
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -276,7 +293,9 @@ impl Plugin for MemberOf {
         //
         // NOTE: DO NOT purge directmemberof - we use that to restore memberships
         // in recycle revive!
-        cand.iter_mut().for_each(|e| e.purge_ava("memberof"));
+        let mo_purge = unsafe { ModifyList::new_purge("memberof").into_valid() };
+
+        cand.iter_mut().for_each(|e| e.apply_modlist(&mo_purge));
         Ok(())
     }
 
@@ -715,6 +734,7 @@ mod tests {
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -750,6 +770,7 @@ mod tests {
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -803,6 +824,7 @@ mod tests {
                 Value::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -859,6 +881,7 @@ mod tests {
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -925,6 +948,7 @@ mod tests {
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -993,6 +1017,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1031,6 +1056,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1088,6 +1114,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1155,6 +1182,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1246,6 +1274,7 @@ mod tests {
                 ),
             ]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID

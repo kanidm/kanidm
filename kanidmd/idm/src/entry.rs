@@ -30,13 +30,14 @@ use crate::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
+use crate::repl::entry::EntryChangelog;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{IntentTokenState, PartialValue, Value};
 use crate::valueset::{self, ValueSet};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::{OperationError, SchemaError};
+use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 use tracing::trace;
 
 use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
@@ -110,8 +111,10 @@ pub struct EntryNew; // new
 #[derive(Clone, Debug)]
 pub struct EntryCommitted {
     id: u64,
-} // It's been in the DB, so it has an id
-  // pub struct EntryPurged;
+}
+
+// It's been in the DB, so it has an id
+// pub struct EntryPurged;
 
 #[derive(Clone, Debug)]
 pub struct EntryInit;
@@ -125,6 +128,7 @@ pub struct EntryInit;
 #[derive(Clone, Debug)]
 pub struct EntryInvalid {
     cid: Cid,
+    eclog: EntryChangelog,
 }
 
 /*  |
@@ -137,6 +141,7 @@ pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: Uuid,
     cid: Cid,
+    eclog: EntryChangelog,
 }
 
 /*  |
@@ -148,14 +153,22 @@ pub struct EntryValid {
 #[derive(Clone, Debug)]
 pub struct EntrySealed {
     uuid: Uuid,
+    eclog: EntryChangelog,
 }
+
+/*  |
+ *  | The entry has access controls applied to reduce what is yielded to a client
+ *  V
+ */
 
 #[derive(Clone, Debug)]
 pub struct EntryReduced {
     uuid: Uuid,
 }
 
-fn compare_attrs(left: &Map<AttrString, ValueSet>, right: &Map<AttrString, ValueSet>) -> bool {
+pub type Eattrs = Map<AttrString, ValueSet>;
+
+pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
     let allkeys: Set<&str> = left
@@ -167,10 +180,14 @@ fn compare_attrs(left: &Map<AttrString, ValueSet>, right: &Map<AttrString, Value
 
     allkeys.into_iter().all(|k| {
         // Both must be Some, and both must have the same interiors.
-        match (left.get(k), right.get(k)) {
+        let r = match (left.get(k), right.get(k)) {
             (Some(l), Some(r)) => l.eq(r),
             _ => false,
+        };
+        if !r {
+            trace!(?k, "compare_attrs_allkeys");
         }
+        r
     })
 }
 
@@ -205,7 +222,7 @@ pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
     // We may need to change this to Set to allow borrow of Value -> PartialValue for lookups.
-    attrs: Map<AttrString, ValueSet>,
+    attrs: Eattrs,
 }
 
 impl<VALID, STATE> std::fmt::Debug for Entry<VALID, STATE>
@@ -271,7 +288,7 @@ impl Entry<EntryInit, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<Map<AttrString, ValueSet>, OperationError> = e
+        let map2: Result<Eattrs, OperationError> = e
             .attrs
             .iter()
             .filter(|(_, v)| !v.is_empty())
@@ -332,7 +349,7 @@ impl Entry<EntryInit, EntryNew> {
         // str -> proto entry
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
-        let x: Map<AttrString, ValueSet> = pe.attrs.into_iter()
+        let x: Eattrs = pe.attrs.into_iter()
             .filter_map(|(k, vs)| {
                 if vs.is_empty() {
                     None
@@ -482,12 +499,23 @@ impl Entry<EntryInit, EntryNew> {
 
     /// Assign the Change Identifier to this Entry, allowing it to be modified and then
     /// written to the `Backend`
-    pub fn assign_cid(mut self, cid: Cid) -> Entry<EntryInvalid, EntryNew> {
+    pub fn assign_cid(
+        mut self,
+        cid: Cid,
+        schema: &dyn SchemaTransaction,
+    ) -> Entry<EntryInvalid, EntryNew> {
         /* setup our last changed time */
         self.set_last_changed(cid.clone());
 
+        /*
+         * Create the change log. This must be the last thing BEFORE we return!
+         * This is because we need to capture the set_last_changed attribute in
+         * the create transition.
+         */
+        let eclog = EntryChangelog::new(cid.clone(), self.attrs.clone(), schema);
+
         Entry {
-            valid: EntryInvalid { cid },
+            valid: EntryInvalid { cid, eclog },
             state: EntryNew,
             attrs: self.attrs,
         }
@@ -500,21 +528,28 @@ impl Entry<EntryInit, EntryNew> {
 
     #[cfg(test)]
     pub unsafe fn into_invalid_new(mut self) -> Entry<EntryInvalid, EntryNew> {
-        self.set_last_changed(Cid::new_zero());
+        let cid = Cid::new_zero();
+        self.set_last_changed(cid.clone());
+
+        let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+
         Entry {
-            valid: EntryInvalid {
-                cid: Cid::new_zero(),
-            },
+            valid: EntryInvalid { cid, eclog },
             state: EntryNew,
             attrs: self.attrs,
         }
     }
 
     #[cfg(test)]
-    pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+    pub unsafe fn into_valid_new(mut self) -> Entry<EntryValid, EntryNew> {
+        let cid = Cid::new_zero();
+        self.set_last_changed(cid.clone());
+        let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+
         Entry {
             valid: EntryValid {
-                cid: Cid::new_zero(),
+                cid,
+                eclog,
                 uuid: self.get_uuid().expect("Invalid uuid").clone(),
             },
             state: EntryNew,
@@ -523,36 +558,47 @@ impl Entry<EntryInit, EntryNew> {
     }
 
     #[cfg(test)]
-    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+    pub unsafe fn into_sealed_committed(mut self) -> Entry<EntrySealed, EntryCommitted> {
+        let cid = Cid::new_zero();
+        self.set_last_changed(cid.clone());
+        let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
         let uuid = self
             .get_uuid()
             .and_then(|u| Some(u.clone()))
             .unwrap_or_else(|| Uuid::new_v4());
         Entry {
-            valid: EntrySealed { uuid },
+            valid: EntrySealed { uuid, eclog },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
         }
     }
 
     #[cfg(test)]
-    pub unsafe fn into_sealed_new(self) -> Entry<EntrySealed, EntryNew> {
+    pub unsafe fn into_sealed_new(mut self) -> Entry<EntrySealed, EntryNew> {
+        let cid = Cid::new_zero();
+        self.set_last_changed(cid.clone());
+        let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
+
         Entry {
             valid: EntrySealed {
                 uuid: self.get_uuid().expect("Invalid uuid").clone(),
+                eclog,
             },
             state: EntryNew,
             attrs: self.attrs,
         }
     }
 
+    //              ⚠️   replication safety  ⚠️
+    // These functions are SAFE because they occur in the EntryInit
+    // state, which precedes the generation of the initial Create
+    // event for the attribute.
     /// Add an attribute-value-assertion to this Entry.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.add_ava_int(attr, value)
     }
 
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
-    // pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
     pub fn set_ava<T>(&mut self, attr: &str, iter: T)
     where
         T: IntoIterator<Item = Value>,
@@ -594,6 +640,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             valid: EntryValid {
                 uuid,
                 cid: self.valid.cid,
+                eclog: self.valid.eclog,
             },
             state: self.state,
             attrs: self.attrs,
@@ -794,6 +841,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
             valid: EntryValid {
                 cid: self.valid.cid,
                 uuid,
+                eclog: self.valid.eclog,
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -801,11 +849,30 @@ impl Entry<EntryInvalid, EntryCommitted> {
     }
 
     /// Convert this entry into a recycled entry, that is "in the recycle bin".
-    pub fn into_recycled(mut self) -> Self {
+    pub fn to_recycled(mut self) -> Self {
+        // This will put the modify ahead of the recycle transition.
         self.add_ava("class", Value::new_class("recycled"));
 
+        // Last step before we proceed.
+        self.valid.eclog.recycled(&self.valid.cid);
+
         Entry {
-            valid: self.valid.clone(),
+            valid: self.valid,
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
+
+    /// Convert this entry into a recycled entry, that is "in the recycle bin".
+    pub fn to_revived(mut self) -> Self {
+        // This will put the modify ahead of the revive transition.
+        self.remove_ava("class", &PVCLASS_RECYCLED);
+
+        // Last step before we proceed.
+        self.valid.eclog.revive(&self.valid.cid);
+
+        Entry {
+            valid: self.valid,
             state: self.state,
             attrs: self.attrs,
         }
@@ -821,6 +888,7 @@ impl Entry<EntryInvalid, EntryNew> {
             valid: EntryValid {
                 cid: self.valid.cid,
                 uuid,
+                eclog: self.valid.eclog,
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -834,7 +902,10 @@ impl Entry<EntryInvalid, EntryNew> {
             .and_then(|u| Some(u.clone()))
             .unwrap_or_else(|| Uuid::new_v4());
         Entry {
-            valid: EntrySealed { uuid },
+            valid: EntrySealed {
+                uuid,
+                eclog: self.valid.eclog,
+            },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
         }
@@ -868,6 +939,7 @@ impl Entry<EntryInvalid, EntryNew> {
             valid: EntryValid {
                 cid: self.valid.cid,
                 uuid,
+                eclog: self.valid.eclog,
             },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
@@ -883,7 +955,10 @@ impl Entry<EntryInvalid, EntryCommitted> {
             .and_then(|u| Some(u.clone()))
             .unwrap_or_else(|| Uuid::new_v4());
         Entry {
-            valid: EntrySealed { uuid },
+            valid: EntrySealed {
+                uuid,
+                eclog: self.valid.eclog,
+            },
             state: self.state,
             attrs: self.attrs,
         }
@@ -940,6 +1015,10 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         // NO-OP to satisfy macros.
         self
+    }
+
+    pub fn get_changelog_mut(&mut self) -> &mut EntryChangelog {
+        &mut self.valid.eclog
     }
 
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
@@ -1016,25 +1095,6 @@ impl Entry<EntrySealed, EntryCommitted> {
                     .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={}", v)))
             })
             .unwrap_or_else(|| format!("uuid={}", self.get_uuid().as_hyphenated()))
-    }
-
-    #[inline]
-    /// Determine if this entry is recycled or a tombstone, and map that to "None". This allows
-    /// filter_map to effectively remove entries that should not be considered as "alive".
-    pub(crate) fn mask_recycled_ts(&self) -> Option<&Self> {
-        // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get("class") {
-            Some(cls) => {
-                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue)
-                    || cls.contains(&PVCLASS_RECYCLED as &PartialValue)
-                {
-                    None
-                } else {
-                    Some(self)
-                }
-            }
-            None => Some(self),
-        }
     }
 
     /// Generate the required values for a name2uuid index. IE this is
@@ -1352,7 +1412,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         // Convert attrs from db format to value
-        let r_attrs: Result<Map<AttrString, ValueSet>, ()> = match db_e.ent {
+        let r_attrs: Result<Eattrs, ()> = match db_e.ent {
             DbEntryVers::V1(_) => {
                 admin_error!("Db V1 entry should have been migrated!");
                 Err(())
@@ -1376,8 +1436,25 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let uuid = attrs.get("uuid").and_then(|vs| vs.to_uuid_single())?;
 
+        /*
+         * ⚠️  ==== The Hack Zoen ==== ⚠️
+         *
+         * For now to make replication work, we are synthesising an in-memory change
+         * log, pinned to "the last time the entry was modified" as it's "create time".
+         *
+         * This means that a simple restart of the server flushes and resets the cl
+         * content. In the future though, this will actually be "part of" the entry
+         * and loaded from disk proper.
+         */
+        let cid = attrs
+            .get("last_modified_cid")
+            .and_then(|vs| vs.as_cid_set())
+            .and_then(|set| set.iter().cloned().next())?;
+
+        let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
+
         Some(Entry {
-            valid: EntrySealed { uuid },
+            valid: EntrySealed { uuid, eclog },
             state: EntryCommitted { id },
             attrs,
         })
@@ -1432,53 +1509,72 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     /// Convert this recycled entry, into a tombstone ready for reaping.
     pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
+        let mut eclog = self.valid.eclog.clone();
         // Duplicate this to a tombstone entry
         let class_ava = vs_iutf8!["object", "tombstone"];
         let last_mod_ava = vs_cid![cid.clone()];
 
-        let mut attrs_new: Map<AttrString, ValueSet> = Map::new();
+        let mut attrs_new: Eattrs = Map::new();
 
         attrs_new.insert(AttrString::from("uuid"), vs_uuid![self.get_uuid()]);
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
 
+        // ⚠️  No return from this point!
+        eclog.tombstone(&cid, attrs_new.clone());
+
         Entry {
-            valid: EntryInvalid { cid },
+            valid: EntryInvalid { cid, eclog },
             state: self.state.clone(),
             attrs: attrs_new,
         }
     }
 
     /// Given a current transaction change identifier, mark this entry as valid and committed.
-    pub fn into_valid(self, cid: Cid) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_valid(self, cid: Cid, eclog: EntryChangelog) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
                 uuid: self.valid.uuid,
                 cid,
+                eclog,
             },
             state: self.state,
             attrs: self.attrs,
         }
+    }
+
+    pub fn verify(
+        &self,
+        schema: &dyn SchemaTransaction,
+        results: &mut Vec<Result<(), ConsistencyError>>,
+    ) {
+        self.valid
+            .eclog
+            .verify(schema, &self.attrs, self.state.id, results);
     }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
-    // Returns the entry in the latest DbEntry format we are aware of.
-    pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
+    pub fn invalidate(self, eclog: EntryChangelog) -> Entry<EntryInvalid, STATE> {
         Entry {
             valid: EntryInvalid {
                 cid: self.valid.cid,
+                eclog,
             },
             state: self.state,
             attrs: self.attrs,
         }
     }
 
-    pub fn seal(self) -> Entry<EntrySealed, STATE> {
+    pub fn seal(self, _schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
+        let EntryValid {
+            cid: _,
+            uuid,
+            eclog,
+        } = self.valid;
+
         Entry {
-            valid: EntrySealed {
-                uuid: self.valid.uuid,
-            },
+            valid: EntrySealed { uuid, eclog },
             state: self.state,
             attrs: self.attrs,
         }
@@ -1490,13 +1586,15 @@ impl<STATE> Entry<EntryValid, STATE> {
 }
 
 impl<STATE> Entry<EntrySealed, STATE> {
-    // Returns the entry in the latest DbEntry format we are aware of.
     pub fn invalidate(mut self, cid: Cid) -> Entry<EntryInvalid, STATE> {
         /* Setup our last changed time. */
         self.set_last_changed(cid.clone());
 
         Entry {
-            valid: EntryInvalid { cid },
+            valid: EntryInvalid {
+                cid,
+                eclog: self.valid.eclog,
+            },
             state: self.state,
             attrs: self.attrs,
         }
@@ -1506,13 +1604,19 @@ impl<STATE> Entry<EntrySealed, STATE> {
         self.valid.uuid
     }
 
+    pub fn get_changelog(&self) -> &EntryChangelog {
+        &self.valid.eclog
+    }
+
     #[cfg(test)]
     pub unsafe fn into_invalid(mut self) -> Entry<EntryInvalid, STATE> {
-        self.set_last_changed(Cid::new_zero());
+        let cid = Cid::new_zero();
+        self.set_last_changed(cid.clone());
+
+        let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+
         Entry {
-            valid: EntryInvalid {
-                cid: Cid::new_zero(),
-            },
+            valid: EntryInvalid { cid, eclog },
             state: self.state,
             attrs: self.attrs,
         }
@@ -1625,7 +1729,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     /// Overwrite the current set of values for an attribute, with this new set.
-    pub fn set_ava_int<T>(&mut self, attr: &str, iter: T)
+    fn set_ava_int<T>(&mut self, attr: &str, iter: T)
     where
         T: IntoIterator<Item = Value>,
     {
@@ -2025,6 +2129,56 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
         Ok(mods)
     }
+
+    /// Determine if this entry is recycled or a tombstone, and map that to "None". This allows
+    /// filter_map to effectively remove entries that should not be considered as "alive".
+    pub(crate) fn mask_recycled_ts(&self) -> Option<&Self> {
+        // Only when cls has ts/rc then None, else lways Some(self).
+        match self.attrs.get("class") {
+            Some(cls) => {
+                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue)
+                    || cls.contains(&PVCLASS_RECYCLED as &PartialValue)
+                {
+                    None
+                } else {
+                    Some(self)
+                }
+            }
+            None => Some(self),
+        }
+    }
+
+    /// Determine if this entry is recycled, and map that to "None". This allows
+    /// filter_map to effectively remove entries that are recycled in some cases.
+    pub(crate) fn mask_recycled(&self) -> Option<&Self> {
+        // Only when cls has ts/rc then None, else lways Some(self).
+        match self.attrs.get("class") {
+            Some(cls) => {
+                if cls.contains(&PVCLASS_RECYCLED as &PartialValue) {
+                    None
+                } else {
+                    Some(self)
+                }
+            }
+            None => Some(self),
+        }
+    }
+
+    /// Determine if this entry is a tombstone, and map that to "None". This allows
+    /// filter_map to effectively remove entries that are tombstones in some cases.
+    pub(crate) fn mask_tombstone(&self) -> Option<&Self> {
+        // Only when cls has ts/rc then None, else lways Some(self).
+        match self.attrs.get("class") {
+            Some(cls) => {
+                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue) {
+                    None
+                } else {
+                    Some(self)
+                }
+            }
+            None => Some(self),
+        }
+    }
 }
 
 impl<STATE> Entry<EntryInvalid, STATE>
@@ -2033,42 +2187,38 @@ where
 {
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
-    // If this already exists, we silently drop the event? Is that an
-    // acceptable interface?
-    //
-    // TODO: This should take Value not &Value, would save a lot of clones
-    // around the codebase.
+    // If this already exists, we silently drop the event. This is because
+    // we need this to be *state* based where we assert presence.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
+        self.valid
+            .eclog
+            .add_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
         self.add_ava_int(attr, value)
     }
 
-    /// Merge an existing value set into this attributes value set. If they are not
-    /// the same type, an error is returned. If no attribute exists, then this valueset is
-    /// cloned "as is".
-    pub fn merge_ava(&mut self, attr: &str, valueset: &ValueSet) -> Result<(), OperationError> {
-        if let Some(vs) = self.attrs.get_mut(attr) {
-            vs.merge(valueset)
-        } else {
-            self.attrs.insert(AttrString::from(attr), valueset.clone());
-            Ok(())
-        }
-    }
-
-    /// Remove an attribute-value pair from this entry.
+    /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
+    /// don't do anything else since we are asserting the abscence of a value.
     fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
+        self.valid
+            .eclog
+            .remove_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
+
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             vs.remove(value);
             vs.is_empty()
         } else {
             false
         };
-        //
         if rm {
             self.attrs.remove(attr);
         };
     }
 
     pub(crate) fn remove_avas(&mut self, attr: &str, values: &BTreeSet<PartialValue>) {
+        self.valid
+            .eclog
+            .remove_ava_iter(&self.valid.cid, attr, values.iter().cloned());
+
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             values.iter().for_each(|k| {
                 vs.remove(k);
@@ -2082,36 +2232,39 @@ where
         };
     }
 
-    /// Remove all values of this attribute from the entry.
-    pub fn purge_ava(&mut self, attr: &str) {
+    /// Remove all values of this attribute from the entry. If it doesn't exist, this
+    /// asserts that no content of that attribute exist.
+    pub(crate) fn purge_ava(&mut self, attr: &str) {
+        self.valid.eclog.purge_ava(&self.valid.cid, attr);
         self.attrs.remove(attr);
     }
 
     /// Remove all values of this attribute from the entry, and return their content.
     pub fn pop_ava(&mut self, attr: &str) -> Option<ValueSet> {
+        self.valid.eclog.purge_ava(&self.valid.cid, attr);
         self.attrs.remove(attr)
     }
 
-    /// Replace the content of this attribute with a new value set.
-    // pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
+    /// Replace the content of this attribute with a new value set. Effectively this is
+    /// a a "purge and set".
     pub fn set_ava<T>(&mut self, attr: &str, iter: T)
     where
-        T: IntoIterator<Item = Value>,
+        T: Clone + IntoIterator<Item = Value>,
     {
+        self.valid.eclog.purge_ava(&self.valid.cid, attr);
+        self.valid
+            .eclog
+            .add_ava_iter(&self.valid.cid, attr, iter.clone());
         self.set_ava_int(attr, iter)
     }
 
-    pub fn get_ava_mut(&mut self, attr: &str) -> Option<&mut ValueSet> {
-        self.attrs.get_mut(attr)
+    pub fn set_ava_set(&mut self, attr: &str, vs: ValueSet) {
+        self.valid.eclog.purge_ava(&self.valid.cid, attr);
+        self.valid
+            .eclog
+            .add_ava_iter(&self.valid.cid, attr, vs.to_value_iter());
+        self.attrs.insert(AttrString::from(attr), vs);
     }
-
-    /*
-    pub fn avas_mut(&mut self) -> EntryAvasMut {
-        EntryAvasMut {
-            inner: self.attrs.iter_mut(),
-        }
-    }
-    */
 
     /// Apply the content of this modlist to this entry, enforcing the expressed state.
     pub fn apply_modlist(&mut self, modlist: &ModifyList<ModifyValid>) {

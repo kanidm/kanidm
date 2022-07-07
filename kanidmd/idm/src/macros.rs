@@ -275,6 +275,7 @@ macro_rules! run_modify_test {
         $modify_filter:expr,
         $modify_list:expr,
         $internal:expr,
+        $pre_hook:expr,
         $check:expr
     ) => {{
         use crate::be::{Backend, BackendConfig};
@@ -284,6 +285,14 @@ macro_rules! run_modify_test {
 
         spanned!("plugins::macros::run_modify_test", {
             let qs = setup_test!($preload_entries);
+
+            {
+                let qs_write = qs.write(duration_from_epoch_now());
+                spanned!("plugins::macros::run_modify_test -> pre_test hook", {
+                    $pre_hook(&qs_write)
+                });
+                qs_write.commit().expect("commit failure!");
+            }
 
             let me = match $internal {
                 None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
@@ -367,6 +376,18 @@ macro_rules! run_delete_test {
             trace!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
+    }};
+}
+
+#[cfg(test)]
+macro_rules! run_entrychangelog_test {
+    ($test_fn:expr) => {{
+        let _ = crate::tracing_tree::test_init();
+        let schema_outer = Schema::new().expect("Failed to init schema");
+
+        let schema_txn = schema_outer.read();
+
+        $test_fn(&schema_txn)
     }};
 }
 

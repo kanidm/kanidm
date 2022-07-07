@@ -17,10 +17,22 @@ pub(crate) mod unix;
 
 use kanidm_proto::v1::{AuthAllowed, AuthMech};
 
-#[derive(Debug)]
+use std::fmt;
+
 pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
     Denied(String),
     Success(String),
+}
+
+impl fmt::Debug for AuthState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthState::Choose(mechs) => write!(f, "AuthState::Choose({:?})", mechs),
+            AuthState::Continue(allow) => write!(f, "AuthState::Continue({:?})", allow),
+            AuthState::Denied(reason) => write!(f, "AuthState::Denied({:?})", reason),
+            AuthState::Success(_token) => write!(f, "AuthState::Success"),
+        }
+    }
 }

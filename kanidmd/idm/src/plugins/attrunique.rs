@@ -286,6 +286,7 @@ mod tests {
                 Modify::Present(AttrString::from("name"), Value::new_iname("testgroup_a"))
             ]),
             None,
+            |_| {},
             |_| {}
         );
     }
@@ -329,6 +330,7 @@ mod tests {
                 Modify::Present(AttrString::from("name"), Value::new_iname("testgroup"))
             ]),
             None,
+            |_| {},
             |_| {}
         );
     }

@@ -155,6 +155,7 @@ mod tests {
                 Modify::Purged(AttrString::from("oauth2_rs_token_key"),)
             ]),
             None,
+            |_| {},
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(&uuid)

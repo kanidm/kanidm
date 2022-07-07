@@ -220,7 +220,7 @@ pub trait QueryServerTransaction<'a> {
 
             // NOTE: We currently can't build search plugins due to the inability to hand
             // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
-            // plugis, because all data transforms should be in the write path.
+            // plugins, because all data transforms should be in the write path.
 
             let res = self.get_be_txn().search(lims, &vfr).map_err(|e| {
                 admin_error!(?e, "backend failure");
@@ -860,13 +860,38 @@ impl<'a> QueryServerReadTransaction<'a> {
             return idx_errs;
         }
 
-        // Ok BE passed, lets move on to the content.
+        // If anything error to this point we can't trust the verifications below. From
+        // here we can just amass results.
+        let mut results = Vec::new();
+
+        // Verify all our entries. Weird flex I know, but it's needed for verifying
+        // the entry changelogs are consistent to their entries.
+        let schema = self.get_schema();
+
+        spanned!("server::verify", {
+            let filt_all = filter!(f_pres("class"));
+            let all_entries = match self.internal_search(filt_all) {
+                Ok(a) => a,
+                Err(_e) => return vec![Err(ConsistencyError::QueryServerSearchFailure)],
+            };
+
+            for e in all_entries {
+                e.verify(schema, &mut results)
+            }
+
+            // Verify the RUV to the entry changelogs now.
+            self.get_be_txn().verify_ruv(&mut results);
+        });
+
+        // Ok entries passed, lets move on to the content.
         // Most of our checks are in the plugins, so we let them
         // do their job.
 
         // Now, call the plugins verification system.
-        Plugins::run_verify(self)
+        Plugins::run_verify(self, &mut results);
         // Finished
+
+        results
     }
 }
 
@@ -1048,7 +1073,7 @@ impl QueryServer {
     }
 
     pub fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
-        // First, check our database version - attempt to do an initial indexing
+        // Check our database version - attempt to do an initial indexing
         // based on the in memory configuration
         //
         // If we ever change the core in memory schema, or the schema that we ship
@@ -1058,7 +1083,6 @@ impl QueryServer {
         // A major reason here to split to multiple transactions is to allow schema
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
-
         let reindex_write_1 = task::block_on(self.write_async(ts));
         reindex_write_1
             .upgrade_reindex(SYSTEM_INDEX_VERSION)
@@ -1181,10 +1205,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 return Err(OperationError::AccessDenied);
             }
 
+            // Before we assign replication metadata, we need to assert these entries
+            // are valid to create within the set of replication transitions. This
+            // means they *can not* be recycled or tombstones!
+            if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
+                admin_warn!("Refusing to create invalid entries that are attempting to bypass replication state machine.");
+                return Err(OperationError::AccessDenied);
+            }
+
             // Assign our replication metadata now, since we can proceed with this operation.
             let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = candidates
                 .into_iter()
-                .map(|e| e.assign_cid(self.cid.clone()))
+                .map(|e| e.assign_cid(self.cid.clone(), &self.schema))
                 .collect();
 
             // run any pre plugins, giving them the list of mutable candidates.
@@ -1213,7 +1245,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         })
                         .map(|e| {
                             // Then seal the changes?
-                            e.seal()
+                            e.seal(&self.schema)
                         })
                 })
                 .collect();
@@ -1229,10 +1261,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
             // We may change from ce.entries later to something else?
-            let commit_cand = self.be_txn.create(norm_cand).map_err(|e| {
+            let commit_cand = self.be_txn.create(&self.cid, norm_cand).map_err(|e| {
                 admin_error!("betxn create failure {:?}", e);
                 e
             })?;
+
             // Run any post plugins
 
             Plugins::run_post_create(self, &commit_cand, ce).map_err(|e| {
@@ -1332,6 +1365,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 return Err(OperationError::NoMatchingEntries);
             };
 
+            if pre_candidates.iter().any(|e| e.mask_tombstone().is_none()) {
+                admin_warn!("Refusing to delete entries which may be an attempt to bypass replication state machine.");
+                return Err(OperationError::AccessDenied);
+            }
+
             let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
                 .iter()
                 // Invalidate and assign change id's
@@ -1351,28 +1389,28 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
                 .into_iter()
                 .map(|e| {
-                    e.into_recycled()
+                    e.to_recycled()
                         .validate(&self.schema)
                         .map_err(|e| {
                             admin_error!(err = ?e, "Schema Violation in delete validate");
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
             let del_cand: Vec<Entry<_, _>> = res?;
 
             self.be_txn
-                .modify(&pre_candidates, &del_cand)
+                .modify(&self.cid, &pre_candidates, &del_cand)
                 .map_err(|e| {
                     // be_txn is dropped, ie aborted here.
                     admin_error!("Delete operation failed (backend), {:?}", e);
                     e
                 })?;
 
-            // Post delete plugs
+            // Post delete plugins
             Plugins::run_post_delete(self, &del_cand, de).map_err(|e| {
                 admin_error!("Delete operation failed (plugin), {:?}", e);
                 e
@@ -1432,24 +1470,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn purge_tombstones(&self) -> Result<(), OperationError> {
         spanned!("server::purge_tombstones", {
-            // delete everything that is a tombstone.
+            // purge everything that is a tombstone.
             let cid = self.cid.sub_secs(CHANGELOG_MAX_AGE).map_err(|e| {
                 admin_error!("Unable to generate search cid {:?}", e);
                 e
             })?;
-            let ts = self.internal_search(filter_all!(f_and!([
-                f_eq("class", PVCLASS_TOMBSTONE.clone()),
-                f_lt("last_modified_cid", PartialValue::new_cid(cid)),
-            ])))?;
-
-            if ts.is_empty() {
-                admin_info!("No Tombstones present - purge operation success");
-                return Ok(());
-            }
 
             // Delete them - this is a TRUE delete, no going back now!
             self.be_txn
-                .delete(&ts)
+                .reap_tombstones(&cid)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Tombstone purge operation failed (backend)");
                     e
@@ -1489,7 +1518,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
@@ -1497,7 +1526,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Backend Modify
             self.be_txn
-                .modify(&rc, &tombstone_cand)
+                .modify(&self.cid, &rc, &tombstone_cand)
                 .map_err(|e| {
                     admin_error!("Purge recycled operation failed (backend), {:?}", e);
                     e
@@ -1511,13 +1540,174 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // Should this take a revive event?
     pub fn revive_recycled(&self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
         spanned!("server::revive_recycled", {
-            // Revive an entry to live. This is a specialised (limited)
-            // modify proxy.
+            // Revive an entry to live. This is a specialised function, and draws a lot of
+            // inspiration from modify.
             //
-            // impersonate modify will require ability to search the class=recycled
-            // and the ability to remove that from the object.
+            // Access is granted by the ability to ability to search the class=recycled
+            // and the ability modify + remove that class from the object.
+            if !re.ident.is_internal() {
+                security_info!(name = %re.ident, "revive initiator");
+            }
 
-            // create the modify
+            // Get the list of pre_candidates, using impersonate search.
+            let pre_candidates =
+                self.impersonate_search_valid(re.filter.clone(), re.filter.clone(), &re.ident)?;
+
+            // Is the list empty?
+            if pre_candidates.is_empty() {
+                if re.ident.is_internal() {
+                    trace!(
+                        "revive: no candidates match filter ... continuing {:?}",
+                        re.filter
+                    );
+                    return Ok(());
+                } else {
+                    request_error!(
+                        "revive: no candidates match filter, failure {:?}",
+                        re.filter
+                    );
+                    return Err(OperationError::NoMatchingEntries);
+                }
+            };
+
+            trace!("revive: pre_candidates -> {:?}", pre_candidates);
+
+            // Check access against a "fake" modify.
+            let modlist = ModifyList::new_list(vec![Modify::Removed(
+                AttrString::from("class"),
+                PVCLASS_RECYCLED.clone(),
+            )]);
+
+            let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
+                admin_error!("revive recycled modlist Schema Violation {:?}", e);
+                OperationError::SchemaViolation(e)
+            })?;
+
+            let me = ModifyEvent::new_impersonate(
+                &re.ident,
+                re.filter.clone(),
+                re.filter.clone(),
+                m_valid,
+            );
+
+            let access = self.get_accesscontrols();
+            let op_allow = access
+                .modify_allow_operation(&me, &pre_candidates)
+                .map_err(|e| {
+                    admin_error!("Unable to check modify access {:?}", e);
+                    e
+                })?;
+            if !op_allow {
+                return Err(OperationError::AccessDenied);
+            }
+
+            // Are all of the entries actually recycled?
+            if pre_candidates.iter().all(|e| e.mask_recycled().is_some()) {
+                admin_warn!("Refusing to revive entries that are already live!");
+                return Err(OperationError::AccessDenied);
+            }
+
+            // Build the list of mods from directmo, to revive memberships.
+            let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
+                HashMap::with_capacity(pre_candidates.len());
+
+            for e in &pre_candidates {
+                // Get this entries uuid.
+                let u: Uuid = e.get_uuid();
+
+                if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
+                    for g_uuid in riter {
+                        dm_mods
+                            .entry(g_uuid)
+                            .and_modify(|mlist| {
+                                let m = Modify::Present(
+                                    AttrString::from("member"),
+                                    Value::new_refer_r(&u),
+                                );
+                                mlist.push_mod(m);
+                            })
+                            .or_insert({
+                                let m = Modify::Present(
+                                    AttrString::from("member"),
+                                    Value::new_refer_r(&u),
+                                );
+                                ModifyList::new_list(vec![m])
+                            });
+                    }
+                }
+            }
+
+            // clone the writeable entries.
+            let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+                .iter()
+                .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+                // Mutate to apply the revive.
+                .map(|er| er.to_revived())
+                .collect();
+
+            // Are they all revived?
+            if candidates.iter().all(|e| e.mask_recycled().is_none()) {
+                admin_error!("Not all candidates were correctly revived, unable to proceed");
+                return Err(OperationError::InvalidEntryState);
+            }
+
+            // Do we need to apply pre-mod?
+            // Very likely, incase domain has renamed etc.
+            Plugins::run_pre_modify(self, &mut candidates, &me).map_err(|e| {
+                admin_error!("Revive operation failed (plugin), {:?}", e);
+                e
+            })?;
+
+            // Schema validate
+            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
+                .into_iter()
+                .map(|e| {
+                    e.validate(&self.schema)
+                        .map_err(|e| {
+                            admin_error!("Schema Violation {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
+                        .map(|e| e.seal(&self.schema))
+                })
+                .collect();
+
+            let norm_cand: Vec<Entry<_, _>> = res?;
+
+            // build the mod partial
+            let mp = ModifyPartial {
+                norm_cand,
+                pre_candidates,
+                me: &me,
+            };
+
+            // Call modify_apply
+            self.modify_apply(mp)?;
+
+            // If and only if that succeeds, apply the direct membership modifications
+            // if possible.
+            for (g, mods) in dm_mods {
+                // I think the filter/filter_all shouldn't matter here because the only
+                // valid direct memberships should be still valid/live references, as refint
+                // removes anything that was deleted even from recycled entries.
+                let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
+                self.internal_modify(&f, &mods)?;
+            }
+
+            Ok(())
+        })
+    }
+
+    // Should this take a revive event?
+    pub fn revive_recycled_legacy(&self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
+        spanned!("server::revive_recycled", {
+            // Revive an entry to live. This is a specialised function, and draws a lot of
+            // inspiration from modify.
+            //
+            //
+            // Access is granted by the ability to ability to search the class=recycled
+            // and the ability modify + remove that class from the object.
+
+            // create the modify for access testing.
             // tl;dr, remove the class=recycled
             let modlist = ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("class"),
@@ -1668,6 +1858,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             trace!("modify: candidates -> {:?}", candidates);
 
+            // Did any of the candidates now become masked?
+            if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
+                admin_warn!("Refusing to apply modifications that are attempting to bypass replication state machine.");
+                return Err(OperationError::AccessDenied);
+            }
+
             // Pre mod plugins
             // We should probably supply the pre-post cands here.
             Plugins::run_pre_modify(self, &mut candidates, me).map_err(|e| {
@@ -1693,7 +1889,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             );
                             OperationError::SchemaViolation(e)
                         })
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
@@ -1717,7 +1913,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Backend Modify
             self.be_txn
-                .modify(&pre_candidates, &norm_cand)
+                .modify(&self.cid, &pre_candidates, &norm_cand)
                 .map_err(|e| {
                     admin_error!("Modify operation failed (backend), {:?}", e);
                     e
@@ -1798,7 +1994,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    #[allow(clippy::cognitive_complexity)]
     pub fn modify(&self, me: &ModifyEvent) -> Result<(), OperationError> {
         spanned!("server::modify", {
             let mp = unsafe { self.modify_pre_apply(me)? };
@@ -1867,7 +2062,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             );
                             OperationError::SchemaViolation(e)
                         })
-                        .map(Entry::seal)
+                        .map(|e| e.seal(&self.schema))
                 })
                 .collect();
 
@@ -1889,7 +2084,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Backend Modify
             self.be_txn
-                .modify(&pre_candidates, &norm_cand)
+                .modify(&self.cid, &pre_candidates, &norm_cand)
                 .map_err(|e| {
                     admin_error!("Modify operation failed (backend), {:?}", e);
                     e
@@ -1975,23 +2170,31 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .collect();
 
             candidates.iter_mut().try_for_each(|er| {
-                if let Some(vs) = er.get_ava_mut("name") {
-                    if let Some(mut nvs) = vs.migrate_iutf8_iname()? {
-                        std::mem::swap(&mut nvs, vs)
-                    }
+                let nvs = if let Some(vs) = er.get_ava_set("name") {
+                    vs.migrate_iutf8_iname()?
+                } else {
+                    None
                 };
-                if let Some(vs) = er.get_ava_mut("domain_name") {
-                    if let Some(mut nvs) = vs.migrate_iutf8_iname()? {
-                        std::mem::swap(&mut nvs, vs)
-                    }
+                if let Some(nvs) = nvs {
+                    er.set_ava_set("name", nvs)
+                }
+
+                let nvs = if let Some(vs) = er.get_ava_set("domain_name") {
+                    vs.migrate_iutf8_iname()?
+                } else {
+                    None
                 };
+                if let Some(nvs) = nvs {
+                    er.set_ava_set("domain_name", nvs)
+                }
+
                 Ok(())
             })?;
 
             // Schema check all.
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
                 .into_iter()
-                .map(|e| e.validate(&self.schema).map(Entry::seal))
+                .map(|e| e.validate(&self.schema).map(|e| e.seal(&self.schema)))
                 .collect();
 
             let norm_cand: Vec<Entry<_, _>> = match res {
@@ -2004,12 +2207,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Write them back.
             self.be_txn
-                .modify(&pre_candidates, &norm_cand)
+                .modify(&self.cid, &pre_candidates, &norm_cand)
                 .map_err(|e| {
                     admin_error!("migrate_2_to_3 modification failure -> {:?}", e);
                     e
                 })
-
             // Complete
         })
     }
@@ -3229,6 +3431,7 @@ mod tests {
             // First we setup some timestamps
             let time_p1 = duration_from_epoch_now();
             let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+            let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
             let server_txn = server.write(time_p1);
             let admin = server_txn
@@ -3254,19 +3457,39 @@ mod tests {
                 unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_ts.clone()) };
             let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
 
-            // First, create a tombstone
+            // First, create an entry, then push it through the lifecycle.
             let e_ts = entry_init!(
                 ("class", Value::new_class("object")),
-                ("class", Value::new_class("tombstone")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
                 (
                     "uuid",
                     Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
-                )
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
 
             let ce = CreateEvent::new_internal(vec![e_ts]);
             let cr = server_txn.create(&ce);
             assert!(cr.is_ok());
+
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+                    "name",
+                    PartialValue::new_iname("testperson1")
+                )])))
+            };
+            assert!(server_txn.delete(&de_sin).is_ok());
+
+            // Commit
+            assert!(server_txn.commit().is_ok());
+
+            // Now, establish enough time for the recycled items to be purged.
+            let server_txn = server.write(time_p2);
+            assert!(server_txn.purge_recycled().is_ok());
+
+            // Now test the tombstone properties.
 
             // Can it be seen (external search)
             let r1 = server_txn.search(&se_ts).expect("search failed");
@@ -3299,7 +3522,7 @@ mod tests {
             assert!(server_txn.commit().is_ok());
 
             // New txn, push the cid forward.
-            let server_txn = server.write(time_p2);
+            let server_txn = server.write(time_p3);
 
             // Now purge
             assert!(server_txn.purge_tombstones().is_ok());
@@ -3365,7 +3588,6 @@ mod tests {
             let e1 = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("person")),
-                ("class", Value::new_class("recycled")),
                 ("name", Value::new_iname("testperson1")),
                 (
                     "uuid",
@@ -3378,7 +3600,6 @@ mod tests {
             let e2 = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("person")),
-                ("class", Value::new_class("recycled")),
                 ("name", Value::new_iname("testperson2")),
                 (
                     "uuid",
@@ -3391,6 +3612,15 @@ mod tests {
             let ce = CreateEvent::new_internal(vec![e1, e2]);
             let cr = server_txn.create(&ce);
             assert!(cr.is_ok());
+
+            // Now we immediately delete these to force them to the correct state.
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_or!([
+                    f_eq("name", PartialValue::new_iname("testperson1")),
+                    f_eq("name", PartialValue::new_iname("testperson2")),
+                ])))
+            };
+            assert!(server_txn.delete(&de_sin).is_ok());
 
             // Can it be seen (external search)
             let r1 = server_txn.search(&se_rc).expect("search failed");

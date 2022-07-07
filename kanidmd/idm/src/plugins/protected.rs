@@ -264,6 +264,7 @@ mod tests {
                 m_pres("displayname", &Value::new_utf8s("system test")),
             ]),
             Some(JSON_ADMIN_V1),
+            |_| {},
             |_| {}
         );
     }
@@ -294,6 +295,7 @@ mod tests {
                 m_pres("must", &Value::new_iutf8("name")),
             ]),
             Some(JSON_ADMIN_V1),
+            |_| {},
             |_| {}
         );
     }
@@ -360,6 +362,7 @@ mod tests {
                 m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
             ]),
             Some(JSON_ADMIN_V1),
+            |_| {},
             |_| {}
         );
     }

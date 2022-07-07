@@ -46,7 +46,7 @@ pub enum Policy {
 // Why PBKDF2? Rust's bcrypt has a number of hardcodings like max pw len of 72
 // I don't really feel like adding in so many restrictions, so I'll use
 // pbkdf2 in openssl because it doesn't have the same limits.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Kdf {
     //     cost, salt,   hash
     PBKDF2(usize, Vec<u8>, Vec<u8>),
@@ -54,7 +54,7 @@ enum Kdf {
     SSHA512(Vec<u8>, Vec<u8>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Password {
     material: Kdf,
 }
@@ -213,7 +213,7 @@ impl Password {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BackupCodes {
     code_set: HashSet<String>,
 }
@@ -245,7 +245,7 @@ impl BackupCodes {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 /// This is how we store credentials in the server. An account can have many credentials, and
 /// a credential can have many factors. Only successful auth to a credential as a whole unit
 /// will succeed. For example:
@@ -268,7 +268,7 @@ pub struct Credential {
     // locked: bool
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 /// The type of credential that is stored. Each of these represents a full set of 'what is required'
 /// to complete an authentication session. The reason to have these typed like this is so we can
 /// apply policy later to what classes or levels of credentials can be used. We use these types

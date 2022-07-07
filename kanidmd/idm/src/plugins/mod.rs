@@ -207,16 +207,17 @@ impl Plugins {
         })
     }
 
-    pub fn run_verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
+    pub fn run_verify(
+        qs: &QueryServerReadTransaction,
+        results: &mut Vec<Result<(), ConsistencyError>>,
+    ) {
         let _entered = trace_span!("plugins::run_verify").entered();
         spanned!("plugins::run_verify", {
-            let mut results = Vec::new();
-            run_verify_plugin!(qs, &mut results, base::Base);
-            run_verify_plugin!(qs, &mut results, attrunique::AttrUnique);
-            run_verify_plugin!(qs, &mut results, refint::ReferentialIntegrity);
-            run_verify_plugin!(qs, &mut results, memberof::MemberOf);
-            run_verify_plugin!(qs, &mut results, spn::Spn);
-            results
+            run_verify_plugin!(qs, results, base::Base);
+            run_verify_plugin!(qs, results, attrunique::AttrUnique);
+            run_verify_plugin!(qs, results, refint::ReferentialIntegrity);
+            run_verify_plugin!(qs, results, memberof::MemberOf);
+            run_verify_plugin!(qs, results, spn::Spn);
         })
     }
 }
