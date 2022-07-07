@@ -2,18 +2,104 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="520"
-   height="330"
-   viewBox="0 0 137.58334 87.3125"
+   width="512"
+   height="512"
+   viewBox="0 0 135.46667 135.46666"
    version="1.1"
    id="svg1084"
+   sodipodi:docname="logo-square.svg"
+   inkscape:version="1.2 (dc2aeda, 2022-05-15)"
+   inkscape:export-filename="logo-192.png"
+   inkscape:export-xdpi="35.446156"
+   inkscape:export-ydpi="35.446156"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title
+     id="title332">Kanidm Square Logo</title>
+  <sodipodi:namedview
+     id="namedview39"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     showguides="true"
+     inkscape:zoom="1"
+     inkscape:cx="229.5"
+     inkscape:cy="299.5"
+     inkscape:window-width="1389"
+     inkscape:window-height="847"
+     inkscape:window-x="51"
+     inkscape:window-y="25"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1084">
+    <sodipodi:guide
+       position="-52.916665,67.733332"
+       orientation="0,1"
+       id="guide145"
+       inkscape:locked="false"
+       inkscape:label="vertical_middle"
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="121.97292,175.15416"
+       orientation="-1,0"
+       id="guide777"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="13.49375,173.03749"
+       orientation="-1,0"
+       id="guide779"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="22.754166,121.97292"
+       orientation="0,1"
+       id="guide781"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="4.4979168,13.758333"
+       orientation="0,1"
+       id="guide783"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+  </sodipodi:namedview>
   <defs
      id="defs1081" />
+  <metadata
+     id="metadata330">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>Kanidm Square Logo</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <rect
+     style="fill:#ffffff;stroke-width:0.243721"
+     id="rect443"
+     width="135.46666"
+     height="135.46666"
+     x="0"
+     y="0"
+     inkscape:label="background" />
   <g
      id="layer1"
-     transform="translate(-44.452119,-54.465481)">
+     transform="matrix(0.91407203,0,0,0.91407203,-34.121105,-24.362694)"
+     inkscape:label="kani">
     <path
        id="path5404"
        d="m 62.537712,110.23377 c -3.36297,8.12708 5.78522,15.61876 5.82446,15.73981 -1.67096,-4.90156 -3.43697,-8.85836 -0.189,-12.28424"
