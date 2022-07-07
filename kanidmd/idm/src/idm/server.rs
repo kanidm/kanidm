@@ -1690,11 +1690,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&wre.ident.origin).into();
         let label = wre.label.clone();
 
-        #[allow(clippy::expect_used)]
         let issuer = self
             .qs_write
-            .get_db_domain_display_name()
-            .expect("reg_account_webauthn_init failed to retrieve issuer");
+            .get_domain_display_name()
+            .to_string();
 
         let (session, mfa_reg_next) =
             MfaRegSession::webauthn_new(origin, account, label, self.webauthn, issuer)?;
@@ -1703,7 +1702,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
-        trace!(?sessionid, "Start mfa reg session for webauthn");
+        trace!(?sessionid, "Started mfa reg session for webauthn");
         Ok(next)
     }
 
@@ -1802,11 +1801,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sessionid = uuid_from_duration(ct, self.sid);
 
         let origin = (&gte.ident.origin).into();
-        #[allow(clippy::expect_used)]
+
         let issuer = self
             .qs_write
-            .get_db_domain_display_name()
-            .expect("generate_account_totp to retrieve issuer");
+            .get_domain_display_name()
+            .to_string();
+
         let (session, next) = MfaRegSession::totp_new(origin, account, issuer).map_err(|e| {
             admin_error!("Unable to start totp MfaRegSession {:?}", e);
             e
@@ -1816,7 +1816,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
-        trace!(?sessionid, "Start totp mfa reg session");
+        trace!(?sessionid, "Started totp mfa reg session");
         Ok(next)
     }
 

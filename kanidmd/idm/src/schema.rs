@@ -1934,8 +1934,8 @@ mod tests {
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
-            Err(SchemaError::InvalidAttribute(
-                "systemmay missing attribute: zzzzz".to_string()
+            Err(SchemaError::AttributeNotValidForClass(
+                "zzzzz".to_string()
             ))
         );
 

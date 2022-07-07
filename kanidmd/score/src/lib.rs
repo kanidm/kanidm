@@ -391,68 +391,6 @@ pub fn vacuum_server_core(config: &Configuration) {
     };
 }
 
-/// This'll set the domain's display name in the database
-pub fn set_domain_display_name(
-    config: &Configuration,
-    new_display_name: &str,
-) -> Result<String, OperationError> {
-    let schema = match Schema::new() {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("Failed to setup in memory schema: {:?}", e);
-            std::process::exit(1);
-        }
-    };
-    // Start the backend.
-    let be = match setup_backend(config, &schema) {
-        Ok(be) => be,
-        Err(e) => {
-            error!("Failed to setup backend: {:?}", e);
-            return Err(e);
-        }
-    };
-    // setup the qs
-    let qs = match setup_qs(be, schema, config) {
-        Ok(t) => t,
-        Err(e) => {
-            error!("Unable to setup query server -> {:?}", e);
-            return Err(e);
-        }
-    };
-    // make sure we're actually changing the displayname...
-    match task::block_on(qs.read_async()).get_db_domain_display_name() {
-        Ok(old_display_name) => {
-            admin_info!(?old_display_name, ?new_display_name);
-            if &old_display_name == &new_display_name {
-                admin_info!("Domain display name not changing, stopping.");
-                return Ok(String::from("Domain display name not changing, stopping."));
-            }
-        }
-        Err(e) => {
-            admin_error!("Failed to query domain name, quitting! -> {:?}", e);
-            return Err(e);
-        }
-    }
-    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
-    let r = qs_write
-        .set_domain_display_name(new_display_name)
-        .and_then(|_| qs_write.commit());
-
-    match r {
-        Ok(_) => {
-            info!("Domain Display Name Successfully set!");
-            Ok(String::from("Success"))
-        }
-        Err(e) => {
-            error!(
-                "Domain Display Name Change Failed - Rollback has occured: {:?}",
-                e
-            );
-            std::process::exit(1);
-        }
-    }
-}
-
 pub fn domain_rename_core(config: &Configuration) {
     let schema = match Schema::new() {
         Ok(s) => s,

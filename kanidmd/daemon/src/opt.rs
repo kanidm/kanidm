@@ -41,10 +41,7 @@ struct RecoverAccountOpt {
 
 #[derive(Debug, Subcommand)]
 enum DomainSettingsCmds {
-    #[clap(name="domain_display_name")]
-    /// Set the domain's human-facing display name
-    SetDomainDisplayName(SetDomainDisplayNameOpt),
-    #[clap(name = "domain_name")]
+    #[clap(name = "rename")]
     /// Change the IDM domain name
     DomainChange(CommonOpt),
 }
@@ -66,16 +63,6 @@ enum DbCommands {
     #[clap(name = "reindex")]
     /// Reindex the database (offline)
     Reindex(CommonOpt),
-}
-
-
-#[derive(Debug, Args)]
-struct SetDomainDisplayNameOpt {
-    #[clap(parse(from_str))]
-    /// The new domain display name.
-    domain_display_name: String,
-    #[clap(flatten)]
-    commonopts: CommonOpt,
 }
 
 #[derive(Debug, Args)]
@@ -160,7 +147,7 @@ enum KanidmdOpt {
         commands: DbCommands,
     },
     /// Change domain settings
-    #[clap(name = "set")]
+    #[clap(name = "domain")]
     DomainSettings {
         #[clap(subcommand)]
         commands: DomainSettingsCmds,

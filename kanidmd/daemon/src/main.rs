@@ -39,7 +39,7 @@ use score::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
     domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
-    set_domain_display_name, vacuum_server_core, verify_server_core,
+    vacuum_server_core, verify_server_core,
 };
 
 use clap::{Args, Parser, Subcommand};
@@ -106,9 +106,6 @@ impl KanidmdOpt {
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::GetId2Entry(dopt),
             } => &dopt.commonopts,
-            KanidmdOpt::DomainSettings {
-                commands: DomainSettingsCmds::SetDomainDisplayName(sopt),
-            } => &sopt.commonopts,
             KanidmdOpt::DomainSettings {
                 commands: DomainSettingsCmds::DomainChange(sopt),
             } => &sopt,
@@ -426,15 +423,6 @@ async fn main() {
         } => {
             eprintln!("👀 db scan - get id2 entry - {}", dopt.id);
             dbscan_get_id2entry_core(&config, dopt.id);
-        }
-        KanidmdOpt::DomainSettings {
-            commands: DomainSettingsCmds::SetDomainDisplayName(sopt),
-        } => {
-            eprintln!(
-                "system settings: set domain_display_name - {:?}",
-                &sopt.domain_display_name
-            );
-            set_domain_display_name(&config, sopt.domain_display_name.as_str()).unwrap();
         }
         KanidmdOpt::DomainSettings {
             commands: DomainSettingsCmds::DomainChange(_dopt),

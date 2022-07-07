@@ -316,7 +316,9 @@ impl Entry<EntryInit, EntryNew> {
             }
             // str -> Proto entry
             let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
-                admin_error!(?e, "{} {}", format!("{:?}", es), "SerdeJson Failure");
+                // We probably shouldn't print ES here because that would allow users
+                // to inject content into our logs :)
+                admin_error!(?e, "SerdeJson Failure");
                 OperationError::SerdeJsonError
             })?;
             // now call from_proto_entry
@@ -670,7 +672,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             });
 
             if !missing_must.is_empty() {
-                eprintln!("Validation error, at least one entry specified in schema is missing!");
+                admin_warn!("Validation error, the following required (must) attributes are missing - {:?}", missing_must);
                 return Err(SchemaError::MissingMustAttribute(missing_must));
             }
 
@@ -681,12 +683,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
                             if a_schema.phantom {
-                                /*
-                                lrequest_error!(
-                                    "Attempt to add phantom attribute to extensible: {}",
+                                admin_warn!(
+                                    "Rejecting attempt to add phantom attribute to extensible object: {}",
                                     attr_name
                                 );
-                                */
                                 Err(SchemaError::PhantomAttribute(attr_name.to_string()))
                             } else {
                                 a_schema.validate_ava(attr_name.as_str(), avas)
@@ -698,10 +698,9 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                                 "Invalid Attribute {}, undefined in schema_attributes",
                                 attr_name.to_string()
                             );
-                            Err(SchemaError::InvalidAttribute(format!(
-                                "undefined in schema_attributes: {}",
+                            Err(SchemaError::InvalidAttribute(
                                 attr_name.to_string()
-                            )))
+                            ))
                         }
                     }
                 })?;
@@ -710,9 +709,9 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // not allowed to exist in the class, which means a phantom attribute can't
                 // be in the may/must set, and would FAIL our normal checks anyway.
 
-                // We clone string here, but it's so we can check all
-                // the values in "may" ar here - so we can't avoid this look up. What we
-                // could do though, is have &String based on the schemaattribute though?;
+                // The set of "may" is a combination of may and must, since we have already
+                // asserted that all must requirements are fufilled. This allows us to
+                // perform extended attribute checking in a single pass.
                 let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
                     .iter()
                     // Join our class systemmmust + must + systemmay + may into one.
@@ -750,15 +749,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         }
                         None => {
                             admin_error!(
-                                "Invalid Attribute {} for entry - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
+                                "{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
                                 attr_name.to_string(),
                                 may.keys().collect::<Vec<_>>()
                             );
-                            trace!(?attr_name, "SchemaError::InvalidAttribute");
-                            Err(SchemaError::InvalidAttribute(format!(
-                                "systemmay missing attribute: {}",
+                            Err(SchemaError::AttributeNotValidForClass(
                                 attr_name.to_string()
-                            )))
+                            ))
                         }
                     }
                 })?;

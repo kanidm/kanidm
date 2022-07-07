@@ -732,23 +732,6 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    /// Tries to pull the domain display name from the database. If it's not set,
-    /// then pull the domain_name because we fall back to that. If that fails
-    /// then throw the error and give up.
-    fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
-        self.internal_search_uuid(&UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                trace!(?e);
-                e.get_ava_single_utf8("domain_display_name")
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                admin_error!(?e, "Error getting domain name");
-                e
-            })
-    }
-
     fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
             .and_then(|e| {
@@ -2714,6 +2697,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("Failed to update delete accesscontrols {:?}", e);
             e
         })
+    }
+
+    fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
+        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+            .and_then(|e| {
+                trace!(?e);
+                e.get_ava_single_utf8("domain_display_name")
+                    .map(str::to_string)
+                    .ok_or(OperationError::InvalidEntryState)
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Error getting domain display name");
+                e
+            })
     }
 
     /// Pulls the domain name from the database and updates the DomainInfo data in memory
