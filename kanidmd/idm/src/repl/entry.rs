@@ -21,12 +21,13 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct EntryChangelog {
     /// The set of "entries as they existed at a point in time". This allows us to rewind
-    /// to a point-in-time, and then to start to "rewind" and begin to apply changes again.
+    /// to a point-in-time, and then to start to "replay" applying all changes again.
     ///
     /// A subtle and important piece of information is that an anchor can be considered
     /// as the "state as existing between two Cid's". This means for Cid X, this state is
     /// the "moment before X". This is important, as for a create we define the initial anchor
-    /// as "nothing".
+    /// as "nothing". It's means for the anchor at time X, that changes that occured at time
+    /// X have NOT been replayed and applied!
     anchors: BTreeMap<Cid, State>,
     changes: BTreeMap<Cid, Change>,
 }
@@ -48,7 +49,7 @@ pub struct Change {
 
 #[derive(Debug, Clone)]
 enum State {
-    NonExistant,
+    NonExistent,
     Live(Eattrs),
     Recycled(Eattrs),
     Tombstone(Eattrs),
@@ -57,7 +58,7 @@ enum State {
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
-            State::NonExistant => write!(f, "NonExistant"),
+            State::NonExistent => write!(f, "NonExistent"),
             State::Live(_) => write!(f, "Live"),
             State::Recycled(_) => write!(f, "Recycled"),
             State::Tombstone(_) => write!(f, "Tombstone"),
@@ -95,8 +96,8 @@ impl State {
         let mut state = self;
         for transition in change.s.iter() {
             match (&mut state, transition) {
-                (State::NonExistant, Transition::Create(attrs)) => {
-                    trace!("NonExistant + Create -> Live");
+                (State::NonExistent, Transition::Create(attrs)) => {
+                    trace!("NonExistent + Create -> Live");
                     state = State::Live(attrs.clone());
                 }
                 (State::Live(ref mut attrs), Transition::ModifyPurge(attr)) => {
@@ -163,12 +164,12 @@ impl State {
                 // ==============================
                 // Invalid States
                 /*
-                (State::NonExistant, Transition::ModifyPurge(_))
-                | (State::NonExistant, Transition::ModifyPresent(_, _))
-                | (State::NonExistant, Transition::ModifyRemoved(_, _))
-                | (State::NonExistant, Transition::Recycle)
-                | (State::NonExistant, Transition::Revive)
-                | (State::NonExistant, Transition::Tombstone(_))
+                (State::NonExistent, Transition::ModifyPurge(_))
+                | (State::NonExistent, Transition::ModifyPresent(_, _))
+                | (State::NonExistent, Transition::ModifyRemoved(_, _))
+                | (State::NonExistent, Transition::Recycle)
+                | (State::NonExistent, Transition::Revive)
+                | (State::NonExistent, Transition::Tombstone(_))
                 | (State::Live(_), Transition::Create(_))
                 | (State::Live(_), Transition::Revive)
                 | (State::Recycled(_), Transition::Create(_))
@@ -182,7 +183,7 @@ impl State {
                 }
             };
         }
-        // Everything must have applied., all good then.
+        // Everything must have applied, all good then.
         trace!(?state, "applied changes");
         Ok(state)
     }
@@ -192,7 +193,7 @@ impl EntryChangelog {
     pub fn new(cid: Cid, attrs: Eattrs, _schema: &dyn SchemaTransaction) -> Self {
         // I think we need to reduce the attrs based on what is / is not replicated.?
 
-        let anchors = btreemap![(cid.clone(), State::NonExistant)];
+        let anchors = btreemap![(cid.clone(), State::NonExistent)];
         let changes = btreemap![(
             cid,
             Change {
@@ -232,7 +233,7 @@ impl EntryChangelog {
             )
         } else {
             (
-                btreemap![(cid.clone(), State::NonExistant)],
+                btreemap![(cid.clone(), State::NonExistent)],
                 btreemap![(
                     cid,
                     Change {
@@ -380,7 +381,7 @@ impl EntryChangelog {
                 Ok(mut new_state) => {
                     // Indicate that this was the highest CID so far.
                     match &mut new_state {
-                        State::NonExistant => {
+                        State::NonExistent => {
                             trace!("pass");
                         }
                         State::Live(ref mut attrs)
@@ -441,7 +442,7 @@ impl EntryChangelog {
                                     .push(Err(ConsistencyError::ChangelogDesynchronised(entry_id)));
                             }
                         }
-                        State::NonExistant => {
+                        State::NonExistent => {
                             warn!("entry does not exist - changelog is corrupted?!");
                             results.push(Err(ConsistencyError::ChangelogDesynchronised(entry_id)))
                         }
@@ -537,10 +538,10 @@ mod tests {
     fn test_entrychangelog_state_transitions() {
         // Test that all our transitions are defined and work as
         // expected.
-        assert!(State::NonExistant
+        assert!(State::NonExistent
             .apply_change(&Change { s: vec![] })
             .is_ok());
-        assert!(State::NonExistant
+        assert!(State::NonExistent
             .apply_change(&Change {
                 s: vec![Transition::Create(Eattrs::new())]
             })

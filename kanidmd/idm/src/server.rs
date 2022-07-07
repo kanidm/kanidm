@@ -1266,9 +1266,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
-            // RUV-TODO
-            // Update the ruv here with the state of the newely created entries.
-
             // Run any post plugins
 
             Plugins::run_post_create(self, &commit_cand, ce).map_err(|e| {
@@ -1413,10 +1410,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e
                 })?;
 
-            // RUV-TODO
-            // Update the RUV with the state of the altered entries.
-
-            // Post delete plugs
+            // Post delete plugins
             Plugins::run_post_delete(self, &del_cand, de).map_err(|e| {
                 admin_error!("Delete operation failed (plugin), {:?}", e);
                 e
@@ -1540,9 +1534,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|_| {
                     admin_info!("Purge recycled operation success");
                 })
-
-            // RUV-TODO
-            // Update the state of the RUV here!
         })
     }
 
@@ -1928,9 +1919,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e
                 })?;
 
-            // RUV-TODO
-            // Update the state of the RUV here
-
             // Post Plugins
             //
             // memberOf actually wants the pre cand list and the norm_cand list to see what
@@ -2102,9 +2090,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e
                 })?;
 
-            // RUV-TODO
-            // Update the satte of the RUV here!
-
             if !self.changed_schema.get() {
                 self.changed_schema.set(
                     norm_cand
@@ -2227,10 +2212,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     admin_error!("migrate_2_to_3 modification failure -> {:?}", e);
                     e
                 })
-
-            // RUV-TODO
-            // Update the state of the RUV here!
-
             // Complete
         })
     }

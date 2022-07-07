@@ -1852,7 +1852,7 @@ mod tests {
             let server_txn = server.write(time_p3);
             assert!(server_txn.purge_tombstones().is_ok());
 
-            // ===== ✅ now read to test!
+            // ===== ✅ now ready to test!
 
             // Resolving most times should yield expected results
             let t1 = vs_utf8!["teststring".to_string()] as _;

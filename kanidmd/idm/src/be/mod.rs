@@ -1191,7 +1191,7 @@ impl<'a> BackendWriteTransaction<'a> {
         };
 
         // Update the names/uuid maps. These have to mask out entries
-        // that are recycled or tombstones, so these pretend as "reap_tombstonesd"
+        // that are recycled or tombstones, so these pretend as "deleted"
         // and can trigger correct actions.
         //
 
@@ -2422,7 +2422,7 @@ mod tests {
     #[test]
     fn test_be_index_create_delete_multi() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            // reap_tombstones multiple entries at a time, without deleting others
+            // delete multiple entries at a time, without deleting others
             // First, setup our index tables!
             assert!(be.reindex().is_ok());
             // Test that on entry create, the indexes are made correctly.
