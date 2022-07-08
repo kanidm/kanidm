@@ -982,6 +982,7 @@ mod tests {
             algo: TotpAlgo::Sha256,
         };
         let s = totp.to_uri();
-        assert!(s == "otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
+        println!("{}", s);
+        assert!(s == "otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }

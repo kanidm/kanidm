@@ -165,9 +165,4 @@
       <set id="hide_frame1" attributeName="visibility" attributeType="CSS" to="hidden"
             begin="show_frame1.end" dur="1ms" fill="freeze"/>
      </path>
-     <!--
-     <animate attributeName="xlink:href"
-      values="test1.jpg;test2.jpg"
-      begin="0s" repeatCount="indefinite" dur="0.5s"/>
-      -->
 </svg>

@@ -497,6 +497,5 @@ impl Component for Oauth2App {
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("oauth2::destroy");
         remove_ui_form_classes!();
-
     }
 }

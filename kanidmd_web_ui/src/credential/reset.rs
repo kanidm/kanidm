@@ -54,6 +54,8 @@ impl From<FetchError> for Msg {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
+//Page state
 enum State {
     TokenInput,
     WaitingForStatus,
@@ -62,6 +64,7 @@ enum State {
         status: CUStatus,
     },
     WaitingForCommit,
+    #[allow(clippy::large_enum_variant)]
     Error {
         emsg: String,
         kopid: Option<String>,
@@ -192,7 +195,10 @@ impl Component for CredentialResetApp {
                 None
             }
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),
-            (_, _) => unreachable!(),
+            (_, _) => {
+                console::debug!("CredentialResetApp state match fail on update.");
+                None
+            }
         };
 
         if let Some(mut next_state) = next_state {
@@ -213,8 +219,8 @@ impl Component for CredentialResetApp {
         match &self.state {
             State::TokenInput => self.view_token_input(ctx),
             State::WaitingForStatus | State::WaitingForCommit => self.view_waiting(ctx),
-            State::Main { token, status } => self.view_main(ctx, &token, &status),
-            State::Error { emsg, kopid } => self.view_error(ctx, &emsg, kopid.as_deref()),
+            State::Main { token, status } => self.view_main(ctx, token, status),
+            State::Error { emsg, kopid } => self.view_error(ctx, emsg, kopid.as_deref()),
         }
     }
 
@@ -250,8 +256,12 @@ impl CredentialResetApp {
                       class="form-control"
                       value=""
                   />
-                  <button type="submit" class="btn btn-dark">{" Submit "}</button>
+                  <button type="submit" class="btn btn-dark">{" Submit "}</button><br />
               </form>
+              <p>
+              <a href="/"><button href="/" class="btn btn-dark" aria-label="Return home">{"Return to the home page"}</button></a>
+              </p>
+
           </main>
         }
     }
