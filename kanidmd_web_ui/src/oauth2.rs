@@ -247,9 +247,7 @@ impl Component for Oauth2App {
                 models::pop_oauth2_authorisation_request()
             });
 
-        if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
-            console::log!(format!("class_list add error -> {:?}", e).as_str());
-        };
+        add_ui_form_classes!();
 
         // If we have neither we need to say that we can not proceed at all.
         let query = match query {
@@ -498,11 +496,7 @@ impl Component for Oauth2App {
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("oauth2::destroy");
-        if let Err(e) = crate::utils::body()
-            .class_list()
-            .remove_1("form-signin-body")
-        {
-            console::log!(format!("class_list remove error -> {:?}", e).as_str());
-        }
+        remove_ui_form_classes!();
+
     }
 }

@@ -13,6 +13,10 @@
 
 use wasm_bindgen::prelude::*;
 
+#[macro_use]
+mod macros;
+
+mod constants;
 mod credential;
 mod error;
 mod login;

@@ -87,10 +87,7 @@ impl Component for CredentialResetApp {
 
         // Where did we come from?
 
-        // Inject our class to centre everything.
-        if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
-            console::log!(format!("class_list add error -> {:?}", e));
-        };
+        add_ui_form_classes!();
 
         // Can we pre-load in a session token? This occures when we are sent a
         // credential reset from the views UI.
@@ -223,34 +220,30 @@ impl Component for CredentialResetApp {
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("credential::reset::destroy");
-        if let Err(e) = crate::utils::body()
-            .class_list()
-            .remove_1("form-signin-body")
-        {
-            console::log!(format!("class_list remove error -> {:?}", e));
-        }
+        remove_ui_form_classes!();
     }
 }
 
 impl CredentialResetApp {
     fn view_token_input(&self, ctx: &Context<Self>) -> Html {
         html! {
-          <main class="form-signin">
-            <div class="container">
+        <main class="flex-shrink-0 form-signin">
+            <center>
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                // TODO: replace this with a call to domain info
+                <h3>{ "Kanidm idm.example.com" } </h3>
+            </center>
               <p>
                 {"Enter your credential reset token"}
               </p>
-            </div>
-            <div class="container">
-              <form
+            <form
                   onsubmit={ ctx.link().callback(|e: FocusEvent| {
                       console::log!("credential::reset::view_token_input -> TokenInput - prevent_default()");
                       e.prevent_default();
 
                       Msg::TokenSubmit
                   } ) }
-                  action="javascript:void(0);"
-              >
+                  action="javascript:void(0);">
                   <input
                       id="autofocus"
                       type="text"
@@ -259,7 +252,6 @@ impl CredentialResetApp {
                   />
                   <button type="submit" class="btn btn-dark">{" Submit "}</button>
               </form>
-            </div>
           </main>
         }
     }
@@ -277,12 +269,7 @@ impl CredentialResetApp {
     }
 
     fn view_main(&self, ctx: &Context<Self>, token: &CUSessionToken, status: &CUStatus) -> Html {
-        if let Err(e) = crate::utils::body()
-            .class_list()
-            .remove_1("form-signin-body")
-        {
-            console::log!(format!("class_list remove error -> {:?}", e));
-        }
+        remove_ui_form_classes!();
 
         let displayname = status.displayname.clone();
         let spn = status.spn.clone();
