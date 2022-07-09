@@ -1,5 +1,5 @@
 mod manifest;
-mod middleware;
+pub mod middleware;
 mod oauth2;
 mod v1;
 
@@ -15,7 +15,6 @@ use kanidm::config::{ServerRole, TlsConfiguration};
 use kanidm::prelude::*;
 use kanidm::status::StatusActor;
 use kanidm::tracing_tree::TreeMiddleware;
-use regex::Regex;
 use serde::Serialize;
 use std::fs::canonicalize;
 use std::path::PathBuf;
@@ -77,34 +76,6 @@ pub struct AppState {
     pub js_files: Vec<JavaScriptFile>,
 }
 
-/// This is for the tide_compression middleware so that we only compress certain content types.
-///
-/// ```
-/// use score::https::compression_content_type_checker;
-/// let these_should_match = vec![
-///     "application/wasm",
-///     "text/json",
-///     "text/javascript"
-/// ];
-/// for test_value in these_should_match {
-///     eprintln!("checking {:?}", test_value);
-///     assert!(compression_content_type_checker().is_match(test_value));
-/// }
-/// assert!(compression_content_type_checker().is_match("application/wasm"));
-/// let these_should_fail = vec![
-///     "image/jpeg",
-///     "image/wasm",
-///     "text/html",
-/// ];
-/// for test_value in these_should_fail {
-///     eprintln!("checking {:?}", test_value);
-///     assert!(!compression_content_type_checker().is_match(test_value));
-/// }
-/// ```
-pub fn compression_content_type_checker() -> Regex {
-    Regex::new(r"^(?:(image/svg\+xml)|(?:application|text)/(?:css|javascript|json|text|xml|wasm))$")
-        .expect("regex matcher for tide_compress content-type check failed to compile")
-}
 pub trait RequestExtensions {
     fn get_current_uat(&self) -> Option<String>;
 

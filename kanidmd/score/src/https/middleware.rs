@@ -1,63 +1,50 @@
+///! Custom tide middleware for Kanidm
+
 use crate::https::JavaScriptFile;
+use regex::Regex;
+
+
+/// This is for the tide_compression middleware so that we only compress certain content types.
+///
+/// ```
+/// use score::https::middleware::compression_content_type_checker;
+/// let these_should_match = vec![
+///     "application/wasm",
+///     "text/json",
+///     "text/javascript"
+/// ];
+/// for test_value in these_should_match {
+///     eprintln!("checking {:?}", test_value);
+///     assert!(compression_content_type_checker().is_match(test_value));
+/// }
+/// assert!(compression_content_type_checker().is_match("application/wasm"));
+/// let these_should_fail = vec![
+///     "image/jpeg",
+///     "image/wasm",
+///     "text/html",
+/// ];
+/// for test_value in these_should_fail {
+///     eprintln!("checking {:?}", test_value);
+///     assert!(!compression_content_type_checker().is_match(test_value));
+/// }
+/// ```
+pub fn compression_content_type_checker() -> Regex {
+    Regex::new(r"^(?:(image/svg\+xml)|(?:application|text)/(?:css|javascript|json|text|xml|wasm))$")
+        .expect("regex matcher for tide_compress content-type check failed to compile")
+}
 
 #[derive(Default)]
-/// This tide MiddleWare adds headers like Content-Security-Policy
-/// and similar families. If it keeps adding more things then
-/// probably rename the middleware :)
-pub struct UIContentSecurityPolicyResponseMiddleware {
-    // The sha384 hash of /pkg/wasmloader.js
-    pub hashes: Vec<JavaScriptFile>,
-}
-impl UIContentSecurityPolicyResponseMiddleware {
-    pub fn new(hashes: Vec<JavaScriptFile>) -> Self {
-        return Self { hashes };
-    }
-}
+pub struct CacheableMiddleware;
 
 #[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
-    for UIContentSecurityPolicyResponseMiddleware
-{
-    // This updates the UI body with the integrity hash value for the wasmloader.js file, and adds content-security-policy headers.
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for CacheableMiddleware {
     async fn handle(
         &self,
         request: tide::Request<State>,
         next: tide::Next<'_, State>,
     ) -> tide::Result {
         let mut response = next.run(request).await;
-
-        // a list of hashes of js files that we're sending to the user
-        let hashes: Vec<String> = self
-            .hashes
-            .iter()
-            .map(|j| format!("'{}'", j.hash))
-            .collect();
-
-        response.insert_header(
-            /* content-security-policy headers tell the browser what to trust
-                https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
-
-                In this case we're only trusting the same server that the page is
-                loaded from, and adding a hash of wasmloader.js, which is the main script
-                we should be loading, and should be really secure about that!
-
-            */
-            "content-security-policy",
-            vec![
-                "default-src 'self'",
-                // we need unsafe-eval because of WASM things
-                format!("script-src 'self' {} 'unsafe-eval'", hashes.join(" ")).as_str(),
-                "form-action https: 'self'", // to allow for OAuth posts
-                // we are not currently using workers so it can be blocked
-                "worker-src 'none'",
-                // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
-                // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
-                "report-uri 'none'",
-                "base-uri 'self'",
-            ]
-            .join(";"),
-        );
-
+        response.insert_header("Cache-Control", "max-age=60,must-revalidate,private");
         Ok(response)
     }
 }
@@ -79,21 +66,6 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for NoCacheMi
     }
 }
 
-#[derive(Default)]
-pub struct CacheableMiddleware;
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for CacheableMiddleware {
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        let mut response = next.run(request).await;
-        response.insert_header("Cache-Control", "max-age=60,must-revalidate,private");
-        Ok(response)
-    }
-}
 
 #[derive(Default)]
 /// Sets Cache-Control headers on static content endpoints
@@ -171,5 +143,68 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictReq
                 "StrictRequestViolation",
             ))
         }
+    }
+}
+
+
+#[derive(Default)]
+/// This tide MiddleWare adds headers like Content-Security-Policy
+/// and similar families. If it keeps adding more things then
+/// probably rename the middleware :)
+pub struct UIContentSecurityPolicyResponseMiddleware {
+    // The sha384 hash of /pkg/wasmloader.js
+    pub hashes: Vec<JavaScriptFile>,
+}
+impl UIContentSecurityPolicyResponseMiddleware {
+    pub fn new(hashes: Vec<JavaScriptFile>) -> Self {
+        return Self { hashes };
+    }
+}
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
+    for UIContentSecurityPolicyResponseMiddleware
+{
+    // This updates the UI body with the integrity hash value for the wasmloader.js file, and adds content-security-policy headers.
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+
+        // a list of hashes of js files that we're sending to the user
+        let hashes: Vec<String> = self
+            .hashes
+            .iter()
+            .map(|j| format!("'{}'", j.hash))
+            .collect();
+
+        response.insert_header(
+            /* content-security-policy headers tell the browser what to trust
+                https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
+
+                In this case we're only trusting the same server that the page is
+                loaded from, and adding a hash of wasmloader.js, which is the main script
+                we should be loading, and should be really secure about that!
+
+            */
+            "content-security-policy",
+            vec![
+                "default-src 'self'",
+                // we need unsafe-eval because of WASM things
+                format!("script-src 'self' {} 'unsafe-eval'", hashes.join(" ")).as_str(),
+                "form-action https: 'self'", // to allow for OAuth posts
+                // we are not currently using workers so it can be blocked
+                "worker-src 'none'",
+                // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
+                // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
+                "report-uri 'none'",
+                "base-uri 'self'",
+            ]
+            .join(";"),
+        );
+
+        Ok(response)
     }
 }
