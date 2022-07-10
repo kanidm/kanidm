@@ -247,7 +247,7 @@ impl Component for Oauth2App {
                 models::pop_oauth2_authorisation_request()
             });
 
-        add_ui_form_classes!();
+        add_body_form_classes!();
 
         // If we have neither we need to say that we can not proceed at all.
         let query = match query {
@@ -496,6 +496,6 @@ impl Component for Oauth2App {
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("oauth2::destroy");
-        remove_ui_form_classes!();
+        remove_body_form_classes!();
     }
 }

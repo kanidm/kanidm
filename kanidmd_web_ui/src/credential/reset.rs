@@ -90,7 +90,7 @@ impl Component for CredentialResetApp {
 
         // Where did we come from?
 
-        add_ui_form_classes!();
+        add_body_form_classes!();
 
         // Can we pre-load in a session token? This occures when we are sent a
         // credential reset from the views UI.
@@ -226,7 +226,7 @@ impl Component for CredentialResetApp {
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("credential::reset::destroy");
-        remove_ui_form_classes!();
+        remove_body_form_classes!();
     }
 }
 
@@ -279,7 +279,7 @@ impl CredentialResetApp {
     }
 
     fn view_main(&self, ctx: &Context<Self>, token: &CUSessionToken, status: &CUStatus) -> Html {
-        remove_ui_form_classes!();
+        remove_body_form_classes!();
 
         let displayname = status.displayname.clone();
         let spn = status.spn.clone();

@@ -468,7 +468,7 @@ impl Component for LoginApp {
 
         let state = LoginState::Init(true);
 
-        add_ui_form_classes!();
+        add_body_form_classes!();
 
         LoginApp {
             inputvalue,
@@ -790,7 +790,7 @@ impl Component for LoginApp {
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("login::destroy".to_string());
-        remove_ui_form_classes!();
+        remove_body_form_classes!();
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
