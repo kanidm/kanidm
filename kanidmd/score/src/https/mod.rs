@@ -207,6 +207,7 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
     res.insert_header("X-KANIDM-OPID", hvalue);
 
     res.set_content_type("text/html;charset=utf-8");
+    // this feels icky but I felt that adding a trait on Vec<JavaScriptFile> which generated the string was going a bit far
     let jsfiles: Vec<String> = req
         .state()
         .to_owned()
@@ -330,7 +331,7 @@ pub fn create_https_server(
                     filepath,
                 ))
                 .unwrap(),
-                filetype: Some("module".to_string()),
+                filetype: None,
             });
         }
     };
