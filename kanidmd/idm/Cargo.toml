@@ -19,7 +19,7 @@ async-std = { version = "^1.12.0", features = ["tokio1"] }
 async-trait = "^0.1.53"
 base64 = "^0.13.0"
 chrono = "^0.4.19"
-compact_jwt = "^0.2.1"
+compact_jwt = "^0.2.3"
 compiled-uuid = "0.1.2"
 concread = "^0.3.7"
 dyn-clone = "^1.0.6"

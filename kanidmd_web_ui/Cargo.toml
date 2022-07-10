@@ -33,7 +33,7 @@ yew-agent = "^0.1.0"
 gloo = "^0.8.0"
 js-sys = "^0.3.58"
 
-compact_jwt = { version = "^0.2.2", default-features = false, features = ["unsafe_release_without_verify"] }
+compact_jwt = { version = "^0.2.3", default-features = false, features = ["unsafe_release_without_verify"] }
 # compact_jwt = { path = "../../compact_jwt" , default-features = false, features = ["unsafe_release_without_verify"] }
 
 [dependencies.web-sys]
