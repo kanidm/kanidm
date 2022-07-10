@@ -68,7 +68,7 @@ enum Direction {
 
 /// Display modes from the Web app manifest definition
 ///
-/// Ref: https://developer.mozilla.org/en-US/docs/Web/Manifest/display
+/// Ref: <https://developer.mozilla.org/en-US/docs/Web/Manifest/display>
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum DisplayMode {
     /// All of the available display area is used and no user agent chrome is

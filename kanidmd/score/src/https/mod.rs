@@ -34,24 +34,13 @@ pub struct JavaScriptFile {
     filetype: Option<String>,
 }
 
-impl std::fmt::Display for JavaScriptFile {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
-        // TODO YOLO this
-        let typestr = match &self.filetype {
-            Some(value) => format!("type=\"{}\"", value),
-            _ => "".to_string(),
-        };
-        f.write_str(format!(r#"<script src=\"/pkg/{}\" {}"#, &self.filepath, typestr,).as_str())
-    }
-}
-
 impl JavaScriptFile {
-    /// grab the hash for use in CSP headers
+    /// return the hash for use in CSP headers
     pub fn as_csp_hash(self) -> String {
         self.hash
     }
 
-    /// returns a <script tag
+    /// returns a <script> HTML tag
     fn as_tag(self) -> String {
         let typeattr = match self.filetype {
             Some(val) => format!("type=\"{}\" ", val),
