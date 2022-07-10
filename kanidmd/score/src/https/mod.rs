@@ -1,11 +1,13 @@
 mod manifest;
 pub mod middleware;
 mod oauth2;
+mod routemaps;
 mod v1;
 
 use self::manifest::manifest;
 use self::middleware::*;
 use self::oauth2::*;
+use self::routemaps::{RouteMap, RouteMaps};
 use self::v1::*;
 
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
@@ -304,6 +306,7 @@ pub fn create_https_server(
 
     let jws_validator = std::sync::Arc::new(jws_validator);
     let jws_signer = std::sync::Arc::new(jws_signer);
+    let mut routemap = RouteMap::default();
 
     let mut js_files: Vec<JavaScriptFile> = Vec::new();
 
@@ -344,8 +347,6 @@ pub fn create_https_server(
         jws_validator,
         js_files: js_files.to_owned(),
     });
-
-    // tide::log::with_level(tide::log::LevelFilter::Debug);
 
     // Add middleware?
     tserver.with(TreeMiddleware::with_stdout());
@@ -406,11 +407,19 @@ pub fn create_https_server(
         // The compression middleware needs to be the last one added before routes
         static_tserver.with(compress_middleware.clone());
 
-        static_tserver.at("/").get(index_view);
-        static_tserver.at("/robots.txt").get(robots_txt);
-        static_tserver.at("/manifest.webmanifest").get(manifest);
-        static_tserver.at("/ui/").get(index_view);
-        static_tserver.at("/ui/*").get(index_view);
+        static_tserver.at("/").mapped_get(&mut routemap, index_view);
+        static_tserver
+            .at("/robots.txt")
+            .mapped_get(&mut routemap, robots_txt);
+        static_tserver
+            .at("/manifest.webmanifest")
+            .mapped_get(&mut routemap, manifest);
+        static_tserver
+            .at("/ui/")
+            .mapped_get(&mut routemap, index_view);
+        static_tserver
+            .at("/ui/*")
+            .mapped_get(&mut routemap, index_view);
 
         let mut static_dir_tserver = tserver.at("");
         static_dir_tserver.with(StaticContentMiddleware::default());
@@ -437,11 +446,11 @@ pub fn create_https_server(
     // We allow caching of the radius token.
     account_route_cacheable
         .at("/:id/_radius/_token")
-        .get(account_get_id_radius_token);
+        .mapped_get(&mut routemap, account_get_id_radius_token);
     // We allow clients to cache the unix token.
     account_route_cacheable
         .at("/:id/_unix/_token")
-        .get(account_get_id_unix_token);
+        .mapped_get(&mut routemap, account_get_id_unix_token);
 
     // ==== These routes can not be cached
     let mut appserver = tserver.at("");
@@ -449,7 +458,9 @@ pub fn create_https_server(
 
     // let mut well_known = appserver.at("/.well-known");
 
-    appserver.at("/status").get(self::status);
+    appserver
+        .at("/status")
+        .mapped_get(&mut routemap, self::status);
     // == oauth endpoints.
 
     let mut oauth2_process = appserver.at("/oauth2");
@@ -457,240 +468,299 @@ pub fn create_https_server(
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/authorise")
-        .post(oauth2_authorise_post)
-        .get(oauth2_authorise_get);
+        .mapped_post(&mut routemap, oauth2_authorise_post)
+        .mapped_get(&mut routemap, oauth2_authorise_get);
+
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/authorise/permit")
-        .post(oauth2_authorise_permit_post)
-        .get(oauth2_authorise_permit_get);
+        .mapped_post(&mut routemap, oauth2_authorise_permit_post)
+        .mapped_get(&mut routemap, oauth2_authorise_permit_get);
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/authorise/reject")
-        .post(oauth2_authorise_reject_post)
-        .get(oauth2_authorise_reject_get);
+        .mapped_post(&mut routemap, oauth2_authorise_reject_post)
+        .mapped_get(&mut routemap, oauth2_authorise_reject_get);
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process.at("/token").post(oauth2_token_post);
+    oauth2_process
+        .at("/token")
+        .mapped_post(&mut routemap, oauth2_token_post);
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/token/introspect")
-        .post(oauth2_token_introspect_post);
+        .mapped_post(&mut routemap, oauth2_token_introspect_post);
 
     let mut openid_process = appserver.at("/oauth2/openid");
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     openid_process
         .at("/:client_id/.well-known/openid-configuration")
-        .get(oauth2_openid_discovery_get);
+        .mapped_get(&mut routemap, oauth2_openid_discovery_get);
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     openid_process
         .at("/:client_id/userinfo")
-        .get(oauth2_openid_userinfo_get);
+        .mapped_get(&mut routemap, oauth2_openid_userinfo_get);
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     openid_process
         .at("/:client_id/public_key.jwk")
-        .get(oauth2_openid_publickey_get);
+        .mapped_get(&mut routemap, oauth2_openid_publickey_get);
 
     let mut raw_route = appserver.at("/v1/raw");
-    raw_route.at("/create").post(create);
-    raw_route.at("/modify").post(modify);
-    raw_route.at("/delete").post(delete);
-    raw_route.at("/search").post(search);
+    raw_route.at("/create").mapped_post(&mut routemap, create);
+    raw_route.at("/modify").mapped_post(&mut routemap, modify);
+    raw_route.at("/delete").mapped_post(&mut routemap, delete);
+    raw_route.at("/search").mapped_post(&mut routemap, search);
 
-    appserver.at("/v1/auth").post(auth);
-    appserver.at("/v1/auth/valid").get(auth_valid);
+    appserver.at("/v1/auth").mapped_post(&mut routemap, auth);
+    appserver
+        .at("/v1/auth/valid")
+        .mapped_get(&mut routemap, auth_valid);
 
     let mut schema_route = appserver.at("/v1/schema");
-    schema_route.at("/").get(schema_get);
+    schema_route.at("/").mapped_get(&mut routemap, schema_get);
     schema_route
         .at("/attributetype")
-        .get(schema_attributetype_get)
-        .post(do_nothing);
+        .mapped_get(&mut routemap, schema_attributetype_get)
+        .mapped_post(&mut routemap, do_nothing);
     schema_route
         .at("/attributetype/:id")
-        .get(schema_attributetype_get_id)
-        .put(do_nothing)
-        .patch(do_nothing);
+        .mapped_get(&mut routemap, schema_attributetype_get_id)
+        .mapped_put(&mut routemap, do_nothing)
+        .mapped_patch(&mut routemap, do_nothing);
 
     schema_route
         .at("/classtype")
-        .get(schema_classtype_get)
-        .post(do_nothing);
+        .mapped_get(&mut routemap, schema_classtype_get)
+        .mapped_post(&mut routemap, do_nothing);
     schema_route
         .at("/classtype/:id")
-        .get(schema_classtype_get_id)
-        .put(do_nothing)
-        .patch(do_nothing);
+        .mapped_get(&mut routemap, schema_classtype_get_id)
+        .mapped_put(&mut routemap, do_nothing)
+        .mapped_patch(&mut routemap, do_nothing);
 
     let mut oauth2_route = appserver.at("/v1/oauth2");
-    oauth2_route.at("/").get(oauth2_get);
+    oauth2_route.at("/").mapped_get(&mut routemap, oauth2_get);
 
-    oauth2_route.at("/_basic").post(oauth2_basic_post);
+    oauth2_route
+        .at("/_basic")
+        .mapped_post(&mut routemap, oauth2_basic_post);
 
     oauth2_route
         .at("/:id")
-        .get(oauth2_id_get)
+        .mapped_get(&mut routemap, oauth2_id_get)
         // It's not really possible to replace this wholesale.
-        // .put(oauth2_id_put)
-        .patch(oauth2_id_patch)
-        .delete(oauth2_id_delete);
+        // .mapped_put(&mut routemap, oauth2_id_put)
+        .mapped_patch(&mut routemap, oauth2_id_patch)
+        .mapped_delete(&mut routemap, oauth2_id_delete);
 
     oauth2_route
         .at("/:id/_scopemap/:group")
-        .post(oauth2_id_scopemap_post)
-        .delete(oauth2_id_scopemap_delete);
+        .mapped_post(&mut routemap, oauth2_id_scopemap_post)
+        .mapped_delete(&mut routemap, oauth2_id_scopemap_delete);
 
     let mut self_route = appserver.at("/v1/self");
-    self_route.at("/").get(whoami);
+    self_route.at("/").mapped_get(&mut routemap, whoami);
 
-    self_route.at("/_attr/:attr").get(do_nothing);
-    self_route.at("/_credential").get(do_nothing);
+    self_route
+        .at("/_attr/:attr")
+        .mapped_get(&mut routemap, do_nothing);
+    self_route
+        .at("/_credential")
+        .mapped_get(&mut routemap, do_nothing);
 
     self_route
         .at("/_credential/primary/set_password")
-        .post(idm_account_set_password);
-    self_route.at("/_credential/:cid/_lock").get(do_nothing);
+        .mapped_post(&mut routemap, idm_account_set_password);
+    self_route
+        .at("/_credential/:cid/_lock")
+        .mapped_get(&mut routemap, do_nothing);
 
     self_route
         .at("/_radius")
-        .get(do_nothing)
-        .delete(do_nothing)
-        .post(do_nothing);
+        .mapped_get(&mut routemap, do_nothing)
+        .mapped_delete(&mut routemap, do_nothing)
+        .mapped_post(&mut routemap, do_nothing);
 
-    self_route.at("/_radius/_config").post(do_nothing);
-    self_route.at("/_radius/_config/:token").get(do_nothing);
+    self_route
+        .at("/_radius/_config")
+        .mapped_post(&mut routemap, do_nothing);
+    self_route
+        .at("/_radius/_config/:token")
+        .mapped_get(&mut routemap, do_nothing);
     self_route
         .at("/_radius/_config/:token/apple")
-        .get(do_nothing);
+        .mapped_get(&mut routemap, do_nothing);
 
     let mut person_route = appserver.at("/v1/person");
-    person_route.at("/").get(person_get).post(person_post);
-    person_route.at("/:id").get(person_id_get);
+    person_route
+        .at("/")
+        .mapped_get(&mut routemap, person_get)
+        .mapped_post(&mut routemap, person_post);
+    person_route
+        .at("/:id")
+        .mapped_get(&mut routemap, person_id_get);
 
     let mut account_route = appserver.at("/v1/account");
-    account_route.at("/").get(account_get).post(account_post);
+    account_route
+        .at("/")
+        .mapped_get(&mut routemap, account_get)
+        .mapped_post(&mut routemap, account_post);
     account_route
         .at("/:id")
-        .get(account_id_get)
-        .delete(account_id_delete);
+        .mapped_get(&mut routemap, account_id_get)
+        .mapped_delete(&mut routemap, account_id_delete);
     account_route
         .at("/:id/_attr/:attr")
-        .get(account_id_get_attr)
-        .put(account_id_put_attr)
-        .post(account_id_post_attr)
-        .delete(account_id_delete_attr);
+        .mapped_get(&mut routemap, account_id_get_attr)
+        .mapped_put(&mut routemap, account_id_put_attr)
+        .mapped_post(&mut routemap, account_id_post_attr)
+        .mapped_delete(&mut routemap, account_id_delete_attr);
     account_route
         .at("/:id/_person/_extend")
-        .post(account_post_id_person_extend);
+        .mapped_post(&mut routemap, account_post_id_person_extend);
     account_route
         .at("/:id/_person/_set")
-        .post(account_post_id_person_set);
-    account_route.at("/:id/_lock").get(do_nothing);
+        .mapped_post(&mut routemap, account_post_id_person_set);
+    account_route
+        .at("/:id/_lock")
+        .mapped_get(&mut routemap, do_nothing);
 
-    account_route.at("/:id/_credential").get(do_nothing);
+    account_route
+        .at("/:id/_credential")
+        .mapped_get(&mut routemap, do_nothing);
     account_route
         .at("/:id/_credential/_status")
-        .get(account_get_id_credential_status);
+        .mapped_get(&mut routemap, account_get_id_credential_status);
     account_route
         .at("/:id/_credential/primary")
-        .put(account_put_id_credential_primary);
+        .mapped_put(&mut routemap, account_put_id_credential_primary);
     account_route
         .at("/:id/_credential/:cid/_lock")
-        .get(do_nothing);
+        .mapped_get(&mut routemap, do_nothing);
     account_route
         .at("/:id/_credential/:cid/backup_code")
-        .get(account_get_backup_code);
-    // .post(account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
-    // .delete(account_delete_backup_code); // same as above
+        .mapped_get(&mut routemap, account_get_backup_code);
+    // .mapped_post(&mut routemap, account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
+    // .mapped_delete(&mut routemap, account_delete_backup_code); // same as above
     account_route
         .at("/:id/_credential/_update")
-        .get(account_get_id_credential_update);
+        .mapped_get(&mut routemap, account_get_id_credential_update);
     account_route
         .at("/:id/_credential/_update_intent")
-        .get(account_get_id_credential_update_intent);
+        .mapped_get(&mut routemap, account_get_id_credential_update_intent);
     account_route
         .at("/:id/_credential/_update_intent/:ttl")
-        .get(account_get_id_credential_update_intent);
+        .mapped_get(&mut routemap, account_get_id_credential_update_intent);
 
     account_route
         .at("/:id/_ssh_pubkeys")
-        .get(account_get_id_ssh_pubkeys)
-        .post(account_post_id_ssh_pubkey);
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkeys)
+        .mapped_post(&mut routemap, account_post_id_ssh_pubkey);
 
     account_route
         .at("/:id/_ssh_pubkeys/:tag")
-        .get(account_get_id_ssh_pubkey_tag)
-        .delete(account_delete_id_ssh_pubkey_tag);
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag)
+        .mapped_delete(&mut routemap, account_delete_id_ssh_pubkey_tag);
 
     account_route
         .at("/:id/_radius")
-        .get(account_get_id_radius)
-        .post(account_post_id_radius_regenerate)
-        .delete(account_delete_id_radius);
+        .mapped_get(&mut routemap, account_get_id_radius)
+        .mapped_post(&mut routemap, account_post_id_radius_regenerate)
+        .mapped_delete(&mut routemap, account_delete_id_radius);
 
-    account_route.at("/:id/_unix").post(account_post_id_unix);
+    account_route
+        .at("/:id/_unix")
+        .mapped_post(&mut routemap, account_post_id_unix);
     account_route
         .at("/:id/_unix/_auth")
-        .post(account_post_id_unix_auth);
+        .mapped_post(&mut routemap, account_post_id_unix_auth);
     account_route
         .at("/:id/_unix/_credential")
-        .put(account_put_id_unix_credential)
-        .delete(account_delete_id_unix_credential);
+        .mapped_put(&mut routemap, account_put_id_unix_credential)
+        .mapped_delete(&mut routemap, account_delete_id_unix_credential);
 
     let mut cred_route = appserver.at("/v1/credential");
     cred_route
         .at("/_exchange_intent")
-        .post(credential_update_exchange_intent);
+        .mapped_post(&mut routemap, credential_update_exchange_intent);
 
-    cred_route.at("/_status").post(credential_update_status);
+    cred_route
+        .at("/_status")
+        .mapped_post(&mut routemap, credential_update_status);
 
-    cred_route.at("/_update").post(credential_update_update);
+    cred_route
+        .at("/_update")
+        .mapped_post(&mut routemap, credential_update_update);
 
-    cred_route.at("/_commit").post(credential_update_commit);
+    cred_route
+        .at("/_commit")
+        .mapped_post(&mut routemap, credential_update_commit);
 
     let mut group_route = appserver.at("/v1/group");
-    group_route.at("/").get(group_get).post(group_post);
+    group_route
+        .at("/")
+        .mapped_get(&mut routemap, group_get)
+        .mapped_post(&mut routemap, group_post);
     group_route
         .at("/:id")
-        .get(group_id_get)
-        .delete(group_id_delete);
+        .mapped_get(&mut routemap, group_id_get)
+        .mapped_delete(&mut routemap, group_id_delete);
     group_route
         .at("/:id/_attr/:attr")
-        .delete(group_id_delete_attr)
-        .get(group_id_get_attr)
-        .put(group_id_put_attr)
-        .post(group_id_post_attr);
-    group_route.at("/:id/_unix").post(group_post_id_unix);
+        .mapped_delete(&mut routemap, group_id_delete_attr)
+        .mapped_get(&mut routemap, group_id_get_attr)
+        .mapped_put(&mut routemap, group_id_put_attr)
+        .mapped_post(&mut routemap, group_id_post_attr);
+    group_route
+        .at("/:id/_unix")
+        .mapped_post(&mut routemap, group_post_id_unix);
     group_route
         .at("/:id/_unix/_token")
-        .get(group_get_id_unix_token);
+        .mapped_get(&mut routemap, group_get_id_unix_token);
 
     let mut domain_route = appserver.at("/v1/domain");
-    domain_route.at("/").get(domain_get);
+    domain_route.at("/").mapped_get(&mut routemap, domain_get);
     domain_route
         .at("/_attr/:attr")
-        .get(domain_get_attr)
-        .put(domain_put_attr)
-        .delete(domain_delete_attr);
+        .mapped_get(&mut routemap, domain_get_attr)
+        .mapped_put(&mut routemap, domain_put_attr)
+        .mapped_delete(&mut routemap, domain_delete_attr);
 
     let mut recycle_route = appserver.at("/v1/recycle_bin");
-    recycle_route.at("/").get(recycle_bin_get);
-    recycle_route.at("/:id").get(recycle_bin_id_get);
+    recycle_route
+        .at("/")
+        .mapped_get(&mut routemap, recycle_bin_get);
+    recycle_route
+        .at("/:id")
+        .mapped_get(&mut routemap, recycle_bin_id_get);
     recycle_route
         .at("/:id/_revive")
-        .post(recycle_bin_revive_id_post);
+        .mapped_post(&mut routemap, recycle_bin_revive_id_post);
 
     let mut accessprof_route = appserver.at("/v1/access_profile");
-    accessprof_route.at("/").get(do_nothing);
-    accessprof_route.at("/:id").get(do_nothing);
-    accessprof_route.at("/:id/_attr/:attr").get(do_nothing);
+    accessprof_route
+        .at("/")
+        .mapped_get(&mut routemap, do_nothing);
+    accessprof_route
+        .at("/:id")
+        .mapped_get(&mut routemap, do_nothing);
+    accessprof_route
+        .at("/:id/_attr/:attr")
+        .mapped_get(&mut routemap, do_nothing);
 
+    routemap.push_self("/v1/routemap".to_string(), http_types::Method::Get);
+    appserver.at("/v1/routemap").nest({
+        let mut route_api = tide::with_state(routemap);
+        route_api.at("/").get(do_routemap);
+        route_api
+    });
+    // routemap_route.at("/").mapped_get(&mut routemap, do_routemap);
     // ===  End routes
 
     // Create listener?

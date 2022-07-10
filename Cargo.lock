@@ -3272,6 +3272,7 @@ dependencies = [
  "compact_jwt",
  "futures",
  "futures-util",
+ "http-types",
  "kanidm",
  "kanidm_client",
  "kanidm_proto",

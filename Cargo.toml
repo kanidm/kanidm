@@ -5,16 +5,16 @@ lto = "thin"
 
 [workspace]
 members = [
-    "kanidm_proto",
-    "kanidmd/idm",
-    "kanidmd/score",
-    "kanidmd/daemon",
-    "kanidmd_web_ui",
     "kanidm_client",
+    "kanidm_proto",
     "kanidm_tools",
     "kanidm_unix_int",
     "kanidm_unix_int/nss_kanidm",
     "kanidm_unix_int/pam_kanidm",
+    "kanidmd_web_ui",
+    "kanidmd/daemon",
+    "kanidmd/idm",
+    "kanidmd/score",
     "orca",
     "profiles",
 ]

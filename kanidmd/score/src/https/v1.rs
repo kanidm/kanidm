@@ -11,7 +11,7 @@ use kanidm_proto::v1::{
     ModifyRequest, OperationError, SearchRequest, SetCredentialRequest, SingleStringRequest,
 };
 
-use super::{to_tide_response, AppState, RequestExtensions};
+use super::{to_tide_response, AppState, RequestExtensions, RouteMap};
 use async_std::task;
 use compact_jwt::Jws;
 use std::str::FromStr;
@@ -872,6 +872,13 @@ pub async fn recycle_bin_revive_id_post(req: tide::Request<AppState>) -> tide::R
         .handle_reviverecycled(uat, filter, eventid)
         .await;
     to_tide_response(res, hvalue)
+}
+
+pub async fn do_routemap(req: tide::Request<RouteMap>) -> tide::Result {
+    let mut res = tide::Response::new(200);
+
+    res.set_body(req.state().do_map());
+    Ok(res)
 }
 
 pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
