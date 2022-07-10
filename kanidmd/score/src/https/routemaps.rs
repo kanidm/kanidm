@@ -1,10 +1,10 @@
+use crate::https::AppState;
 ///! Route-mapping magic for tide
 ///
 /// Instead of adding routes with (for example) the .post method you add them with .mapped_post, pasing an instance of [RouteMap] and it'll do the rest...
 ///
 use serde::{Deserialize, Serialize};
 use tide::{Endpoint, Route};
-use crate::https::AppState;
 
 // Extends the tide::Route for RouteMaps, this would really be nice if it was generic :(
 pub trait RouteMaps {
