@@ -27,7 +27,7 @@ fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 filetime = "^0.2.17"
 futures = "^0.3.21"
 futures-util = "^0.3.21"
-hashbrown = { version = "0.12.0", features = ["serde", "inline-more", "ahash"] }
+hashbrown = { version = "0.12.2", features = ["serde", "inline-more", "ahash"] }
 idlset = { version = "^0.2.4" }
 kanidm_proto = { path = "../../kanidm_proto" }
 lazy_static = "^1.4.0"
