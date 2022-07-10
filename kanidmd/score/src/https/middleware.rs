@@ -192,6 +192,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
             "content-security-policy",
             vec![
                 "default-src 'self'",
+                // TODO: have a dev/test mode where we can rebuild the hashes on page load, so when doing constant JS changes/rebuilds we don't have to restart the server every time. It'd be *terrible* to run in prod because of the constant disk thrashing, but nicer for devs.
                 // we need unsafe-eval because of WASM things
                 format!("script-src 'self' {} 'unsafe-eval'", hashes.join(" ")).as_str(),
                 "form-action https: 'self'", // to allow for OAuth posts

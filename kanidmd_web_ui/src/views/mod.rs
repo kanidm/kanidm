@@ -234,10 +234,10 @@ impl ViewsApp {
                   </Link<ViewRoute>>
                 </li>
                 <li class="mb-1">
-                  <button class="btn btn-dark" href="#"
+                  <a class="nav-link" href="#"
                     data-bs-toggle="modal"
                     data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
-                    >{"Sign out"}</button>
+                    >{"Sign out"}</a>
                 </li>
                   </ul>
                   <form class="d-flex">
@@ -247,23 +247,25 @@ impl ViewsApp {
                 </div>
               </div>
             </nav>
-        // logout modal
+        // sign out modal dialogue box
         <div class="modal" tabindex="-1" role="dialog" id={crate::constants::ID_SIGNOUTMODAL}>
           <div class="modal-dialog" role="document">
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title">{"Confirm Sign out"}</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                  <span aria-hidden="true">{"x"}</span>
-                </button>
               </div>
-              <div class="modal-body">
-                <p><img src="/pkg/img/kani-waving.svg" alt="Kani waving goodbye" /></p>
-                <p>{"Are you sure you'd like to log out?"}</p>
+              <div class="modal-body text-center">
+                {"Are you sure you'd like to log out?"}<br />
+                <img src="/pkg/img/kani-waving.svg" alt="Kani waving goodbye" />
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-dismiss="modal" onclick={ ctx.link().callback(|_| ViewsMsg::Logout) }>{ "Sign out" }</button>
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">{"Cancel"}</button>
+                <button type="button" class="btn btn-success"
+                  data-bs-toggle="modal"
+                  data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
+                  onclick={ ctx.link().callback(|_| ViewsMsg::Logout) }>{ "Sign out" }</button>
+                <button type="button" class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                  >{"Cancel"}</button>
               </div>
             </div>
           </div>
