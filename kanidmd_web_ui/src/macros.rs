@@ -1,6 +1,6 @@
 ///! Macros for the web UI
 
-/// Adds a default set of CSS classes to the body element
+/// Adds a set of CSS classes to the body element when we're presenting a full-page form
 #[macro_export]
 macro_rules! add_body_form_classes {
     () => {
@@ -12,7 +12,7 @@ macro_rules! add_body_form_classes {
     };
 }
 
-/// Removes the default set of CSS classes from the body element
+/// Removes the set of CSS classes from the body element after we're presenting a full-page form
 #[macro_export]
 macro_rules! remove_body_form_classes {
     () => {
