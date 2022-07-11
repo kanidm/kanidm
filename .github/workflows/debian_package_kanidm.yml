@@ -22,18 +22,15 @@ jobs:
           libudev-dev \
           libssl-dev \
           libsqlite3-dev
-
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
-
     - name: "Run clippy (ignores errors, this is just a check)"
       run: cargo clippy --no-deps
       continue-on-error: true
-      - run: find platforms/debian/ -name 'p*' -exec chmod 555 "{}" \;
-      - run:
-      - run: dpkg-deb --build --root-owner-group kanidm
+    - name: "Doing the package build"
+      run: ./platform/debian/build_kanidm.sh
       # - name: Release
       #   uses: softprops/action-gh-release@v1
       #   if: startsWith(github.ref, 'refs/tags/')
