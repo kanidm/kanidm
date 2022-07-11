@@ -75,6 +75,8 @@ test/radiusd: ## Run a test radius server
 
 test/radiusd:	build/radiusd test/radiusd
 
+test:
+	cargo test
 
 vendor:
 	cargo vendor

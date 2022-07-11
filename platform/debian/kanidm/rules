@@ -1,0 +1,41 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+
+# be REALLY noisy
+export DH_VERBOSE=1
+export DH_OPTIONS=-v
+
+export DEB_BUILD_OPTIONS=noautodbgsym
+
+PKGDIR=debian/kanidm
+BINDIR=${PKGDIR}/usr/bin/
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	cargo clean
+override_dh_auto_configure:
+
+override_dh_auto_build:
+	dh_auto_build -- local/kanidm
+
+override_dh_auto_test:
+
+# cargo test
+
+override_dh_auto_install:
+	mkdir -p ${BINDIR}
+	install \
+		-g root \
+		-o root \
+		target/release/kanidm \
+		${BINDIR}
+
+override_dh_installexamples:
+	mkdir -p ${PKGDIR}/usr/share/kanidm/
+	install \
+	    -g root \
+		-o root \
+		examples/kanidm \
+		${PKGDIR}/usr/share/kanidm/

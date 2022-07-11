@@ -22,8 +22,8 @@ case "$1" in
     configure)
         if [ ! -f /etc/kanidm/config ]; then
             echo "Please ensure you create a configuration file"
-            echo "at /etc/kanidm/config or ~/.config/kanidm"
-            echo "An example is at /usr/share/kanidm/kanidm"
+            echo "at /etc/kanidm/server.toml"
+            echo "An example is in /usr/share/kanidm/"
         fi
     ;;
 
