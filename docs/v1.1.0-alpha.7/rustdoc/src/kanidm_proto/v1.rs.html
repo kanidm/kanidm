@@ -991,14 +991,6 @@
 <span id="986">986</span>
 <span id="987">987</span>
 <span id="988">988</span>
-<span id="989">989</span>
-<span id="990">990</span>
-<span id="991">991</span>
-<span id="992">992</span>
-<span id="993">993</span>
-<span id="994">994</span>
-<span id="995">995</span>
-<span id="996">996</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
@@ -1793,22 +1785,13 @@ pub struct AccountOrgPersonExtend {
 <span class="kw">impl</span> <span class="ident">TotpSecret</span> {
     <span class="doccomment">/// &lt;https://github.com/google/google-authenticator/wiki/Key-Uri-Format&gt;</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_uri</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="comment">// label = accountname / issuer (“:” / “%3A”) *”%20” accountname</span>
-        <span class="comment">// This is already done server side but paranoia is good!</span>
-        <span class="kw">let</span> <span class="ident">accountname</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">accountname</span>
-            .<span class="ident">replace</span>(<span class="string">&#39;:&#39;</span>, <span class="string">&quot;&quot;</span>)
-            .<span class="ident">replace</span>(<span class="string">&quot;%3A&quot;</span>, <span class="string">&quot;&quot;</span>)
-            .<span class="ident">replace</span>(<span class="string">&#39; &#39;</span>, <span class="string">&quot;%20&quot;</span>);
-        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">issuer</span>
-            .<span class="ident">replace</span>(<span class="string">&#39;:&#39;</span>, <span class="string">&quot;&quot;</span>)
-            .<span class="ident">replace</span>(<span class="string">&quot;%3A&quot;</span>, <span class="string">&quot;&quot;</span>)
-            .<span class="ident">replace</span>(<span class="string">&#39; &#39;</span>, <span class="string">&quot;%20&quot;</span>);
+        <span class="kw">let</span> <span class="ident">accountname</span> <span class="op">=</span> <span class="ident">urlencoding::Encoded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">accountname</span>);
+        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="ident">urlencoding::Encoded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">issuer</span>);
         <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}:{}&quot;</span>, <span class="ident">issuer</span>, <span class="ident">accountname</span>);
         <span class="kw">let</span> <span class="ident">algo</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">algo</span>.<span class="ident">to_string</span>();
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_secret</span>();
         <span class="kw">let</span> <span class="ident">period</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">step</span>;
+
         <span class="macro">format!</span>(
             <span class="string">&quot;otpauth://totp/{}?secret={}&amp;issuer={}&amp;algorithm={}&amp;digits=6&amp;period={}&quot;</span>,
             <span class="ident">label</span>, <span class="ident">secret</span>, <span class="ident">issuer</span>, <span class="ident">algo</span>, <span class="ident">period</span>
@@ -1992,7 +1975,8 @@ impl WhoamiRequest {
             <span class="ident">algo</span>: <span class="ident">TotpAlgo::Sha256</span>,
         };
         <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">totp</span>.<span class="ident">to_uri</span>();
-        <span class="macro">assert!</span>(<span class="ident">s</span> <span class="op">==</span> <span class="string">&quot;otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&amp;issuer=blackhats%20australia&amp;algorithm=SHA256&amp;digits=6&amp;period=30&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">s</span>);
+        <span class="macro">assert!</span>(<span class="ident">s</span> <span class="op">==</span> <span class="string">&quot;otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&amp;issuer=blackhats%20australia&amp;algorithm=SHA256&amp;digits=6&amp;period=30&quot;</span>);
     }
 }
 </code></pre></div>

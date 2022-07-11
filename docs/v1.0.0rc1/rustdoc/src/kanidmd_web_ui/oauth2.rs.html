@@ -504,13 +504,6 @@
 <span id="499">499</span>
 <span id="500">500</span>
 <span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::JsCast</span>;
@@ -760,9 +753,7 @@
                 <span class="ident">models::pop_oauth2_authorisation_request</span>()
             });
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::utils::body</span>().<span class="ident">class_list</span>().<span class="ident">add_1</span>(<span class="string">&quot;form-signin-body&quot;</span>) {
-            <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;class_list add error -&gt; {:?}&quot;</span>, <span class="ident">e</span>).<span class="ident">as_str</span>());
-        };
+        <span class="macro">add_body_form_classes!</span>();
 
         <span class="comment">// If we have neither we need to say that we can not proceed at all.</span>
         <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">query</span> {
@@ -1011,12 +1002,7 @@
 
     <span class="kw">fn</span> <span class="ident">destroy</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) {
         <span class="macro">console::log!</span>(<span class="string">&quot;oauth2::destroy&quot;</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::utils::body</span>()
-            .<span class="ident">class_list</span>()
-            .<span class="ident">remove_1</span>(<span class="string">&quot;form-signin-body&quot;</span>)
-        {
-            <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;class_list remove error -&gt; {:?}&quot;</span>, <span class="ident">e</span>).<span class="ident">as_str</span>());
-        }
+        <span class="macro">remove_body_form_classes!</span>();
     }
 }
 </code></pre></div>

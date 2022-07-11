@@ -803,23 +803,6 @@
 <span id="798">798</span>
 <span id="799">799</span>
 <span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::prelude</span>::<span class="kw-2">*</span>;
@@ -865,7 +848,6 @@
     <span class="ident">Authenticated</span>,
 }
 
-<span class="kw">const</span> <span class="ident">CLASSES_TO_ADD</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="string">&quot;flex-column&quot;</span>, <span class="string">&quot;d-flex&quot;</span>, <span class="string">&quot;h-100&quot;</span>];
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LoginAppMsg</span> {
     <span class="ident">Input</span>(<span class="ident">String</span>),
     <span class="ident">Restart</span>,
@@ -1290,13 +1272,8 @@
         <span class="macro">console::log!</span>(<span class="ident">cookie</span>);
 
         <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Init</span>(<span class="bool-val">true</span>);
-        <span class="comment">// startConfetti();</span>
 
-        <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="ident">CLASSES_TO_ADD</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::utils::body</span>().<span class="ident">class_list</span>().<span class="ident">add_1</span>(<span class="ident">x</span>) {
-                <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;class_list add error -&gt; {:?}&quot;</span>, <span class="ident">e</span>));
-            };
-        }
+        <span class="macro">add_body_form_classes!</span>();
 
         <span class="ident">LoginApp</span> {
             <span class="ident">inputvalue</span>,
@@ -1602,6 +1579,7 @@
         <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;flex-shrink-0 form-signin&quot;</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="ident">center</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/logo-square.svg&quot;</span> <span class="ident">alt</span><span class="op">=</span><span class="string">&quot;Kanidm&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;kanidm_logo&quot;</span><span class="op">/</span><span class="op">&gt;</span>
+                <span class="comment">// TODO: replace this with a call to domain info</span>
                 <span class="op">&lt;</span><span class="ident">h3</span><span class="op">&gt;</span>{ <span class="string">&quot;Kanidm idm.example.com&quot;</span> } <span class="op">&lt;</span><span class="op">/</span><span class="ident">h3</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="op">/</span><span class="ident">center</span><span class="op">&gt;</span>
             { <span class="self">self</span>.<span class="ident">view_state</span>(<span class="ident">ctx</span>) }
@@ -1617,19 +1595,7 @@
 
     <span class="kw">fn</span> <span class="ident">destroy</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) {
         <span class="macro">console::log!</span>(<span class="string">&quot;login::destroy&quot;</span>.<span class="ident">to_string</span>());
-
-        <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="ident">CLASSES_TO_ADD</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::utils::body</span>().<span class="ident">class_list</span>().<span class="ident">remove_1</span>(<span class="ident">x</span>) {
-                <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;class_list remove error -&gt; {:?}&quot;</span>, <span class="ident">e</span>));
-            };
-        }
-
-        <span class="comment">// if let Err(e) = crate::utils::body()</span>
-        <span class="comment">//     .class_list()</span>
-        <span class="comment">//     .remove_1(&quot;form-signin-body&quot;)</span>
-        <span class="comment">// {</span>
-        <span class="comment">//     console::log!(format!(&quot;class_list remove error -&gt; {:?}&quot;, e));</span>
-        <span class="comment">// }</span>
+        <span class="macro">remove_body_form_classes!</span>();
     }
 
     <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {

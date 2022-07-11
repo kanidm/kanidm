@@ -206,6 +206,8 @@
 <span id="201">201</span>
 <span id="202">202</span>
 <span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
@@ -225,6 +227,8 @@
 <span class="kw">use</span> <span class="ident">wasm_bindgen_futures::JsFuture</span>;
 <span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
 
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
+<span class="comment">// Page state</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Msg</span> {
     <span class="comment">// Nothing</span>
     <span class="ident">RequestCredentialUpdate</span>,

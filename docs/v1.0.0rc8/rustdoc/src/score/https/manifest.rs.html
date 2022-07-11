@@ -192,6 +192,10 @@
 <span id="187">187</span>
 <span id="188">188</span>
 <span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
 </pre><pre class="rust"><code><span class="doccomment">///! Builds a Progressive Web App Manifest page.</span>
 <span class="comment">// Thanks to the webmanifest crate for a lot of this code</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::https</span>::{<span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
@@ -262,7 +266,7 @@
 
 <span class="doccomment">/// Display modes from the Web app manifest definition</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// Ref: https://developer.mozilla.org/en-US/docs/Web/Manifest/display</span>
+<span class="doccomment">/// Ref: &lt;https://developer.mozilla.org/en-US/docs/Web/Manifest/display&gt;</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">enum</span> <span class="ident">DisplayMode</span> {
     <span class="doccomment">/// All of the available display area is used and no user agent chrome is</span>
@@ -320,11 +324,15 @@
         },
     ];
 
+    <span class="kw">let</span> <span class="ident">start_url</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">req</span>.<span class="ident">host</span>() {
+        <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;https://{}/&quot;</span>, <span class="ident">value</span>).<span class="ident">clone</span>(),
+        <span class="prelude-val">None</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;/&quot;</span>),
+    };
 
     <span class="kw">let</span> <span class="ident">manifest_struct</span> <span class="op">=</span> <span class="ident">Manifest</span> {
-        <span class="ident">short_name</span>: <span class="ident">domain_display_name</span>.<span class="ident">as_str</span>(),
+        <span class="ident">short_name</span>: <span class="string">&quot;Kanidm&quot;</span>,
         <span class="ident">name</span>: <span class="ident">domain_display_name</span>.<span class="ident">as_str</span>(),
-        <span class="ident">start_url</span>: <span class="string">&quot;/&quot;</span>, <span class="comment">// TODO: this needs to be the frontend URL, can&#39;t get this yet</span>
+        <span class="ident">start_url</span>: <span class="ident">start_url</span>.<span class="ident">as_str</span>(),
         <span class="ident">display_mode</span>: <span class="ident">DisplayMode::MinimalUi</span>,
         <span class="ident">description</span>: <span class="prelude-val">None</span>,
         <span class="ident">orientation</span>: <span class="prelude-val">None</span>,

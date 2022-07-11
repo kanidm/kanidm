@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["compression_content_type_checker","This is for the tide_compression middleware so that we only compress certain content types."],["create_https_server",""],["generate_integrity_hash",""],["to_tide_response",""]],"struct":[["AppState",""]],"trait":[["RequestExtensions",""]]});
+initSidebarItems({"fn":[["create_https_server",""],["generate_integrity_hash","Generates the integrity hash for a file based on a filename"],["to_tide_response",""]],"mod":[["middleware",""]],"struct":[["AppState",""],["JavaScriptFile",""]],"trait":[["RequestExtensions",""]]});
