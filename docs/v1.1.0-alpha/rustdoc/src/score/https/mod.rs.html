@@ -738,14 +738,86 @@
 <span id="733">733</span>
 <span id="734">734</span>
 <span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
+<span class="kw">mod</span> <span class="ident">routemaps</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::manifest::manifest</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::middleware</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::oauth2</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="self">self</span>::routemaps</span>::{<span class="ident">RouteMap</span>, <span class="ident">RouteMaps</span>};
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::v1</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>, <span class="ident">JwsUnverified</span>, <span class="ident">JwsValidator</span>};
@@ -1044,6 +1116,7 @@ Disallow: /
 
     <span class="kw">let</span> <span class="ident">jws_validator</span> <span class="op">=</span> <span class="ident">std::sync::Arc::new</span>(<span class="ident">jws_validator</span>);
     <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="ident">std::sync::Arc::new</span>(<span class="ident">jws_signer</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">routemap</span> <span class="op">=</span> <span class="ident">RouteMap::default</span>();
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">js_files</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JavaScriptFile</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
 
@@ -1084,8 +1157,6 @@ Disallow: /
         <span class="ident">jws_validator</span>,
         <span class="ident">js_files</span>: <span class="ident">js_files</span>.<span class="ident">to_owned</span>(),
     });
-
-    <span class="comment">// tide::log::with_level(tide::log::LevelFilter::Debug);</span>
 
     <span class="comment">// Add middleware?</span>
     <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">TreeMiddleware::with_stdout</span>());
@@ -1146,11 +1217,19 @@ Disallow: /
         <span class="comment">// The compression middleware needs to be the last one added before routes</span>
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">compress_middleware</span>.<span class="ident">clone</span>());
 
-        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
-        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/robots.txt&quot;</span>).<span class="ident">get</span>(<span class="ident">robots_txt</span>);
-        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/manifest.webmanifest&quot;</span>).<span class="ident">get</span>(<span class="ident">manifest</span>);
-        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/ui/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
-        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/ui/*&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
+        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">index_view</span>);
+        <span class="ident">static_tserver</span>
+            .<span class="ident">at</span>(<span class="string">&quot;/robots.txt&quot;</span>)
+            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">robots_txt</span>);
+        <span class="ident">static_tserver</span>
+            .<span class="ident">at</span>(<span class="string">&quot;/manifest.webmanifest&quot;</span>)
+            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">manifest</span>);
+        <span class="ident">static_tserver</span>
+            .<span class="ident">at</span>(<span class="string">&quot;/ui/&quot;</span>)
+            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">index_view</span>);
+        <span class="ident">static_tserver</span>
+            .<span class="ident">at</span>(<span class="string">&quot;/ui/*&quot;</span>)
+            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">index_view</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">static_dir_tserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
         <span class="ident">static_dir_tserver</span>.<span class="ident">with</span>(<span class="ident">StaticContentMiddleware::default</span>());
@@ -1177,11 +1256,11 @@ Disallow: /
     <span class="comment">// We allow caching of the radius token.</span>
     <span class="ident">account_route_cacheable</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_radius/_token&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_radius_token</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_radius_token</span>);
     <span class="comment">// We allow clients to cache the unix token.</span>
     <span class="ident">account_route_cacheable</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_token&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_unix_token</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_unix_token</span>);
 
     <span class="comment">// ==== These routes can not be cached</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">appserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
@@ -1189,7 +1268,9 @@ Disallow: /
 
     <span class="comment">// let mut well_known = appserver.at(&quot;/.well-known&quot;);</span>
 
-    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/status&quot;</span>).<span class="ident">get</span>(<span class="ident"><span class="self">self</span>::status</span>);
+    <span class="ident">appserver</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/status&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident"><span class="self">self</span>::status</span>);
     <span class="comment">// == oauth endpoints.</span>
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oauth2_process</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/oauth2&quot;</span>);
@@ -1197,240 +1278,299 @@ Disallow: /
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
     <span class="ident">oauth2_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/authorise&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">oauth2_authorise_post</span>)
-        .<span class="ident">get</span>(<span class="ident">oauth2_authorise_get</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_post</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_get</span>);
+
     <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
     <span class="ident">oauth2_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/authorise/permit&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">oauth2_authorise_permit_post</span>)
-        .<span class="ident">get</span>(<span class="ident">oauth2_authorise_permit_get</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_permit_post</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_permit_get</span>);
     <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
     <span class="ident">oauth2_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/authorise/reject&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">oauth2_authorise_reject_post</span>)
-        .<span class="ident">get</span>(<span class="ident">oauth2_authorise_reject_get</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_reject_post</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_reject_get</span>);
     <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">oauth2_process</span>.<span class="ident">at</span>(<span class="string">&quot;/token&quot;</span>).<span class="ident">post</span>(<span class="ident">oauth2_token_post</span>);
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/token&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_token_post</span>);
     <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
     <span class="ident">oauth2_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/token/introspect&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">oauth2_token_introspect_post</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_token_introspect_post</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">openid_process</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/oauth2/openid&quot;</span>);
     <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
     <span class="ident">openid_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:client_id/.well-known/openid-configuration&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">oauth2_openid_discovery_get</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_openid_discovery_get</span>);
     <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
     <span class="ident">openid_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:client_id/userinfo&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">oauth2_openid_userinfo_get</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_openid_userinfo_get</span>);
     <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
     <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
     <span class="ident">openid_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:client_id/public_key.jwk&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">oauth2_openid_publickey_get</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_openid_publickey_get</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">raw_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/raw&quot;</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/create&quot;</span>).<span class="ident">post</span>(<span class="ident">create</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/modify&quot;</span>).<span class="ident">post</span>(<span class="ident">modify</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/delete&quot;</span>).<span class="ident">post</span>(<span class="ident">delete</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/search&quot;</span>).<span class="ident">post</span>(<span class="ident">search</span>);
+    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/create&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">create</span>);
+    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/modify&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">modify</span>);
+    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/delete&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">delete</span>);
+    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/search&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">search</span>);
 
-    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/auth&quot;</span>).<span class="ident">post</span>(<span class="ident">auth</span>);
-    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>).<span class="ident">get</span>(<span class="ident">auth_valid</span>);
+    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/auth&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">auth</span>);
+    <span class="ident">appserver</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">auth_valid</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">schema_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/schema&quot;</span>);
-    <span class="ident">schema_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">schema_get</span>);
+    <span class="ident">schema_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_get</span>);
     <span class="ident">schema_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/attributetype&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">schema_attributetype_get</span>)
-        .<span class="ident">post</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_attributetype_get</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
     <span class="ident">schema_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/attributetype/:id&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">schema_attributetype_get_id</span>)
-        .<span class="ident">put</span>(<span class="ident">do_nothing</span>)
-        .<span class="ident">patch</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_attributetype_get_id</span>)
+        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
+        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
     <span class="ident">schema_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/classtype&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">schema_classtype_get</span>)
-        .<span class="ident">post</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_classtype_get</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
     <span class="ident">schema_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/classtype/:id&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">schema_classtype_get_id</span>)
-        .<span class="ident">put</span>(<span class="ident">do_nothing</span>)
-        .<span class="ident">patch</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_classtype_get_id</span>)
+        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
+        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oauth2_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/oauth2&quot;</span>);
-    <span class="ident">oauth2_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">oauth2_get</span>);
+    <span class="ident">oauth2_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_get</span>);
 
-    <span class="ident">oauth2_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_basic&quot;</span>).<span class="ident">post</span>(<span class="ident">oauth2_basic_post</span>);
+    <span class="ident">oauth2_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_basic&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_basic_post</span>);
 
     <span class="ident">oauth2_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">oauth2_id_get</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_get</span>)
         <span class="comment">// It&#39;s not really possible to replace this wholesale.</span>
-        <span class="comment">// .put(oauth2_id_put)</span>
-        .<span class="ident">patch</span>(<span class="ident">oauth2_id_patch</span>)
-        .<span class="ident">delete</span>(<span class="ident">oauth2_id_delete</span>);
+        <span class="comment">// .mapped_put(&amp;mut routemap, oauth2_id_put)</span>
+        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_patch</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_delete</span>);
 
     <span class="ident">oauth2_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_scopemap/:group&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">oauth2_id_scopemap_post</span>)
-        .<span class="ident">delete</span>(<span class="ident">oauth2_id_scopemap_delete</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_scopemap_post</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_scopemap_delete</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/self&quot;</span>);
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">whoami</span>);
+    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">whoami</span>);
 
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_credential&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+    <span class="ident">self_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    <span class="ident">self_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_credential&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
     <span class="ident">self_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/_credential/primary/set_password&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">idm_account_set_password</span>);
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_credential/:cid/_lock&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">idm_account_set_password</span>);
+    <span class="ident">self_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_credential/:cid/_lock&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
     <span class="ident">self_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/_radius&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">do_nothing</span>)
-        .<span class="ident">delete</span>(<span class="ident">do_nothing</span>)
-        .<span class="ident">post</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_radius/_config&quot;</span>).<span class="ident">post</span>(<span class="ident">do_nothing</span>);
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_radius/_config/:token&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+    <span class="ident">self_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_radius/_config&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    <span class="ident">self_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_radius/_config/:token&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
     <span class="ident">self_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/_radius/_config/:token/apple&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">person_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/person&quot;</span>);
-    <span class="ident">person_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">person_get</span>).<span class="ident">post</span>(<span class="ident">person_post</span>);
-    <span class="ident">person_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>).<span class="ident">get</span>(<span class="ident">person_id_get</span>);
+    <span class="ident">person_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">person_get</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">person_post</span>);
+    <span class="ident">person_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">person_id_get</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">account_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/account&quot;</span>);
-    <span class="ident">account_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">account_get</span>).<span class="ident">post</span>(<span class="ident">account_post</span>);
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_id_get</span>)
-        .<span class="ident">delete</span>(<span class="ident">account_id_delete</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_get</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_delete</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_id_get_attr</span>)
-        .<span class="ident">put</span>(<span class="ident">account_id_put_attr</span>)
-        .<span class="ident">post</span>(<span class="ident">account_id_post_attr</span>)
-        .<span class="ident">delete</span>(<span class="ident">account_id_delete_attr</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_get_attr</span>)
+        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_put_attr</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_post_attr</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_delete_attr</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_person/_extend&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">account_post_id_person_extend</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_person_extend</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_person/_set&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">account_post_id_person_set</span>);
-    <span class="ident">account_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id/_lock&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_person_set</span>);
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_lock&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
-    <span class="ident">account_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id/_credential&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_status&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_credential_status</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_status</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/primary&quot;</span>)
-        .<span class="ident">put</span>(<span class="ident">account_put_id_credential_primary</span>);
+        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_put_id_credential_primary</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/:cid/_lock&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/:cid/backup_code&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_backup_code</span>);
-    <span class="comment">// .post(account_post_backup_code_regenerate) // use &quot;/:id/_credential/primary&quot; instead</span>
-    <span class="comment">// .delete(account_delete_backup_code); // same as above</span>
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_backup_code</span>);
+    <span class="comment">// .mapped_post(&amp;mut routemap, account_post_backup_code_regenerate) // use &quot;/:id/_credential/primary&quot; instead</span>
+    <span class="comment">// .mapped_delete(&amp;mut routemap, account_delete_backup_code); // same as above</span>
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_credential_update</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_update</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update_intent&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_credential_update_intent</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_update_intent</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update_intent/:ttl&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_credential_update_intent</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_update_intent</span>);
 
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_ssh_pubkeys</span>)
-        .<span class="ident">post</span>(<span class="ident">account_post_id_ssh_pubkey</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkeys</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_ssh_pubkey</span>);
 
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_ssh_pubkey_tag</span>)
-        .<span class="ident">delete</span>(<span class="ident">account_delete_id_ssh_pubkey_tag</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkey_tag</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_delete_id_ssh_pubkey_tag</span>);
 
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_radius&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">account_get_id_radius</span>)
-        .<span class="ident">post</span>(<span class="ident">account_post_id_radius_regenerate</span>)
-        .<span class="ident">delete</span>(<span class="ident">account_delete_id_radius</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_radius</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_radius_regenerate</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_delete_id_radius</span>);
 
-    <span class="ident">account_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>).<span class="ident">post</span>(<span class="ident">account_post_id_unix</span>);
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_unix</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_auth&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">account_post_id_unix_auth</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_unix_auth</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_credential&quot;</span>)
-        .<span class="ident">put</span>(<span class="ident">account_put_id_unix_credential</span>)
-        .<span class="ident">delete</span>(<span class="ident">account_delete_id_unix_credential</span>);
+        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_put_id_unix_credential</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_delete_id_unix_credential</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cred_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/credential&quot;</span>);
     <span class="ident">cred_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/_exchange_intent&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">credential_update_exchange_intent</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_exchange_intent</span>);
 
-    <span class="ident">cred_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_status&quot;</span>).<span class="ident">post</span>(<span class="ident">credential_update_status</span>);
+    <span class="ident">cred_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_status&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_status</span>);
 
-    <span class="ident">cred_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_update&quot;</span>).<span class="ident">post</span>(<span class="ident">credential_update_update</span>);
+    <span class="ident">cred_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_update&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_update</span>);
 
-    <span class="ident">cred_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_commit&quot;</span>).<span class="ident">post</span>(<span class="ident">credential_update_commit</span>);
+    <span class="ident">cred_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/_commit&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_commit</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/group&quot;</span>);
-    <span class="ident">group_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">group_get</span>).<span class="ident">post</span>(<span class="ident">group_post</span>);
+    <span class="ident">group_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_get</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_post</span>);
     <span class="ident">group_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">group_id_get</span>)
-        .<span class="ident">delete</span>(<span class="ident">group_id_delete</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_get</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_delete</span>);
     <span class="ident">group_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
-        .<span class="ident">delete</span>(<span class="ident">group_id_delete_attr</span>)
-        .<span class="ident">get</span>(<span class="ident">group_id_get_attr</span>)
-        .<span class="ident">put</span>(<span class="ident">group_id_put_attr</span>)
-        .<span class="ident">post</span>(<span class="ident">group_id_post_attr</span>);
-    <span class="ident">group_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>).<span class="ident">post</span>(<span class="ident">group_post_id_unix</span>);
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_delete_attr</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_get_attr</span>)
+        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_put_attr</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_post_attr</span>);
+    <span class="ident">group_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_post_id_unix</span>);
     <span class="ident">group_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_token&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">group_get_id_unix_token</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_get_id_unix_token</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">domain_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/domain&quot;</span>);
-    <span class="ident">domain_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">domain_get</span>);
+    <span class="ident">domain_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_get</span>);
     <span class="ident">domain_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">domain_get_attr</span>)
-        .<span class="ident">put</span>(<span class="ident">domain_put_attr</span>)
-        .<span class="ident">delete</span>(<span class="ident">domain_delete_attr</span>);
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_get_attr</span>)
+        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_put_attr</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_delete_attr</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">recycle_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/recycle_bin&quot;</span>);
-    <span class="ident">recycle_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">recycle_bin_get</span>);
-    <span class="ident">recycle_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>).<span class="ident">get</span>(<span class="ident">recycle_bin_id_get</span>);
+    <span class="ident">recycle_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">recycle_bin_get</span>);
+    <span class="ident">recycle_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">recycle_bin_id_get</span>);
     <span class="ident">recycle_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_revive&quot;</span>)
-        .<span class="ident">post</span>(<span class="ident">recycle_bin_revive_id_post</span>);
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">recycle_bin_revive_id_post</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accessprof_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/access_profile&quot;</span>);
-    <span class="ident">accessprof_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
-    <span class="ident">accessprof_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
-    <span class="ident">accessprof_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
+    <span class="ident">accessprof_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    <span class="ident">accessprof_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    <span class="ident">accessprof_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
 
+    <span class="ident">routemap</span>.<span class="ident">push_self</span>(<span class="string">&quot;/v1/routemap&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">http_types::Method::Get</span>);
+    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/routemap&quot;</span>).<span class="ident">nest</span>({
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">route_api</span> <span class="op">=</span> <span class="ident">tide::with_state</span>(<span class="ident">routemap</span>);
+        <span class="ident">route_api</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">do_routemap</span>);
+        <span class="ident">route_api</span>
+    });
+    <span class="comment">// routemap_route.at(&quot;/&quot;).mapped_get(&amp;mut routemap, do_routemap);</span>
     <span class="comment">// ===  End routes</span>
 
     <span class="comment">// Create listener?</span>

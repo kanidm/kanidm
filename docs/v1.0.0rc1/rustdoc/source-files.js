@@ -19,5 +19,5 @@ sourcesIndex["nss_kanidm"] = {"name":"","files":["lib.rs"]};
 sourcesIndex["orca"] = {"name":"","dirs":[{"name":"runner","files":["mod.rs","search.rs"]}],"files":["data.rs","ds.rs","kani.rs","ldap.rs","main.rs","opt.rs","preprocess.rs","profile.rs","setup.rs"]};
 sourcesIndex["pam_kanidm"] = {"name":"","dirs":[{"name":"pam","files":["constants.rs","conv.rs","items.rs","macros.rs","mod.rs","module.rs"]}],"files":["lib.rs"]};
 sourcesIndex["profiles"] = {"name":"","files":["lib.rs"]};
-sourcesIndex["score"] = {"name":"","dirs":[{"name":"https","files":["manifest.rs","middleware.rs","mod.rs","oauth2.rs","v1.rs"]}],"files":["ldaps.rs","lib.rs"]};
+sourcesIndex["score"] = {"name":"","dirs":[{"name":"https","files":["manifest.rs","middleware.rs","mod.rs","oauth2.rs","routemaps.rs","v1.rs"]}],"files":["ldaps.rs","lib.rs"]};
 createSourceSidebar();

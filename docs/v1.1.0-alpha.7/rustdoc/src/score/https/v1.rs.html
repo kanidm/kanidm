@@ -1051,6 +1051,13 @@
 <span id="1046">1046</span>
 <span id="1047">1047</span>
 <span id="1048">1048</span>
+<span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm::event::AuthResult</span>;
 <span class="kw">use</span> <span class="ident">kanidm::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="ident">kanidm::idm::AuthState</span>;
@@ -1064,7 +1071,7 @@
     <span class="ident">ModifyRequest</span>, <span class="ident">OperationError</span>, <span class="ident">SearchRequest</span>, <span class="ident">SetCredentialRequest</span>, <span class="ident">SingleStringRequest</span>,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>, <span class="ident">RouteMap</span>};
 <span class="kw">use</span> <span class="ident">async_std::task</span>;
 <span class="kw">use</span> <span class="ident">compact_jwt::Jws</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
@@ -1925,6 +1932,13 @@
         .<span class="ident">handle_reviverecycled</span>(<span class="ident">uat</span>, <span class="ident">filter</span>, <span class="ident">eventid</span>)
         .<span class="kw">await</span>;
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_routemap</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">RouteMap</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
+
+    <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">do_map</span>());
+    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_nothing</span>(<span class="ident">_req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
