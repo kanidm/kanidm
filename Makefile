@@ -142,7 +142,6 @@ docs/pykanidm/build:
 	poetry install && \
 	poetry run mkdocs build
 
-
 docs/pykanidm/serve: ## Run the local mkdocs server
 docs/pykanidm/serve:
 	cd pykanidm && \

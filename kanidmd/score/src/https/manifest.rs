@@ -68,7 +68,7 @@ enum Direction {
 
 /// Display modes from the Web app manifest definition
 ///
-/// Ref: https://developer.mozilla.org/en-US/docs/Web/Manifest/display
+/// Ref: <https://developer.mozilla.org/en-US/docs/Web/Manifest/display>
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum DisplayMode {
     /// All of the available display area is used and no user agent chrome is
@@ -126,11 +126,15 @@ pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
         },
     ];
 
+    let start_url = match req.host() {
+        Some(value) => format!("https://{}/", value).clone(),
+        None => String::from("/"),
+    };
 
     let manifest_struct = Manifest {
-        short_name: domain_display_name.as_str(),
+        short_name: "Kanidm",
         name: domain_display_name.as_str(),
-        start_url: "/", // TODO: this needs to be the frontend URL, can't get this yet
+        start_url: start_url.as_str(),
         display_mode: DisplayMode::MinimalUi,
         description: None,
         orientation: None,

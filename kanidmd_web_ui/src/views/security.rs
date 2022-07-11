@@ -17,6 +17,8 @@ use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
+#[allow(clippy::large_enum_variant)]
+// Page state
 pub enum Msg {
     // Nothing
     RequestCredentialUpdate,

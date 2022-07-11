@@ -43,7 +43,6 @@ enum LoginState {
     Authenticated,
 }
 
-const CLASSES_TO_ADD: &[&str] = &["flex-column", "d-flex", "h-100"];
 pub enum LoginAppMsg {
     Input(String),
     Restart,
@@ -468,13 +467,8 @@ impl Component for LoginApp {
         console::log!(cookie);
 
         let state = LoginState::Init(true);
-        // startConfetti();
 
-        for x in CLASSES_TO_ADD {
-            if let Err(e) = crate::utils::body().class_list().add_1(x) {
-                console::log!(format!("class_list add error -> {:?}", e));
-            };
-        }
+        add_body_form_classes!();
 
         LoginApp {
             inputvalue,
@@ -780,6 +774,7 @@ impl Component for LoginApp {
         <main class="flex-shrink-0 form-signin">
             <center>
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                // TODO: replace this with a call to domain info
                 <h3>{ "Kanidm idm.example.com" } </h3>
             </center>
             { self.view_state(ctx) }
@@ -795,19 +790,7 @@ impl Component for LoginApp {
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("login::destroy".to_string());
-
-        for x in CLASSES_TO_ADD {
-            if let Err(e) = crate::utils::body().class_list().remove_1(x) {
-                console::log!(format!("class_list remove error -> {:?}", e));
-            };
-        }
-
-        // if let Err(e) = crate::utils::body()
-        //     .class_list()
-        //     .remove_1("form-signin-body")
-        // {
-        //     console::log!(format!("class_list remove error -> {:?}", e));
-        // }
+        remove_body_form_classes!();
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {

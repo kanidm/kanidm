@@ -74,9 +74,7 @@ impl DeleteApp {
             let jsval = JsFuture::from(resp.json()?).await?;
             let status: CUStatus = jsval.into_serde().expect_throw("Invalid response type");
 
-            EventBus::dispatcher().send(EventBusMsg::UpdateStatus {
-                status: status.clone(),
-            });
+            EventBus::dispatcher().send(EventBusMsg::UpdateStatus { status });
 
             Ok(Msg::Success)
         } else {
@@ -142,10 +140,7 @@ impl Component for DeleteApp {
     fn view(&self, ctx: &Context<Self>) -> Html {
         console::log!("delete modal::view");
 
-        let submit_enabled = match &self.state {
-            State::Init => true,
-            _ => false,
-        };
+        let submit_enabled = matches!(&self.state, State::Init);
 
         html! {
             <div class="modal fade" id="staticDeletePrimaryCred" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticDeletePrimaryCred" aria-hidden="true">

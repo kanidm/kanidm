@@ -792,22 +792,13 @@ pub struct TotpSecret {
 impl TotpSecret {
     /// <https://github.com/google/google-authenticator/wiki/Key-Uri-Format>
     pub fn to_uri(&self) -> String {
-        // label = accountname / issuer (“:” / “%3A”) *”%20” accountname
-        // This is already done server side but paranoia is good!
-        let accountname = self
-            .accountname
-            .replace(':', "")
-            .replace("%3A", "")
-            .replace(' ', "%20");
-        let issuer = self
-            .issuer
-            .replace(':', "")
-            .replace("%3A", "")
-            .replace(' ', "%20");
+        let accountname = urlencoding::Encoded(&self.accountname);
+        let issuer = urlencoding::Encoded(&self.issuer);
         let label = format!("{}:{}", issuer, accountname);
         let algo = self.algo.to_string();
         let secret = self.get_secret();
         let period = self.step;
+
         format!(
             "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits=6&period={}",
             label, secret, issuer, algo, period
@@ -991,6 +982,7 @@ mod tests {
             algo: TotpAlgo::Sha256,
         };
         let s = totp.to_uri();
-        assert!(s == "otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
+        println!("{}", s);
+        assert!(s == "otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }

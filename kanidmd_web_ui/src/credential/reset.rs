@@ -54,6 +54,8 @@ impl From<FetchError> for Msg {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
+//Page state
 enum State {
     TokenInput,
     WaitingForStatus,
@@ -62,6 +64,7 @@ enum State {
         status: CUStatus,
     },
     WaitingForCommit,
+    #[allow(clippy::large_enum_variant)]
     Error {
         emsg: String,
         kopid: Option<String>,
@@ -87,10 +90,7 @@ impl Component for CredentialResetApp {
 
         // Where did we come from?
 
-        // Inject our class to centre everything.
-        if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
-            console::log!(format!("class_list add error -> {:?}", e));
-        };
+        add_body_form_classes!();
 
         // Can we pre-load in a session token? This occures when we are sent a
         // credential reset from the views UI.
@@ -195,7 +195,10 @@ impl Component for CredentialResetApp {
                 None
             }
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),
-            (_, _) => unreachable!(),
+            (_, _) => {
+                console::debug!("CredentialResetApp state match fail on update.");
+                None
+            }
         };
 
         if let Some(mut next_state) = next_state {
@@ -216,50 +219,49 @@ impl Component for CredentialResetApp {
         match &self.state {
             State::TokenInput => self.view_token_input(ctx),
             State::WaitingForStatus | State::WaitingForCommit => self.view_waiting(ctx),
-            State::Main { token, status } => self.view_main(ctx, &token, &status),
-            State::Error { emsg, kopid } => self.view_error(ctx, &emsg, kopid.as_deref()),
+            State::Main { token, status } => self.view_main(ctx, token, status),
+            State::Error { emsg, kopid } => self.view_error(ctx, emsg, kopid.as_deref()),
         }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("credential::reset::destroy");
-        if let Err(e) = crate::utils::body()
-            .class_list()
-            .remove_1("form-signin-body")
-        {
-            console::log!(format!("class_list remove error -> {:?}", e));
-        }
+        remove_body_form_classes!();
     }
 }
 
 impl CredentialResetApp {
     fn view_token_input(&self, ctx: &Context<Self>) -> Html {
         html! {
-          <main class="form-signin">
-            <div class="container">
+        <main class="flex-shrink-0 form-signin">
+            <center>
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                // TODO: replace this with a call to domain info
+                <h3>{ "Kanidm idm.example.com" } </h3>
+            </center>
               <p>
                 {"Enter your credential reset token"}
               </p>
-            </div>
-            <div class="container">
-              <form
+            <form
                   onsubmit={ ctx.link().callback(|e: FocusEvent| {
                       console::log!("credential::reset::view_token_input -> TokenInput - prevent_default()");
                       e.prevent_default();
 
                       Msg::TokenSubmit
                   } ) }
-                  action="javascript:void(0);"
-              >
+                  action="javascript:void(0);">
                   <input
                       id="autofocus"
                       type="text"
                       class="form-control"
                       value=""
                   />
-                  <button type="submit" class="btn btn-dark">{" Submit "}</button>
+                  <button type="submit" class="btn btn-dark">{" Submit "}</button><br />
               </form>
-            </div>
+              <p>
+              <a href="/"><button href="/" class="btn btn-dark" aria-label="Return home">{"Return to the home page"}</button></a>
+              </p>
+
           </main>
         }
     }
@@ -277,12 +279,7 @@ impl CredentialResetApp {
     }
 
     fn view_main(&self, ctx: &Context<Self>, token: &CUSessionToken, status: &CUStatus) -> Html {
-        if let Err(e) = crate::utils::body()
-            .class_list()
-            .remove_1("form-signin-body")
-        {
-            console::log!(format!("class_list remove error -> {:?}", e));
-        }
+        remove_body_form_classes!();
 
         let displayname = status.displayname.clone();
         let spn = status.spn.clone();

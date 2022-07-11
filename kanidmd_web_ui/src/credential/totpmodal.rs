@@ -251,10 +251,7 @@ impl Component for TotpModalApp {
 
         };
 
-        let submit_enabled = match &self.state {
-            TotpState::Init => true,
-            _ => false,
-        };
+        let submit_enabled = matches!(&self.state, TotpState::Init);
 
         let submit_button = match &self.check {
             TotpCheck::Sha1Accept => html! {
@@ -294,6 +291,7 @@ impl Component for TotpModalApp {
 
                 let svg = qr.render::<svg::Color>().build();
 
+                #[allow(clippy::unwrap_used)]
                 let div = utils::document().create_element("div").unwrap();
 
                 div.set_inner_html(svg.as_str());

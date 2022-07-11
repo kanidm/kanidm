@@ -198,59 +198,82 @@ impl Component for ViewsApp {
 }
 
 impl ViewsApp {
+    /// The base page for the user dashboard
     fn view_authenticated(&self, ctx: &Context<Self>) -> Html {
         // WARN set dash-body against body here?
         html! {
-        <div class="dash-body">
-          <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
-            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">{ "Kanidm" }</a>
-            <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
-              <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="navbar-nav">
-              <div class="nav-item text-nowrap">
-                <a class="nav-link px-3" href="#" onclick={ ctx.link().callback(|_| ViewsMsg::Logout) } >{ "Sign out" }</a>
-              </div>
-            </div>
-          </header>
+          <>
+          <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+              <div class="container-fluid">
+                <a class="navbar-brand" href="{ViewRoute::Profile}">{"Kanidm"}</a>
+                <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                  <img src="/pkg/img/favicon.png" />
+                </button>
 
-          <div class="container-fluid">
-            <div class="row">
-              <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                  <ul class="nav flex-column">
 
-                    <li class="nav-item">
-                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Apps}>
-                        <span data-feather="file"></span>
-                        { "Apps" }
-                      </Link<ViewRoute>>
-                    </li>
+                <div class="collapse navbar-collapse" id="navbarCollapse">
+                  <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                  <li class="mb-1">
+                  <Link<ViewRoute> classes="nav-link" to={ViewRoute::Apps}>
+                    <span data-feather="file"></span>
+                    { "Apps" }
+                  </Link<ViewRoute>>
+                </li>
 
-                    <li class="nav-item">
-                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
-                        <span data-feather="file"></span>
-                        { "Profile" }
-                      </Link<ViewRoute>>
-                    </li>
+                <li class="mb-1">
+                  <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
+                    <span data-feather="file"></span>
+                    { "Profile" }
+                  </Link<ViewRoute>>
+                </li>
 
-                    <li class="nav-item">
-                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
-                        <span data-feather="file"></span>
-                        { "Security" }
-                      </Link<ViewRoute>>
-                    </li>
-
+                <li class="mb-1">
+                  <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
+                    <span data-feather="file"></span>
+                    { "Security" }
+                  </Link<ViewRoute>>
+                </li>
+                <li class="mb-1">
+                  <a class="nav-link" href="#"
+                    data-bs-toggle="modal"
+                    data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
+                    >{"Sign out"}</a>
+                </li>
                   </ul>
+                  <form class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" />
+                    <button class="btn btn-outline-light" type="submit">{"Search"}</button>
+                  </form>
                 </div>
-              </nav>
-
-              <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <Switch<ViewRoute> render={ Switch::render(switch) } />
-              </main>
+              </div>
+            </nav>
+        // sign out modal dialogue box
+        <div class="modal" tabindex="-1" role="dialog" id={crate::constants::ID_SIGNOUTMODAL}>
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">{"Confirm Sign out"}</h5>
+              </div>
+              <div class="modal-body text-center">
+                {"Are you sure you'd like to log out?"}<br />
+                <img src="/pkg/img/kani-waving.svg" alt="Kani waving goodbye" />
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-success"
+                  data-bs-toggle="modal"
+                  data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
+                  onclick={ ctx.link().callback(|_| ViewsMsg::Logout) }>{ "Sign out" }</button>
+                <button type="button" class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                  >{"Cancel"}</button>
+              </div>
             </div>
           </div>
         </div>
+        <main class="p-3 x-auto">
+              <Switch<ViewRoute> render={ Switch::render(switch) } />
+        </main>
+        </>
           }
     }
 

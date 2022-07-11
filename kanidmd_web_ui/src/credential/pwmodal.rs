@@ -224,10 +224,10 @@ impl Component for PwModalApp {
             PwCheck::Invalid => classes!("form-control", "is-invalid"),
         };
 
-        let submit_enabled = match (&self.state, &self.pw_check) {
-            (PwState::Feedback(_), PwCheck::Valid) | (PwState::Init, PwCheck::Valid) => true,
-            _ => false,
-        };
+        let submit_enabled = matches!(
+            (&self.state, &self.pw_check),
+            (PwState::Feedback(_), PwCheck::Valid) | (PwState::Init, PwCheck::Valid),
+        );
 
         let pw_val = self.pw_val.clone();
         let pw_check_val = self.pw_check_val.clone();
