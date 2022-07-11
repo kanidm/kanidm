@@ -1,38 +1,37 @@
-name: Build Deb Package
+---
+name: "Build Debian Packages"
 
 # yamllint disable-line rule:truthy
 on:
-  workflow_dispatch:
-  release:
-    types: ["published"]
+
 jobs:
   build-deb-package:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Update package manager
-      run: sudo apt-get update
+      - name: Update package manager
+        run: sudo apt-get update
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get install -y \
-          libpam0g-dev \
-          libudev-dev \
-          libssl-dev \
-          libsqlite3-dev
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-    - name: "Run clippy (ignores errors, this is just a check)"
-      run: cargo clippy --no-deps
-      continue-on-error: true
-    - name: "Doing the package build"
-      run: ./platform/debian/build_kanidm.sh
-      # - name: Release
-      #   uses: softprops/action-gh-release@v1
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   with:
-      #     files: kanidm.deb
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev \
+            libsqlite3-dev
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: "Run clippy (ignores errors, this is just a check)"
+        run: cargo clippy --no-deps
+        continue-on-error: true
+      - name: "Doing the package build"
+        run: ./platform/debian/build_kanidm.sh
+# - name: Release
+#   uses: softprops/action-gh-release@v1
+#   if: startsWith(github.ref, 'refs/tags/')
+#   with:
+#     files: kanidm.deb
