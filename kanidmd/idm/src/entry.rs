@@ -55,6 +55,10 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use std::collections::BTreeMap;
+use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
+
 // use std::convert::TryFrom;
 // use std::str::FromStr;
 
@@ -1885,6 +1889,18 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs
             .get(attr)
             .and_then(|vs| vs.to_credential_single())
+    }
+
+    #[inline(always)]
+    /// Get the set of passkeys on this account, if any are present.
+    pub fn get_ava_passkeys(&self, attr: &str) -> Option<&BTreeMap<Uuid, (String, PasskeyV4)>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_passkey_map())
+    }
+
+    #[inline(always)]
+    /// Get the set of devicekeys on this account, if any are present.
+    pub fn get_ava_devicekeys(&self, attr: &str) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_devicekey_map())
     }
 
     #[inline(always)]

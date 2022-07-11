@@ -1103,6 +1103,33 @@ impl QueryServerReadV1 {
                         );
                         e
                     }),
+                CURequest::PasskeyInit => idms_cred_update
+                    .credential_passkey_init(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_passkey_init",
+                        );
+                        e
+                    }),
+                CURequest::PasskeyFinish(label, rpkc) => idms_cred_update
+                    .credential_passkey_finish(&session_token, ct, label, rpkc)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_passkey_init",
+                        );
+                        e
+                    }),
+                CURequest::PasskeyRemove(uuid) => idms_cred_update
+                    .credential_passkey_remove(&session_token, ct, uuid)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_passkey_init",
+                        );
+                        e
+                    }),
             }
             .map(|sta| sta.into())
         });

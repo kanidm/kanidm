@@ -523,6 +523,8 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                     SyntaxType::IntentToken => Err(OperationError::InvalidAttribute("Intent Token Values can not be supplied through modification".to_string())),
+                    SyntaxType::Passkey => Err(OperationError::InvalidAttribute("Passkey Values can not be supplied through modification".to_string())),
+                    SyntaxType::DeviceKey => Err(OperationError::InvalidAttribute("DeviceKey Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -649,6 +651,16 @@ pub trait QueryServerTransaction<'a> {
                                 "Invalid Intent Token ID (uuid) syntax".to_string(),
                             )
                         }),
+                    SyntaxType::Passkey => PartialValue::new_passkey_s(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid Passkey UUID syntax".to_string())
+                    }),
+                    SyntaxType::DeviceKey => {
+                        PartialValue::new_devicekey_s(value).ok_or_else(|| {
+                            OperationError::InvalidAttribute(
+                                "Invalid DeviceKey UUID syntax".to_string(),
+                            )
+                        })
+                    }
                 }
             }
             None => {
@@ -2554,6 +2566,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
             JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
             JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
+            JSON_SCHEMA_ATTR_PASSKEYS,
+            JSON_SCHEMA_ATTR_DEVICEKEYS,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,

@@ -10,6 +10,7 @@ use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use crate::value::OAUTHSCOPE_RE;
+use base64urlsafedata::Base64UrlSafeData;
 pub use compact_jwt::{JwkKeySet, OidcToken};
 use compact_jwt::{JwsSigner, OidcClaims, OidcSubject};
 use concread::cowcell::*;
@@ -25,7 +26,6 @@ use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::trace;
 use url::{Origin, Url};
-use webauthn_rs::base64_data::Base64UrlSafeData;
 
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
@@ -1343,9 +1343,9 @@ mod tests {
 
     use crate::event::{DeleteEvent, ModifyEvent};
 
+    use base64urlsafedata::Base64UrlSafeData;
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::{AuthType, UserAuthToken};
-    use webauthn_rs::base64_data::Base64UrlSafeData;
 
     use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
 

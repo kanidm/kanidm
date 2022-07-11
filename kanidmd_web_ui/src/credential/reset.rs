@@ -292,7 +292,6 @@ impl CredentialResetApp {
         let pw_html = match &status.primary {
             Some(CredentialDetail {
                 uuid: _,
-                claims: _,
                 type_: CredentialDetailType::Password,
             }) => {
                 html! {
@@ -312,7 +311,6 @@ impl CredentialResetApp {
             }
             Some(CredentialDetail {
                 uuid: _,
-                claims: _,
                 type_: CredentialDetailType::GeneratedPassword,
             }) => {
                 html! {
@@ -326,8 +324,7 @@ impl CredentialResetApp {
             }
             Some(CredentialDetail {
                 uuid: _,
-                claims: _,
-                type_: CredentialDetailType::Webauthn(_),
+                type_: CredentialDetailType::Passkey(_),
             }) => {
                 html! {
                   <>
@@ -340,7 +337,6 @@ impl CredentialResetApp {
             }
             Some(CredentialDetail {
                 uuid: _,
-                claims: _,
                 type_:
                     // TODO: review this and find out why we aren't using these variables
                     CredentialDetailType::PasswordMfa(

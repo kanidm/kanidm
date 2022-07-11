@@ -18,14 +18,19 @@ use crate::idm::delayed::{DelayedAction, PasswordUpgrade, WebauthnCounterIncreme
 // use crossbeam::channel::Sender;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
-use crate::credential::webauthn::WebauthnDomainConfig;
 use std::time::Duration;
 use uuid::Uuid;
 // use webauthn_rs::proto::Credential as WebauthnCredential;
 use compact_jwt::{Jws, JwsSigner};
+use std::collections::BTreeMap;
 pub use std::collections::BTreeSet as Set;
-use webauthn_rs::proto::RequestChallengeResponse;
-use webauthn_rs::{AuthenticationState, Webauthn};
+use std::convert::TryFrom;
+
+use webauthn_rs::prelude::{
+    PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication, Webauthn,
+};
+// use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fufilled. This is where MFA or other
@@ -62,7 +67,7 @@ struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
     totp: Option<Totp>,
-    wan: Option<(RequestChallengeResponse, AuthenticationState)>,
+    wan: Option<(RequestChallengeResponse, SecurityKeyAuthentication)>,
     backup_code: Option<BackupCodes>,
     mfa_state: CredVerifyState,
 }
@@ -71,7 +76,7 @@ struct CredMfa {
 /// The state of a webauthn credential during authentication
 struct CredWebauthn {
     chal: RequestChallengeResponse,
-    wan_state: AuthenticationState,
+    wan_state: PasskeyAuthentication,
     state: CredVerifyState,
 }
 
@@ -81,26 +86,27 @@ struct CredWebauthn {
 #[derive(Clone, Debug)]
 enum CredHandler {
     Anonymous,
-    // AppPassword (?)
     Password(Password, bool),
     PasswordMfa(Box<CredMfa>),
-    Webauthn(CredWebauthn),
-    // Webauthn + Password
+    Passkey(CredWebauthn),
 }
 
-impl CredHandler {
+impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
+    type Error = ();
+
     /// Given a credential and some external configuration, Generate the credential handler
     /// that will be used for this session. This credential handler is a "self contained"
     /// unit that defines what is possible to use during this authentication session to prevent
     /// inconsistency.
-    fn try_from(c: &Credential, webauthn: &Webauthn<WebauthnDomainConfig>) -> Result<Self, ()> {
+    fn try_from((c, webauthn): (&Credential, &Webauthn)) -> Result<Self, Self::Error> {
         match &c.type_ {
             CredentialType::Password(pw) => Ok(CredHandler::Password(pw.clone(), false)),
             CredentialType::GeneratedPassword(pw) => Ok(CredHandler::Password(pw.clone(), true)),
             CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan, maybe_backup_code) => {
                 let wan = if !maybe_wan.is_empty() {
+                    let sks: Vec<_> = maybe_wan.values().cloned().collect();
                     webauthn
-                        .generate_challenge_authenticate(maybe_wan.values().cloned().collect())
+                        .start_securitykey_authentication(&sks)
                         .map(Some)
                         .map_err(|e| {
                             security_info!(
@@ -129,20 +135,58 @@ impl CredHandler {
 
                 Ok(CredHandler::PasswordMfa(cmfa))
             }
-            CredentialType::Webauthn(wan) => webauthn
-                .generate_challenge_authenticate(wan.values().cloned().collect())
-                .map(|(chal, wan_state)| {
-                    CredHandler::Webauthn(CredWebauthn {
-                        chal,
-                        wan_state,
-                        state: CredVerifyState::Init,
+            CredentialType::Webauthn(wan) => {
+                let pks: Vec<_> = wan.values().cloned().collect();
+                webauthn
+                    .start_passkey_authentication(&pks)
+                    .map(|(chal, wan_state)| {
+                        CredHandler::Passkey(CredWebauthn {
+                            chal,
+                            wan_state,
+                            state: CredVerifyState::Init,
+                        })
                     })
-                })
-                .map_err(|e| {
-                    security_info!(?e, "Unable to create webauthn authentication challenge");
-                    // maps to unit.
-                }),
+                    .map_err(|e| {
+                        security_info!(?e, "Unable to create webauthn authentication challenge");
+                        // maps to unit.
+                    })
+            }
         }
+    }
+}
+
+impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler {
+    type Error = ();
+
+    /// Given a credential and some external configuration, Generate the credential handler
+    /// that will be used for this session. This credential handler is a "self contained"
+    /// unit that defines what is possible to use during this authentication session to prevent
+    /// inconsistency.
+    fn try_from(
+        (wan, webauthn): (&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn),
+    ) -> Result<Self, Self::Error> {
+        if wan.is_empty() {
+            security_info!("Account does not have any passkeys");
+            return Err(());
+        }
+
+        let pks: Vec<_> = wan.values().map(|(_, k)| k).cloned().collect();
+        webauthn
+            .start_passkey_authentication(&pks)
+            .map(|(chal, wan_state)| {
+                CredHandler::Passkey(CredWebauthn {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                })
+            })
+            .map_err(|e| {
+                security_info!(
+                    ?e,
+                    "Unable to create passkey webauthn authentication challenge"
+                );
+                // maps to unit.
+            })
     }
 }
 
@@ -232,7 +276,7 @@ impl CredHandler {
         cred: &AuthCredential,
         ts: &Duration,
         pw_mfa: &mut CredMfa,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
+        webauthn: &Webauthn,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         pw_badlist_set: Option<&HashSet<String>>,
@@ -246,24 +290,23 @@ impl CredHandler {
                     pw_mfa.wan.as_ref(),
                     pw_mfa.backup_code.as_ref(),
                 ) {
-                    (AuthCredential::Webauthn(resp), _, Some((_, wan_state)), _) => {
-                        match webauthn.authenticate_credential(resp, wan_state) {
-                            Ok((cid, auth_data)) => {
+                    (AuthCredential::SecurityKey(resp), _, Some((_, wan_state)), _) => {
+                        match webauthn.finish_securitykey_authentication(resp, wan_state) {
+                            Ok(auth_result) => {
                                 pw_mfa.mfa_state = CredVerifyState::Success;
                                 // Success. Determine if we need to update the counter
                                 // async from r.
-                                if auth_data.counter != 0 {
+                                if auth_result.needs_update() {
                                     // Do async
                                     if let Err(_e) =
                                         async_tx.send(DelayedAction::WebauthnCounterIncrement(
                                             WebauthnCounterIncrement {
                                                 target_uuid: who,
-                                                cid: cid.clone(),
-                                                counter: auth_data.counter,
+                                                auth_result,
                                             },
                                         ))
                                     {
-                                        admin_warn!("unable to queue delayed webauthn counter increment, continuing ... ");
+                                        admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                                     };
                                 };
                                 CredState::Continue(vec![AuthAllowed::Password])
@@ -369,7 +412,7 @@ impl CredHandler {
     pub fn validate_webauthn(
         cred: &AuthCredential,
         wan_cred: &mut CredWebauthn,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
+        webauthn: &Webauthn,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
     ) -> CredState {
@@ -379,26 +422,25 @@ impl CredHandler {
         }
 
         match cred {
-            AuthCredential::Webauthn(resp) => {
+            AuthCredential::Passkey(resp) => {
                 // lets see how we go.
-                match webauthn.authenticate_credential(resp, &wan_cred.wan_state) {
-                    Ok((cid, auth_data)) => {
+                match webauthn.finish_passkey_authentication(resp, &wan_cred.wan_state) {
+                    Ok(auth_result) => {
                         wan_cred.state = CredVerifyState::Success;
                         // Success. Determine if we need to update the counter
                         // async from r.
-                        if auth_data.counter != 0 {
+                        if auth_result.needs_update() {
                             // Do async
                             if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(
                                 WebauthnCounterIncrement {
                                     target_uuid: who,
-                                    cid: cid.clone(),
-                                    counter: auth_data.counter,
+                                    auth_result,
                                 },
                             )) {
-                                admin_warn!("unable to queue delayed webauthn counter increment, continuing ... ");
+                                admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                             };
                         };
-                        CredState::Success(AuthType::Webauthn)
+                        CredState::Success(AuthType::Passkey)
                     }
                     Err(e) => {
                         wan_cred.state = CredVerifyState::Fail;
@@ -425,7 +467,7 @@ impl CredHandler {
         ts: &Duration,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
+        webauthn: &Webauthn,
         pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
         match self {
@@ -442,7 +484,7 @@ impl CredHandler {
                 async_tx,
                 pw_badlist_set,
             ),
-            CredHandler::Webauthn(ref mut wan_cred) => {
+            CredHandler::Passkey(ref mut wan_cred) => {
                 Self::validate_webauthn(cred, wan_cred, webauthn, who, async_tx)
             }
         }
@@ -463,10 +505,10 @@ impl CredHandler {
                     pw_mfa
                         .wan
                         .iter()
-                        .map(|(chal, _)| AuthAllowed::Webauthn(chal.clone())),
+                        .map(|(chal, _)| AuthAllowed::SecurityKey(chal.clone())),
                 )
                 .collect(),
-            CredHandler::Webauthn(webauthn) => vec![AuthAllowed::Webauthn(webauthn.chal.clone())],
+            CredHandler::Passkey(webauthn) => vec![AuthAllowed::Passkey(webauthn.chal.clone())],
         }
     }
 
@@ -476,7 +518,7 @@ impl CredHandler {
             (CredHandler::Anonymous, AuthMech::Anonymous)
             | (CredHandler::Password(_, _), AuthMech::Password)
             | (CredHandler::PasswordMfa(_), AuthMech::PasswordMfa)
-            | (CredHandler::Webauthn(_), AuthMech::Webauthn) => true,
+            | (CredHandler::Passkey(_), AuthMech::Passkey) => true,
             (_, _) => false,
         }
     }
@@ -486,7 +528,7 @@ impl CredHandler {
             CredHandler::Anonymous => AuthMech::Anonymous,
             CredHandler::Password(_, _) => AuthMech::Password,
             CredHandler::PasswordMfa(_) => AuthMech::PasswordMfa,
-            CredHandler::Webauthn(_) => AuthMech::Webauthn,
+            CredHandler::Passkey(_) => AuthMech::Passkey,
         }
     }
 }
@@ -533,11 +575,7 @@ impl AuthSession {
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.
-    pub fn new(
-        account: Account,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
-        ct: Duration,
-    ) -> (Option<Self>, AuthState) {
+    pub fn new(account: Account, webauthn: &Webauthn, ct: Duration) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
@@ -548,24 +586,30 @@ impl AuthSession {
             if account.is_anonymous() {
                 AuthSessionState::Init(vec![CredHandler::Anonymous])
             } else {
-                // Now we see if they have one ...
-                match &account.primary {
-                    Some(cred) => {
-                        // TODO: Make it possible to have multiple creds.
-                        // Probably means new authsession has to be failable
-                        CredHandler::try_from(cred, webauthn)
-                            .map(|ch| AuthSessionState::Init(vec![ch]))
-                            .unwrap_or_else(|_| {
-                                security_critical!(
-                                    "corrupt credentials, unable to start credhandler"
-                                );
-                                AuthSessionState::Denied("invalid credential state")
-                            })
+                // What's valid to use in this context?
+                let mut handlers = Vec::new();
+
+                if let Some(cred) = &account.primary {
+                    // TODO: Make it possible to have multiple creds.
+                    // Probably means new authsession has to be failable
+                    if let Ok(ch) = CredHandler::try_from((cred, webauthn)) {
+                        handlers.push(ch);
+                    } else {
+                        security_critical!(
+                            "corrupt credentials, unable to start primary credhandler"
+                        );
                     }
-                    None => {
-                        security_info!("account has no primary credentials");
-                        AuthSessionState::Denied("invalid credential state")
-                    }
+                }
+
+                if let Ok(ch) = CredHandler::try_from((&account.passkeys, webauthn)) {
+                    handlers.push(ch);
+                };
+
+                if handlers.is_empty() {
+                    security_info!("account has no primary credentials");
+                    AuthSessionState::Denied("invalid credential state")
+                } else {
+                    AuthSessionState::Init(handlers)
                 }
             }
         } else {
@@ -591,8 +635,16 @@ impl AuthSession {
         }
     }
 
-    pub fn get_account(&self) -> &Account {
-        &self.account
+    pub fn get_credential_uuid(&self) -> Result<Option<Uuid>, OperationError> {
+        match &self.state {
+            AuthSessionState::InProgress(CredHandler::Password(_, _))
+            | AuthSessionState::InProgress(CredHandler::PasswordMfa(_)) => {
+                Ok(self.account.primary_cred_uuid())
+            }
+            AuthSessionState::InProgress(CredHandler::Anonymous)
+            | AuthSessionState::InProgress(CredHandler::Passkey(_)) => Ok(None),
+            _ => Err(OperationError::InvalidState),
+        }
     }
 
     /// Given the users indicated and preferred authentication mechanism that they want to proceed
@@ -602,7 +654,7 @@ impl AuthSession {
         &mut self,
         mech: &AuthMech,
         // time: &Duration,
-        // webauthn: &Webauthn<WebauthnDomainConfig>,
+        // webauthn: &WebauthnCore,
     ) -> Result<AuthState, OperationError> {
         // Given some auth mech, select which credential(s) are apropriate
         // and attempt to use them.
@@ -668,7 +720,7 @@ impl AuthSession {
         cred: &AuthCredential,
         time: &Duration,
         async_tx: &Sender<DelayedAction>,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
+        webauthn: &Webauthn,
         pw_badlist_set: Option<&HashSet<String>>,
         uat_jwt_signer: &JwsSigner,
     ) -> Result<AuthState, OperationError> {
@@ -780,7 +832,6 @@ impl AuthSession {
 mod tests {
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-    use crate::credential::webauthn::WebauthnDomainConfig;
     use crate::credential::{BackupCodes, Credential};
     use crate::idm::authsession::{
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
@@ -796,10 +847,9 @@ mod tests {
     use crate::utils::{duration_from_epoch_now, readable_password_from_random};
     use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
     use std::time::Duration;
-    use webauthn_rs::Webauthn;
 
     use tokio::sync::mpsc::unbounded_channel as unbounded;
-    use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
+    use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
     use compact_jwt::JwsSigner;
 
@@ -809,12 +859,13 @@ mod tests {
         s
     }
 
-    fn create_webauthn() -> Webauthn<WebauthnDomainConfig> {
-        Webauthn::new(WebauthnDomainConfig {
-            rp_name: "example.com".to_string(),
-            origin: url::Url::parse("https://idm.example.com").unwrap(),
-            rp_id: "example.com".to_string(),
-        })
+    fn create_webauthn() -> webauthn_rs::Webauthn {
+        webauthn_rs::WebauthnBuilder::new(
+            "example.com",
+            &url::Url::parse("https://idm.example.com").unwrap(),
+        )
+        .and_then(|builder| builder.build())
+        .unwrap()
     }
 
     fn create_jwt_signer() -> JwsSigner {
@@ -997,7 +1048,7 @@ mod tests {
                 assert!(
                     true == auth_mechs.iter().fold(false, |acc, x| match x {
                         // TODO: How to return webauthn chal?
-                        AuthAllowed::Webauthn(chal) => {
+                        AuthAllowed::SecurityKey(chal) => {
                             rchal = Some(chal.clone());
                             true
                         }
@@ -1256,24 +1307,24 @@ mod tests {
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
-                assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Webauthn)));
+                assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Passkey)));
             } else {
                 panic!();
             }
 
             let state = session
-                .start_session(&AuthMech::Webauthn)
-                .expect("Failed to select Webauthn mech.");
+                .start_session(&AuthMech::Passkey)
+                .expect("Failed to select Passkey mech.");
 
             let wan_chal = if let AuthState::Continue(auth_mechs) = state {
                 assert!(auth_mechs.len() == 1);
                 auth_mechs
                     .into_iter()
                     .fold(None, |_acc, x| match x {
-                        AuthAllowed::Webauthn(chal) => Some(chal),
+                        AuthAllowed::Passkey(chal) => Some(chal),
                         _ => None,
                     })
-                    .expect("No webauthn challenge found.")
+                    .expect("No securitykey challenge found.")
             } else {
                 panic!();
             };
@@ -1282,27 +1333,57 @@ mod tests {
         }};
     }
 
-    fn setup_webauthn(
+    fn setup_webauthn_passkey(
         name: &str,
     ) -> (
-        webauthn_rs::Webauthn<crate::credential::webauthn::WebauthnDomainConfig>,
-        webauthn_authenticator_rs::WebauthnAuthenticator<U2FSoft>,
-        webauthn_rs::proto::Credential,
+        webauthn_rs::prelude::Webauthn,
+        webauthn_authenticator_rs::WebauthnAuthenticator<SoftPasskey>,
+        webauthn_rs::prelude::Passkey,
     ) {
         let webauthn = create_webauthn();
         // Setup a soft token
-        let mut wa = WebauthnAuthenticator::new(U2FSoft::new());
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+
+        let uuid = Uuid::new_v4();
 
         let (chal, reg_state) = webauthn
-            .generate_challenge_register(name, false)
-            .expect("Failed to setup webauthn rego challenge");
+            .start_passkey_registration(uuid, name, name, None)
+            .expect("Failed to setup passkey rego challenge");
 
         let r = wa
-            .do_registration("https://idm.example.com", chal)
-            .expect("Failed to create soft token");
+            .do_registration(webauthn.get_origin().clone(), chal)
+            .expect("Failed to create soft passkey");
 
-        let (wan_cred, _) = webauthn
-            .register_credential(&r, &reg_state, |_| Ok(false))
+        let wan_cred = webauthn
+            .finish_passkey_registration(&r, &reg_state)
+            .expect("Failed to register soft token");
+
+        (webauthn, wa, wan_cred)
+    }
+
+    fn setup_webauthn_securitykey(
+        name: &str,
+    ) -> (
+        webauthn_rs::prelude::Webauthn,
+        webauthn_authenticator_rs::WebauthnAuthenticator<SoftPasskey>,
+        webauthn_rs::prelude::SecurityKey,
+    ) {
+        let webauthn = create_webauthn();
+        // Setup a soft token
+        let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+
+        let uuid = Uuid::new_v4();
+
+        let (chal, reg_state) = webauthn
+            .start_securitykey_registration(uuid, name, name, None, None, None)
+            .expect("Failed to setup passkey rego challenge");
+
+        let r = wa
+            .do_registration(webauthn.get_origin().clone(), chal)
+            .expect("Failed to create soft securitykey");
+
+        let wan_cred = webauthn
+            .finish_securitykey_registration(&r, &reg_state)
             .expect("Failed to register soft token");
 
         (webauthn, wa, wan_cred)
@@ -1316,11 +1397,11 @@ mod tests {
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
 
-        let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
+        let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
         let jws_signer = create_jwt_signer();
 
         // Now create the credential for the account.
-        let cred = Credential::new_webauthn_only("soft".to_string(), wan_cred);
+        let cred = Credential::new_passkey_only("soft".to_string(), wan_cred);
         account.primary = Some(cred);
 
         // now check correct mech was offered.
@@ -1348,11 +1429,11 @@ mod tests {
             let (mut session, chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
 
             let resp = wa
-                .do_authentication("https://idm.example.com", chal)
+                .do_authentication(webauthn.get_origin().clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::Passkey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1377,11 +1458,11 @@ mod tests {
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
-                .do_authentication("https://idm.example.com", inv_chal)
+                .do_authentication(webauthn.get_origin().clone(), inv_chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::Passkey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1395,27 +1476,27 @@ mod tests {
 
         // Use an incorrect softtoken.
         {
-            let mut inv_wa = WebauthnAuthenticator::new(U2FSoft::new());
+            let mut inv_wa = WebauthnAuthenticator::new(SoftPasskey::new());
             let (chal, reg_state) = webauthn
-                .generate_challenge_register(&account.name, false)
+                .start_passkey_registration(account.uuid, &account.name, &account.displayname, None)
                 .expect("Failed to setup webauthn rego challenge");
 
             let r = inv_wa
-                .do_registration("https://idm.example.com", chal)
+                .do_registration(webauthn.get_origin().clone(), chal)
                 .expect("Failed to create soft token");
 
-            let (inv_cred, _) = webauthn
-                .register_credential(&r, &reg_state, |_| Ok(false))
+            let inv_cred = webauthn
+                .finish_passkey_registration(&r, &reg_state)
                 .expect("Failed to register soft token");
 
             // Discard the auth_state, we only need the invalid challenge.
             let (chal, _auth_state) = webauthn
-                .generate_challenge_authenticate(vec![inv_cred])
+                .start_passkey_authentication(&vec![inv_cred])
                 .expect("Failed to generate challenge for in inv softtoken");
 
             // Create the response.
             let resp = inv_wa
-                .do_authentication("https://idm.example.com", chal)
+                .do_authentication(webauthn.get_origin().clone(), chal)
                 .expect("Failed to use softtoken for response.");
 
             let (mut session, _chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
@@ -1423,7 +1504,7 @@ mod tests {
             // get this far, because the client should identify that the cred id's are
             // not inline.
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::Passkey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1447,7 +1528,7 @@ mod tests {
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
 
-        let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
+        let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
         let pw_good = "test_password";
         let pw_bad = "bad_password";
@@ -1456,7 +1537,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_good)
             .unwrap()
-            .append_webauthn("soft".to_string(), wan_cred)
+            .append_securitykey("soft".to_string(), wan_cred)
             .unwrap();
 
         account.primary = Some(cred);
@@ -1509,11 +1590,11 @@ mod tests {
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
-                .do_authentication("https://idm.example.com", inv_chal)
+                .do_authentication(webauthn.get_origin().clone(), inv_chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::SecurityKey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1532,11 +1613,11 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication("https://idm.example.com", chal)
+                .do_authentication(webauthn.get_origin().clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::SecurityKey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1572,11 +1653,11 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication("https://idm.example.com", chal)
+                .do_authentication(webauthn.get_origin().clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::SecurityKey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1617,7 +1698,7 @@ mod tests {
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
 
-        let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
+        let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
 
         let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
@@ -1636,7 +1717,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_good)
             .unwrap()
-            .append_webauthn("soft".to_string(), wan_cred)
+            .append_securitykey("soft".to_string(), wan_cred)
             .unwrap()
             .update_totp(totp);
 
@@ -1688,11 +1769,11 @@ mod tests {
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
-                .do_authentication("https://idm.example.com", inv_chal)
+                .do_authentication(webauthn.get_origin().clone(), inv_chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::SecurityKey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1711,11 +1792,11 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication("https://idm.example.com", chal)
+                .do_authentication(webauthn.get_origin().clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::SecurityKey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1809,11 +1890,11 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication("https://idm.example.com", chal)
+                .do_authentication(webauthn.get_origin().clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &AuthCredential::Webauthn(resp),
+                &AuthCredential::SecurityKey(resp),
                 &ts,
                 &async_tx,
                 &webauthn,

@@ -1,6 +1,5 @@
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
-use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::credential::BackupCodes;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::identity::{IdentType, IdentUser, Limits};
@@ -10,9 +9,8 @@ use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::event::{
     AcceptSha1TotpEvent, CredentialStatusEvent, GeneratePasswordEvent, GenerateTotpEvent,
     LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-    RemoveTotpEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
-    UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent,
-    WebauthnInitRegisterEvent,
+    RemoveTotpEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
+    UnixUserTokenEvent, VerifyTotpEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::oauth2::{
@@ -71,7 +69,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use url::Url;
 
-use webauthn_rs::Webauthn;
+use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 use super::delayed::BackupCodeRemoval;
 use super::event::{GenerateBackupCodeEvent, ReadBackupCodeEvent, RemoveBackupCodeEvent};
@@ -98,7 +96,7 @@ pub struct IdmServer {
     crypto_policy: CryptoPolicy,
     async_tx: Sender<DelayedAction>,
     /// [Webauthn] verifier/config
-    webauthn: Webauthn<WebauthnDomainConfig>,
+    webauthn: Webauthn,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
 
@@ -118,7 +116,7 @@ pub struct IdmServerAuthTransaction<'a> {
     sid: Sid,
     // For flagging eventual actions.
     async_tx: Sender<DelayedAction>,
-    webauthn: &'a Webauthn<WebauthnDomainConfig>,
+    webauthn: &'a Webauthn,
     pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     uat_jwt_signer: CowCellReadTxn<JwsSigner>,
     uat_jwt_validator: CowCellReadTxn<JwsValidator>,
@@ -127,7 +125,7 @@ pub struct IdmServerAuthTransaction<'a> {
 pub(crate) struct IdmServerCredUpdateTransaction<'a> {
     pub _qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
-    pub _webauthn: &'a Webauthn<WebauthnDomainConfig>,
+    pub webauthn: &'a Webauthn,
     pub pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub token_enc_key: CowCellReadTxn<Fernet>,
@@ -151,7 +149,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) cred_update_sessions: BptreeMapWriteTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
-    webauthn: &'a Webauthn<WebauthnDomainConfig>,
+    webauthn: &'a Webauthn,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
     uat_jwt_signer: CowCellWriteTxn<'a, JwsSigner>,
     uat_jwt_validator: CowCellWriteTxn<'a, JwsValidator>,
@@ -181,10 +179,11 @@ impl IdmServer {
         let (async_tx, async_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
+        let (rp_id, rp_name, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
             let qs_read = task::block_on(qs.read_async());
             (
                 qs_read.get_domain_name().to_string(),
+                qs_read.get_domain_display_name().to_string(),
                 qs_read.get_domain_fernet_private_key()?,
                 qs_read.get_domain_es256_private_key()?,
                 qs_read.get_password_badlist()?,
@@ -217,14 +216,12 @@ impl IdmServer {
                 }
             })?;
 
-        // Now clone to rp_name.
-        let rp_name = rp_id.clone();
-
-        let webauthn = Webauthn::new(WebauthnDomainConfig {
-            rp_name,
-            origin: origin_url.clone(),
-            rp_id,
-        });
+        let webauthn = WebauthnBuilder::new(&rp_id, &origin_url)
+            .and_then(|builder| builder.allow_subdomains(true).rp_name(&rp_name).build())
+            .map_err(|e| {
+                admin_error!("Invalid Webauthn Configuration - {:?}", e);
+                OperationError::InvalidState
+            })?;
 
         // Setup our auth token signing key.
         let fernet_key = Fernet::new(&fernet_private_key).ok_or_else(|| {
@@ -350,7 +347,7 @@ impl IdmServer {
         IdmServerCredUpdateTransaction {
             _qs_read: self.qs.read_async().await,
             // sid: Sid,
-            _webauthn: &self.webauthn,
+            webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
             token_enc_key: self.token_enc_key.read(),
@@ -379,6 +376,11 @@ impl IdmServerDelayed {
             Poll::Pending | Poll::Ready(None) => {}
             Poll::Ready(Some(_m)) => panic!("Task queue not empty"),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn blocking_recv(&mut self) -> Option<DelayedAction> {
+        self.async_rx.blocking_recv()
     }
 
     #[cfg(test)]
@@ -614,11 +616,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // Intent to take both trees to write.
                 let _session_ticket = self.session_ticket.acquire().await;
 
-                // Check the credential that the auth_session will attempt to
-                // use.
+                // We don't actually check the softlock here. We just initialise
+                // it under the write lock we currently have, so that we can validate
+                // it once we understand what auth mech we will be using.
                 //
                 // NOTE: Very careful use of await here to avoid an issue with write.
-                let maybe_slock_ref =
+                let _maybe_slock_ref =
                     account
                         .primary_cred_uuid_and_policy()
                         .map(|(cred_uuid, policy)| {
@@ -640,6 +643,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock_ref
                         });
 
+                /*
                 let mut maybe_slock = if let Some(slock_ref) = maybe_slock_ref.as_ref() {
                     Some(slock_ref.lock().await)
                 } else {
@@ -653,7 +657,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 } else {
                     false
                 };
+                */
 
+                /*
                 let (auth_session, state) = if is_valid {
                     AuthSession::new(account, self.webauthn, ct)
                 } else {
@@ -664,6 +670,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         AuthState::Denied("Account is temporarily locked".to_string()),
                     )
                 };
+                */
+
+                let (auth_session, state) = AuthSession::new(account, self.webauthn, ct);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -715,8 +724,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
                 let mut auth_session = auth_session_ref.lock().await;
 
-                let is_valid =
-                    if let Some(cred_uuid) = auth_session.get_account().primary_cred_uuid() {
+                // Indicate to the session which auth mech we now want to proceed with.
+                let auth_result = auth_session.start_session(&mech.mech);
+
+                let is_valid = match auth_session.get_credential_uuid()? {
+                    Some(cred_uuid) => {
                         // From the auth_session, determine if the current account
                         // credential that we are using has become softlocked or not.
                         let softlock_read = self.softlocks.read();
@@ -729,13 +741,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         } else {
                             false
                         }
-                    } else {
-                        false
-                    };
+                    }
+                    None => true,
+                };
 
-                let r = if is_valid {
-                    // Indicate to the session which auth mech we now want to proceed with.
-                    auth_session.start_session(&mech.mech)
+                let auth_result = if is_valid {
+                    auth_result
                 } else {
                     // Fail the session
                     auth_session.end_session("Account is temporarily locked")
@@ -748,9 +759,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         delay,
                     }
                 });
-                // softlock_write.commit();
-                // session_write.commit();
-                r
+
+                auth_result
             } // End AuthEventStep::Mech
             AuthEventStep::Cred(creds) => {
                 // lperf_segment!("idm::server::auth<Creds>", || {
@@ -769,67 +779,60 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
                 let mut auth_session = auth_session_ref.lock().await;
 
-                let maybe_slock_ref =
-                    auth_session
-                        .get_account()
-                        .primary_cred_uuid()
-                        .and_then(|cred_uuid| {
-                            let softlock_read = self.softlocks.read();
-
-                            softlock_read.get(&cred_uuid).map(|s| s.clone())
-                        });
+                let maybe_slock_ref = match auth_session.get_credential_uuid()? {
+                    Some(cred_uuid) => {
+                        let softlock_read = self.softlocks.read();
+                        softlock_read.get(&cred_uuid).map(|s| s.clone())
+                    }
+                    None => None,
+                };
 
                 // From the auth_session, determine if the current account
                 // credential that we are using has become softlocked or not.
-
-                let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
+                let mut maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
                     Some(s.lock().await)
                 } else {
                     None
                 };
 
-                let maybe_valid = if let Some(mut slock) = maybe_slock {
+                let is_valid = if let Some(ref mut slock) = maybe_slock {
                     // Apply the current time.
                     slock.apply_time_step(ct);
                     // Now check the results
-                    if slock.is_valid() {
-                        Some(slock)
-                    } else {
-                        None
-                    }
+                    slock.is_valid()
                 } else {
-                    None
+                    // No slock is present for this cred_uuid
+                    true
                 };
 
-                let r = match maybe_valid {
-                    Some(mut slock) => {
-                        // Process the credentials here as required.
-                        // Basically throw them at the auth_session and see what
-                        // falls out.
-                        let pw_badlist_cache = Some(&(*self.pw_badlist_cache));
-                        auth_session
-                            .validate_creds(
-                                &creds.cred,
-                                &ct,
-                                &self.async_tx,
-                                self.webauthn,
-                                pw_badlist_cache,
-                                &*self.uat_jwt_signer,
-                            )
-                            .map(|aus| {
-                                // Inspect the result:
-                                // if it was a failure, we need to inc the softlock.
-                                if let AuthState::Denied(_) = &aus {
-                                    // Update it.
+                let r = if is_valid {
+                    // Process the credentials here as required.
+                    // Basically throw them at the auth_session and see what
+                    // falls out.
+                    let pw_badlist_cache = Some(&(*self.pw_badlist_cache));
+                    auth_session
+                        .validate_creds(
+                            &creds.cred,
+                            &ct,
+                            &self.async_tx,
+                            self.webauthn,
+                            pw_badlist_cache,
+                            &*self.uat_jwt_signer,
+                        )
+                        .map(|aus| {
+                            // Inspect the result:
+                            // if it was a failure, we need to inc the softlock.
+                            if let AuthState::Denied(_) = &aus {
+                                // Update it.
+                                if let Some(ref mut slock) = maybe_slock {
                                     slock.record_failure(ct);
-                                };
-                                aus
-                            })
-                    }
-                    _ => {
-                        // Fail the session
-                        auth_session.end_session("Account is temporarily locked")
-                    }
+                                }
+                            };
+                            aus
+                        })
+                } else {
+                    // Fail the session
+                    auth_session.end_session("Account is temporarily locked")
                 }
                 .map(|aus| {
                     // TODO: Change this william!
@@ -1264,6 +1267,10 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn get_origin(&self) -> &Url {
+        self.webauthn.get_origin()
+    }
+
     pub fn expire_mfareg_sessions(&mut self, ct: Duration) {
         // ct is current time - sub the timeout. and then split.
         let expire = ct - Duration::from_secs(MFAREG_SESSION_TIMEOUT);
@@ -1679,6 +1686,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| cleartext)
     }
 
+    /*
     pub fn reg_account_webauthn_init(
         &mut self,
         wre: &WebauthnInitRegisterEvent,
@@ -1731,10 +1739,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if let (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred))) = (&next, wan_cred) {
             // Persist the credential
-            let modlist = session.account.gen_webauthn_mod(label, cred).map_err(|e| {
-                admin_error!("Failed to gen webauthn mod {:?}", e);
-                e
-            })?;
+            let modlist = session
+                .account
+                .gen_securitykey_mod(label, cred)
+                .map_err(|e| {
+                    admin_error!("Failed to gen webauthn mod {:?}", e);
+                    e
+                })?;
             // Perform the mod
             self.qs_write
                 .impersonate_modify(
@@ -1767,7 +1778,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let account = self.target_to_account(&rwe.target)?;
         let modlist = account
-            .gen_webauthn_remove_mod(rwe.label.as_str())
+            .gen_securitykey_remove_mod(rwe.label.as_str())
             .map_err(|e| {
                 admin_error!("Failed to gen webauthn remove mod {:?}", e);
                 e
@@ -1788,6 +1799,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
             .map(|_| SetCredentialResponse::Success)
     }
+    */
 
     pub fn generate_account_totp(
         &mut self,
@@ -2014,11 +2026,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         wci: &WebauthnCounterIncrement,
     ) -> Result<(), OperationError> {
-        let account = self.target_to_account(&wci.target_uuid)?;
+        let mut account = self.target_to_account(&wci.target_uuid)?;
 
         // Generate an optional mod and then attempt to apply it.
         let opt_modlist = account
-            .gen_webauthn_counter_mod(&wci.cid, wci.counter)
+            .gen_webauthn_counter_mod(&wci.auth_result)
             .map_err(|e| {
                 admin_error!("Unable to generate webauthn counter mod {:?}", e);
                 e
@@ -2170,12 +2182,11 @@ mod tests {
     use crate::credential::totp::Totp;
     use crate::credential::{Credential, Password};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
-    use crate::idm::delayed::{BackupCodeRemoval, DelayedAction, WebauthnCounterIncrement};
+    use crate::idm::delayed::{BackupCodeRemoval, DelayedAction};
     use crate::idm::event::{
         AcceptSha1TotpEvent, GenerateBackupCodeEvent, GenerateTotpEvent, PasswordChangeEvent,
-        RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTotpEvent, RemoveWebauthnEvent,
-        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
-        VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+        RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTotpEvent, UnixGroupTokenEvent,
+        UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent,
     };
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
@@ -2192,7 +2203,6 @@ mod tests {
     use std::convert::TryFrom;
     use std::time::Duration;
     use uuid::Uuid;
-    use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
@@ -2405,6 +2415,8 @@ mod tests {
         } = ar;
 
         debug_assert!(delay.is_none());
+        assert!(matches!(state, AuthState::Choose(_)));
+        /*
         match state {
             AuthState::Choose(_) => {}
             _ => {
@@ -2412,6 +2424,7 @@ mod tests {
                 panic!();
             }
         };
+        */
 
         // Now push that we want the Password Mech.
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
@@ -3470,6 +3483,20 @@ mod tests {
                 );
                 let ar = r1.unwrap();
                 let AuthResult {
+                    sessionid,
+                    state,
+                    delay: _,
+                } = ar;
+                assert!(matches!(state, AuthState::Choose(_)));
+
+                // Soft locks only apply once a mechanism is chosen
+                let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
+
+                let r2 = task::block_on(
+                    idms_auth.auth(&admin_begin, Duration::from_secs(TEST_CURRENT_TIME)),
+                );
+                let ar = r2.unwrap();
+                let AuthResult {
                     sessionid: _,
                     state,
                     delay,
@@ -3700,102 +3727,6 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_webauthn_registration_and_counter_inc() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                let ct = duration_from_epoch_now();
-                let mut idms_prox_write = idms.proxy_write(ct.clone());
-
-                let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
-
-                let wrei = WebauthnInitRegisterEvent::new_internal(
-                    UUID_ADMIN.clone(),
-                    "softtoken".to_string(),
-                );
-
-                let (sessionid, ccr) = match idms_prox_write.reg_account_webauthn_init(&wrei, ct) {
-                    Ok(SetCredentialResponse::WebauthnCreateChallenge(sessionid, ccr)) => {
-                        (sessionid, ccr)
-                    }
-                    _ => {
-                        panic!();
-                    }
-                };
-
-                let rego = wa_softtok
-                    .do_registration("https://idm.example.com", ccr)
-                    .expect("Failed to register to softtoken");
-
-                let wdre =
-                    WebauthnDoRegisterEvent::new_internal(UUID_ADMIN.clone(), sessionid, rego);
-
-                match idms_prox_write.reg_account_webauthn_complete(&wdre) {
-                    Ok(SetCredentialResponse::Success) => {}
-                    _ => {
-                        panic!();
-                    }
-                };
-
-                // Get the account now so we can peek at the registered credential.
-                let account = idms_prox_write
-                    .target_to_account(&UUID_ADMIN)
-                    .expect("account must exist");
-
-                let cred = account.primary.expect("Must exist.");
-
-                let wcred = cred
-                    .webauthn_ref()
-                    .expect("must have webauthn")
-                    .values()
-                    .next()
-                    .map(|c| c.clone())
-                    .expect("must have a webauthn credential");
-
-                assert!(idms_prox_write.commit().is_ok());
-
-                // ===
-                // Assert we can increment the counter if needed.
-
-                // Assert the delayed action queue is empty
-                idms_delayed.check_is_empty_or_panic();
-
-                // Generate a fake counter increment
-                let da = DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
-                    target_uuid: UUID_ADMIN.clone(),
-                    counter: wcred.counter + 1,
-                    cid: wcred.cred_id,
-                });
-                let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
-                assert!(Ok(true) == r);
-
-                // Check we can remove the webauthn device - provided we set a pw.
-                let mut idms_prox_write = idms.proxy_write(ct.clone());
-                let rwe =
-                    RemoveWebauthnEvent::new_internal(UUID_ADMIN.clone(), "softtoken".to_string());
-                // This fails because the acc is webauthn only.
-                match idms_prox_write.remove_account_webauthn(&rwe) {
-                    Err(OperationError::InvalidAttribute(_)) => {
-                        //ok
-                    }
-                    _ => assert!(false),
-                };
-                // Reg a pw.
-                let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
-                assert!(idms_prox_write.set_account_password(&pce).is_ok());
-                // Now remove, it will work.
-                idms_prox_write
-                    .remove_account_webauthn(&rwe)
-                    .expect("Failed to remove webauthn");
-
-                assert!(idms_prox_write.commit().is_ok());
-
-                check_admin_password(idms, TEST_PASSWORD);
-                // All done!
-            }
-        )
-    }
-
-    #[test]
     fn test_idm_backup_code_removal_delayed_action() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
@@ -3803,7 +3734,7 @@ mod tests {
                 let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);
                 let mut idms_prox_write = idms.proxy_write(ct.clone());
 
-                // let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
+                // let mut wa_softtok = WebauthnAuthenticator::new(SoftPasskey::new());
 
                 // The account must has primary credential + uses MFA before generating backup codes
                 // Set a password.
@@ -3976,7 +3907,7 @@ mod tests {
 
             // == webauthn
             let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Webauthn)
+                .to_userauthtoken(session_id, ct, AuthType::Passkey)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
                 .process_uat_to_identity(&uat, ct)

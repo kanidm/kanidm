@@ -39,6 +39,9 @@ use uuid::Uuid;
 #[cfg(test)]
 use std::sync::Arc;
 
+#[cfg(test)]
+use webauthn_rs::prelude::PublicKeyCredential;
+
 #[derive(Debug)]
 pub struct SearchResult {
     entries: Vec<ProtoEntry>,
@@ -764,6 +767,14 @@ impl AuthEventStep {
             cred: AuthCredential::BackupCode(code.to_string()),
         })
     }
+
+    #[cfg(test)]
+    pub fn cred_step_passkey(sid: Uuid, passkey_response: PublicKeyCredential) -> Self {
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::Passkey(passkey_response),
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -834,6 +845,14 @@ impl AuthEvent {
         AuthEvent {
             ident: None,
             step: AuthEventStep::cred_step_backup_code(sid, code),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn cred_step_passkey(sid: Uuid, passkey_response: PublicKeyCredential) -> Self {
+        AuthEvent {
+            ident: None,
+            step: AuthEventStep::cred_step_passkey(sid, passkey_response),
         }
     }
 }

@@ -18,8 +18,7 @@ use crate::event::{
 };
 use crate::idm::event::{
     AcceptSha1TotpEvent, GeneratePasswordEvent, GenerateTotpEvent, PasswordChangeEvent,
-    RegenerateRadiusSecretEvent, RemoveTotpEvent, RemoveWebauthnEvent, UnixPasswordChangeEvent,
-    VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    RegenerateRadiusSecretEvent, RemoveTotpEvent, UnixPasswordChangeEvent, VerifyTotpEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -561,7 +560,8 @@ impl QueryServerWriteV1 {
                         .remove_account_totp(&rte)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
-                SetCredentialRequest::WebauthnBegin(label) => {
+                /*
+                SetCredentialRequest::SecurityKeyBegin(label) => {
                     let wre = WebauthnInitRegisterEvent::from_parts(
                         // &idms_prox_write.qs_write,
                         ident,
@@ -579,7 +579,7 @@ impl QueryServerWriteV1 {
                         .reg_account_webauthn_init(&wre, ct)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
-                SetCredentialRequest::WebauthnRegister(uuid, rpkc) => {
+                SetCredentialRequest::SecurityKeyRegister(uuid, rpkc) => {
                     let wre = WebauthnDoRegisterEvent::from_parts(
                         // &idms_prox_write.qs_write,
                         ident,
@@ -598,7 +598,7 @@ impl QueryServerWriteV1 {
                         .reg_account_webauthn_complete(&wre)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
-                SetCredentialRequest::WebauthnRemove(label) => {
+                SetCredentialRequest::SecurityKeyRemove(label) => {
                     let rwe = RemoveWebauthnEvent::from_parts(
                         // &idms_prox_write.qs_write,
                         ident,
@@ -616,6 +616,7 @@ impl QueryServerWriteV1 {
                         .remove_account_webauthn(&rwe)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
+                */
                 SetCredentialRequest::BackupCodeGenerate => {
                     let gbe = GenerateBackupCodeEvent::from_parts(
                         // &idms_prox_write.qs_write,

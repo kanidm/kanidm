@@ -1,5 +1,5 @@
 use crate::be::dbvalue::DbBackupCodeV1;
-use crate::be::dbvalue::{DbCredTypeV1, DbCredV1, DbPasswordV1, DbWebauthnV1};
+use crate::be::dbvalue::{DbCred, DbPasswordV1};
 use hashbrown::HashMap as Map;
 use hashbrown::HashSet;
 use kanidm_proto::v1::{BackupCodesView, CredentialDetail, CredentialDetailType, OperationError};
@@ -10,13 +10,15 @@ use rand::prelude::*;
 use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
-use webauthn_rs::proto::Credential as WebauthnCredential;
-use webauthn_rs::proto::{Counter, CredentialID};
+
+use webauthn_rs_core::proto::Credential as WebauthnCredential;
+use webauthn_rs_core::proto::CredentialV3;
+
+use webauthn_rs::prelude::{AuthenticationResult, Passkey, SecurityKey};
 
 pub mod policy;
 pub mod softlock;
 pub mod totp;
-pub mod webauthn;
 
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLockPolicy;
@@ -260,7 +262,6 @@ impl BackupCodes {
 pub struct Credential {
     // policy: Policy,
     pub(crate) type_: CredentialType,
-    pub(crate) claims: Vec<String>,
     // Uuid of Credential, used by auth session to lock this specific credential
     // if required.
     pub(crate) uuid: Uuid,
@@ -277,30 +278,26 @@ pub enum CredentialType {
     // Anonymous,
     Password(Password),
     GeneratedPassword(Password),
-    Webauthn(Map<String, WebauthnCredential>),
     PasswordMfa(
         Password,
         Option<Totp>,
-        Map<String, WebauthnCredential>,
+        Map<String, SecurityKey>,
         Option<BackupCodes>,
     ),
-    // PasswordWebauthn(Password, Map<String, WebauthnCredential>),
-    // WebauthnVerified(Map<String, WebauthnCredential>),
-    // PasswordWebauthnVerified(Password, Map<String, WebauthnCredential>),
+    Webauthn(Map<String, Passkey>),
 }
 
 impl From<&Credential> for CredentialDetail {
     fn from(value: &Credential) -> Self {
         CredentialDetail {
             uuid: value.uuid,
-            claims: value.claims.clone(),
             type_: match &value.type_ {
                 CredentialType::Password(_) => CredentialDetailType::Password,
                 CredentialType::GeneratedPassword(_) => CredentialDetailType::GeneratedPassword,
                 CredentialType::Webauthn(wan) => {
                     let mut labels: Vec<_> = wan.keys().cloned().collect();
                     labels.sort_unstable();
-                    CredentialDetailType::Webauthn(labels)
+                    CredentialDetailType::Passkey(labels)
                 }
                 CredentialType::PasswordMfa(_, totp, wan, backup_code) => {
                     let mut labels: Vec<_> = wan.keys().cloned().collect();
@@ -316,73 +313,164 @@ impl From<&Credential> for CredentialDetail {
     }
 }
 
-impl TryFrom<DbCredV1> for Credential {
+impl TryFrom<DbCred> for Credential {
     type Error = ();
 
-    fn try_from(value: DbCredV1) -> Result<Self, Self::Error> {
+    fn try_from(value: DbCred) -> Result<Self, Self::Error> {
         // Work out what the policy is?
-        let DbCredV1 {
-            type_,
-            password,
-            webauthn,
-            totp,
-            backup_code,
-            claims,
-            uuid,
-        } = value;
-
-        let v_password = match password {
-            Some(dbp) => Some(Password::try_from(dbp)?),
-            None => None,
-        };
-
-        let v_totp = match totp {
-            Some(dbt) => Some(Totp::try_from(dbt)?),
-            None => None,
-        };
-
-        let v_webauthn = webauthn.map(|dbw| {
-            dbw.into_iter()
-                .map(|wc| {
-                    (
-                        wc.label,
-                        WebauthnCredential {
-                            cred_id: wc.id,
-                            cred: wc.cred,
-                            counter: wc.counter,
-                            verified: wc.verified,
-                            registration_policy: wc.registration_policy,
-                        },
-                    )
-                })
-                .collect()
-        });
-
-        let v_backup_code = match backup_code {
-            Some(dbb) => Some(BackupCodes::try_from(dbb)?),
-            None => None,
-        };
-
-        let type_ = match type_ {
-            DbCredTypeV1::Pw => v_password.map(CredentialType::Password),
-            DbCredTypeV1::GPw => v_password.map(CredentialType::GeneratedPassword),
-            // In the future this could use .zip
-            DbCredTypeV1::PwMfa => match (v_password, v_webauthn) {
-                (Some(pw), Some(wn)) => {
-                    Some(CredentialType::PasswordMfa(pw, v_totp, wn, v_backup_code))
+        match value {
+            DbCred::V2Password {
+                password: db_password,
+                uuid,
+            }
+            | DbCred::Pw {
+                password: Some(db_password),
+                webauthn: None,
+                totp: None,
+                backup_code: None,
+                claims: _,
+                uuid,
+            } => {
+                let v_password = Password::try_from(db_password)?;
+                let type_ = CredentialType::Password(v_password);
+                if type_.is_valid() {
+                    Ok(Credential { type_, uuid })
+                } else {
+                    Err(())
                 }
-                _ => None,
-            },
-            DbCredTypeV1::Wn => v_webauthn.map(CredentialType::Webauthn),
-        }
-        .filter(|v| v.is_valid())
-        .ok_or(())?;
+            }
+            DbCred::V2GenPassword {
+                password: db_password,
+                uuid,
+            }
+            | DbCred::GPw {
+                password: Some(db_password),
+                webauthn: None,
+                totp: None,
+                backup_code: None,
+                claims: _,
+                uuid,
+            } => {
+                let v_password = Password::try_from(db_password)?;
+                let type_ = CredentialType::GeneratedPassword(v_password);
+                if type_.is_valid() {
+                    Ok(Credential { type_, uuid })
+                } else {
+                    Err(())
+                }
+            }
+            DbCred::PwMfa {
+                password: Some(db_password),
+                webauthn: Some(db_webauthn),
+                totp,
+                backup_code,
+                claims: _,
+                uuid,
+            } => {
+                let v_password = Password::try_from(db_password)?;
 
-        Ok(Credential {
-            type_,
-            claims,
-            uuid,
-        })
+                let v_totp = match totp {
+                    Some(dbt) => Some(Totp::try_from(dbt)?),
+                    None => None,
+                };
+
+                let v_webauthn = db_webauthn
+                    .into_iter()
+                    .map(|wc| {
+                        (
+                            wc.label,
+                            SecurityKey::from(WebauthnCredential::from(CredentialV3 {
+                                cred_id: wc.id,
+                                cred: wc.cred,
+                                counter: wc.counter,
+                                verified: wc.verified,
+                                registration_policy: wc.registration_policy,
+                            })),
+                        )
+                    })
+                    .collect();
+
+                let v_backup_code = match backup_code {
+                    Some(dbb) => Some(BackupCodes::try_from(dbb)?),
+                    None => None,
+                };
+
+                let type_ =
+                    CredentialType::PasswordMfa(v_password, v_totp, v_webauthn, v_backup_code);
+
+                if type_.is_valid() {
+                    Ok(Credential { type_, uuid })
+                } else {
+                    Err(())
+                }
+            }
+            DbCred::Wn {
+                password: None,
+                webauthn: Some(db_webauthn),
+                totp: None,
+                backup_code: None,
+                claims: _,
+                uuid,
+            } => {
+                let v_webauthn = db_webauthn
+                    .into_iter()
+                    .map(|wc| {
+                        (
+                            wc.label,
+                            Passkey::from(WebauthnCredential::from(CredentialV3 {
+                                cred_id: wc.id,
+                                cred: wc.cred,
+                                counter: wc.counter,
+                                verified: wc.verified,
+                                registration_policy: wc.registration_policy,
+                            })),
+                        )
+                    })
+                    .collect();
+
+                let type_ = CredentialType::Webauthn(v_webauthn);
+
+                if type_.is_valid() {
+                    Ok(Credential { type_, uuid })
+                } else {
+                    Err(())
+                }
+            }
+            DbCred::TmpWn { .. } => {
+                todo!()
+            }
+            DbCred::V2PasswordMfa {
+                password: db_password,
+                totp: Some(db_totp),
+                backup_code,
+                webauthn: db_webauthn,
+                uuid,
+            } => {
+                let v_password = Password::try_from(db_password)?;
+
+                let v_totp = Some(Totp::try_from(db_totp)?);
+
+                let v_backup_code = match backup_code {
+                    Some(dbb) => Some(BackupCodes::try_from(dbb)?),
+                    None => None,
+                };
+
+                let v_webauthn = db_webauthn.into_iter().collect();
+
+                let type_ =
+                    CredentialType::PasswordMfa(v_password, v_totp, v_webauthn, v_backup_code);
+
+                if type_.is_valid() {
+                    Ok(Credential { type_, uuid })
+                } else {
+                    Err(())
+                }
+            }
+            _ => {
+                error!("Database content may be corrupt - invalid credential");
+                Err(())
+            }
+        }
     }
 }
 
@@ -404,12 +492,11 @@ impl Credential {
     }
 
     /// Create a new credential that contains a CredentialType::Webauthn
-    pub fn new_webauthn_only(label: String, cred: WebauthnCredential) -> Self {
+    pub fn new_passkey_only(label: String, cred: Passkey) -> Self {
         let mut webauthn_map = Map::new();
         webauthn_map.insert(label, cred);
         Credential {
             type_: CredentialType::Webauthn(webauthn_map),
-            claims: Vec::new(),
             uuid: Uuid::new_v4(),
         }
     }
@@ -427,10 +514,10 @@ impl Credential {
     /// Extend this credential with another alternate webauthn credential. This is especially
     /// useful for `PasswordMfa` where you can have many webauthn credentials and a password
     /// generally so that one is a backup.
-    pub fn append_webauthn(
+    pub fn append_securitykey(
         &self,
         label: String,
-        cred: WebauthnCredential,
+        cred: SecurityKey,
     ) -> Result<Self, OperationError> {
         let type_ = match &self.type_ {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
@@ -448,32 +535,25 @@ impl Credential {
                 }
                 CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap, backup_code.clone())
             }
-            CredentialType::Webauthn(map) => {
-                let mut nmap = map.clone();
-                if nmap.insert(label.clone(), cred).is_some() {
-                    return Err(OperationError::InvalidAttribute(format!(
-                        "Webauthn label '{:?}' already exists",
-                        label
-                    )));
-                }
-                CredentialType::Webauthn(nmap)
-            }
+            // Ignore
+            CredentialType::Webauthn(map) => CredentialType::Webauthn(map.clone()),
         };
 
         // Check stuff
         Ok(Credential {
             type_,
-            claims: self.claims.clone(),
             uuid: self.uuid,
         })
     }
 
     /// Remove a webauthn token identified by `label` from this Credential.
-    pub fn remove_webauthn(&self, label: &str) -> Result<Self, OperationError> {
+    pub fn remove_securitykey(&self, label: &str) -> Result<Self, OperationError> {
         let type_ = match &self.type_ {
-            CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => {
+            CredentialType::Password(_)
+            | CredentialType::GeneratedPassword(_)
+            | CredentialType::Webauthn(_) => {
                 return Err(OperationError::InvalidAttribute(
-                    "Webauthn is not present on this credential".to_string(),
+                    "SecurityKey is not present on this credential".to_string(),
                 ));
             }
             CredentialType::PasswordMfa(pw, totp, map, backup_code) => {
@@ -499,29 +579,29 @@ impl Credential {
                 } else {
                     CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap, backup_code.clone())
                 }
-            }
-            CredentialType::Webauthn(map) => {
-                let mut nmap = map.clone();
-                if nmap.remove(label).is_none() {
-                    return Err(OperationError::InvalidAttribute(format!(
-                        "Removing Webauthn token with label '{:?}': does not exist",
-                        label
-                    )));
-                }
-                if nmap.is_empty() {
-                    return Err(OperationError::InvalidAttribute(format!(
-                        "Removing Webauthn token with label '{:?}': unable to remove, this is the last webauthn token",
-                        label
-                    )));
-                }
-                CredentialType::Webauthn(nmap)
-            }
+            } /*
+              CredentialType::Webauthn(map) => {
+                  let mut nmap = map.clone();
+                  if nmap.remove(label).is_none() {
+                      return Err(OperationError::InvalidAttribute(format!(
+                          "Removing Webauthn token with label '{:?}': does not exist",
+                          label
+                      )));
+                  }
+                  if nmap.is_empty() {
+                      return Err(OperationError::InvalidAttribute(format!(
+                          "Removing Webauthn token with label '{:?}': unable to remove, this is the last webauthn token",
+                          label
+                      )));
+                  }
+                  CredentialType::Webauthn(nmap)
+              }
+              */
         };
 
         // Check stuff
         Ok(Credential {
             type_,
-            claims: self.claims.clone(),
             uuid: self.uuid,
         })
     }
@@ -529,68 +609,57 @@ impl Credential {
     #[allow(clippy::ptr_arg)]
     /// After a successful authentication with Webauthn, we need to advance the credentials
     /// counter value to prevent certain classes of replay attacks.
-    pub fn update_webauthn_counter(
+    pub fn update_webauthn_properties(
         &self,
-        cid: &CredentialID,
-        counter: Counter,
+        auth_result: &AuthenticationResult,
     ) -> Result<Option<Self>, OperationError> {
-        let nmap = match &self.type_ {
-            CredentialType::Password(_pw) | CredentialType::GeneratedPassword(_pw) => {
-                // No action required
-                return Ok(None);
-            }
-            CredentialType::PasswordMfa(_, _, map, _) | CredentialType::Webauthn(map) => map
-                .iter()
-                .find_map(|(k, v)| {
-                    if &v.cred_id == cid && v.counter < counter {
-                        Some(k)
-                    } else {
-                        None
-                    }
-                })
-                .map(|label| {
-                    let mut webauthn_map = map.clone();
-
-                    if let Some(cred) = webauthn_map.get_mut(label) {
-                        cred.counter = counter
-                    };
-                    webauthn_map
-                }),
-        };
-
-        let map = match nmap {
-            Some(map) => map,
-            None => {
-                // No action needed.
-                return Ok(None);
-            }
-        };
-
         let type_ = match &self.type_ {
             CredentialType::Password(_pw) | CredentialType::GeneratedPassword(_pw) => {
                 // Should not be possible!
                 return Err(OperationError::InvalidState);
             }
-            CredentialType::Webauthn(_) => CredentialType::Webauthn(map),
-            CredentialType::PasswordMfa(pw, totp, _, backup_code) => {
-                CredentialType::PasswordMfa(pw.clone(), totp.clone(), map, backup_code.clone())
+            CredentialType::Webauthn(map) => {
+                let mut nmap = map.clone();
+                nmap.values_mut().for_each(|pk| {
+                    pk.update_credential(auth_result);
+                });
+                CredentialType::Webauthn(nmap)
+            }
+            CredentialType::PasswordMfa(pw, totp, map, backup_code) => {
+                let mut nmap = map.clone();
+                nmap.values_mut().for_each(|sk| {
+                    sk.update_credential(auth_result);
+                });
+                CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap, backup_code.clone())
             }
         };
 
         Ok(Some(Credential {
             type_,
-            claims: self.claims.clone(),
             uuid: self.uuid,
         }))
     }
 
     /// Get a reference to the contained webuthn credentials, if any.
-    pub fn webauthn_ref(&self) -> Result<&Map<String, WebauthnCredential>, OperationError> {
+    pub fn securitykey_ref(&self) -> Result<&Map<String, SecurityKey>, OperationError> {
         match &self.type_ {
-            CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => Err(
-                OperationError::InvalidAccountState("non-webauthn cred type?".to_string()),
-            ),
-            CredentialType::PasswordMfa(_, _, map, _) | CredentialType::Webauthn(map) => Ok(map),
+            CredentialType::Webauthn(_)
+            | CredentialType::Password(_)
+            | CredentialType::GeneratedPassword(_) => Err(OperationError::InvalidAccountState(
+                "non-webauthn cred type?".to_string(),
+            )),
+            CredentialType::PasswordMfa(_, _, map, _) => Ok(map),
+        }
+    }
+
+    pub fn passkey_ref(&self) -> Result<&Map<String, Passkey>, OperationError> {
+        match &self.type_ {
+            CredentialType::PasswordMfa(_, _, _, _)
+            | CredentialType::Password(_)
+            | CredentialType::GeneratedPassword(_) => Err(OperationError::InvalidAccountState(
+                "non-webauthn cred type?".to_string(),
+            )),
+            CredentialType::Webauthn(map) => Ok(map),
         }
     }
 
@@ -612,66 +681,26 @@ impl Credential {
     }
 
     /// Extract this credential into it's Serialisable Database form, ready for persistence.
-    pub fn to_db_valuev1(&self) -> DbCredV1 {
-        let claims = self.claims.clone();
+    pub fn to_db_valuev1(&self) -> DbCred {
         let uuid = self.uuid;
         match &self.type_ {
-            CredentialType::Password(pw) => DbCredV1 {
-                type_: DbCredTypeV1::Pw,
-                password: Some(pw.to_dbpasswordv1()),
-                webauthn: None,
-                totp: None,
-                backup_code: None,
-                claims,
+            CredentialType::Password(pw) => DbCred::V2Password {
+                password: pw.to_dbpasswordv1(),
                 uuid,
             },
-            CredentialType::GeneratedPassword(pw) => DbCredV1 {
-                type_: DbCredTypeV1::GPw,
-                password: Some(pw.to_dbpasswordv1()),
-                webauthn: None,
-                totp: None,
-                backup_code: None,
-                claims,
+            CredentialType::GeneratedPassword(pw) => DbCred::V2GenPassword {
+                password: pw.to_dbpasswordv1(),
                 uuid,
             },
-            CredentialType::PasswordMfa(pw, totp, map, backup_code) => DbCredV1 {
-                type_: DbCredTypeV1::PwMfa,
-                password: Some(pw.to_dbpasswordv1()),
-                webauthn: Some(
-                    map.iter()
-                        .map(|(k, v)| DbWebauthnV1 {
-                            label: k.clone(),
-                            id: v.cred_id.clone(),
-                            cred: v.cred.clone(),
-                            counter: v.counter,
-                            verified: v.verified,
-                            registration_policy: v.registration_policy,
-                        })
-                        .collect(),
-                ),
+            CredentialType::PasswordMfa(pw, totp, map, backup_code) => DbCred::V2PasswordMfa {
+                password: pw.to_dbpasswordv1(),
                 totp: totp.as_ref().map(|t| t.to_dbtotpv1()),
                 backup_code: backup_code.as_ref().map(|b| b.to_dbbackupcodev1()),
-                claims,
+                webauthn: map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
                 uuid,
             },
-            CredentialType::Webauthn(map) => DbCredV1 {
-                type_: DbCredTypeV1::Wn,
-                password: None,
-                webauthn: Some(
-                    map.iter()
-                        .map(|(k, v)| DbWebauthnV1 {
-                            label: k.clone(),
-                            id: v.cred_id.clone(),
-                            cred: v.cred.clone(),
-                            counter: v.counter,
-                            verified: v.verified,
-                            registration_policy: v.registration_policy,
-                        })
-                        .collect(),
-                ),
-                totp: None,
-                backup_code: None,
-                claims,
+            CredentialType::Webauthn(map) => DbCred::TmpWn {
+                webauthn: map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
                 uuid,
             },
         }
@@ -685,13 +714,11 @@ impl Credential {
             CredentialType::PasswordMfa(_, totp, wan, backup_code) => {
                 CredentialType::PasswordMfa(pw, totp.clone(), wan.clone(), backup_code.clone())
             }
-            CredentialType::Webauthn(wan) => {
-                CredentialType::PasswordMfa(pw, None, wan.clone(), None)
-            }
+            // Ignore
+            CredentialType::Webauthn(wan) => CredentialType::Webauthn(wan.clone()),
         };
         Credential {
             type_,
-            claims: self.claims.clone(),
             uuid: self.uuid,
         }
     }
@@ -715,7 +742,6 @@ impl Credential {
         };
         Credential {
             type_,
-            claims: self.claims.clone(),
             uuid: self.uuid,
         }
     }
@@ -734,7 +760,6 @@ impl Credential {
         };
         Credential {
             type_,
-            claims: self.claims.clone(),
             uuid: self.uuid,
         }
     }
@@ -742,7 +767,6 @@ impl Credential {
     pub(crate) fn new_from_generatedpassword(pw: Password) -> Self {
         Credential {
             type_: CredentialType::GeneratedPassword(pw),
-            claims: Vec::new(),
             uuid: Uuid::new_v4(),
         }
     }
@@ -750,7 +774,6 @@ impl Credential {
     pub(crate) fn new_from_password(pw: Password) -> Self {
         Credential {
             type_: CredentialType::Password(pw),
-            claims: Vec::new(),
             uuid: Uuid::new_v4(),
         }
     }
@@ -786,7 +809,6 @@ impl Credential {
                     wan.clone(),
                     Some(backup_codes),
                 ),
-                claims: self.claims.clone(),
                 uuid: self.uuid,
             }),
             _ => Err(OperationError::InvalidAccountState(
@@ -806,7 +828,6 @@ impl Credential {
                         backup_codes.remove(code_to_remove);
                         Ok(Credential {
                             type_: CredentialType::PasswordMfa(pw, totp, wan, Some(backup_codes)),
-                            claims: self.claims.clone(),
                             uuid: self.uuid,
                         })
                     }
@@ -825,7 +846,6 @@ impl Credential {
         match &self.type_ {
             CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
                 type_: CredentialType::PasswordMfa(pw.clone(), totp.clone(), wan.clone(), None),
-                claims: self.claims.clone(),
                 uuid: self.uuid,
             }),
             _ => Err(OperationError::InvalidAccountState(
@@ -851,26 +871,6 @@ impl Credential {
             )),
         }
     }
-
-    /*
-    pub fn add_claim(&mut self) {
-    }
-
-    pub fn remove_claim(&mut self) {
-    }
-    */
-
-    /*
-    pub fn modify_password(&mut self) {
-        // Change the password
-    }
-
-    pub fn add_webauthn_token() {
-    }
-
-    pub fn remove_webauthn_token() {
-    }
-    */
 }
 
 impl CredentialType {

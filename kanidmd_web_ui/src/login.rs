@@ -15,7 +15,7 @@ use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
 };
 
-use webauthn_rs::proto::PublicKeyCredential;
+use webauthn_rs_proto::PublicKeyCredential;
 
 pub struct LoginApp {
     inputvalue: String,
@@ -36,7 +36,8 @@ enum LoginState {
     Password(bool),
     BackupCode(bool),
     Totp(TotpState),
-    Webauthn(web_sys::CredentialRequestOptions),
+    Passkey(web_sys::CredentialRequestOptions),
+    SecurityKey(web_sys::CredentialRequestOptions),
     Error { emsg: String, kopid: Option<String> },
     UnknownUser,
     Denied(String),
@@ -50,7 +51,8 @@ pub enum LoginAppMsg {
     PasswordSubmit,
     BackupCodeSubmit,
     TotpSubmit,
-    WebauthnSubmit(PublicKeyCredential),
+    PasskeySubmit(PublicKeyCredential),
+    SecurityKeySubmit(PublicKeyCredential),
     Start(String, AuthResponse),
     Next(AuthResponse),
     Continue(usize),
@@ -331,7 +333,7 @@ impl LoginApp {
                     </>
                 }
             }
-            LoginState::Webauthn(challenge) => {
+            LoginState::SecurityKey(challenge) => {
                 // Start the navigator parts.
                 if let Some(win) = web_sys::window() {
                     let promise = win
@@ -348,7 +350,7 @@ impl LoginApp {
                                 let data = PublicKeyCredential::from(
                                     web_sys::PublicKeyCredential::from(data),
                                 );
-                                linkc.send_message(LoginAppMsg::WebauthnSubmit(data));
+                                linkc.send_message(LoginAppMsg::SecurityKeySubmit(data));
                             }
                             Err(e) => {
                                 linkc.send_message(LoginAppMsg::Error {
@@ -368,7 +370,49 @@ impl LoginApp {
                 html! {
                     <div class="container">
                         <p>
-                        {" Webauthn "}
+                        {" Security Key "}
+                        </p>
+                    </div>
+                }
+            }
+            LoginState::Passkey(challenge) => {
+                // Start the navigator parts.
+                if let Some(win) = web_sys::window() {
+                    let promise = win
+                        .navigator()
+                        .credentials()
+                        .get_with_options(challenge)
+                        .expect_throw("Unable to create promise");
+                    let fut = JsFuture::from(promise);
+                    let linkc = ctx.link().clone();
+
+                    spawn_local(async move {
+                        match fut.await {
+                            Ok(data) => {
+                                let data = PublicKeyCredential::from(
+                                    web_sys::PublicKeyCredential::from(data),
+                                );
+                                linkc.send_message(LoginAppMsg::PasskeySubmit(data));
+                            }
+                            Err(e) => {
+                                linkc.send_message(LoginAppMsg::Error {
+                                    emsg: format!("{:?}", e),
+                                    kopid: None,
+                                });
+                            }
+                        }
+                    });
+                } else {
+                    ctx.link().send_message(LoginAppMsg::Error {
+                        emsg: "failed to access navigator credentials".to_string(),
+                        kopid: None,
+                    });
+                };
+
+                html! {
+                    <div class="container">
+                        <p>
+                        {" Passkey "}
                         </p>
                     </div>
                 }
@@ -570,10 +614,25 @@ impl Component for LoginApp {
 
                 true
             }
-            LoginAppMsg::WebauthnSubmit(resp) => {
-                console::log!("At webauthn step".to_string());
+            LoginAppMsg::SecurityKeySubmit(resp) => {
+                console::log!("At securitykey step".to_string());
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::Webauthn(resp)),
+                    step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
+                };
+                let session_id = self.session_id.clone();
+                ctx.link().send_future(async {
+                    match Self::auth_step(authreq, session_id).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
+                // Do not submit here, we need to wait for the next ui transition.
+                false
+            }
+            LoginAppMsg::PasskeySubmit(resp) => {
+                console::log!("At passkey step".to_string());
+                let authreq = AuthRequest {
+                    step: AuthStep::Cred(AuthCredential::Passkey(resp)),
                 };
                 let session_id = self.session_id.clone();
                 ctx.link().send_future(async {
@@ -664,8 +723,11 @@ impl Component for LoginApp {
                                 AuthAllowed::Totp => {
                                     self.state = LoginState::Totp(TotpState::Enabled);
                                 }
-                                AuthAllowed::Webauthn(challenge) => {
-                                    self.state = LoginState::Webauthn(challenge.into())
+                                AuthAllowed::SecurityKey(challenge) => {
+                                    self.state = LoginState::SecurityKey(challenge.into())
+                                }
+                                AuthAllowed::Passkey(challenge) => {
+                                    self.state = LoginState::Passkey(challenge.into())
                                 }
                             }
                         } else {
@@ -707,8 +769,11 @@ impl Component for LoginApp {
                             Some(AuthAllowed::Totp) => {
                                 self.state = LoginState::Totp(TotpState::Enabled);
                             }
-                            Some(AuthAllowed::Webauthn(challenge)) => {
-                                self.state = LoginState::Webauthn(challenge.clone().into())
+                            Some(AuthAllowed::SecurityKey(challenge)) => {
+                                self.state = LoginState::SecurityKey(challenge.clone().into())
+                            }
+                            Some(AuthAllowed::Passkey(challenge)) => {
+                                self.state = LoginState::Passkey(challenge.clone().into())
                             }
                             None => {
                                 console::log!("invalid allowed mech idx".to_string());

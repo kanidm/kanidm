@@ -152,7 +152,7 @@ impl Configuration {
             maximum_request: 256 * 1024, // 256k
             // log type
             // log path
-            // TODO #63: default true in prd
+            // default true in prd
             secure_cookies: !cfg!(test),
             tls_config: None,
             cookie_key: [0; 32],

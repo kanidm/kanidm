@@ -101,7 +101,7 @@ impl TotpModalApp {
             });
 
             Ok(match status.mfaregstate {
-                CURegState::BackupCodes(_) => Msg::Error {
+                CURegState::Passkey(_) | CURegState::BackupCodes(_) => Msg::Error {
                     emsg: "Invalid TOTP mfa reg state response".to_string(),
                     kopid,
                 },

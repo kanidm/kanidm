@@ -22,6 +22,9 @@ use sshkeys::PublicKey as SshPublicKey;
 
 use regex::Regex;
 
+use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
+
 lazy_static! {
     pub static ref SPN_RE: Regex = {
         #[allow(clippy::expect_used)]
@@ -170,6 +173,8 @@ pub enum SyntaxType {
     OauthScopeMap,
     PrivateBinary,
     IntentToken,
+    Passkey,
+    DeviceKey,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -202,6 +207,8 @@ impl TryFrom<&str> for SyntaxType {
             "OAUTH_SCOPE_MAP" => Ok(SyntaxType::OauthScopeMap),
             "PRIVATE_BINARY" => Ok(SyntaxType::PrivateBinary),
             "INTENT_TOKEN" => Ok(SyntaxType::IntentToken),
+            "PASSKEY" => Ok(SyntaxType::Passkey),
+            "DEVICEKEY" => Ok(SyntaxType::DeviceKey),
             _ => Err(()),
         }
     }
@@ -235,6 +242,8 @@ impl TryFrom<usize> for SyntaxType {
             20 => Ok(SyntaxType::OauthScopeMap),
             21 => Ok(SyntaxType::PrivateBinary),
             22 => Ok(SyntaxType::IntentToken),
+            23 => Ok(SyntaxType::Passkey),
+            24 => Ok(SyntaxType::DeviceKey),
             _ => Err(()),
         }
     }
@@ -266,6 +275,8 @@ impl SyntaxType {
             SyntaxType::OauthScopeMap => 20,
             SyntaxType::PrivateBinary => 21,
             SyntaxType::IntentToken => 22,
+            SyntaxType::Passkey => 23,
+            SyntaxType::DeviceKey => 24,
         }
     }
 }
@@ -296,6 +307,8 @@ impl fmt::Display for SyntaxType {
             SyntaxType::OauthScopeMap => "OAUTH_SCOPE_MAP",
             SyntaxType::PrivateBinary => "PRIVATE_BINARY",
             SyntaxType::IntentToken => "INTENT_TOKEN",
+            SyntaxType::Passkey => "PASSKEY",
+            SyntaxType::DeviceKey => "DEVICEKEY",
         })
     }
 }
@@ -341,6 +354,10 @@ pub enum PartialValue {
     // Float64(f64),
     RestrictedString(String),
     IntentToken(String),
+
+    Passkey(Uuid),
+    DeviceKey(Uuid),
+
     TrustedDeviceEnrollment(Uuid),
     AuthSession(Uuid),
 }
@@ -659,6 +676,14 @@ impl PartialValue {
         Some(PartialValue::IntentToken(s))
     }
 
+    pub fn new_passkey_s(us: &str) -> Option<Self> {
+        Uuid::parse_str(us).map(PartialValue::Passkey).ok()
+    }
+
+    pub fn new_devicekey_s(us: &str) -> Option<Self> {
+        Uuid::parse_str(us).map(PartialValue::DeviceKey).ok()
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -683,7 +708,10 @@ impl PartialValue {
             | PartialValue::Nsuniqueid(s)
             | PartialValue::EmailAddress(s)
             | PartialValue::RestrictedString(s) => s.clone(),
-            PartialValue::Refer(u) | PartialValue::Uuid(u) => u.as_hyphenated().to_string(),
+            PartialValue::Passkey(u)
+            | PartialValue::DeviceKey(u)
+            | PartialValue::Refer(u)
+            | PartialValue::Uuid(u) => u.as_hyphenated().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
             PartialValue::Index(it) => it.to_string(),
@@ -760,6 +788,9 @@ pub enum Value {
     // Float64(f64),
     RestrictedString(String),
     IntentToken(String, IntentTokenState),
+    Passkey(Uuid, String, PasskeyV4),
+    DeviceKey(Uuid, String, DeviceKeyV4),
+
     TrustedDeviceEnrollment(Uuid),
     AuthSession(Uuid),
 }

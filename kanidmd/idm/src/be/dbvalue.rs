@@ -3,7 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
-use webauthn_rs::proto::{COSEKey, UserVerificationPolicy};
+use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
+
+use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
+use webauthn_rs::prelude::SecurityKey as SecurityKeyV4;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
@@ -100,41 +104,82 @@ impl std::fmt::Debug for DbBackupCodeV1 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum DbCredTypeV1 {
-    Pw,
-    GPw,
-    PwMfa,
-    // PwWn,
-    Wn,
-    // WnVer,
-    // PwWnVer,
-}
-
 // We have to allow this as serde expects &T for the fn sig.
 #[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_false(b: &bool) -> bool {
     !b
 }
 
-fn dbcred_type_default_pw() -> DbCredTypeV1 {
-    DbCredTypeV1::Pw
-}
-
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DbCredV1 {
-    #[serde(default = "dbcred_type_default_pw")]
-    pub type_: DbCredTypeV1,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub password: Option<DbPasswordV1>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub webauthn: Option<Vec<DbWebauthnV1>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub totp: Option<DbTotpV1>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub backup_code: Option<DbBackupCodeV1>,
-    pub claims: Vec<String>,
-    pub uuid: Uuid,
+#[serde(tag = "type_")]
+pub enum DbCred {
+    // These are the old v1 versions.
+    Pw {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        password: Option<DbPasswordV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        webauthn: Option<Vec<DbWebauthnV1>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        totp: Option<DbTotpV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        backup_code: Option<DbBackupCodeV1>,
+        claims: Vec<String>,
+        uuid: Uuid,
+    },
+    GPw {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        password: Option<DbPasswordV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        webauthn: Option<Vec<DbWebauthnV1>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        totp: Option<DbTotpV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        backup_code: Option<DbBackupCodeV1>,
+        claims: Vec<String>,
+        uuid: Uuid,
+    },
+    PwMfa {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        password: Option<DbPasswordV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        webauthn: Option<Vec<DbWebauthnV1>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        totp: Option<DbTotpV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        backup_code: Option<DbBackupCodeV1>,
+        claims: Vec<String>,
+        uuid: Uuid,
+    },
+    Wn {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        password: Option<DbPasswordV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        webauthn: Option<Vec<DbWebauthnV1>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        totp: Option<DbTotpV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        backup_code: Option<DbBackupCodeV1>,
+        claims: Vec<String>,
+        uuid: Uuid,
+    },
+
+    TmpWn {
+        webauthn: Vec<(String, PasskeyV4)>,
+        uuid: Uuid,
+    },
+
+    #[serde(rename = "V2Pw")]
+    V2Password { password: DbPasswordV1, uuid: Uuid },
+    #[serde(rename = "V2GPw")]
+    V2GenPassword { password: DbPasswordV1, uuid: Uuid },
+    #[serde(rename = "V2PwMfa")]
+    V2PasswordMfa {
+        password: DbPasswordV1,
+        totp: Option<DbTotpV1>,
+        backup_code: Option<DbBackupCodeV1>,
+        webauthn: Vec<(String, SecurityKeyV4)>,
+        uuid: Uuid,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -142,7 +187,17 @@ pub struct DbValueCredV1 {
     #[serde(rename = "t")]
     pub tag: String,
     #[serde(rename = "d")]
-    pub data: DbCredV1,
+    pub data: DbCred,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DbValuePasskeyV1 {
+    V4 { u: Uuid, t: String, k: PasskeyV4 },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueDeviceKeyV1 {
+    V4 { u: Uuid, t: String, k: DeviceKeyV4 },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -312,6 +367,10 @@ pub enum DbValueSetV2 {
     RestrictedString(Vec<String>),
     #[serde(rename = "IT")]
     IntentToken(Vec<(String, DbValueIntentTokenStateV1)>),
+    #[serde(rename = "PK")]
+    Passkey(Vec<DbValuePasskeyV1>),
+    #[serde(rename = "DK")]
+    DeviceKey(Vec<DbValueDeviceKeyV1>),
     #[serde(rename = "TE")]
     TrustedDeviceEnrollment(Vec<Uuid>),
     #[serde(rename = "AS")]
@@ -348,6 +407,8 @@ impl DbValueSetV2 {
             DbValueSetV2::PublicBinary(set) => set.len(),
             DbValueSetV2::RestrictedString(set) => set.len(),
             DbValueSetV2::IntentToken(set) => set.len(),
+            DbValueSetV2::Passkey(set) => set.len(),
+            DbValueSetV2::DeviceKey(set) => set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
             DbValueSetV2::AuthSession(set) => set.len(),
         }
@@ -360,7 +421,41 @@ impl DbValueSetV2 {
 
 #[cfg(test)]
 mod tests {
-    use crate::be::dbvalue::DbCredV1;
+    use super::DbCred;
+    use super::{DbBackupCodeV1, DbPasswordV1, DbTotpV1, DbWebauthnV1};
+    use serde::{Deserialize, Serialize};
+    use uuid::Uuid;
+
+    fn dbcred_type_default_pw() -> DbCredTypeV1 {
+        DbCredTypeV1::Pw
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum DbCredTypeV1 {
+        Pw,
+        GPw,
+        PwMfa,
+        // PwWn,
+        Wn,
+        // WnVer,
+        // PwWnVer,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct DbCredV1 {
+        #[serde(default = "dbcred_type_default_pw")]
+        pub type_: DbCredTypeV1,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub password: Option<DbPasswordV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub webauthn: Option<Vec<DbWebauthnV1>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub totp: Option<DbTotpV1>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub backup_code: Option<DbBackupCodeV1>,
+        pub claims: Vec<String>,
+        pub uuid: Uuid,
+    }
 
     #[test]
     fn test_dbcred_pre_totp_decode() {
@@ -377,6 +472,16 @@ mod tests {
         */
         let s = "o2hwYXNzd29yZKFmUEJLREYygwCBAIEAZmNsYWltc4BkdXVpZFAjkHFm4q5M86UcNRi4hBjN";
         let data = base64::decode(s).unwrap();
-        let _dbcred: DbCredV1 = serde_cbor::from_slice(data.as_slice()).unwrap();
+        let dbcred: DbCredV1 = serde_cbor::from_slice(data.as_slice()).unwrap();
+
+        // Test converting to the new enum format
+        let x = vec![dbcred];
+
+        let json = serde_json::to_string(&x).unwrap();
+        eprintln!("{}", json);
+
+        let _e_dbcred: Vec<DbCred> = serde_json::from_str(&json).unwrap();
+
+        // assert!(dbcred == e_dbcred);
     }
 }

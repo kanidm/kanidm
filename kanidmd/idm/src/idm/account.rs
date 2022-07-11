@@ -6,6 +6,10 @@ use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthType, UserAuthToken};
 use kanidm_proto::v1::{BackupCodesView, CredentialStatus};
 
+use webauthn_rs::prelude::CredentialID;
+use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
+
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::totp::Totp;
@@ -18,8 +22,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use webauthn_rs::proto::Credential as WebauthnCredential;
-use webauthn_rs::proto::{Counter, CredentialID};
+use webauthn_rs::prelude::AuthenticationResult;
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
@@ -52,6 +55,16 @@ macro_rules! try_from_entry {
         let primary = $value
             .get_ava_single_credential("primary_credential")
             .map(|v| v.clone());
+
+        let passkeys = $value
+            .get_ava_passkeys("passkeys")
+            .cloned()
+            .unwrap_or_default();
+
+        let devicekeys = $value
+            .get_ava_devicekeys("devicekeys")
+            .cloned()
+            .unwrap_or_default();
 
         let spn = $value.get_ava_single_proto_string("spn").ok_or(
             OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
@@ -88,6 +101,8 @@ macro_rules! try_from_entry {
             displayname,
             groups,
             primary,
+            passkeys,
+            devicekeys,
             valid_from,
             expire,
             radius_secret,
@@ -114,6 +129,8 @@ pub(crate) struct Account {
     #[allow(dead_code)]
     pub groups: Vec<Group>,
     pub primary: Option<Credential>,
+    pub passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
+    pub devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
@@ -334,58 +351,42 @@ impl Account {
         }
     }
 
-    pub(crate) fn gen_webauthn_mod(
-        &self,
-        label: String,
-        cred: WebauthnCredential,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ncred = match &self.primary {
-            Some(primary) => primary.append_webauthn(label, cred)?,
-            None => Credential::new_webauthn_only(label, cred),
-        };
-        let vcred = Value::new_credential("primary", ncred);
-        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-    }
-
-    pub(crate) fn gen_webauthn_remove_mod(
-        &self,
-        label: &str,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        match &self.primary {
-            // Change the cred
-            Some(primary) => {
-                let ncred = primary.remove_webauthn(label)?;
-                let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-            }
-            None => {
-                // No credential exists, we can't remove what is not real.
-                Err(OperationError::InvalidState)
-            }
-        }
-    }
-
-    #[allow(clippy::ptr_arg)]
     pub(crate) fn gen_webauthn_counter_mod(
-        &self,
-        cid: &CredentialID,
-        counter: Counter,
+        &mut self,
+        auth_result: &AuthenticationResult,
     ) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
-        //
+        let mut ml = Vec::with_capacity(2);
+        // Where is the credential we need to update?
         let opt_ncred = match self.primary.as_ref() {
-            Some(primary) => primary.update_webauthn_counter(cid, counter)?,
+            Some(primary) => primary.update_webauthn_properties(auth_result)?,
             None => None,
         };
 
-        match opt_ncred {
-            Some(ncred) => {
-                let vcred = Value::new_credential("primary", ncred);
-                Ok(Some(ModifyList::new_purge_and_set(
-                    "primary_credential",
-                    vcred,
-                )))
+        if let Some(ncred) = opt_ncred {
+            let vcred = Value::new_credential("primary", ncred);
+            ml.push(Modify::Purged("primary_credential".into()));
+            ml.push(Modify::Present("primary_credential".into(), vcred));
+        }
+
+        // Is it a passkey?
+        self.passkeys.iter_mut().for_each(|(u, (t, k))| {
+            if let Some(true) = k.update_credential(auth_result) {
+                ml.push(Modify::Removed(
+                    "passkeys".into(),
+                    PartialValue::Passkey(*u),
+                ));
+
+                ml.push(Modify::Present(
+                    "passkeys".into(),
+                    Value::Passkey(*u, t.clone(), k.clone()),
+                ));
             }
-            None => Ok(None),
+        });
+
+        if ml.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(ModifyList::new_list(ml)))
         }
     }
 
@@ -488,6 +489,11 @@ impl Account {
             .as_ref()
             .ok_or(OperationError::InvalidState)
             .and_then(|cred| cred.get_backup_code_view())
+    }
+
+    pub(crate) fn existing_credential_id_list(&self) -> Option<Vec<CredentialID>> {
+        // TODO!!!
+        None
     }
 }
 

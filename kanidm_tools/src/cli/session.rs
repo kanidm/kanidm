@@ -11,7 +11,9 @@ use std::io::ErrorKind;
 use std::io::{self, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
-use webauthn_authenticator_rs::{u2fhid::U2FHid, RequestChallengeResponse, WebauthnAuthenticator};
+use webauthn_authenticator_rs::{
+    prelude::RequestChallengeResponse, u2fhid::U2FHid, WebauthnAuthenticator,
+};
 
 use dialoguer::{theme::ColorfulTheme, Select};
 
@@ -190,7 +192,7 @@ impl LoginOpt {
         client.auth_step_totp(totp).await
     }
 
-    async fn do_webauthn(
+    async fn do_passkey(
         &self,
         client: &mut KanidmClient,
         pkr: RequestChallengeResponse,
@@ -198,13 +200,30 @@ impl LoginOpt {
         let mut wa = WebauthnAuthenticator::new(U2FHid::new());
         println!("Your authenticator will now flash for you to interact with it.");
         let auth = wa
-            .do_authentication(client.get_origin(), pkr)
+            .do_authentication(client.get_origin().clone(), pkr)
             .unwrap_or_else(|e| {
                 error!("Failed to interact with webauthn device. -- {:?}", e);
                 std::process::exit(1);
             });
 
-        client.auth_step_webauthn_complete(auth).await
+        client.auth_step_passkey_complete(auth).await
+    }
+
+    async fn do_securitykey(
+        &self,
+        client: &mut KanidmClient,
+        pkr: RequestChallengeResponse,
+    ) -> Result<AuthResponse, ClientError> {
+        let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+        println!("Your authenticator will now flash for you to interact with it.");
+        let auth = wa
+            .do_authentication(client.get_origin().clone(), pkr)
+            .unwrap_or_else(|e| {
+                error!("Failed to interact with webauthn device. -- {:?}", e);
+                std::process::exit(1);
+            });
+
+        client.auth_step_securitykey_complete(auth).await
     }
 
     pub async fn exec(&self) {
@@ -297,7 +316,10 @@ impl LoginOpt {
                 AuthAllowed::Password => self.do_password(&mut client).await,
                 AuthAllowed::BackupCode => self.do_backup_code(&mut client).await,
                 AuthAllowed::Totp => self.do_totp(&mut client).await,
-                AuthAllowed::Webauthn(chal) => self.do_webauthn(&mut client, chal.clone()).await,
+                AuthAllowed::Passkey(chal) => self.do_passkey(&mut client, chal.clone()).await,
+                AuthAllowed::SecurityKey(chal) => {
+                    self.do_securitykey(&mut client, chal.clone()).await
+                }
             };
 
             // Now update state.

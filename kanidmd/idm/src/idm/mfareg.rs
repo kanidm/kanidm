@@ -1,29 +1,20 @@
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::identity::IdentityId;
 use crate::idm::account::Account;
-use crate::prelude::*;
 use kanidm_proto::v1::TotpSecret;
 use kanidm_proto::v1::{OperationError, SetCredentialResponse};
 use std::mem;
 use std::time::Duration;
 use uuid::Uuid;
 
-use webauthn_rs::proto::Credential as WebauthnCredential;
-use webauthn_rs::proto::{CreationChallengeResponse, RegisterPublicKeyCredential};
-use webauthn_rs::RegistrationState as WebauthnRegistrationState;
-use webauthn_rs::Webauthn;
-
 pub(crate) enum MfaRegCred {
     Totp(Totp),
-    Webauthn(String, WebauthnCredential),
 }
 
 pub(crate) enum MfaRegNext {
     Success,
     TotpCheck(TotpSecret),
     TotpInvalidSha1,
-    WebauthnChallenge(CreationChallengeResponse),
 }
 
 impl MfaRegNext {
@@ -33,9 +24,6 @@ impl MfaRegNext {
             MfaRegNext::Success => SetCredentialResponse::Success,
             MfaRegNext::TotpCheck(secret) => SetCredentialResponse::TotpCheck(u, secret),
             MfaRegNext::TotpInvalidSha1 => SetCredentialResponse::TotpInvalidSha1(u),
-            MfaRegNext::WebauthnChallenge(ccr) => {
-                SetCredentialResponse::WebauthnCreateChallenge(u, ccr)
-            }
         }
     }
 }
@@ -45,8 +33,6 @@ enum MfaRegState {
     TotpInit(Totp),
     TotpInvalidSha1(Totp),
     TotpDone,
-    WebauthnInit(String, WebauthnRegistrationState),
-    WebauthnDone,
 }
 
 #[derive(Clone)]
@@ -161,61 +147,6 @@ impl MfaRegSession {
                     _ => Err(OperationError::InvalidState),
                 }
             }
-            _ => Err(OperationError::InvalidRequestState),
-        }
-    }
-
-    pub fn webauthn_new(
-        origin: IdentityId,
-        account: Account,
-        label: String,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
-        issuer: String,
-    ) -> Result<(Self, MfaRegNext), OperationError> {
-        // Setup the registration.
-        let (chal, reg_state) = webauthn
-            .generate_challenge_register(&account.name, false)
-            .map_err(|e| {
-                admin_error!("Unable to generate webauthn challenge -> {:?}", e);
-                OperationError::Webauthn
-            })?;
-
-        let state = MfaRegState::WebauthnInit(label, reg_state);
-        let s = MfaRegSession {
-            origin,
-            account,
-            state,
-            // this isn't used in webauthn... yet?
-            issuer,
-        };
-        let next = MfaRegNext::WebauthnChallenge(chal);
-        Ok((s, next))
-    }
-
-    pub fn webauthn_step(
-        &mut self,
-        origin: &IdentityId,
-        target: &Uuid,
-        chal: &RegisterPublicKeyCredential,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
-    ) -> Result<(MfaRegNext, Option<MfaRegCred>), OperationError> {
-        if &self.origin != origin || target != &self.account.uuid {
-            // Verify that the same event source is the one continuing this attempt
-            return Err(OperationError::InvalidRequestState);
-        };
-
-        // Regardless of the outcome, we are done!
-        let mut nstate = MfaRegState::WebauthnDone;
-        mem::swap(&mut self.state, &mut nstate);
-
-        match nstate {
-            MfaRegState::WebauthnInit(label, reg_state) => webauthn
-                .register_credential(chal, &reg_state, |_| Ok(false))
-                .map_err(|e| {
-                    admin_error!("Unable to register webauthn credential -> {:?}", e);
-                    OperationError::Webauthn
-                })
-                .map(|(cred, _)| (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))),
             _ => Err(OperationError::InvalidRequestState),
         }
     }

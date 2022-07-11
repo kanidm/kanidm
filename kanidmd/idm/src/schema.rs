@@ -194,6 +194,8 @@ impl SchemaAttribute {
             SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
             SyntaxType::PrivateBinary => v.is_privatebinary(),
             SyntaxType::IntentToken => matches!(v, PartialValue::IntentToken(_)),
+            SyntaxType::Passkey => matches!(v, PartialValue::Passkey(_)),
+            SyntaxType::DeviceKey => matches!(v, PartialValue::DeviceKey(_)),
         };
         if r {
             Ok(())
@@ -234,6 +236,8 @@ impl SchemaAttribute {
                 SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
                 SyntaxType::PrivateBinary => v.is_privatebinary(),
                 SyntaxType::IntentToken => matches!(v, Value::IntentToken(_, _)),
+                SyntaxType::Passkey => matches!(v, Value::Passkey(_, _, _)),
+                SyntaxType::DeviceKey => matches!(v, Value::DeviceKey(_, _, _)),
             };
         if r {
             Ok(())

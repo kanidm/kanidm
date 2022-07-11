@@ -24,7 +24,7 @@ wasm-bindgen = { version = "^0.2.81", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "^0.4.30" }
 kanidm_proto = { path = "../kanidm_proto" }
 
-webauthn-rs = { version = "^0.3.2", default-features = false, features = ["wasm"] }
+webauthn-rs-proto = { version = "0.4.2-beta.3", features = ["wasm"] }
 qrcode = { version = "^0.12.0", default-features = false, features = ["svg"] }
 
 yew-router = "^0.16.0"
