@@ -1,4 +1,4 @@
-.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint docs/pykanidm/build  docs/pykanidm/serve
+.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint docs/pykanidm/build  docs/pykanidm/serve local/kanidm
 
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
@@ -147,3 +147,6 @@ docs/pykanidm/serve:
 	cd pykanidm && \
 	poetry install && \
 	poetry run mkdocs serve
+
+local/kanidm:
+	cargo build -p kanidm_tools --bin kanidm --release

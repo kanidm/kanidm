@@ -18,7 +18,8 @@ jobs:
           libpam0g-dev \
           libudev-dev \
           libssl-dev \
-          libsqlite3-dev
+          libsqlite3-dev \
+          pkg-config
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1

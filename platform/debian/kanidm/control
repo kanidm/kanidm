@@ -1,0 +1,10 @@
+Package: kanidm
+Section: base
+Version: 1.1.0-alpha.8
+Priority: optional
+Architecture: all
+Depends:
+Maintainer: James Hodgkinson <https://kanidm.com/>
+Homepage: https://kanidm.com/
+Description: Kanidm CLI tool
+ This is the CLI tool for interacting with Kanidm
