@@ -118,4 +118,4 @@ echo "Running build"
 debian/rules build
 
 echo "Packaging ${PACKAGE}"
-debian/rules binary
+fakeroot debian/rules binary
