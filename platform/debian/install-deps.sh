@@ -21,7 +21,5 @@ echo "Installing rustup"
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > $TMPDIR/rustup.sh
 chmod +x $TMPDIR/rustup.sh
 $TMPDIR/rustup.sh -y
-
-exit 1
-
+source "$HOME/.cargo/env"
 echo "Done installing rustup!"

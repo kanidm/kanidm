@@ -27,9 +27,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: "Run clippy (ignores errors, this is just a check)"
-        run: cargo clippy --no-deps
-        continue-on-error: true
       - name: "Doing the package build"
         run: ./platform/debian/build_kanidm.sh
 # - name: Release
