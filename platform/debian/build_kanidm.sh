@@ -10,24 +10,49 @@ else
     PACKAGE="$1"
 fi
 
-if [  -z "$(echo $PATH | grep -o '/root/.cargo/bin')" ]; then
-    echo "Updating path to include local cargo dir"
-    export PATH="$HOME/.cargo/bin:$PATH"
-fi
 
 echo "Building ${PACKAGE}"
 
-SOURCE_DIR="/usr/src/kanidm"
-BUILD_DIR="/build"
+
+if [ "$(whoami)" != "root" ]; then
+    SUDO="sudo "
+else
+    SUDO=""
+fi
+if [ -n "${GITHUB_WORKSPACE}" ]; then
+    SOURCE_DIR="${GITHUB_WORKSPACE}"
+else
+    SOURCE_DIR="$HOME/kanidm"
+fi
+BUILD_DIR="$HOME/build"
 PACKAGE_DIR="${BUILD_DIR}/kanidm"
 BINARY_DIR="${PACKAGE_DIR}/usr/local/bin"
 
+
 if [ -z "${SKIP_DEPS}" ]; then
-    ./platform/debian/install-deps.sh
+
+    ${SUDO}./platform/debian/install-deps.sh
 fi
 
+
+# if we can't find cargo then need to update the path
+if [ "$(which cargo | wc -l)" -eq 0 ]; then
+    if [  -z "$(echo $PATH | grep -o '.cargo/bin')" ]; then
+        echo "Updating path to include local cargo dir"
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+fi
+
+# this assumes the versions are in lock-step, which is fine at the moment.s
 KANIDM_VERSION="$(grep -ioE 'version.*' kanidm_tools/Cargo.toml | head -n1 | awk '{print $NF}' | tr -d '"')"
-GIT_HEAD="$(git rev-parse HEAD)"
+
+# if we're in a github action, then it's easy to get the commit
+if [ -n "${GITHUB_SHA}" ]; then
+    GIT_HEAD="${GITHUB_SHA}"
+else
+    GIT_HEAD="$(git rev-parse HEAD)"
+fi
+
 GIT_COMMIT="${GIT_HEAD:0:7}"
 # DATESTR="$(date +%Y%m%d%H%M)"
 
@@ -38,7 +63,7 @@ echo "Package Version: ${PACKAGE_VERSION}"
 # echo "Building kanidm"
 # make local/kanidm
 
-echo "Building package dir"
+echo "Updating package dir"
 rm -rf "${BUILD_DIR}/*"
 
 # where the binary will go
@@ -47,33 +72,10 @@ rm -rf "${BUILD_DIR}/*"
 # mkdir -p "${PACKAGE_DIR}/DEBIAN"
 # cp platform/debian/kanidm/* "${PACKAGE_DIR}/DEBIAN"
 # chmod 555 ${PACKAGE_DIR}/DEBIAN/*
+echo "Setting permissions on debian scripts"
+find "${SOURCE_DIR}/platform/debian" -name 'pre*' -ls -exec chmod 555 "{}" \;
+find "${SOURCE_DIR}/platform/debian" -name 'rules' -ls -exec chmod 555 "{}" \;
 
-# echo "Updating version in control file"
-# sed -E --in-place='' "s/Version\:\s+(.*)/Version: ${PACKAGE_VERSION}/" "${PACKAGE_DIR}/DEBIAN/control"
-
-# echo "Copying files around"
-# cp target/release/kanidm "${BINARY_DIR}/"
-# cd "${PACKAGE_DIR}" || { echo "Failed to cd to ${PACKAGE_DIR}"; exit 1; }
-
-
-# echo "Building kanidm.deb"
-# dpkg-deb --build --root-owner-group "${PACKAGE_DIR}"
-
-# echo "Dumping info"
-# dpkg -I "${PACKAGE_DIR}.deb"
-
-# echo "Creating source package"
-# cd "${SOURCE_DIR}/../"
-
-# tar czf "/build/kanidm.tar.gz" \
-#     --exclude .git \
-#     --exclude target \
-#     --exclude kanidm_book \
-#     --exclude artwork \
-#     --exclude pykanidm \
-#     --exclude designs \
-#     --exclude project_docs \
-#     kanidm
 echo "Copying source files to ${BUILD_DIR}"
 rsync -a \
     --exclude .git \
@@ -86,13 +88,10 @@ rsync -a \
     "${SOURCE_DIR}" \
     "${BUILD_DIR}/"
 
-# echo "Extracting package"
-cd "${BUILD_DIR}/kanidm"
-# tar zxf kanidm.tar.gz
 
-# cd kanidm
 
 echo "Copying the debian-specific build files"
+cd "${BUILD_DIR}/kanidm"
 rm -rf debian && mkdir -p debian
 cp -R platform/debian/packaging/* debian/
 

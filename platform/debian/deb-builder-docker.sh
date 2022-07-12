@@ -6,7 +6,7 @@ if [ "$(basename $(pwd))" != "kanidm" ]; then
 fi
 
 echo "Starting base ubuntu container"
-echo "Repository is in /usr/src/kanidm/"
+echo "Repository is in ~/kanidm/"
 docker run --rm -it \
-    -v "$(pwd):/usr/src/kanidm/" \
+    -v "$(pwd):/root/kanidm/" \
     ubuntu:latest

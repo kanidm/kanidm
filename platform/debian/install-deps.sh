@@ -10,9 +10,18 @@ apt-get install -y \
           libssl-dev \
           libsqlite3-dev \
           pkg-config \
-          cargo \
           make \
           devscripts \
           fakeroot \
           dh-make \
           debmake
+
+echo "Installing rustup"
+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > $TMPDIR/rustup.sh
+chmod +x $TMPDIR/rustup.sh
+$TMPDIR/rustup.sh -y
+
+exit 1
+
+echo "Done installing rustup!"
