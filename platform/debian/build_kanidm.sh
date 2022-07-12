@@ -71,10 +71,6 @@ rm -rf "${BUILD_DIR}/*"
 # just debian things
 # mkdir -p "${PACKAGE_DIR}/DEBIAN"
 # cp platform/debian/kanidm/* "${PACKAGE_DIR}/DEBIAN"
-# chmod 555 ${PACKAGE_DIR}/DEBIAN/*
-echo "Setting permissions on debian scripts"
-find "${SOURCE_DIR}/platform/debian" -name 'pre*' -ls -exec chmod 555 "{}" \;
-find "${SOURCE_DIR}/platform/debian" -name 'rules' -ls -exec chmod 555 "{}" \;
 
 echo "Copying source files to ${BUILD_DIR}"
 rsync -a \
@@ -88,8 +84,6 @@ rsync -a \
     "${SOURCE_DIR}" \
     "${BUILD_DIR}/"
 
-
-
 echo "Copying the debian-specific build files"
 cd "${BUILD_DIR}/kanidm"
 rm -rf debian && mkdir -p debian
@@ -97,10 +91,16 @@ cp -R platform/debian/packaging/* debian/
 
 if [ -d "platform/debian/${PACKAGE}/" ]; then
     echo "Copying debian-specific files for ${PACKAGE}"
+    # shellcheck disable=SC2086
     cp platform/debian/${PACKAGE}/* debian/
 else
     echo "No package-specific files were found"
 fi
+
+echo "Setting permissions on debian scripts"
+find "./debian/" -name 'pre*' -ls -exec chmod 755 "{}" \;
+find "./debian/" -name 'rules' -ls -exec chmod 755 "{}" \;
+
 
 echo "Updating changelog"
 
@@ -119,3 +119,5 @@ debian/rules build
 
 echo "Packaging ${PACKAGE}"
 fakeroot debian/rules binary
+
+find ../ -maxdepth 1 -name '*.deb' -exec mv "{}" "${SOURCE_DIR}/target/" \;

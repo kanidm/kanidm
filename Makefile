@@ -1,4 +1,4 @@
-.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint docs/pykanidm/build  docs/pykanidm/serve local/kanidm
+.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint docs/pykanidm/build  docs/pykanidm/serve release/kanidm release/kanidmd release/kanidm-pamnss
 
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
@@ -84,33 +84,6 @@ vendor:
 vendor-prep: vendor
 	tar -cJf vendor.tar.xz vendor
 
-doc: ## Build the rust documentation locally
-doc:
-	cargo doc --document-private-items
-
-book:
-	cargo doc --no-deps
-	mdbook build kanidm_book
-	mv ./kanidm_book/book/ ./docs/
-	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
-	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
-
-book_versioned:
-	echo "Book version: ${BOOK_VERSION}"
-	rm -rf ./target/doc
-	git switch -c "${BOOK_VERSION}"
-	git pull origin "${BOOK_VERSION}"
-	cargo doc --no-deps --quiet
-	mdbook build kanidm_book
-	mkdir -p ./docs
-	mv ./kanidm_book/book/ ./docs/${BOOK_VERSION}/
-	mkdir -p ./docs/${BOOK_VERSION}/rustdoc/
-	mv ./target/doc/* ./docs/${BOOK_VERSION}/rustdoc/
-	git switch master
-
-clean_book:
-	rm -rf ./docs
-
 install-tools: ## install tools in local environment
 install-tools:
 	cd kanidm_tools && cargo install --path . --force
@@ -138,6 +111,35 @@ test/pykanidm/mypy:
 test/pykanidm: ## run the test suite (mypy/pylint/pytest) for the kanidm python module
 test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
 
+########################################################################
+
+doc: ## Build the rust documentation locally
+doc:
+	cargo doc --document-private-items
+
+book:
+	cargo doc --no-deps
+	mdbook build kanidm_book
+	mv ./kanidm_book/book/ ./docs/
+	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
+	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
+
+book_versioned:
+	echo "Book version: ${BOOK_VERSION}"
+	rm -rf ./target/doc
+	git switch -c "${BOOK_VERSION}"
+	git pull origin "${BOOK_VERSION}"
+	cargo doc --no-deps --quiet
+	mdbook build kanidm_book
+	mkdir -p ./docs
+	mv ./kanidm_book/book/ ./docs/${BOOK_VERSION}/
+	mkdir -p ./docs/${BOOK_VERSION}/rustdoc/
+	mv ./target/doc/* ./docs/${BOOK_VERSION}/rustdoc/
+	git switch master
+
+clean_book:
+	rm -rf ./docs
+
 docs/pykanidm/build: ## Build the mkdocs
 docs/pykanidm/build:
 	cd pykanidm && \
@@ -150,5 +152,25 @@ docs/pykanidm/serve:
 	poetry install && \
 	poetry run mkdocs serve
 
-local/kanidm:
+########################################################################
+
+release/kanidm:
 	cargo build -p kanidm_tools --bin kanidm --release
+
+release/kanidmd:
+	cargo build -p daemon --bin kanidmd --release
+
+release/kanidm-unixd:
+	cargo build -p pam_kanidm --release
+	cargo build -p nss_kanidm --release
+	cargo build --release \
+		--bin kanidm_unixd  \
+		--bin kanidm_unixd_status \
+		--bin kanidm_unixd_tasks
+
+release/kanidm-ssh:
+	cargo build --release \
+		--bin kanidm_ssh_authorizedkeys \
+		--bin kanidm_ssh_authorizedkeys_direct
+
+########################################################################

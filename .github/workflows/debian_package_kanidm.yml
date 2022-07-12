@@ -29,8 +29,11 @@ jobs:
           toolchain: stable
       - name: "Doing the package build"
         run: ./platform/debian/build_kanidm.sh
-# - name: Release
-#   uses: softprops/action-gh-release@v1
-#   if: startsWith(github.ref, 'refs/tags/')
-#   with:
-#     files: kanidm.deb
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Latest Debian Packages"
+          files: |

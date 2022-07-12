@@ -1,4 +1,4 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
 
 echo "Updating local packages"
 apt-get update
@@ -18,8 +18,12 @@ apt-get install -y \
 
 echo "Installing rustup"
 
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > $TMPDIR/rustup.sh
-chmod +x $TMPDIR/rustup.sh
-$TMPDIR/rustup.sh -y
+if [ "$(which cargo | wc -l)" -ne 1 ]; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > "$TMPDIR/rustup.sh"
+    chmod +x "${TMPDIR}/rustup.sh"
+    "${TMPDIR}/rustup.sh" -y
+fi
+
+# shellcheck disable=SC1091
 source "$HOME/.cargo/env"
 echo "Done installing rustup!"

@@ -7,7 +7,7 @@ export DH_OPTIONS=-v
 
 export DEB_BUILD_OPTIONS=noautodbgsym
 
-PKGDIR=debian/kanidmd/
+PKGDIR=debian/kanidm-pamnss/
 BINDIR=${PKGDIR}/usr/sbin/
 
 %:
@@ -21,12 +21,9 @@ override_dh_autoreconf:
 	chmod +x /tmp/rustup.sh
 	/tmp/rustup.sh -y
 	rustup default
-	echo "Installing cargo"
-	cargo install wasm-pack
 
 override_dh_auto_build:
-	cd kanidmd_web_ui/ && ./build_wasm_release.sh
-	dh_auto_build -- release/kanidmd
+	dh_auto_build -- release/kanidm-pamnss
 
 override_dh_auto_test:
 

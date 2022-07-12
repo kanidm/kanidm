@@ -21,8 +21,10 @@ set -e
 case "$1" in
     configure)
         if [ ! -f /etc/kanidm/config ]; then
-            echo "Please ensure you create a configuration file"
-            echo "at /etc/kanidm/server.toml"
+            echo "============================="
+            echo "Thanks for installing Kanidm!"
+            echo "============================="
+            echo "Please ensure you create a configuration file at /etc/kanidm/server.toml"
             echo "An example is in /usr/share/kanidm/"
         fi
     ;;

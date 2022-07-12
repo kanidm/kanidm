@@ -18,24 +18,24 @@ override_dh_auto_clean:
 override_dh_auto_configure:
 
 override_dh_auto_build:
-	dh_auto_build -- local/kanidm
+	dh_auto_build -- release/kanidm
 
 override_dh_auto_test:
 
-# cargo test
-
 override_dh_auto_install:
 	mkdir -p ${BINDIR}
-	install \
+	install -D \
 		-g root \
 		-o root \
+		--mode 755 \
 		target/release/kanidm \
 		${BINDIR}
 
 override_dh_installexamples:
 	mkdir -p ${PKGDIR}/usr/share/kanidm/
-	install \
+	install -D \
 	    -g root \
 		-o root \
-		examples/kanidm \
-		${PKGDIR}/usr/share/kanidm/
+		--mode 644 \
+		examples/config \
+		${PKGDIR}/usr/share/kanidm/kanidm
