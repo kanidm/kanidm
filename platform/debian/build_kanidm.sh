@@ -23,7 +23,7 @@ PACKAGE_DIR="${BUILD_DIR}/kanidm"
 BINARY_DIR="${PACKAGE_DIR}/usr/local/bin"
 
 if [ -z "${SKIP_DEPS}" ]; then
-    ${SOURCE_DIR}/platform/debian/install-deps.sh
+    ./platform/debian/install-deps.sh
 fi
 
 KANIDM_VERSION="$(grep -ioE 'version.*' kanidm_tools/Cargo.toml | head -n1 | awk '{print $NF}' | tr -d '"')"
