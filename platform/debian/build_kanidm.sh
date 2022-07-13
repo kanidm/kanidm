@@ -31,6 +31,9 @@ fi
 BUILD_DIR="$HOME/build"
 
 if [ -z "${SKIP_DEPS}" ]; then
+    if [ "$(which sudo | wc -l)" -eq 0 ]; then
+        apt-get update && apt-get -y install sudo
+    fi
     "${SUDO}./platform/debian/install_deps.sh"
 else
     echo "SKIP_DEPS configured, skipping install of rust and packages"
