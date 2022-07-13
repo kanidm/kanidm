@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 echo "Updating local packages"
-apt-get update
+sudo apt-get update
 
 echo "Installing build dependencies"
-apt-get install -y \
+sudo apt-get install -y \
           libpam0g-dev \
           libudev-dev \
           libssl-dev \
@@ -36,7 +36,7 @@ if  [ "$1" == "kanidmd" ] && [ "$(which wasm-pack | wc -l)" -eq 0 ]; then
 	echo "Downloading script to ~/install-wasm-pack"
 	curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf > "${HOME}/install-wasm-pack"
 	chmod +x "${HOME}/install-wasm-pack"
-    "${HOME}/install-wasm-pack"
+    sudo "${HOME}/install-wasm-pack"
     rm "${HOME}/install-wasm-pack"
 else
     echo "wasm-pack already installed"

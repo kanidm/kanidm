@@ -16,7 +16,6 @@ BINDIR=${PKGDIR}/usr/sbin/
 override_dh_auto_clean:
 
 override_dh_autoreconf:
-	./platform/debian/install_deps.sh
 
 override_dh_auto_build:
 	dh_auto_build -- release/kanidm-unixd
