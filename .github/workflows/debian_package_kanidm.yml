@@ -21,7 +21,9 @@ jobs:
             libudev-dev \
             libssl-dev \
             libsqlite3-dev \
-            pkg-config
+            pkg-config \
+            make \
+            sudo
       # - name: Install Rust
       #   uses: actions-rs/toolchain@v1
       #   with:

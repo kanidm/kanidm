@@ -30,7 +30,6 @@ else
 fi
 BUILD_DIR="$HOME/build"
 
-
 if [ -z "${SKIP_DEPS}" ]; then
     "${SUDO}./platform/debian/install_deps.sh"
 else

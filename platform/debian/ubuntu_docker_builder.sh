@@ -10,7 +10,6 @@ fi
 echo "Starting base ubuntu container"
 echo "Repository is in ~/kanidm/"
 docker run --rm -it \
-    --env-file . \
     -v "$(pwd):/root/kanidm/" \
     --workdir "/root/kanidm/" \
     ubuntu:latest "$@"
