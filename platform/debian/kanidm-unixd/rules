@@ -7,40 +7,50 @@ export DH_OPTIONS=-v
 
 export DEB_BUILD_OPTIONS=noautodbgsym
 
-PKGDIR=debian/kanidm-pamnss/
+PKGDIR=debian/kanidm-unixd
 BINDIR=${PKGDIR}/usr/sbin/
 
 %:
 	dh $@
 
 override_dh_auto_clean:
-	cargo clean
+
 override_dh_autoreconf:
-	echo "Installing rustup"
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh
-	chmod +x /tmp/rustup.sh
-	/tmp/rustup.sh -y
-	rustup default
+	./platform/debian/install_deps.sh
 
 override_dh_auto_build:
-	dh_auto_build -- release/kanidm-pamnss
+	dh_auto_build -- release/kanidm-unixd
 
 override_dh_auto_test:
+override_dh_shlibdeps:
+override_dh_strip:
 
 override_dh_auto_install:
 	mkdir -p ${BINDIR}
 	install \
 		-g root -o root \
-		target/release/kanidmd \
+		target/release/kanidm_unixd \
 		${BINDIR}
-	install --directory \
+	install \
 		-g root -o root \
-		kanidmd_web_ui/pkg \
-		${PKGDIR}/usr/share/kanidm/ui/pkg
+		target/release/kanidm_unixd_status \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_unixd_tasks \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_cache_clear \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_cache_invalidate \
+		${BINDIR}
 
 
-# mkdir -p ${PKGDIR}/usr/share/kanidm/
 override_dh_installexamples:
+	mkdir -p ${PKGDIR}/usr/share/kanidm/
 	install -D \
 		-g root -o root \
 		examples/kanidm \

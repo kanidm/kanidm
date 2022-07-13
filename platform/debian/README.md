@@ -5,5 +5,10 @@ James' horrible notes about deb build things.
 
 # Adding a thing to package
 
-If you want to accept the defaults in `packaging/`, go ahead. Otherwise, add a folder with the package name and then files in there will be copied over the top of the ones from `packaging/` on build.
+There's a set of default things in `packaging/`; if you want to add a package def, add a folder with the package name and then files in there will be copied over the top of the ones from `packaging/` on build.
 
+You'll need two "custom" files at minimum:
+
+- `control` - a file containing information about the package.
+- `rules` - a makefile doing all the build steps.
+- 

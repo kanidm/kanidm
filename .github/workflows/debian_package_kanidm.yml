@@ -12,28 +12,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
       - name: Update package manager
         run: sudo apt-get update
-
       - name: Install dependencies
         run: |
           sudo apt-get install -y \
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
-            libsqlite3-dev
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+            libsqlite3-dev \
+            pkg-config
+      # - name: Install Rust
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: stable
+      # - uses: jetli/wasm-pack-action@v0.3.0
+      #   with:
+      #     # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
+      #     version: 'latest'
       - name: "Doing the package build"
-        run: ./platform/debian/build_kanidm.sh
-
+        run: make debs/all
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "latest"
           prerelease: true
           title: "Latest Debian Packages"
-          files: |
+          files: target/*.deb

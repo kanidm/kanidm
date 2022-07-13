@@ -14,13 +14,15 @@ BINDIR=${PKGDIR}/usr/bin/
 	dh $@
 
 override_dh_auto_clean:
-	cargo clean
+
 override_dh_auto_configure:
 
 override_dh_auto_build:
 	dh_auto_build -- release/kanidm
 
 override_dh_auto_test:
+override_dh_shlibdeps:
+override_dh_strip:
 
 override_dh_auto_install:
 	mkdir -p ${BINDIR}

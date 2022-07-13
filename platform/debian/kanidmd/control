@@ -10,5 +10,5 @@ Rules-Requires-Root: no
 
 Package: kanidmd
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends:
 Description: Kanidm Daemon

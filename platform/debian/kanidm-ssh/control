@@ -1,4 +1,4 @@
-Source: kanidm-pamnss
+Source: kanidm-ssh
 Section: admin
 Priority: optional
 Maintainer: James Hodgkinson <james@terminaloutcomes.com>
@@ -8,7 +8,7 @@ Homepage: https://kanidm.com
 Vcs-Git: https://github.com/kanidm/kanidm/
 Rules-Requires-Root: no
 
-Package: kanidm-pamnss
+Package: kanidm-ssh
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends:
 Description: Kanidm Unix Tools

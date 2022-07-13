@@ -7,48 +7,38 @@ export DH_OPTIONS=-v
 
 export DEB_BUILD_OPTIONS=noautodbgsym
 
-PKGDIR=debian/kanidm-pamnss/
+PKGDIR=debian/kanidm-ssh
 BINDIR=${PKGDIR}/usr/sbin/
 
 %:
 	dh $@
 
 override_dh_auto_clean:
-	cargo clean
+
 override_dh_autoreconf:
-	echo "Installing rustup"
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /tmp/rustup.sh
-	chmod +x /tmp/rustup.sh
-	/tmp/rustup.sh -y
-	rustup default
+	./platform/debian/install_deps.sh
 
 override_dh_auto_build:
 	dh_auto_build -- release/kanidm-ssh
 
 override_dh_auto_test:
+override_dh_shlibdeps:
+override_dh_strip:
 
 override_dh_auto_install:
 	mkdir -p ${BINDIR}
 	install \
 		-g root -o root \
-		target/release/kanidmd \
+		target/release/kanidm_ssh_authorizedkeys \
 		${BINDIR}
-	install --directory \
+	install \
 		-g root -o root \
-		kanidmd_web_ui/pkg \
-		${PKGDIR}/usr/share/kanidm/ui/pkg
+		target/release/kanidm_ssh_authorizedkeys_direct \
+		${BINDIR}
 
-
-# mkdir -p ${PKGDIR}/usr/share/kanidm/
 override_dh_installexamples:
+	mkdir -p ${PKGDIR}/usr/share/kanidm/
 	install -D \
 		-g root -o root \
 		examples/kanidm \
 		${PKGDIR}/usr/share/kanidm/
-	install -D \
-		-g root -o root \
-		--mode=644 \
-		examples/server.toml \
-		${PKGDIR}/usr/share/kanidm/
-
-

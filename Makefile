@@ -1,4 +1,4 @@
-.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint docs/pykanidm/build  docs/pykanidm/serve release/kanidm release/kanidmd release/kanidm-pamnss
+.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint docs/pykanidm/build  docs/pykanidm/serve release/kanidm release/kanidmd release/kanidm-unixd debs/all debs/kanidm debs/kanidmd debs/kandim-ssh debs/kandim-unixd
 
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
@@ -154,23 +154,45 @@ docs/pykanidm/serve:
 
 ########################################################################
 
-release/kanidm:
+release/kanidm: ## Build the Kanidm CLI
 	cargo build -p kanidm_tools --bin kanidm --release
 
-release/kanidmd:
+release/kanidmd: ## Build the Kanidm daemon
 	cargo build -p daemon --bin kanidmd --release
 
+release/kanidm-ssh: ## Build the Kanidm SSH tools
+	cargo build --release \
+		--bin kanidm_ssh_authorizedkeys \
+		--bin kanidm_ssh_authorizedkeys_direct
+
+release/kanidm-unixd: ## Build the Kanidm UNIX tools
 release/kanidm-unixd:
 	cargo build -p pam_kanidm --release
 	cargo build -p nss_kanidm --release
 	cargo build --release \
 		--bin kanidm_unixd  \
 		--bin kanidm_unixd_status \
-		--bin kanidm_unixd_tasks
-
-release/kanidm-ssh:
-	cargo build --release \
-		--bin kanidm_ssh_authorizedkeys \
-		--bin kanidm_ssh_authorizedkeys_direct
+		--bin kanidm_unixd_tasks \
+		--bin kanidm_cache_clear \
+		--bin kanidm_cache_invalidate
 
 ########################################################################
+
+debs/kanidm: ## build a .deb for the Kanidm CLI
+debs/kanidm:
+	./platform/debian/build_kanidm.sh kanidm
+
+debs/kanidmd: ## build a .deb for the Kanidm daemon
+debs/kanidmd:
+	./platform/debian/build_kanidm.sh kanidmd
+
+debs/kanidm-ssh: ## build a .deb for the Kanidm SSH tools
+debs/kanidm-ssh:
+	./platform/debian/build_kanidm.sh kanidm-ssh
+
+debs/kanidm-unixd: ## build a .deb for the Kanidm UNIX tools (PAM/NSS, unixd and related tools)
+debs/kanidm-unixd:
+	./platform/debian/build_kanidm.sh kanidm-unixd
+
+debs/all: ## build all the debs
+debs/all: debs/kanidmd debs/kanidm debs/kanidm-ssh debs/kanidm-unixd
