@@ -20,7 +20,7 @@ override_dh_autoreconf:
 
 override_dh_auto_build:
 	./platform/debian/fix_wasm_opt.sh
-	source $HOME/.cargo/env && cd kanidmd_web_ui && ./build_wasm.sh
+	source ~/.cargo/env && cd kanidmd_web_ui && ./build_wasm.sh
 	dh_auto_build -- release/kanidmd
 
 override_dh_auto_test:
