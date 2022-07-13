@@ -33,7 +33,9 @@ jobs:
           # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
           version: 'latest'
       - name: "Doing the package build"
-        run: make debs/all
+        run: |
+          source $HOME/.cargo/env
+          make debs/all
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
