@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-deb-package:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -24,10 +24,6 @@ jobs:
             libsqlite3-dev \
             pkg-config \
             make
-      # - name: Install Rust
-      #   uses: actions-rs/toolchain@v1
-      #   with:
-      #     toolchain: stable
       - uses: jetli/wasm-pack-action@v0.3.0
         with:
           # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
@@ -41,5 +37,5 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "latest"
           prerelease: true
-          title: "Latest Debian Packages"
+          title: "Ubuntu Packages (20.04)"
           files: target/*.deb
