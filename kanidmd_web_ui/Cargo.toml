@@ -13,7 +13,6 @@ documentation = "https://docs.rs/kanidm/latest/kanidm/"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
-
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -65,6 +64,3 @@ features = [
     "Response",
     "Window",
 ]
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
