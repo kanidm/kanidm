@@ -112,6 +112,7 @@ echo "Packaging ${PACKAGE}"
 fakeroot debian/rules binary
 
 echo "Moving debs to target/"
+mkdir -p "${SOURCE_DIR}/target/"
 find ../ -maxdepth 1 -name '*.deb' -exec mv "{}" "${SOURCE_DIR}/target/" \;
 
 echo "Done, packages:"
