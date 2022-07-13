@@ -23,16 +23,15 @@ jobs:
             libssl-dev \
             libsqlite3-dev \
             pkg-config \
-            make \
-            sudo
+            make
       # - name: Install Rust
       #   uses: actions-rs/toolchain@v1
       #   with:
       #     toolchain: stable
-      # - uses: jetli/wasm-pack-action@v0.3.0
-      #   with:
-      #     # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
-      #     version: 'latest'
+      - uses: jetli/wasm-pack-action@v0.3.0
+        with:
+          # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
+          version: 'latest'
       - name: "Doing the package build"
         run: make debs/all
       - uses: "marvinpinto/action-automatic-releases@latest"
