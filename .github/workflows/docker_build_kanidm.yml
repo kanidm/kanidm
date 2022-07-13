@@ -14,14 +14,14 @@ name: Container - Kanidm
 jobs:
   kanidm_build:
     runs-on: ubuntu-latest
-    continue-on-error: true # yolo
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - linux/arm64
-          - linux/amd64
-    if: github.event_name == 'push'
+    # continue-on-error: true # yolo
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     target:
+    #       - linux/arm64
+    #       - linux/amd64
+    # if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
       - name: Set up QEMU
@@ -40,7 +40,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: ${{ github.ref == 'refs/heads/master' }}
-          platforms: ${{matrix.target}}
+          platforms: "linux/arm64,linux/amd64"
           # https://github.com/docker/build-push-action/issues/254
           tags: ghcr.io/kanidm/kanidm:devel
           build-args: |
