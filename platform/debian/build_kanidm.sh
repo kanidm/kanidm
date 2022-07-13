@@ -17,12 +17,7 @@ fi
 
 echo "Building ${PACKAGE}"
 
-# gotta do the sudo thing in github actions, or... in general
-if [ "$(whoami)" != "root" ]; then
-    SUDO="sudo "
-else
-    SUDO=""
-fi
+
 if [ -n "${GITHUB_WORKSPACE}" ]; then
     SOURCE_DIR="${GITHUB_WORKSPACE}"
 else
@@ -30,11 +25,15 @@ else
 fi
 BUILD_DIR="$HOME/build"
 
+ls -la
+find . -name install_deps.sh -ls
+
 if [ -z "${SKIP_DEPS}" ]; then
-    if [ "$(which sudo | wc -l)" -eq 0 ]; then
-        apt-get update && apt-get -y install sudo
+    if [ "$(whoami)" != "root" ]; then
+        sudo ./platform/debian/install_deps.sh
+    else
+        ./platform/debian/install_deps.sh
     fi
-    "${SUDO}./platform/debian/install_deps.sh"
 else
     echo "SKIP_DEPS configured, skipping install of rust and packages"
 fi
