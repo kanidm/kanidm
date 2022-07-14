@@ -1,20 +1,10 @@
 #!/bin/sh
-# prerm script for kanidm-1.1.0-alpha.8-202207110454
+# prerm script for kanidm
+# rename this to remove the .ex to make it usable.
 #
 # see: dh_installdeb(1)
 
 set -e
-
-# summary of how this script can be called:
-#        * <prerm> `remove'
-#        * <old-prerm> `upgrade' <new-version>
-#        * <new-prerm> `failed-upgrade' <old-version>
-#        * <conflictor's-prerm> `remove' `in-favour' <package> <new-version>
-#        * <deconfigured's-prerm> `deconfigure' `in-favour'
-#          <package-being-installed> <version> `removing'
-#          <conflicting-package> <version>
-# for details, see https://www.debian.org/doc/debian-policy/ or
-# the debian-policy package
 
 
 case "$1" in

@@ -15,7 +15,7 @@ There's a lot of other files that can go into a .deb, some handy ones are:
 | ---      | ---                                                                      |
 | preinst  | Runs before installation occurs                                          |
 | postrm   | Runs after removal happens                                               |
-| prerm    | Runs before removal happens - shut down services etc                     |
+| prerm    | Runs before removal happens - handy to shut down services.               |
 | postinst | Runs after installation occurs - we're using that to show notes to users |
 
 

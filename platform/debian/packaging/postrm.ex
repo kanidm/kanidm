@@ -1,23 +1,10 @@
 #!/bin/sh
-# postrm script for kanidm-1.1.0-alpha.8-202207110454
+# postrm script for kanidm
+# rename this to remove the .ex to make it usable.
 #
 # see: dh_installdeb(1)
 
 set -e
-
-# summary of how this script can be called:
-#        * <postrm> `remove'
-#        * <postrm> `purge'
-#        * <old-postrm> `upgrade' <new-version>
-#        * <new-postrm> `failed-upgrade' <old-version>
-#        * <new-postrm> `abort-install'
-#        * <new-postrm> `abort-install' <old-version>
-#        * <new-postrm> `abort-upgrade' <old-version>
-#        * <disappearer's-postrm> `disappear' <overwriter>
-#          <overwriter-version>
-# for details, see https://www.debian.org/doc/debian-policy/ or
-# the debian-policy package
-
 
 case "$1" in
     purge|remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
