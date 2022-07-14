@@ -25,7 +25,7 @@ case "$1" in
             echo "Thanks for installing Kanidm!"
             echo "============================="
             echo "Please ensure you create a configuration file at /etc/kanidm/config"
-            echo "An example is in /usr/share/kanidm/"
+            echo "An example is in /usr/share/kanidm-ssh/"
         fi
     ;;
 

@@ -6,9 +6,10 @@ export DH_VERBOSE=1
 export DH_OPTIONS=-v
 
 export DEB_BUILD_OPTIONS=noautodbgsym
-
-PKGDIR=debian/kanidm-ssh
+PACKAGE=kanidm-ssh
+PKGDIR=debian/${PACKAGE}
 BINDIR=${PKGDIR}/usr/sbin/
+SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
 
 %:
 	dh $@
@@ -36,8 +37,8 @@ override_dh_auto_install:
 		${BINDIR}
 
 override_dh_installexamples:
-	mkdir -p ${PKGDIR}/usr/share/kanidm/
+	mkdir -p ${SHARED_DIR}
 	install -D \
 		-g root -o root \
 		examples/kanidm \
-		${PKGDIR}/usr/share/kanidm/
+		${SHARED_DIR}/
