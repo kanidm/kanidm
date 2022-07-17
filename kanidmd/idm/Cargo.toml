@@ -33,7 +33,7 @@ kanidm_proto = { path = "../../kanidm_proto" }
 lazy_static = "^1.4.0"
 ldap3_proto = "^0.2.3"
 libc = "^0.2.126"
-libsqlite3-sys = "0.24.2"
+libsqlite3-sys = "0.25.0"
 num_enum = "^0.5.7"
 openssl = "^0.10.41"
 r2d2 = "^0.8.9"
