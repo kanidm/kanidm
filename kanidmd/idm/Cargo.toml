@@ -65,11 +65,11 @@ zxcvbn = "^2.2.1"
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies.rusqlite]
-version = "^0.27.0"
+version = "^0.28.0"
 features = ["bundled"]
 
 [target.'cfg(not(target_family = "windows"))'.dependencies.rusqlite]
-version = "^0.27.0"
+version = "^0.28.0"
 
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = "^1.2.1"
