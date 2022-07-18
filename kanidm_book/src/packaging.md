@@ -6,7 +6,7 @@ Packages are known to exist for the following distributions:
  - [OpenSUSE](https://software.opensuse.org/search?baseproject=ALL&q=kanidm)
  - [NixOS](https://search.nixos.org/packages?sort=relevance&type=packages&query=kanidm)
 
-To ease packaging, the `Makefile` has targets for sets of binary outputs.
+To ease packaging for your distribution, the `Makefile` has targets for sets of binary outputs.
   
 |       Target           |      Description            |
 |        ---             |         ---                 |
