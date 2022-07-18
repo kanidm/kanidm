@@ -365,7 +365,7 @@ types-urllib3 = "<1.27"
 
 [[package]]
 name = "types-toml"
-version = "0.10.7"
+version = "0.10.8"
 description = "Typing stubs for toml"
 category = "dev"
 optional = false
@@ -423,7 +423,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "8485e0f725535259b205b14027ce8341f5531124385d56afb43dbaea255541b0"
+content-hash = "1f02cad3d847fefd066fcb2e79962e54c0cbd5fa9766a5e3b466e515c87b98e7"
 
 [metadata.files]
 aiohttp = [
@@ -796,8 +796,8 @@ types-requests = [
     {file = "types_requests-2.28.1-py3-none-any.whl", hash = "sha256:b097692e124001f0ed5e4490245bb090f5e8e929819972f9ace84f9c3e146e8c"},
 ]
 types-toml = [
-    {file = "types-toml-0.10.7.tar.gz", hash = "sha256:a567fe2614b177d537ad99a661adc9bfc8c55a46f95e66370a4ed2dd171335f9"},
-    {file = "types_toml-0.10.7-py3-none-any.whl", hash = "sha256:05a8da4bfde2f1ee60e90c7071c063b461f74c63a9c3c1099470c08d6fa58615"},
+    {file = "types-toml-0.10.8.tar.gz", hash = "sha256:b7e7ea572308b1030dc86c3ba825c5210814c2825612ec679eb7814f8dd9295a"},
+    {file = "types_toml-0.10.8-py3-none-any.whl", hash = "sha256:8300fd093e5829eb9c1fba69cee38130347d4b74ddf32d0a7df650ae55c2b599"},
 ]
 types-urllib3 = [
     {file = "types-urllib3-1.26.15.tar.gz", hash = "sha256:c89283541ef92e344b7f59f83ea9b5a295b16366ceee3f25ecfc5593c79f794e"},
