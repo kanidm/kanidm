@@ -1,5 +1,8 @@
+.DEFAULT: help
 
-########################################################################
+.PHONY: help
+help:
+	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\n\t/'
 
 .PHONY: debs/kanidm
 debs/kanidm: ## build a .deb for the Kanidm CLI
