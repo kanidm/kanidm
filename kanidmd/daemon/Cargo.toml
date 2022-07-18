@@ -21,7 +21,7 @@ kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
 score = { path = "../score" }
 clap = { version = "^3.2", features = ["derive", "env"] }
-serde = { version = "^1.0.138", features = ["derive"] }
+serde = { version = "^1.0.139", features = ["derive"] }
 tokio = { version = "^1.19.1", features = ["rt-multi-thread", "macros", "signal"] }
 toml = "0.5.9"
 
