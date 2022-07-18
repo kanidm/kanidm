@@ -21,8 +21,6 @@
 - [Design Documents]()
   - [Access Profiles](developers/designs/access_profiles_and_security.md)
   - [REST Interface](developers/designs/rest_interface.md)
-- [Packaging]()
-  - [Debian/Ubuntu Packaging](developers/packaging_debs.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)
 
@@ -37,3 +35,8 @@
 # Integration Examples
 
 - [Kubernetes Ingress](examples/k8s_ingress_example.md)
+
+# Packaging
+
+- [Packaging](packaging.md)
+- [Debian/Ubuntu](packaging_debs.md)
