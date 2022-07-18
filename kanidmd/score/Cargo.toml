@@ -31,7 +31,7 @@ tide = "^0.16.0"
 # I tried including brotli and it didn't work, including "default" pulls a mime-type list from the internet on build
 tide-compress = { version = "0.10.4", default-features = false, features = [ "deflate", "gzip", "regex-check" ] }
 tide-openssl = "^0.1.1"
-tokio = { version = "^1.19.1", features = ["net", "sync", "io-util", "macros"] }
+tokio = { version = "^1.20.0", features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = "^0.6.3"
 tokio-util = { version = "^0.7.3", features = ["codec"] }
 tracing = { version = "^0.1.35", features = ["attributes"] }
