@@ -628,9 +628,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.8"
+version = "3.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "190814073e85d238f31ff738fcb0bf6910cedeb73376c87cd69291028966fd83"
+checksum = "ab8b79fe3946ceb4a0b1c080b4018992b8d27e9ff363644c1c9b6387c854614d"
 dependencies = [
  "atty",
  "bitflags",
@@ -649,7 +649,7 @@ version = "3.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ead064480dfc4880a10764488415a97fdd36a4cf1bb022d372f02e8faf8386e1"
 dependencies = [
- "clap 3.2.8",
+ "clap 3.2.12",
 ]
 
 [[package]]
@@ -1027,7 +1027,7 @@ dependencies = [
 name = "daemon"
 version = "1.1.0-alpha.8"
 dependencies = [
- "clap 3.2.8",
+ "clap 3.2.12",
  "clap_complete",
  "kanidm",
  "kanidm_proto",
@@ -1185,9 +1185,9 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "dyn-clone"
-version = "1.0.6"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "140206b78fb2bc3edbcfc9b5ccbd0b30699cfe8d348b8b31b330e47df5291a5a"
+checksum = "9d07a982d1fb29db01e5a59b1918e03da4df7297eaeee7686ac45542fd4e59c8"
 
 [[package]]
 name = "either"
@@ -2088,7 +2088,7 @@ dependencies = [
 name = "kanidm_tools"
 version = "1.1.0-alpha.8"
 dependencies = [
- "clap 3.2.8",
+ "clap 3.2.12",
  "clap_complete",
  "compact_jwt",
  "dialoguer",
@@ -2115,7 +2115,7 @@ name = "kanidm_unix_int"
 version = "1.1.0-alpha.8"
 dependencies = [
  "bytes",
- "clap 3.2.8",
+ "clap 3.2.12",
  "clap_complete",
  "futures",
  "kanidm",
@@ -2590,7 +2590,7 @@ dependencies = [
 name = "orca"
 version = "1.1.0-alpha.8"
 dependencies = [
- "clap 3.2.8",
+ "clap 3.2.12",
  "crossbeam",
  "csv",
  "dialoguer",
