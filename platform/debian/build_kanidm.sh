@@ -25,9 +25,6 @@ else
 fi
 BUILD_DIR="$HOME/build"
 
-ls -la
-find . -name install_deps.sh -ls
-
 if [ -z "${SKIP_DEPS}" ]; then
     if [ "$(whoami)" != "root" ]; then
         sudo ./platform/debian/install_deps.sh

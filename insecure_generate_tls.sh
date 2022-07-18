@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # you can set the hostname if you want, but it'll default to localhost
 if [ -z "$CERT_HOSTNAME" ]; then
     CERT_HOSTNAME="localhost"

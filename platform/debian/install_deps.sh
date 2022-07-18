@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 
+set -e
+
 echo "Updating local packages"
-sudo apt-get update
+if [ "$(whoami)" == "root" ]; then
+    apt-get update
+else
+    sudo apt-get update
+fi
 
 echo "Installing build dependencies"
-sudo apt-get install -y \
+if [ "$(whoami)" == "root" ]; then
+apt-get install -y \
           libpam0g-dev \
           libudev-dev \
           libssl-dev \
@@ -15,8 +22,21 @@ sudo apt-get install -y \
           fakeroot \
           dh-make \
           debmake
+else
+    sudo apt-get install -y \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config \
+            make \
+            devscripts \
+            fakeroot \
+            dh-make \
+            debmake
+fi
 
-if [ -d "$HOME/.cargo/" ]; then
+if [ -f "$HOME/.cargo/env" ]; then
     # shellcheck disable=SC1091
     source "$HOME/.cargo/env"
 fi
@@ -36,7 +56,11 @@ if  [ "$1" == "kanidmd" ] && [ "$(which wasm-pack | wc -l)" -eq 0 ]; then
 	echo "Downloading script to ~/install-wasm-pack"
 	curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf > "${HOME}/install-wasm-pack"
 	chmod +x "${HOME}/install-wasm-pack"
-    sudo "${HOME}/install-wasm-pack"
+    if [ "$(whoami)" == "root" ]; then
+        "${HOME}/install-wasm-pack"
+    else
+        sudo "${HOME}/install-wasm-pack"
+    fi
     rm "${HOME}/install-wasm-pack"
 else
     echo "wasm-pack already installed"

@@ -3,7 +3,7 @@
 #
 # see: dh_installdeb(1)
 
-set -ed
+set -e
 
 
 case "$1" in

@@ -22,9 +22,11 @@ override_dh_auto_clean:
 override_dh_autoreconf:
 
 override_dh_auto_build:
+	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/kanidmd
 	./platform/debian/fix_wasm_opt.sh
+	cargo install wasm-pack --force
 	cd kanidmd_web_ui && ./build_wasm.sh
-	dh_auto_build -- release/kanidmd
+
 
 override_dh_auto_test:
 override_dh_shlibdeps:
@@ -36,11 +38,8 @@ override_dh_auto_install:
 		-g root -o root \
 		target/release/kanidmd \
 		${BINDIR}
-	install --directory \
-		-g root -o root \
-		kanidmd_web_ui/pkg \
-		${PKGDIR}/usr/share/kanidm/ui/pkg
-
+	mkdir -p ${PKGDIR}/usr/share/kanidm/ui/
+	cp -R kanidmd_web_ui/pkg ${PKGDIR}/usr/share/kanidm/ui/
 
 override_dh_installexamples:
 	mkdir -p ${SHARED_DIR}

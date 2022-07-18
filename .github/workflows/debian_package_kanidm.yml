@@ -30,8 +30,7 @@ jobs:
           version: 'latest'
       - name: "Doing the package build"
         run: |
-          source $HOME/.cargo/env
-          make debs/all
+          make -f platform/debian/Makefile debs/all
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
@@ -39,3 +38,4 @@ jobs:
           prerelease: true
           title: "Ubuntu Packages (20.04)"
           files: target/*.deb
+          if: ${{ github.ref == 'refs/heads/master' }}
