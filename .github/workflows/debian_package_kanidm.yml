@@ -38,4 +38,4 @@ jobs:
           prerelease: true
           title: "Ubuntu Packages (20.04)"
           files: target/*.deb
-          if: ${{ github.ref == 'refs/heads/master' }}
+        if: ${{ github.ref == 'refs/heads/master' }}
