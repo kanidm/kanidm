@@ -6,7 +6,7 @@ fi
 echo "Running docker container: ${IMAGE}"
 
 if [ -z "${CONFIG_FILE}" ]; then
-    CONFIG_FILE="$(pwd)/../examples/radius_test"
+    CONFIG_FILE="$(pwd)/../examples/kanidm"
 fi
 echo "Using config file: ${CONFIG_FILE}"
 
