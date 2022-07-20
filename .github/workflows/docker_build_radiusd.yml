@@ -27,6 +27,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+        # don't log in if we're not going to push!
+        if: ${{ github.ref == 'refs/heads/master' }}
       - name: Build and push radius
         id: docker_build_radius
         uses: docker/build-push-action@v3
