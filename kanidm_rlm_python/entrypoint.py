@@ -17,6 +17,9 @@ DEBUG = True
 if os.environ.get('DEBUG', False):
     DEBUG = True
 
+CONFIG_FILE_PATH = "/data/kanidm"
+
+CERT_SERVER_DEST = "/etc/raddb/certs/server.pem"
 CERT_CA_DEST = "/etc/raddb/certs/ca.pem"
 CERT_DH_DEST = "/etc/raddb/certs/dh.pem"
 
@@ -59,6 +62,7 @@ def setup_certs(
             print(f"Copying {cert_ca} to {CERT_CA_DEST}")
             shutil.copyfile(cert_ca, CERT_CA_DEST)
 
+    # let's put some dhparams in place
     if kanidm_config_object.radius_dh_path is not None:
         cert_dh = Path(kanidm_config_object.radius_dh_path).expanduser().resolve()
         if not cert_dh.exists():
@@ -84,7 +88,7 @@ def setup_certs(
             )
         sys.exit(1)
     # concat key + cert into /etc/raddb/certs/server.pem
-    with open('/etc/raddb/certs/server.pem', 'w', encoding='utf-8') as file_handle:
+    with open(CERT_SERVER_DEST, 'w', encoding='utf-8') as file_handle:
         file_handle.write(server_cert.read_text(encoding="utf-8"))
         file_handle.write('\n')
         file_handle.write(server_key.read_text(encoding="utf-8"))
@@ -124,7 +128,7 @@ def run_radiusd() -> None:
 if __name__ == '__main__':
     signal.signal(signal.SIGCHLD, _sigchild_handler)
 
-    config_file = Path("/data/config.ini").expanduser().resolve()
+    config_file = Path(CONFIG_FILE_PATH).expanduser().resolve()
     if not config_file.exists:
         print(
             "Failed to find configuration file ({config_file}), quitting!",
@@ -132,7 +136,7 @@ if __name__ == '__main__':
             )
         sys.exit(1)
 
-    kanidm_config = KanidmClientConfig.parse_obj(load_config('/data/kanidm'))
+    kanidm_config = KanidmClientConfig.parse_obj(load_config(CONFIG_FILE_PATH))
     setup_certs(kanidm_config)
     write_clients_conf(kanidm_config)
     print("Configuration set up, starting...")
