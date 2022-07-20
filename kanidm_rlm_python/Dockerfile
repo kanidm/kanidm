@@ -2,7 +2,6 @@ FROM opensuse/tumbleweed:latest
 
 EXPOSE 1812 1813
 
-ENV LD_PRELOAD=/usr/lib64/libpython3.so
 
 RUN zypper --gpg-auto-import-keys refresh --force
 RUN zypper install -y \
@@ -53,6 +52,7 @@ RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/kanidmr
 RUN rm -rf /pkg/*
 
 USER radiusd
+ENV LD_PRELOAD=/usr/lib64/libpython3.so
 
 COPY kanidm_rlm_python/entrypoint.py /entrypoint.py
 CMD [ "/usr/bin/python3", "/entrypoint.py" ]
