@@ -6,7 +6,7 @@ fi
 echo "Running docker container: ${IMAGE}"
 
 if [ -z "${CONFIG_FILE}" ]; then
-    CONFIG_FILE="$(pwd)/../examples/kanidm"
+    CONFIG_FILE="$(pwd)/../examples/radius_test"
 fi
 echo "Using config file: ${CONFIG_FILE}"
 
@@ -19,6 +19,6 @@ echo "Starting the dev container..."
 docker run --rm -it \
     --network host \
     --name radiusd \
-    -v /tmp/kanidm/:/etc/raddb/certs/ \
+    -v /tmp/kanidm/:/certs/ \
     -v "${CONFIG_FILE}:/data/kanidm" \
     ${IMAGE} $@

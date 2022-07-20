@@ -2,6 +2,8 @@ FROM opensuse/tumbleweed:latest
 
 EXPOSE 1812 1813
 
+ENV LD_PRELOAD=/usr/lib64/libpython3.so
+
 RUN zypper --gpg-auto-import-keys refresh --force
 RUN zypper install -y \
     freeradius-client \

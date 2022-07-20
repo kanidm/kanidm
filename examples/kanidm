@@ -18,10 +18,10 @@ uri = "https://idm.example.com"
 username = "radius_service_account"
 password = "cr4bzr0ol"
 
-# radius_cert_path = "/etc/raddb/certs/cert.pem" #
-# radius_key_path = "/etc/raddb/certs/key.pem"   # the signing key for radius TLS
-# radius_dh_path = "/etc/raddb/certs/dh.pem"     # the diffie-hellman output
-# radius_ca_path = "/etc/raddb/certs/ca.pem"     # the CA certificate?
+radius_cert_path = "/certs/cert.pem" # the TLS certificate
+radius_key_path = "/certs/key.pem"   # the signing key for radius TLS
+radius_dh_path = "/certs/dh.pem"     # the diffie-hellman output
+radius_ca_path = "/certs/ca.pem"     # the CA certificate
 
 # A list of groups, if a user is in them, they're approved for RADIUS authentication
 radius_required_groups = [
