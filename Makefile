@@ -154,18 +154,18 @@ docs/pykanidm/serve:
 
 ########################################################################
 
-release/kanidm: ## Build the Kanidm CLI
+release/kanidm: ## Build the Kanidm CLI - ensure you include the environment variable KANIDM_BUILD_PROFILE
 	cargo build -p kanidm_tools --bin kanidm --release
 
-release/kanidmd: ## Build the Kanidm daemon
+release/kanidmd: ## Build the Kanidm daemon - ensure you include the environment variable KANIDM_BUILD_PROFILE
 	cargo build -p daemon --bin kanidmd --release
 
-release/kanidm-ssh: ## Build the Kanidm SSH tools
+release/kanidm-ssh: ## Build the Kanidm SSH tools - ensure you include the environment variable KANIDM_BUILD_PROFILE
 	cargo build --release \
 		--bin kanidm_ssh_authorizedkeys \
 		--bin kanidm_ssh_authorizedkeys_direct
 
-release/kanidm-unixd: ## Build the Kanidm UNIX tools
+release/kanidm-unixd: ## Build the Kanidm UNIX tools - ensure you include the environment variable KANIDM_BUILD_PROFILE
 release/kanidm-unixd:
 	cargo build -p pam_kanidm --release
 	cargo build -p nss_kanidm --release

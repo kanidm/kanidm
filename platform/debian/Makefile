@@ -5,25 +5,25 @@ help:
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\n\t/'
 
 .PHONY: debs/kanidm
-debs/kanidm: ## build a .deb for the Kanidm CLI
+debs/kanidm: ## Build the Kanidm CLI package - make sure you set the environment variable KANIDM_BUILD_PROFILE
 debs/kanidm:
 	./platform/debian/build_kanidm.sh kanidm
 
 .PHONY: debs/kanidmd
-debs/kanidmd: ## build a .deb for the Kanidm daemon
+debs/kanidmd: ## Build the Kanidmd package - make sure you set the environment variable KANIDM_BUILD_PROFILE
 debs/kanidmd:
 	./platform/debian/build_kanidm.sh kanidmd
 
 .PHONY: debs/kanidm-ssh
-debs/kanidm-ssh: ## build a .deb for the Kanidm SSH tools
+debs/kanidm-ssh: ## Bbuild the Kanidm SSH package - make sure you set the environment variable KANIDM_BUILD_PROFILE
 debs/kanidm-ssh:
 	./platform/debian/build_kanidm.sh kanidm-ssh
 
 .PHONY: debs/kanidm-unixd
-debs/kanidm-unixd: ## build a .deb for the Kanidm UNIX tools (PAM/NSS, unixd and related tools)
+debs/kanidm-unixd: ## Build the Kanidm UNIX tools package (PAM/NSS, unixd and related tools) - make sure you set the environment variable KANIDM_BUILD_PROFILE
 debs/kanidm-unixd:
 	./platform/debian/build_kanidm.sh kanidm-unixd
 
 .PHONY: debs/all
-debs/all: ## build all the debs
+debs/all: ## Build all the .deb packages - make sure you set the environment variable KANIDM_BUILD_PROFILE
 debs/all: debs/kanidmd debs/kanidm debs/kanidm-ssh debs/kanidm-unixd
