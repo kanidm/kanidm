@@ -22,12 +22,12 @@ chrono = "^0.4.19"
 compact_jwt = "^0.2.3"
 compiled-uuid = "0.1.2"
 concread = "^0.3.7"
-dyn-clone = "^1.0.6"
+dyn-clone = "^1.0.8"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 filetime = "^0.2.17"
 futures = "^0.3.21"
 futures-util = "^0.3.21"
-hashbrown = { version = "0.12.2", features = ["serde", "inline-more", "ahash"] }
+hashbrown = { version = "0.12.3", features = ["serde", "inline-more", "ahash"] }
 idlset = { version = "^0.2.4" }
 kanidm_proto = { path = "../../kanidm_proto" }
 lazy_static = "^1.4.0"
@@ -41,7 +41,7 @@ r2d2_sqlite = "^0.20.0"
 rand = "^0.8.5"
 regex = "^1.5.6"
 saffron = "^0.1.0"
-serde = { version = "^1.0.138", features = ["derive"] }
+serde = { version = "^1.0.139", features = ["derive"] }
 serde_cbor = "^0.11.2"
 serde_json = "^1.0.82"
 smartstring = { version = "^1.0.1", features = ["serde"] }
@@ -49,7 +49,7 @@ smolset = "^1.3.1"
 sshkeys = "^0.3.1"
 tide = "^0.16.0"
 time = { version = "=0.2.27", features = ["serde", "std"] }
-tokio = { version = "^1.19.1", features = ["net", "sync", "time"] }
+tokio = { version = "^1.20.0", features = ["net", "sync", "time"] }
 tokio-util = { version = "^0.7.3", features = ["codec"] }
 toml = "^0.5.9"
 touch = "^0.0.1"
