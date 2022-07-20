@@ -19,7 +19,7 @@ override_dh_auto_clean:
 override_dh_auto_configure:
 
 override_dh_auto_build:
-	dh_auto_build -- release/kanidm
+	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE}
 
 override_dh_auto_test:
 override_dh_shlibdeps:
