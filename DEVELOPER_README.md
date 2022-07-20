@@ -19,6 +19,19 @@ A list of links to the library documentation is at
 
 The MSRV is specified in the package `Cargo.toml` files.
 
+### Build Profiles
+
+Setting different developer profiles while building is done by setting the 
+environment 
+variable `KANIDM_BUILD_PROFILE` to one of the bare filename of the TOML files in 
+`/profiles`. 
+
+For example, this will set the CPU flags to "none" and the location for the Web UI files to `/usr/share/kanidm/ui/pkg`:
+
+```shell
+KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
+```
+
 ### Dependencies
 
 #### MacOS
@@ -208,13 +221,6 @@ Then you are able to build the UI:
 To build for release, run `build_wasm_release.sh`.
 
 The "developer" profile for kanidmd will automatically use the pkg output in this folder.
-
-Setting different developer profiles while building is done by setting the 
-environment 
-variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in 
-`/profiles`. 
-
-For example: `KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd`
 
 ### Build a Kanidm Container
 

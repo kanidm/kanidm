@@ -1,0 +1,44 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+
+# be REALLY noisy
+export DH_VERBOSE=1
+export DH_OPTIONS=-v
+
+export DEB_BUILD_OPTIONS=noautodbgsym
+PACKAGE=kanidm
+PKGDIR=debian/${PACKAGE}
+BINDIR=${PKGDIR}/usr/bin/
+SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+
+override_dh_auto_configure:
+
+override_dh_auto_build:
+	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE}
+
+override_dh_auto_test:
+override_dh_shlibdeps:
+override_dh_strip:
+
+override_dh_auto_install:
+	mkdir -p ${BINDIR}
+	install -D \
+		-g root \
+		-o root \
+		--mode 755 \
+		target/release/kanidm \
+		${BINDIR}
+
+override_dh_installexamples:
+	mkdir -p ${SHARED_DIR}
+	install -D \
+	    -g root \
+		-o root \
+		--mode 644 \
+		examples/config \
+		${SHARED_DIR}/kanidm

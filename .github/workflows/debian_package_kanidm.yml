@@ -1,0 +1,41 @@
+---
+name: "Build Debian Packages"
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-deb-package:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Update package manager
+        run: sudo apt-get update
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config \
+            make
+      - uses: jetli/wasm-pack-action@v0.3.0
+        with:
+          # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
+          version: 'latest'
+      - name: "Doing the package build"
+        run: |
+          make -f platform/debian/Makefile debs/all
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Ubuntu Packages (20.04)"
+          files: target/*.deb
+        if: ${{ github.ref == 'refs/heads/master' }}

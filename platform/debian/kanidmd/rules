@@ -1,0 +1,53 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+
+# be REALLY noisy
+export DH_VERBOSE=1
+export DH_OPTIONS=-v
+
+export DEB_BUILD_OPTIONS=noautodbgsym
+
+export DEB_BUILD_OPTIONS=noautodbgsym
+PACKAGE=kanidmd
+PKGDIR=debian/${PACKAGE}
+BINDIR=${PKGDIR}/usr/sbin/
+SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+# cargo clean
+
+override_dh_autoreconf:
+
+override_dh_auto_build:
+	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE}
+	./platform/debian/fix_wasm_opt.sh
+	cargo install wasm-pack --force
+	cd kanidmd_web_ui && ./build_wasm.sh
+
+override_dh_auto_test:
+override_dh_shlibdeps:
+override_dh_strip:
+
+override_dh_auto_install:
+	mkdir -p ${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidmd \
+		${BINDIR}
+	mkdir -p ${PKGDIR}/usr/share/kanidm/ui/
+	cp -R kanidmd_web_ui/pkg ${PKGDIR}/usr/share/kanidm/ui/
+
+override_dh_installexamples:
+	mkdir -p ${SHARED_DIR}
+	install -D \
+		-g root -o root \
+		examples/kanidm \
+		${SHARED_DIR}/
+	install -D \
+		-g root -o root \
+		--mode=644 \
+		examples/server.toml \
+		${SHARED_DIR}/

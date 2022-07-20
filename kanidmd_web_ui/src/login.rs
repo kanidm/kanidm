@@ -775,7 +775,7 @@ impl Component for LoginApp {
             <center>
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
                 // TODO: replace this with a call to domain info
-                <h3>{ "Kanidm idm.example.com" } </h3>
+                <h3>{ "Kanidm" }</h3>
             </center>
             { self.view_state(ctx) }
         </main>

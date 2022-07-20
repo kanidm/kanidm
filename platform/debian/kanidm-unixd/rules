@@ -1,0 +1,57 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+
+# be REALLY noisy
+export DH_VERBOSE=1
+export DH_OPTIONS=-v
+
+export DEB_BUILD_OPTIONS=noautodbgsym
+PACKAGE=kanidm-unixd
+PKGDIR=debian/${PACKAGE}
+BINDIR=${PKGDIR}/usr/sbin/
+SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+
+override_dh_autoreconf:
+
+override_dh_auto_build:
+	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE}
+
+override_dh_auto_test:
+override_dh_shlibdeps:
+override_dh_strip:
+
+override_dh_auto_install:
+	mkdir -p ${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_unixd \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_unixd_status \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_unixd_tasks \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_cache_clear \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_cache_invalidate \
+		${BINDIR}
+
+
+override_dh_installexamples:
+	mkdir -p ${SHARED_DIR}
+	install -D \
+		-g root -o root \
+		examples/kanidm \
+		${SHARED_DIR}/
