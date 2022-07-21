@@ -50,8 +50,6 @@ def setup_certs(
     kanidm_config_object: KanidmClientConfig,
     ) -> None:
     """ sets up certificates """
-    print(kanidm_config_object)
-    # sys.exit(1)
 
     if kanidm_config_object.radius_ca_path:
         cert_ca = Path(kanidm_config_object.radius_ca_path).expanduser().resolve()
