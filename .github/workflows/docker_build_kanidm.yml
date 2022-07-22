@@ -27,6 +27,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+        # don't log in if we're not going to push!
+        if: ${{ github.ref == 'refs/heads/master' }}
       - name: Build and push kanidmd
         id: docker_build_kanidm
         uses: docker/build-push-action@v3
@@ -37,5 +39,5 @@ jobs:
           tags: ghcr.io/kanidm/kanidm:devel
           build-args: |
             "KANIDM_FEATURES="
-            "KANIDM_BUILD_OPTIONS=-j1"
+          #  "KANIDM_BUILD_OPTIONS=-j1"
           file: kanidm_tools/Dockerfile

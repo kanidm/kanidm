@@ -70,10 +70,9 @@ test/kanidmd:
 	@$(CONTAINER_TOOL) run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
 
 test/radiusd: ## Run a test radius server
+test/radiusd: build/radiusd
 	cd kanidm_rlm_python && \
 	./run_radius_container.sh
-
-test/radiusd:	build/radiusd test/radiusd
 
 test:
 	cargo test

@@ -17,6 +17,12 @@ DEBUG = True
 if os.environ.get('DEBUG', False):
     DEBUG = True
 
+CONFIG_FILE_PATH = "/data/kanidm"
+
+CERT_SERVER_DEST = "/etc/raddb/certs/server.pem"
+CERT_CA_DEST = "/etc/raddb/certs/ca.pem"
+CERT_DH_DEST = "/etc/raddb/certs/dh.pem"
+
 # pylint: disable=unused-argument
 def _sigchild_handler(
     *args: Any,
@@ -44,22 +50,25 @@ def setup_certs(
     kanidm_config_object: KanidmClientConfig,
     ) -> None:
     """ sets up certificates """
-    # copy ca to /etc/raddb/certs/ca.pem
-    if kanidm_config_object.ca_path:
-        cert_ca = Path(kanidm_config_object.ca_path).expanduser().resolve()
+
+    if kanidm_config_object.radius_ca_path:
+        cert_ca = Path(kanidm_config_object.radius_ca_path).expanduser().resolve()
         if not cert_ca.exists():
             print(f"Failed to find radiusd ca file ({cert_ca}), quitting!", file=sys.stderr)
             sys.exit(1)
-        else:
-            print(f"Looking for cert_ca in {cert_ca}", file=sys.stderr )
-        shutil.copyfile(cert_ca, '/etc/raddb/certs/ca.pem')
+        if cert_ca != CERT_CA_DEST:
+            print(f"Copying {cert_ca} to {CERT_CA_DEST}")
+            shutil.copyfile(cert_ca, CERT_CA_DEST)
+
+    # let's put some dhparams in place
     if kanidm_config_object.radius_dh_path is not None:
-    # if CONFIG.get("radiusd", "dh", fallback="") != "":
         cert_dh = Path(kanidm_config_object.radius_dh_path).expanduser().resolve()
         if not cert_dh.exists():
             print(f"Failed to find radiusd dh file ({cert_dh}), quitting!", file=sys.stderr)
             sys.exit(1)
-        shutil.copyfile(cert_dh, '/etc/raddb/certs/dh')
+        if cert_dh != CERT_DH_DEST:
+            print(f"Copying {cert_dh} to {CERT_DH_DEST}")
+            shutil.copyfile(cert_dh, CERT_DH_DEST)
 
     server_key = Path(kanidm_config_object.radius_key_path).expanduser().resolve()
     if not server_key.exists() or not server_key.is_file():
@@ -77,7 +86,7 @@ def setup_certs(
             )
         sys.exit(1)
     # concat key + cert into /etc/raddb/certs/server.pem
-    with open('/etc/raddb/certs/server.pem', 'w', encoding='utf-8') as file_handle:
+    with open(CERT_SERVER_DEST, 'w', encoding='utf-8') as file_handle:
         file_handle.write(server_cert.read_text(encoding="utf-8"))
         file_handle.write('\n')
         file_handle.write(server_key.read_text(encoding="utf-8"))
@@ -117,7 +126,7 @@ def run_radiusd() -> None:
 if __name__ == '__main__':
     signal.signal(signal.SIGCHLD, _sigchild_handler)
 
-    config_file = Path("/data/config.ini").expanduser().resolve()
+    config_file = Path(CONFIG_FILE_PATH).expanduser().resolve()
     if not config_file.exists:
         print(
             "Failed to find configuration file ({config_file}), quitting!",
@@ -125,7 +134,7 @@ if __name__ == '__main__':
             )
         sys.exit(1)
 
-    kanidm_config = KanidmClientConfig.parse_obj(load_config('/data/kanidm'))
+    kanidm_config = KanidmClientConfig.parse_obj(load_config(CONFIG_FILE_PATH))
     setup_certs(kanidm_config)
     write_clients_conf(kanidm_config)
     print("Configuration set up, starting...")

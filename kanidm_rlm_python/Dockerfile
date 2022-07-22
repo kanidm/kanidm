@@ -2,6 +2,9 @@ FROM opensuse/tumbleweed:latest
 
 EXPOSE 1812 1813
 
+# TODO: remove this once the freeradius python fix has been rolled into tumbleweed main
+RUN zypper ar -f obs://home:firstyear:branches:network home:firstyear:branches:network
+
 RUN zypper --gpg-auto-import-keys refresh --force
 RUN zypper install -y \
     freeradius-client \
@@ -9,9 +12,9 @@ RUN zypper install -y \
     freeradius-server-python3 \
     freeradius-server-utils \
     hostname \
-    python3 \
-    python3-devel \
-    python3-pip \
+    python310 \
+    python310-devel \
+    python310-pip \
     timezone \
     iproute2 \
     iputils \

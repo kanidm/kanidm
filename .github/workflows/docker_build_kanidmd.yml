@@ -16,10 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      # don't need qemu/buildx if we're not building ARM
+      #- name: Set up QEMU
+      #  uses: docker/setup-qemu-action@v2
+      #- name: Set up Docker Buildx
+      #  uses: docker/setup-buildx-action@v2
       -  # https://github.com/docker/login-action/#github-container-registry
         name: Login to GitHub Container Registry
         uses: docker/login-action@v2
@@ -27,6 +28,8 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+        # don't log in if we're not going to push!
+        if: ${{ github.ref == 'refs/heads/master' }}
       - name: Build and push kanidmd
         id: docker_build_kanidmd
         uses: docker/build-push-action@v3
@@ -34,6 +37,6 @@ jobs:
           push: ${{ github.ref == 'refs/heads/master' }}
           platforms: linux/amd64
           tags: ghcr.io/kanidm/kanidmd:devel
-          build-args: |
-            "KANIDM_BUILD_OPTIONS=-j1"
+          #build-args: |
+          #  "KANIDM_BUILD_OPTIONS=-j1"
           file: kanidmd/Dockerfile

@@ -271,11 +271,11 @@ need to
 ```shell
 docker pull ghcr.io/kanidm/radius:devel
 docker run --rm -it \
-    -v $(pwd)/config.ini:/data/config.ini \
+    -v $(pwd)/kanidm:/data/kanidm \
     ghcr.io/kanidm/radius:devel
 ```
 
-This assumes you have a `config.ini` file in the current working directory.
+This assumes you have a `kanidm` client configuration file in the current working directory.
 
 ## Building the Book
 
