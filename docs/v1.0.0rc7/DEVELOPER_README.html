@@ -323,10 +323,10 @@ need to
 <a href="https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry">authenticate with the GitHub container registry first</a>.</p>
 <pre><code class="language-shell">docker pull ghcr.io/kanidm/radius:devel
 docker run --rm -it \
-    -v $(pwd)/config.ini:/data/config.ini \
+    -v $(pwd)/kanidm:/data/kanidm \
     ghcr.io/kanidm/radius:devel
 </code></pre>
-<p>This assumes you have a <code>config.ini</code> file in the current working directory.</p>
+<p>This assumes you have a <code>kanidm</code> client configuration file in the current working directory.</p>
 <h2 id="building-the-book"><a class="header" href="#building-the-book">Building the Book</a></h2>
 <p>You'll need <code>mdbook</code> to build the book:</p>
 <pre><code class="language-shell">cargo install mdbook
