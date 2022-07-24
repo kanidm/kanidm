@@ -40,7 +40,7 @@ openssl = "^0.10.41"
 
 ldap3_proto = "^0.2.3"
 
-crossbeam = "0.8.1"
+crossbeam = "0.8.2"
 
 mathru = "^0.13.0"
 
