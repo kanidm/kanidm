@@ -32,7 +32,7 @@ path = "src/badlist_preprocess.rs"
 kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha.8" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.8" }
 tracing = "^0.1.35"
-tracing-subscriber = { version = "^0.3.14", features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "^0.3.15", features = ["env-filter", "fmt"] }
 rpassword = "^7.0.0"
 clap = { version = "^3.2", features = ["derive", "env"] }
 libc = "^0.2.126"

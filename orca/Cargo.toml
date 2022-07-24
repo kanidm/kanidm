@@ -17,7 +17,7 @@ path = "src/main.rs"
 [dependencies]
 
 tracing = "^0.1.35"
-tracing-subscriber = "^0.3.14"
+tracing-subscriber = "^0.3.15"
 
 clap = { version = "^3.2", features = ["derive"] }
 
