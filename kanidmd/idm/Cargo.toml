@@ -33,11 +33,11 @@ kanidm_proto = { path = "../../kanidm_proto" }
 lazy_static = "^1.4.0"
 ldap3_proto = "^0.2.3"
 libc = "^0.2.126"
-libsqlite3-sys = "0.24.2"
+libsqlite3-sys = "^0.25.0"
 num_enum = "^0.5.7"
 openssl = "^0.10.41"
 r2d2 = "^0.8.9"
-r2d2_sqlite = "^0.20.0"
+r2d2_sqlite = "^0.21.0"
 rand = "^0.8.5"
 regex = "^1.5.6"
 saffron = "^0.1.0"
@@ -65,11 +65,11 @@ zxcvbn = "^2.2.1"
 
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies.rusqlite]
-version = "^0.27.0"
+version = "^0.28.0"
 features = ["bundled"]
 
 [target.'cfg(not(target_family = "windows"))'.dependencies.rusqlite]
-version = "^0.27.0"
+version = "^0.28.0"
 
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = "^1.2.1"
