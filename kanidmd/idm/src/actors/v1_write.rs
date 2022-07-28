@@ -836,6 +836,38 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "trace",
+        name = "idmcredentialupdatecancel",
+        skip(self, session_token, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialupdatecancel(
+        &self,
+        session_token: CUSessionToken,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let res = spanned!("actors::v1_write::handle<IdmCredentialUpdateCancel>", {
+            let session_token = CredentialUpdateSessionToken {
+                token_enc: session_token.token,
+            };
+
+            idms_prox_write
+                .cancel_credential_update(session_token, ct)
+                .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin commit_credential_cancel",
+                    );
+                    e
+                })
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
         name = "idmaccountsetpassword",
         skip(self, uat, cleartext, eventid)
         fields(uuid = ?eventid)

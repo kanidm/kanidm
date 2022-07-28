@@ -14,8 +14,7 @@ use crate::utils;
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
 };
-
-use webauthn_rs_proto::PublicKeyCredential;
+use kanidm_proto::webauthn::PublicKeyCredential;
 
 pub struct LoginApp {
     inputvalue: String,

@@ -11,3 +11,5 @@
 pub mod messages;
 pub mod oauth2;
 pub mod v1;
+
+pub use webauthn_rs_proto as webauthn;

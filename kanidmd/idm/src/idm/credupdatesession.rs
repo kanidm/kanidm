@@ -61,6 +61,7 @@ pub struct CredentialUpdateSessionToken {
 }
 
 /// The current state of MFA registration
+#[derive(Clone)]
 enum MfaRegState {
     None,
     TotpInit(Totp),
@@ -82,6 +83,7 @@ impl fmt::Debug for MfaRegState {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct CredentialUpdateSession {
     issuer: String,
     // Current credentials - these are on the Account!
@@ -277,7 +279,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let entry = self.qs_write.internal_search_uuid(&target)?;
 
         security_info!(
-            ?entry,
+            %entry,
             %target,
             "Initiating Credential Update Session",
         );
@@ -540,7 +542,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let max_ttl = match account.credential_update_intent_tokens.get(&intent_id) {
             Some(IntentTokenState::Consumed { max_ttl: _ }) => {
                 security_info!(
-                    ?entry,
+                    %entry,
                     %account.uuid,
                     "Rejecting Update Session - Intent Token has already been exchanged",
                 );
@@ -554,14 +556,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 if current_time > *session_ttl {
                     // The former session has expired, continue.
                     security_info!(
-                        ?entry,
+                        %entry,
                         %account.uuid,
                         "Initiating Credential Update Session - Previous session {} has expired", session_id
                     );
                     *max_ttl
                 } else {
                     security_info!(
-                        ?entry,
+                        %entry,
                         %account.uuid,
                         "Rejecting Update Session - Intent Token is in use {}. Try again later", session_id
                     );
@@ -578,7 +580,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     return Err(OperationError::SessionExpired);
                 } else {
                     security_info!(
-                        ?entry,
+                        %entry,
                         %account.uuid,
                         "Initiating Credential Update Session",
                     );
@@ -664,11 +666,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         trace!(?removed);
     }
 
-    pub fn commit_credential_update(
+    // This shares some common paths between commit and cancel.
+    fn credential_update_commit_common(
         &mut self,
         cust: CredentialUpdateSessionToken,
         ct: Duration,
-    ) -> Result<(), OperationError> {
+    ) -> Result<
+        (
+            ModifyList<ModifyInvalid>,
+            CredentialUpdateSession,
+            CredentialUpdateSessionTokenInner,
+        ),
+        OperationError,
+    > {
         let session_token: CredentialUpdateSessionTokenInner = self
             .token_enc_key
             .decrypt(&cust.token_enc)
@@ -695,14 +705,28 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 OperationError::InvalidState
             })?;
 
-        let session = session_handle.try_lock().map_err(|_| {
-            admin_error!("Session already locked, unable to proceed.");
-            OperationError::InvalidState
-        })?;
+        let session = session_handle
+            .try_lock()
+            .map(|guard| (*guard).clone())
+            .map_err(|_| {
+                admin_error!("Session already locked, unable to proceed.");
+                OperationError::InvalidState
+            })?;
 
         trace!(?session);
 
-        let mut modlist = ModifyList::new();
+        let modlist = ModifyList::new();
+
+        Ok((modlist, session, session_token))
+    }
+
+    pub fn commit_credential_update(
+        &mut self,
+        cust: CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        let (mut modlist, session, session_token) =
+            self.credential_update_commit_common(cust, ct)?;
 
         // Setup mods for the various bits. We always assert an *exact* state.
 
@@ -776,6 +800,65 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             modlist.push_mod(Modify::Present(AttrString::from("passkeys"), v_pk));
         });
         // Are any other checks needed?
+
+        // Apply to the account!
+        trace!(?modlist, "processing change");
+
+        self.qs_write
+            .internal_modify(
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
+                &modlist,
+            )
+            .map_err(|e| {
+                request_error!(error = ?e);
+                e
+            })
+    }
+
+    pub fn cancel_credential_update(
+        &mut self,
+        cust: CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        let (mut modlist, session, session_token) =
+            self.credential_update_commit_common(cust, ct)?;
+
+        // If an intent token was used, remove it's former value, and add it as VALID since we didn't commit.
+        if let Some(intent_token_id) = &session.intent_token_id {
+            let entry = self.qs_write.internal_search_uuid(&session.account.uuid)?;
+            let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
+
+            let max_ttl = match account.credential_update_intent_tokens.get(intent_token_id) {
+                Some(IntentTokenState::InProgress {
+                    max_ttl,
+                    session_id,
+                    session_ttl: _,
+                }) => {
+                    if *session_id != session_token.sessionid {
+                        security_info!("Session originated from an intent token, but the intent token has initiated a conflicting second update session. Refusing to commit changes.");
+                        return Err(OperationError::InvalidState);
+                    } else {
+                        *max_ttl
+                    }
+                }
+                Some(IntentTokenState::Consumed { max_ttl: _ })
+                | Some(IntentTokenState::Valid { max_ttl: _ })
+                | None => {
+                    security_info!("Session originated from an intent token, but the intent token has transitioned to an invalid state. Refusing to commit changes.");
+                    return Err(OperationError::InvalidState);
+                }
+            };
+
+            modlist.push_mod(Modify::Removed(
+                AttrString::from("credential_update_intent_token"),
+                PartialValue::IntentToken(intent_token_id.clone()),
+            ));
+            modlist.push_mod(Modify::Present(
+                AttrString::from("credential_update_intent_token"),
+                Value::IntentToken(intent_token_id.clone(), IntentTokenState::Valid { max_ttl }),
+            ));
+        };
 
         // Apply to the account!
         trace!(?modlist, "processing change");

@@ -17,12 +17,23 @@ use web_sys::{Request, RequestInit, RequestMode, Response};
 
 use super::delete::DeleteApp;
 use super::eventbus::{EventBus, EventBusMsg};
+use super::passkey::PasskeyModalApp;
+use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
+
+use uuid::Uuid;
 
 #[derive(PartialEq, Properties)]
 pub struct ModalProps {
     pub token: CUSessionToken,
+}
+
+#[derive(PartialEq, Properties)]
+pub struct PasskeyRemoveModalProps {
+    pub token: CUSessionToken,
+    pub tag: String,
+    pub uuid: Uuid,
 }
 
 pub enum Msg {
@@ -34,6 +45,7 @@ pub enum Msg {
     UpdateSession {
         status: CUStatus,
     },
+    Cancel,
     Commit,
     Success,
     Error {
@@ -43,6 +55,7 @@ pub enum Msg {
     // TODO: use this? :)
     #[allow(dead_code)]
     Ignore,
+    RemovePasskey(Uuid),
 }
 
 impl From<FetchError> for Msg {
@@ -187,9 +200,22 @@ impl Component for CredentialResetApp {
 
                 Some(State::WaitingForCommit)
             }
+            (Msg::Cancel, State::Main { token, status }) => {
+                console::log!(format!("{:?}", status).as_str());
+                let token_c = token.clone();
+
+                ctx.link().send_future(async {
+                    match Self::cancel_session(token_c).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
+
+                Some(State::WaitingForCommit)
+            }
             (Msg::Success, State::WaitingForCommit) => {
                 let loc = models::pop_return_location();
-                console::log!(format!("credential was updated, try going to -> {:?}", loc));
+                console::log!(format!("Going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
 
                 None
@@ -278,6 +304,20 @@ impl CredentialResetApp {
         }
     }
 
+    fn render_passkey_list(&self, ctx: &Context<Self>, tag: &str, uuid: Uuid) -> Html {
+        let tag = tag.to_string();
+        html! {
+            <li>
+                <p> { tag } </p>
+                <button
+                    type="button"
+                    class="btn btn-sm btn-dark"
+                    onclick={ ctx.link().callback(move |_| Msg::RemovePasskey(uuid)) }
+                >{ "Delete" }</button>
+            </li>
+        }
+    }
+
     fn view_main(&self, ctx: &Context<Self>, token: &CUSessionToken, status: &CUStatus) -> Html {
         remove_body_form_classes!();
 
@@ -328,9 +368,9 @@ impl CredentialResetApp {
             }) => {
                 html! {
                   <>
-                    <p>{ "Webauthn Only - Will migrate to trusted devices in a future update" }</p>
+                    <p>{ "Webauthn Only - Will migrate to Passkeys in a future update" }</p>
                     <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                      { "Delete this Password" }
+                      { "Delete this Credential" }
                     </button>
                   </>
                 }
@@ -339,6 +379,7 @@ impl CredentialResetApp {
                 uuid: _,
                 type_:
                     // TODO: review this and find out why we aren't using these variables
+                    // Because I'm lazy 🙃
                     CredentialDetailType::PasswordMfa(
                         _totp_set,
                         _security_key_labels,
@@ -369,6 +410,34 @@ impl CredentialResetApp {
             }
         };
 
+        let passkey_html = if status.passkeys.is_empty() {
+            html! {
+                <p>{ "No Passkeys Registered" }</p>
+            }
+        } else {
+            html! {
+                <div class="container">
+                    <ul class="list-unstyled">
+                        { for status.passkeys.iter()
+                            .map(|detail|
+                                PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                            )
+                        }
+                    </ul>
+                </div>
+            }
+        };
+
+        let passkey_modals_html = html! {
+            <>
+                { for status.passkeys.iter()
+                    .map(|detail|
+                        html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } /> }
+                    )
+                }
+            </>
+        };
+
         html! {
           <div class="d-flex align-items-start form-cred-reset-body">
             <main class="w-100">
@@ -382,8 +451,10 @@ impl CredentialResetApp {
                   <form class="needs-validation" novalidate=true>
                     <hr class="my-4" />
 
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTrustedDevice">
-                      { "Add New Trusted Device" }
+                    { passkey_html }
+
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPasskeyCreate">
+                      { "Add Passkey" }
                     </button>
 
                     <hr class="my-4" />
@@ -391,7 +462,17 @@ impl CredentialResetApp {
                     { pw_html }
 
                     <hr class="my-4" />
-                    <button class="w-100 btn btn-success btn-lg" type="submit"
+
+                    <button class="w-50 btn btn-danger btn-lg" type="submit"
+                        disabled=false
+                        onclick={
+                            ctx.link()
+                                .callback(move |_| {
+                                    Msg::Cancel
+                                })
+                        }
+                    >{ "Cancel" }</button>
+                    <button class="w-50 btn btn-success btn-lg" type="submit"
                         disabled={ !can_commit }
                         onclick={
                             ctx.link()
@@ -404,28 +485,7 @@ impl CredentialResetApp {
               </div>
             </main>
 
-            <div class="modal fade" id="staticTrustedDevice" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticTrustedDeviceLabel" aria-hidden="true">
-              <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title" id="staticTrustedDeviceLabel">{ "Add a Trusted Device" }</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body">
-                    <p>{ "Scan the following link to add a new device" }</p>
-
-                    <div class="spinner-border text-success" role="status">
-                      <span class="visually-hidden">{ "Loading..." }</span>
-                    </div>
-                  </div>
-
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{ "Cancel" }</button>
-                    <button type="button" class="btn btn-primary">{ "Submit" }</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <PasskeyModalApp token={ token.clone() } />
 
             <PwModalApp token={ token.clone() } />
 
@@ -433,10 +493,10 @@ impl CredentialResetApp {
 
             <DeleteApp token= { token.clone() }/>
 
+            { passkey_modals_html }
+
           </div>
         }
-
-        // <DelPrimaryModalApp token={ token.clone() }/>
     }
 
     fn view_error(&self, _ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {
@@ -495,7 +555,7 @@ impl CredentialResetApp {
         }
     }
 
-    async fn commit_session(token: CUSessionToken) -> Result<Msg, FetchError> {
+    async fn end_session(token: CUSessionToken, url: &str) -> Result<Msg, FetchError> {
         let req_jsvalue = serde_json::to_string(&token)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise session token");
@@ -506,7 +566,7 @@ impl CredentialResetApp {
 
         opts.body(Some(&req_jsvalue));
 
-        let request = Request::new_with_str_and_init("/v1/credential/_commit", &opts)?;
+        let request = Request::new_with_str_and_init(url, &opts)?;
         request
             .headers()
             .set("content-type", "application/json")
@@ -526,5 +586,13 @@ impl CredentialResetApp {
             let emsg = text.as_string().unwrap_or_else(|| "".to_string());
             Ok(Msg::Error { emsg, kopid })
         }
+    }
+
+    async fn cancel_session(token: CUSessionToken) -> Result<Msg, FetchError> {
+        Self::end_session(token, "/v1/credential/_cancel").await
+    }
+
+    async fn commit_session(token: CUSessionToken) -> Result<Msg, FetchError> {
+        Self::end_session(token, "/v1/credential/_commit").await
     }
 }
