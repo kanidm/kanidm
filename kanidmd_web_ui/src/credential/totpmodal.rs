@@ -124,7 +124,7 @@ impl Component for TotpModalApp {
     type Message = Msg;
     type Properties = ModalProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         console::log!("totp modal create");
 
         TotpModalApp {

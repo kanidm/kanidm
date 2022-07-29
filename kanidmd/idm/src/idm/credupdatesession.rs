@@ -88,7 +88,7 @@ pub(crate) struct CredentialUpdateSession {
     issuer: String,
     // Current credentials - these are on the Account!
     account: Account,
-    // What intent want used to initiate this session.
+    // What intent was used to initiate this session.
     intent_token_id: Option<String>,
     // Acc policy
 

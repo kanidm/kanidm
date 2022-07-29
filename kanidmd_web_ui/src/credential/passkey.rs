@@ -2,10 +2,9 @@ use crate::error::*;
 use crate::utils;
 
 use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::{ModalProps, PasskeyRemoveModalProps};
+use super::reset::ModalProps;
 
 use gloo::console;
-use web_sys::Node;
 use yew::prelude::*;
 use yew_agent::Dispatched;
 
@@ -13,11 +12,8 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
-use uuid::Uuid;
-
 use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
-// use qrcode::{render::svg, QrCode};
 
 pub struct PasskeyModalApp {
     state: State,
@@ -59,11 +55,6 @@ impl PasskeyModalApp {
         utils::modal_hide_by_id("staticPasskeyCreate");
         self.state = State::Init;
         self.label_val = "".to_string();
-
-        /*
-        self.check = TotpCheck::Init;
-        self.secret = TotpValue::Init;
-        */
     }
 
     async fn submit_passkey_update(
@@ -125,7 +116,7 @@ impl Component for PasskeyModalApp {
     type Message = Msg;
     type Properties = ModalProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         console::log!("passkey modal create");
 
         PasskeyModalApp {
@@ -288,7 +279,7 @@ impl Component for PasskeyModalApp {
                       </div>
                 }
             }
-            State::ChallengeReady(challenge) => {
+            State::ChallengeReady(_challenge) => {
                 // This works around a bug in safari :(
                 html! {
                     <button id="passkey-generate" type="button" class="btn btn-primary"
@@ -312,7 +303,7 @@ impl Component for PasskeyModalApp {
             !label_val.is_empty() && matches!(self.state, State::CredentialReady(_));
 
         let submit_state = match &self.state {
-            State::CredentialReady(rpkc) => {
+            State::CredentialReady(_rpkc) => {
                 html! {
                     <button id="passkey-submit" type="button" class="btn btn-primary"
                         disabled={ !submit_enabled }
@@ -392,115 +383,6 @@ impl Component for PasskeyModalApp {
                   </div>
                   <div class="modal-footer">
                     { submit_state }
-                  </div>
-                </div>
-              </div>
-            </div>
-        }
-    }
-}
-
-pub struct PasskeyRemoveModalApp {}
-
-impl PasskeyRemoveModalApp {
-    pub fn render_button(tag: &str, uuid: Uuid) -> Html {
-        let remove_tgt = format!("#staticPasskeyRemove-{}", uuid);
-        let tag = tag.to_string();
-
-        html! {
-          <li>
-          <div class="row g-3">
-            <p>{ tag }</p>
-            <button type="button" class="btn btn-dark btn-sml" data-bs-toggle="modal" data-bs-target={ remove_tgt }>
-              { "Remove" }
-            </button>
-          </div>
-          </li>
-        }
-    }
-}
-
-impl Component for PasskeyRemoveModalApp {
-    type Message = bool;
-    type Properties = PasskeyRemoveModalProps;
-
-    fn create(ctx: &Context<Self>) -> Self {
-        console::log!("passkey remove modal create");
-
-        PasskeyRemoveModalApp {}
-    }
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("passkey remove modal::change");
-        false
-    }
-
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("passkey remove modal::update");
-        if msg {
-            // Do the delete
-        } else {
-            // leave.
-        }
-        true
-    }
-
-    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("passkey remove modal::rendered");
-    }
-
-    fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("passkey remove modal::destroy");
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("passkey remove modal::view");
-
-        let tag = ctx.props().tag.clone();
-        let uuid = ctx.props().uuid.clone();
-
-        let remove_tgt = format!("#staticPasskeyRemove-{}", uuid);
-        let remove_id = format!("#staticPasskeyRemove-{}", uuid);
-        let remove_label = format!("#staticPasskeyRemove-{}", uuid);
-
-        let msg = format!("Delete the Passkey named '{}'?", tag);
-
-        html! {
-            <div class="modal fade" id={ remove_id } data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby={ remove_tgt } aria-hidden="true">
-              <div class="modal-dialog">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title" id={ remove_label }>{ "Delete Passkey" }</h5>
-                    <button type="button" class="btn-close" aria-label="Close"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    false
-                                })
-                        }
-                    ></button>
-                  </div>
-                  <div class="modal-body">
-
-                    <p>{ msg }</p>
-
-                  </div>
-                  <div class="modal-footer">
-                    <button id="delete-cancel" type="button" class="btn btn-secondary"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    false
-                                })
-                        }
-                    >{ "Cancel" }</button>
-                    <button id="delete-submit" type="button" class="btn btn-danger"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    true
-                                })
-                        }
-                    >{ "Submit" }</button>
                   </div>
                 </div>
               </div>

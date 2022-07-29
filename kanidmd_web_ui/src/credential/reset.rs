@@ -55,7 +55,6 @@ pub enum Msg {
     // TODO: use this? :)
     #[allow(dead_code)]
     Ignore,
-    RemovePasskey(Uuid),
 }
 
 impl From<FetchError> for Msg {
@@ -301,20 +300,6 @@ impl CredentialResetApp {
               </div>
             </div>
           </main>
-        }
-    }
-
-    fn render_passkey_list(&self, ctx: &Context<Self>, tag: &str, uuid: Uuid) -> Html {
-        let tag = tag.to_string();
-        html! {
-            <li>
-                <p> { tag } </p>
-                <button
-                    type="button"
-                    class="btn btn-sm btn-dark"
-                    onclick={ ctx.link().callback(move |_| Msg::RemovePasskey(uuid)) }
-                >{ "Delete" }</button>
-            </li>
         }
     }
 

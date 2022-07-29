@@ -703,7 +703,7 @@ impl Ord for AuthAllowed {
                 (_, AuthAllowed::SecurityKey(_)) => Ordering::Greater,
                 (AuthAllowed::Passkey(_), _) => Ordering::Less,
                 // Unreachable
-                // (_, AuthAllowed::Security(_)) => Ordering::Greater,
+                // (_, AuthAllowed::Passkey(_)) => Ordering::Greater,
             }
         }
     }
@@ -758,12 +758,6 @@ pub enum SetCredentialRequest {
     TotpVerify(Uuid, u32),
     TotpAcceptSha1(Uuid),
     TotpRemove,
-    // Start the rego.
-    // SecurityKeyBegin(String),
-    // Finish it.
-    // SecurityKeyRegister(Uuid, RegisterPublicKeyCredential),
-    // Remove
-    // SecurityKeyRemove(String),
     BackupCodeGenerate,
     BackupCodeRemove,
 }

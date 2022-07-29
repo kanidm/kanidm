@@ -2,10 +2,9 @@ use crate::error::*;
 use crate::utils;
 
 use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::{ModalProps, PasskeyRemoveModalProps};
+use super::reset::PasskeyRemoveModalProps;
 
 use gloo::console;
-use web_sys::Node;
 use yew::prelude::*;
 use yew_agent::Dispatched;
 

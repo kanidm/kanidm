@@ -2416,15 +2416,6 @@ mod tests {
 
         debug_assert!(delay.is_none());
         assert!(matches!(state, AuthState::Choose(_)));
-        /*
-        match state {
-            AuthState::Choose(_) => {}
-            _ => {
-                error!("Sessions was not initialised");
-                panic!();
-            }
-        };
-        */
 
         // Now push that we want the Password Mech.
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);

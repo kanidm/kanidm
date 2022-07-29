@@ -579,24 +579,7 @@ impl Credential {
                 } else {
                     CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap, backup_code.clone())
                 }
-            } /*
-              CredentialType::Webauthn(map) => {
-                  let mut nmap = map.clone();
-                  if nmap.remove(label).is_none() {
-                      return Err(OperationError::InvalidAttribute(format!(
-                          "Removing Webauthn token with label '{:?}': does not exist",
-                          label
-                      )));
-                  }
-                  if nmap.is_empty() {
-                      return Err(OperationError::InvalidAttribute(format!(
-                          "Removing Webauthn token with label '{:?}': unable to remove, this is the last webauthn token",
-                          label
-                      )));
-                  }
-                  CredentialType::Webauthn(nmap)
-              }
-              */
+            }
         };
 
         // Check stuff
