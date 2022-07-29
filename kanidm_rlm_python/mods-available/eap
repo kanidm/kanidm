@@ -195,7 +195,7 @@ eap {
 		#  In that case, this CA file should contain
 		#  *one* CA certificate.
 		#
-		ca_file = ${cadir}/ca.pem
+		# ca_file = ${cadir}/ca.pem
 
 	 	#  OpenSSL will automatically create certificate chains,
 	 	#  unless we tell it to not do that.  The problem is that
@@ -287,7 +287,7 @@ eap {
 
 		# Accept an expired Certificate Revocation List
 		#
-#		allow_expired_crl = no
+		allow_expired_crl = no
 
 		#
 		#  If check_cert_issuer is set, the value will
@@ -418,7 +418,7 @@ eap {
 			#  If "enable = no" below, you CANNOT enable resumption for just one
 			#  user by setting the above attribute to "yes".
 			#
-			enable = no
+			enable = yes
 
 			#
 			#  Lifetime of the cached entries, in hours. The sessions will be
@@ -456,7 +456,7 @@ eap {
 			#
 			#  This feature REQUIRES "name" option be set above.
 			#
-			#persist_dir = "${logdir}/tlscache"
+			persist_dir = "${logdir}/tlscache"
 		}
 
 		#
@@ -595,7 +595,7 @@ eap {
 		# virtual server has access to these attributes, and can
 		# be used to accept or reject the request.
 		#
-	#	virtual_server = check-eap-tls
+	    virtual_server = check-eap-tls
 	}
 
 

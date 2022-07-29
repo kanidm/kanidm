@@ -2,11 +2,10 @@ FROM opensuse/tumbleweed:latest
 
 EXPOSE 1812 1813
 
-# TODO: remove this once the freeradius python fix has been rolled into tumbleweed main
-RUN zypper ar -f obs://home:firstyear:branches:network home:firstyear:branches:network
-
-RUN zypper --gpg-auto-import-keys refresh --force
-RUN zypper install -y \
+# These all need to be on one line else the rpm cache ends
+# up in the layers.
+RUN zypper refresh --force && \
+    zypper install -y \
     freeradius-client \
     freeradius-server \
     freeradius-server-python3 \
@@ -18,8 +17,9 @@ RUN zypper install -y \
     timezone \
     iproute2 \
     iputils \
-    curl
-RUN zypper clean
+    openssl \
+    curl && \
+    zypper clean
 
 ADD kanidm_rlm_python/mods-available/ /etc/raddb/mods-available/
 COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/

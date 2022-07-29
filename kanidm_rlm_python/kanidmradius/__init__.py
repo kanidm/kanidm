@@ -183,9 +183,11 @@ def authorize(
     # Convert the tok groups to groups.
     name = tok["name"]
     secret = tok["secret"]
+    uuid = tok["uuid"]
 
     reply = (
         ('User-Name', str(name)),
+        ('User-Unique-Id', str(uuid)),
         ('Reply-Message', 'Welcome'),
         ('Tunnel-Type', '13'),
         ('Tunnel-Medium-Type', '6'),
