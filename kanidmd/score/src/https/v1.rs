@@ -500,6 +500,18 @@ pub async fn credential_update_commit(mut req: tide::Request<AppState>) -> tide:
     to_tide_response(res, hvalue)
 }
 
+pub async fn credential_update_cancel(mut req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let session_token: CUSessionToken = req.body_json().await?;
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmcredentialupdatecancel(session_token, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
 pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;

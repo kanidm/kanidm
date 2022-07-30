@@ -15,6 +15,9 @@ use dyn_clone::DynClone;
 use smolset::SmolSet;
 // use std::fmt::Debug;
 
+use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
+
 use time::OffsetDateTime;
 
 mod address;
@@ -43,7 +46,7 @@ pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
 pub use self::cid::ValueSetCid;
-pub use self::cred::{ValueSetCredential, ValueSetIntentToken};
+pub use self::cred::{ValueSetCredential, ValueSetDeviceKey, ValueSetIntentToken, ValueSetPasskey};
 pub use self::datetime::ValueSetDateTime;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
@@ -306,6 +309,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_passkey_map(&self) -> Option<&BTreeMap<Uuid, (String, PasskeyV4)>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_devicekey_map(&self) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
+        debug_assert!(false);
+        None
+    }
+
     fn to_value_single(&self) -> Option<Value> {
         if self.len() != 1 {
             None
@@ -442,6 +455,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         debug_assert!(false);
         None
     }
+
+    fn to_passkey_single(&self) -> Option<&PasskeyV4> {
+        debug_assert!(false);
+        None
+    }
+
+    fn to_devicekey_single(&self) -> Option<&DeviceKeyV4> {
+        debug_assert!(false);
+        None
+    }
 }
 
 impl PartialEq for ValueSet {
@@ -539,6 +562,8 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::PublicBinary(t, b) => ValueSetPublicBinary::new(t, b),
         Value::IntentToken(u, s) => ValueSetIntentToken::new(u, s),
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
+        Value::Passkey(u, t, k) => ValueSetPasskey::new(u, t, k),
+        Value::DeviceKey(u, t, k) => ValueSetDeviceKey::new(u, t, k),
         _ => return Err(OperationError::InvalidValueState),
     };
 
@@ -576,6 +601,8 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::PublicBinary(set) => ValueSetPublicBinary::from_dbvs2(set),
         DbValueSetV2::IntentToken(set) => ValueSetIntentToken::from_dbvs2(set),
         DbValueSetV2::EmailAddress(primary, set) => ValueSetEmailAddress::from_dbvs2(primary, set),
+        DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
+        DbValueSetV2::DeviceKey(set) => ValueSetDeviceKey::from_dbvs2(set),
         /*
         DbValueSetV2::PhoneNumber(set) =>
         DbValueSetV2::TrustedDeviceEnrollment(set) =>

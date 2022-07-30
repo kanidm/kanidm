@@ -101,7 +101,7 @@ pub struct SchemaAttribute {
 impl SchemaAttribute {
     pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
-        trace!("Converting -> {:?}", value);
+        trace!("Converting -> {}", value);
 
         // uuid
         let uuid = value.get_uuid();
@@ -194,6 +194,8 @@ impl SchemaAttribute {
             SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
             SyntaxType::PrivateBinary => v.is_privatebinary(),
             SyntaxType::IntentToken => matches!(v, PartialValue::IntentToken(_)),
+            SyntaxType::Passkey => matches!(v, PartialValue::Passkey(_)),
+            SyntaxType::DeviceKey => matches!(v, PartialValue::DeviceKey(_)),
         };
         if r {
             Ok(())
@@ -234,6 +236,8 @@ impl SchemaAttribute {
                 SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
                 SyntaxType::PrivateBinary => v.is_privatebinary(),
                 SyntaxType::IntentToken => matches!(v, Value::IntentToken(_, _)),
+                SyntaxType::Passkey => matches!(v, Value::Passkey(_, _, _)),
+                SyntaxType::DeviceKey => matches!(v, Value::DeviceKey(_, _, _)),
             };
         if r {
             Ok(())
@@ -304,7 +308,7 @@ pub struct SchemaClass {
 
 impl SchemaClass {
     pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
-        trace!("Converting {:?}", value);
+        trace!("Converting {}", value);
         // uuid
         let uuid = value.get_uuid();
         // Convert entry to a schema class.

@@ -79,7 +79,7 @@ impl QueryServerReadV1 {
     // ! Ideally, this function takes &self, uat, req, and then a `uuid` argument that is a `&str` of the hyphenated uuid.
     // ! Then we just don't skip uuid, and we don't have to do the custom `fields(..)` stuff in this macro call.
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "search",
         skip(self, uat, req, eventid)
         fields(uuid = ?eventid)
@@ -126,7 +126,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "auth",
         skip(self, sessionid, req, eventid)
         fields(uuid = ?eventid)
@@ -171,7 +171,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "online_backup",
         skip(self, msg, outpath, versions)
         fields(uuid = ?msg.eventid)
@@ -290,7 +290,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "whoami",
         skip(self, uat, eventid)
         fields(uuid = ?eventid)
@@ -353,8 +353,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalsearch",
+        level = "info",
+        name = "search2",
         skip(self, uat, filter, attrs, eventid)
         fields(uuid = ?eventid)
     )]
@@ -401,8 +401,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalsearchrecycled",
+        level = "info",
+        name = "search_recycled",
         skip(self, uat, filter, attrs, eventid)
         fields(uuid = ?eventid)
     )]
@@ -450,8 +450,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalradiusread",
+        level = "info",
+        name = "radius_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -515,8 +515,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalradiustokenread",
+        level = "info",
+        name = "radius_token_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -567,8 +567,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalunixusertokenread",
+        level = "info",
+        name = "unix_user_token_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -622,8 +622,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalunixgrouptokenread",
+        level = "info",
+        name = "unix_group_token_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -676,8 +676,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalsshkeyread",
+        level = "info",
+        name = "ssh_key_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -743,8 +743,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internalsshkeytagread",
+        level = "info",
+        name = "ssh_key_tag_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -813,8 +813,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmaccountunixauth",
+        level = "info",
+        name = "idm_account_unix_auth",
         skip(self, uat, uuid_or_name, cred, eventid)
         fields(uuid = ?eventid)
     )]
@@ -867,8 +867,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmcredentialstatus",
+        level = "info",
+        name = "idm_credential_status",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -918,8 +918,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmbackupcodeview",
+        level = "info",
+        name = "idm_backup_code_view",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -969,8 +969,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmcredentialupdatestatus",
+        level = "info",
+        name = "idm_credential_update_status",
         skip(self, session_token, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1001,8 +1001,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmcredentialupdate",
+        level = "info",
+        name = "idm_credential_update",
         skip(self, session_token, scr, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1103,6 +1103,33 @@ impl QueryServerReadV1 {
                         );
                         e
                     }),
+                CURequest::PasskeyInit => idms_cred_update
+                    .credential_passkey_init(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_passkey_init",
+                        );
+                        e
+                    }),
+                CURequest::PasskeyFinish(label, rpkc) => idms_cred_update
+                    .credential_passkey_finish(&session_token, ct, label, rpkc)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_passkey_init",
+                        );
+                        e
+                    }),
+                CURequest::PasskeyRemove(uuid) => idms_cred_update
+                    .credential_passkey_remove(&session_token, ct, uuid)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_passkey_init",
+                        );
+                        e
+                    }),
             }
             .map(|sta| sta.into())
         });
@@ -1110,7 +1137,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_authorise",
         skip(self, uat, auth_req, eventid)
         fields(uuid = ?eventid)
@@ -1143,7 +1170,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_authorise_permit",
         skip(self, uat, consent_req, eventid)
         fields(uuid = ?eventid)
@@ -1175,7 +1202,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_authorise_reject",
         skip(self, uat, consent_req, eventid)
         fields(uuid = ?eventid)
@@ -1207,7 +1234,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_token_exchange",
         skip(self, client_authz, token_req, eventid)
         fields(uuid = ?eventid)
@@ -1228,7 +1255,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_token_introspect",
         skip(self, client_authz, intr_req, eventid)
         fields(uuid = ?eventid)
@@ -1249,7 +1276,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_openid_userinfo",
         skip(self, client_id, client_authz, eventid)
         fields(uuid = ?eventid)
@@ -1269,7 +1296,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_openid_discovery",
         skip(self, client_id, eventid)
         fields(uuid = ?eventid)
@@ -1287,7 +1314,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_openid_publickey",
         skip(self, client_id, eventid)
         fields(uuid = ?eventid)
@@ -1305,8 +1332,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "domain_display_name",
+        level = "info",
+        name = "get_domain_display_name",
         skip(self, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1319,7 +1346,7 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "auth_valid",
         skip(self, uat, eventid)
         fields(uuid = ?eventid)
@@ -1345,8 +1372,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "ldaprequest",
+        level = "info",
+        name = "ldap_request",
         skip(self, eventid,  protomsg, uat)
         fields(uuid = ?eventid)
     )]

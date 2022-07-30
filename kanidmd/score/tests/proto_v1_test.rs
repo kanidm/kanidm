@@ -9,7 +9,7 @@ use kanidm_proto::v1::{CURegState, CredentialDetailType, Entry, Filter, Modify, 
 mod common;
 use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
 
-use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
+use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
 const ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
@@ -84,7 +84,7 @@ async fn test_server_whoami_anonymous() {
         None => panic!(),
     };
     debug!("{}", uat);
-    assert!(uat.spn == "anonymous@idm.example.com");
+    assert!(uat.spn == "anonymous@localhost");
 
     // Do a check of the auth/valid endpoint, tells us if our token
     // is okay.
@@ -111,7 +111,7 @@ async fn test_server_whoami_admin_simple_password() {
         None => panic!(),
     };
     debug!("{}", uat);
-    assert!(uat.spn == "admin@idm.example.com");
+    assert!(uat.spn == "admin@localhost");
 }
 
 #[tokio::test]
@@ -301,7 +301,7 @@ async fn test_server_rest_group_lifecycle() {
         .await
         .unwrap();
     let members = rsclient.idm_group_get_members("demo_group").await.unwrap();
-    assert!(members == Some(vec!["admin@idm.example.com".to_string()]));
+    assert!(members == Some(vec!["admin@localhost".to_string()]));
 
     // Set the list of members
     rsclient
@@ -312,8 +312,8 @@ async fn test_server_rest_group_lifecycle() {
     assert!(
         members
             == Some(vec![
-                "admin@idm.example.com".to_string(),
-                "demo_group@idm.example.com".to_string()
+                "admin@localhost".to_string(),
+                "demo_group@localhost".to_string()
             ])
     );
 
@@ -323,7 +323,7 @@ async fn test_server_rest_group_lifecycle() {
         .await
         .unwrap();
     let members = rsclient.idm_group_get_members("demo_group").await.unwrap();
-    assert!(members == Some(vec!["admin@idm.example.com".to_string()]));
+    assert!(members == Some(vec!["admin@localhost".to_string()]));
 
     // purge members
     rsclient
@@ -346,7 +346,7 @@ async fn test_server_rest_group_lifecycle() {
     // They should have members
     let members = rsclient.idm_group_get_members("idm_admins").await.unwrap();
     println!("{:?}", members);
-    assert!(members == Some(vec!["idm_admin@idm.example.com".to_string()]));
+    assert!(members == Some(vec!["idm_admin@localhost".to_string()]));
 }
 
 #[tokio::test]
@@ -1063,201 +1063,6 @@ async fn test_server_rest_backup_code_auth_lifecycle() {
 }
 
 #[tokio::test]
-async fn test_server_rest_webauthn_auth_lifecycle() {
-    let rsclient = setup_async_test().await;
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
-
-    // Create a new account
-    rsclient
-        .idm_account_create("demo_account", "Deeeeemo")
-        .await
-        .unwrap();
-
-    // Enroll a soft token to the account webauthn.
-    let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
-
-    // Do the challenge
-    let (sessionid, regchal) = rsclient
-        .idm_account_primary_credential_register_webauthn("demo_account", "softtok")
-        .await
-        .unwrap();
-
-    let rego = wa_softtok
-        .do_registration("https://idm.example.com", regchal)
-        .expect("Failed to register to softtoken");
-
-    // Enroll the cred after signing.
-    rsclient
-        .idm_account_primary_credential_complete_webuthn_registration(
-            "demo_account",
-            rego,
-            sessionid,
-        )
-        .await
-        .unwrap();
-
-    // ====== Reg a second token.
-    let mut wa_softtok_2 = WebauthnAuthenticator::new(U2FSoft::new());
-
-    // Do the challenge
-    let (sessionid, regchal) = rsclient
-        .idm_account_primary_credential_register_webauthn("demo_account", "softtok_2")
-        .await
-        .unwrap();
-
-    let rego = wa_softtok_2
-        .do_registration("https://idm.example.com", regchal)
-        .expect("Failed to register to softtoken");
-
-    // Enroll the cred after signing.
-    rsclient
-        .idm_account_primary_credential_complete_webuthn_registration(
-            "demo_account",
-            rego,
-            sessionid,
-        )
-        .await
-        .unwrap();
-
-    // Now do an auth
-    let rsclient_good = rsclient.new_session().unwrap();
-
-    let pkr = rsclient_good
-        .auth_webauthn_begin("demo_account")
-        .await
-        .unwrap();
-
-    // Get the auth chal.
-    let auth = wa_softtok_2
-        .do_authentication("https://idm.example.com", pkr)
-        .expect("Failed to auth to softtoken");
-
-    // Submit the webauthn auth.
-    rsclient_good
-        .auth_webauthn_complete(auth)
-        .await
-        .expect("Failed to authenticate");
-
-    // ======== remove the second softtok.
-
-    rsclient
-        .idm_account_primary_credential_remove_webauthn("demo_account", "softtok_2")
-        .await
-        .expect("failed to remove softtoken");
-
-    // All good, check first tok auth.
-
-    let rsclient_good = rsclient.new_session().unwrap();
-
-    let pkr = rsclient_good
-        .auth_webauthn_begin("demo_account")
-        .await
-        .unwrap();
-
-    // Get the auth chal.
-    let auth = wa_softtok
-        .do_authentication("https://idm.example.com", pkr)
-        .expect("Failed to auth to softtoken");
-
-    // Submit the webauthn auth.
-    rsclient_good
-        .auth_webauthn_complete(auth)
-        .await
-        .expect("Failed to authenticate");
-}
-
-#[tokio::test]
-async fn test_server_rest_webauthn_mfa_auth_lifecycle() {
-    let rsclient = setup_async_test().await;
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
-
-    // Create a new account
-    rsclient
-        .idm_account_create("demo_account", "Deeeeemo")
-        .await
-        .unwrap();
-
-    // Enroll a soft token to the account webauthn.
-    let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
-
-    // Do the challenge
-    let (sessionid, regchal) = rsclient
-        .idm_account_primary_credential_register_webauthn("demo_account", "softtok")
-        .await
-        .unwrap();
-
-    let rego = wa_softtok
-        .do_registration("https://idm.example.com", regchal)
-        .expect("Failed to register to softtoken");
-
-    // Enroll the cred after signing.
-    rsclient
-        .idm_account_primary_credential_complete_webuthn_registration(
-            "demo_account",
-            rego,
-            sessionid,
-        )
-        .await
-        .unwrap();
-
-    // Now do an auth
-    let rsclient_good = rsclient.new_session().unwrap();
-
-    let pkr = rsclient_good
-        .auth_webauthn_begin("demo_account")
-        .await
-        .unwrap();
-
-    // Get the auth chal.
-    let auth = wa_softtok
-        .do_authentication("https://idm.example.com", pkr)
-        .expect("Failed to auth to softtoken");
-
-    // Submit the webauthn auth.
-    rsclient_good
-        .auth_webauthn_complete(auth)
-        .await
-        .expect("Failed to authenticate");
-
-    // Set a password to cause the state to change to PasswordMfa
-    assert!(rsclient
-        .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
-        .await
-        .is_ok());
-
-    // Now remove Webauthn ...
-    rsclient
-        .idm_account_primary_credential_remove_webauthn("demo_account", "softtok")
-        .await
-        .expect("failed to remove softtoken");
-
-    // Check pw only
-    let rsclient_good = rsclient.new_session().unwrap();
-    assert!(rsclient_good
-        .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
-        .await
-        .is_ok());
-}
-
-#[tokio::test]
 async fn test_server_rest_oauth2_basic_lifecycle() {
     let rsclient = setup_async_test().await;
     let res = rsclient
@@ -1558,5 +1363,94 @@ async fn test_server_credential_update_session_totp_pw() {
     let res = rsclient
         .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
         .await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
+async fn test_server_credential_update_session_passkey() {
+    let rsclient = setup_async_test().await;
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // Not recommended in production!
+    rsclient
+        .idm_group_add_members("idm_admins", &["admin"])
+        .await
+        .unwrap();
+
+    // Create an account
+    rsclient
+        .idm_account_create("demo_account", "Demo Account")
+        .await
+        .unwrap();
+
+    // Create an intent token for them
+    let intent_token = rsclient
+        .idm_account_credential_update_intent("demo_account")
+        .await
+        .unwrap();
+
+    // Logout, we don't need any auth now.
+    let _ = rsclient.logout();
+    // Exchange the intent token
+    let (session_token, _status) = rsclient
+        .idm_account_credential_update_exchange(intent_token)
+        .await
+        .unwrap();
+
+    let _status = rsclient
+        .idm_account_credential_update_status(&session_token)
+        .await
+        .unwrap();
+
+    // Setup and update the passkey
+    let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
+
+    let status = rsclient
+        .idm_account_credential_update_passkey_init(&session_token)
+        .await
+        .unwrap();
+
+    let passkey_chal = match status.mfaregstate {
+        CURegState::Passkey(c) => Some(c),
+        _ => None,
+    }
+    .expect("Unable to access passkey challenge, invalid state");
+
+    eprintln!("{}", rsclient.get_origin());
+    let passkey_resp = wa
+        .do_registration(rsclient.get_origin().clone(), passkey_chal)
+        .expect("Failed to create soft passkey");
+
+    let label = "Soft Passkey".to_string();
+
+    let status = rsclient
+        .idm_account_credential_update_passkey_finish(&session_token, label, passkey_resp)
+        .await
+        .unwrap();
+
+    assert!(status.can_commit);
+    assert!(status.passkeys.len() == 1);
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .unwrap();
+
+    // Assert it now works.
+    let _ = rsclient.logout();
+    let res = rsclient
+        .auth_passkey_begin("demo_account")
+        .await
+        .expect("Failed to start passkey auth");
+
+    let pkc = wa
+        .do_authentication(rsclient.get_origin().clone(), res)
+        .expect("Failed to authentication with soft passkey");
+
+    let res = rsclient.auth_passkey_complete(pkc).await;
     assert!(res.is_ok());
 }

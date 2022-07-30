@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
-use webauthn_rs::proto::{
+use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
     RequestChallengeResponse,
 };
@@ -202,11 +202,8 @@ pub enum AuthType {
     UnixPassword,
     Password,
     GeneratedPassword,
-    Webauthn,
     PasswordMfa,
-    // PasswordWebauthn,
-    // WebauthnVerified,
-    // PasswordWebauthnVerified,
+    Passkey,
 }
 
 impl fmt::Display for AuthType {
@@ -216,8 +213,8 @@ impl fmt::Display for AuthType {
             AuthType::UnixPassword => write!(f, "unixpassword"),
             AuthType::Password => write!(f, "password"),
             AuthType::GeneratedPassword => write!(f, "generatedpassword"),
-            AuthType::Webauthn => write!(f, "webauthn"),
             AuthType::PasswordMfa => write!(f, "passwordmfa"),
+            AuthType::Passkey => write!(f, "passkey"),
         }
     }
 }
@@ -380,7 +377,7 @@ pub struct AccountOrgPersonExtend {
 pub enum CredentialDetailType {
     Password,
     GeneratedPassword,
-    Webauthn(Vec<String>),
+    Passkey(Vec<String>),
     /// totp, webauthn
     PasswordMfa(bool, Vec<String>, usize),
 }
@@ -388,7 +385,6 @@ pub enum CredentialDetailType {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CredentialDetail {
     pub uuid: Uuid,
-    pub claims: Vec<String>,
     pub type_: CredentialDetailType,
 }
 
@@ -404,11 +400,11 @@ impl fmt::Display for CredentialDetail {
         match &self.type_ {
             CredentialDetailType::Password => writeln!(f, "password: set"),
             CredentialDetailType::GeneratedPassword => writeln!(f, "generated password: set"),
-            CredentialDetailType::Webauthn(labels) => {
+            CredentialDetailType::Passkey(labels) => {
                 if labels.is_empty() {
-                    writeln!(f, "webauthn: no authenticators")
+                    writeln!(f, "passkeys: none registered")
                 } else {
-                    writeln!(f, "webauthn:")?;
+                    writeln!(f, "passkeys:")?;
                     for label in labels {
                         writeln!(f, " * {}", label)?;
                     }
@@ -439,6 +435,12 @@ impl fmt::Display for CredentialDetail {
             }
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PasskeyDetail {
+    pub uuid: Uuid,
+    pub tag: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -597,8 +599,10 @@ pub enum AuthCredential {
     Anonymous,
     Password(String),
     Totp(u32),
-    Webauthn(PublicKeyCredential),
+    SecurityKey(PublicKeyCredential),
     BackupCode(String),
+    // Should this just be discoverable?
+    Passkey(PublicKeyCredential),
 }
 
 impl fmt::Debug for AuthCredential {
@@ -607,8 +611,9 @@ impl fmt::Debug for AuthCredential {
             AuthCredential::Anonymous => write!(fmt, "Anonymous"),
             AuthCredential::Password(_) => write!(fmt, "Password(_)"),
             AuthCredential::Totp(_) => write!(fmt, "TOTP(_)"),
-            AuthCredential::Webauthn(_) => write!(fmt, "Webauthn(_)"),
+            AuthCredential::SecurityKey(_) => write!(fmt, "SecurityKey(_)"),
             AuthCredential::BackupCode(_) => write!(fmt, "BackupCode(_)"),
+            AuthCredential::Passkey(_) => write!(fmt, "Passkey(_)"),
         }
     }
 }
@@ -619,9 +624,7 @@ pub enum AuthMech {
     Anonymous,
     Password,
     PasswordMfa,
-    Webauthn,
-    // WebauthnVerified,
-    // PasswordWebauthnVerified
+    Passkey,
 }
 
 impl PartialEq for AuthMech {
@@ -634,9 +637,9 @@ impl fmt::Display for AuthMech {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AuthMech::Anonymous => write!(f, "Anonymous (no credentials)"),
-            AuthMech::Password => write!(f, "Passwold Only"),
-            AuthMech::PasswordMfa => write!(f, "TOTP or Token, and Password"),
-            AuthMech::Webauthn => write!(f, "Webauthn Token"),
+            AuthMech::Password => write!(f, "Password"),
+            AuthMech::PasswordMfa => write!(f, "TOTP/Backup Code and Password"),
+            AuthMech::Passkey => write!(f, "Passkey"),
         }
     }
 }
@@ -669,7 +672,8 @@ pub enum AuthAllowed {
     BackupCode,
     Password,
     Totp,
-    Webauthn(RequestChallengeResponse),
+    SecurityKey(RequestChallengeResponse),
+    Passkey(RequestChallengeResponse),
 }
 
 impl PartialEq for AuthAllowed {
@@ -695,9 +699,11 @@ impl Ord for AuthAllowed {
                 (_, AuthAllowed::BackupCode) => Ordering::Greater,
                 (AuthAllowed::Totp, _) => Ordering::Less,
                 (_, AuthAllowed::Totp) => Ordering::Greater,
-                (AuthAllowed::Webauthn(_), _) => Ordering::Less,
+                (AuthAllowed::SecurityKey(_), _) => Ordering::Less,
+                (_, AuthAllowed::SecurityKey(_)) => Ordering::Greater,
+                (AuthAllowed::Passkey(_), _) => Ordering::Less,
                 // Unreachable
-                // (_, AuthAllowed::Webauthn(_)) => Ordering::Greater,
+                // (_, AuthAllowed::Passkey(_)) => Ordering::Greater,
             }
         }
     }
@@ -716,7 +722,8 @@ impl fmt::Display for AuthAllowed {
             AuthAllowed::Password => write!(f, "Password"),
             AuthAllowed::BackupCode => write!(f, "Backup Code"),
             AuthAllowed::Totp => write!(f, "TOTP"),
-            AuthAllowed::Webauthn(_) => write!(f, "Webauthn Token"),
+            AuthAllowed::SecurityKey(_) => write!(f, "Security Token"),
+            AuthAllowed::Passkey(_) => write!(f, "Passkey"),
         }
     }
 }
@@ -751,12 +758,6 @@ pub enum SetCredentialRequest {
     TotpVerify(Uuid, u32),
     TotpAcceptSha1(Uuid),
     TotpRemove,
-    // Start the rego.
-    WebauthnBegin(String),
-    // Finish it.
-    WebauthnRegister(Uuid, RegisterPublicKeyCredential),
-    // Remove
-    WebauthnRemove(String),
     BackupCodeGenerate,
     BackupCodeRemove,
 }
@@ -817,7 +818,7 @@ pub enum SetCredentialResponse {
     Token(String),
     TotpCheck(Uuid, TotpSecret),
     TotpInvalidSha1(Uuid),
-    WebauthnCreateChallenge(Uuid, CreationChallengeResponse),
+    SecurityKeyCreateChallenge(Uuid, CreationChallengeResponse),
     BackupCodes(Vec<String>),
 }
 
@@ -843,6 +844,9 @@ pub enum CURequest {
     TotpRemove,
     BackupCodeGenerate,
     BackupCodeRemove,
+    PasskeyInit,
+    PasskeyFinish(String, RegisterPublicKeyCredential),
+    PasskeyRemove(Uuid),
 }
 
 impl fmt::Debug for CURequest {
@@ -857,6 +861,9 @@ impl fmt::Debug for CURequest {
             CURequest::TotpRemove => "CURequest::TotpRemove",
             CURequest::BackupCodeGenerate => "CURequest::BackupCodeGenerate",
             CURequest::BackupCodeRemove => "CURequest::BackupCodeRemove",
+            CURequest::PasskeyInit => "CURequest::PasskeyInit",
+            CURequest::PasskeyFinish(_, _) => "CURequest::PasskeyFinish",
+            CURequest::PasskeyRemove(_) => "CURequest::PasskeyRemove",
         };
         writeln!(f, "{}", t)
     }
@@ -870,6 +877,7 @@ pub enum CURegState {
     TotpTryAgain,
     TotpInvalidSha1,
     BackupCodes(Vec<String>),
+    Passkey(CreationChallengeResponse),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -878,6 +886,7 @@ pub struct CUStatus {
     pub displayname: String,
     pub can_commit: bool,
     pub primary: Option<CredentialDetail>,
+    pub passkeys: Vec<PasskeyDetail>,
     pub mfaregstate: CURegState,
 }
 

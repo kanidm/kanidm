@@ -409,7 +409,7 @@ pub fn domain_rename_core(config: &Configuration) {
         }
     };
 
-    // setup the qs - *with out* init of the migrations and schema.
+    // Setup the qs, and perform any migrations and changes we may have.
     let qs = match setup_qs(be, schema, config) {
         Ok(t) => t,
         Err(e) => {
@@ -441,7 +441,7 @@ pub fn domain_rename_core(config: &Configuration) {
     }
 
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
-    let r = qs_write.domain_rename().and_then(|_| qs_write.commit());
+    let r = qs_write.domain_rename(new_domain_name).and_then(|_| qs_write.commit());
 
     match r {
         Ok(_) => info!("Domain Rename Success!"),

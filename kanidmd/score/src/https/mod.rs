@@ -702,6 +702,10 @@ pub fn create_https_server(
         .at("/_commit")
         .mapped_post(&mut routemap, credential_update_commit);
 
+    cred_route
+        .at("/_cancel")
+        .mapped_post(&mut routemap, credential_update_cancel);
+
     let mut group_route = appserver.at("/v1/group");
     group_route
         .at("/")

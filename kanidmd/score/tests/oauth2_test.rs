@@ -64,7 +64,7 @@ async fn test_oauth2_openid_basic_flow() {
     rsclient
         .idm_account_person_extend(
             "admin",
-            Some(&["admin@idm.example.com".to_string()]),
+            Some(&["admin@localhost".to_string()]),
             Some("Admin Istrator"),
         )
         .await
@@ -138,34 +138,32 @@ async fn test_oauth2_openid_basic_flow() {
         .await
         .expect("Failed to access response body");
 
+    tracing::trace!(?discovery);
+
     // Most values are checked in idm/oauth2.rs, but we want to sanity check
     // the urls here as an extended function smoke test.
     assert!(
-        discovery.issuer
-            == Url::parse("https://idm.example.com/oauth2/openid/test_integration").unwrap()
+        discovery.issuer == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap()
     );
 
-    assert!(
-        discovery.authorization_endpoint
-            == Url::parse("https://idm.example.com/ui/oauth2").unwrap()
-    );
+    assert!(discovery.authorization_endpoint == Url::parse(&format!("{}/ui/oauth2", url)).unwrap());
 
-    assert!(
-        discovery.token_endpoint == Url::parse("https://idm.example.com/oauth2/token").unwrap()
-    );
+    assert!(discovery.token_endpoint == Url::parse(&format!("{}/oauth2/token", url)).unwrap());
 
     assert!(
         discovery.userinfo_endpoint
             == Some(
-                Url::parse("https://idm.example.com/oauth2/openid/test_integration/userinfo")
-                    .unwrap()
+                Url::parse(&format!("{}/oauth2/openid/test_integration/userinfo", url)).unwrap()
             )
     );
 
     assert!(
         discovery.jwks_uri
-            == Url::parse("https://idm.example.com/oauth2/openid/test_integration/public_key.jwk")
-                .unwrap()
+            == Url::parse(&format!(
+                "{}/oauth2/openid/test_integration/public_key.jwk",
+                url
+            ))
+            .unwrap()
     );
 
     // Step 0 - get the jwks public key.
@@ -319,7 +317,7 @@ async fn test_oauth2_openid_basic_flow() {
     assert!(tir.active);
     assert!(tir.scope.is_some());
     assert!(tir.client_id.as_deref() == Some("test_integration"));
-    assert!(tir.username.as_deref() == Some("admin@idm.example.com"));
+    assert!(tir.username.as_deref() == Some("admin@localhost"));
     assert!(tir.token_type.as_deref() == Some("access_token"));
     assert!(tir.exp.is_some());
     assert!(tir.iat.is_some());
@@ -339,10 +337,8 @@ async fn test_oauth2_openid_basic_flow() {
 
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.
-    assert!(
-        oidc.iss == Url::parse("https://idm.example.com/oauth2/openid/test_integration").unwrap()
-    );
-    assert!(oidc.s_claims.email.as_deref() == Some("admin@idm.example.com"));
+    assert!(oidc.iss == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap());
+    assert!(oidc.s_claims.email.as_deref() == Some("admin@localhost"));
     assert!(oidc.s_claims.email_verified == Some(true));
 
     let response = client

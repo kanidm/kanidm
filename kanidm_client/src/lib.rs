@@ -38,9 +38,8 @@ use uuid::Uuid;
 pub use reqwest::StatusCode;
 
 use kanidm_proto::v1::*;
-use webauthn_rs::proto::{
-    CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
-    RequestChallengeResponse,
+use webauthn_rs_proto::{
+    PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
 };
 
 pub const APPLICATION_JSON: &str = "application/json";
@@ -85,7 +84,7 @@ pub struct KanidmClientBuilder {
 pub struct KanidmClient {
     pub(crate) client: reqwest::Client,
     pub(crate) addr: String,
-    pub(crate) origin: String,
+    pub(crate) origin: Url,
     pub(crate) builder: KanidmClientBuilder,
     pub(crate) bearer_token: RwLock<Option<String>>,
     pub(crate) auth_session_id: RwLock<Option<String>>,
@@ -374,10 +373,11 @@ impl KanidmClientBuilder {
 
         // Now get the origin.
         #[allow(clippy::expect_used)]
-        let uri = Url::parse(&address).expect("can not fail");
+        let uri = Url::parse(&address).expect("failed to parse address");
 
         #[allow(clippy::expect_used)]
-        let origin = uri.origin().unicode_serialization();
+        let origin =
+            Url::parse(&uri.origin().ascii_serialization()).expect("failed to parse origin");
 
         Ok(KanidmClient {
             client,
@@ -391,8 +391,8 @@ impl KanidmClientBuilder {
 }
 
 impl KanidmClient {
-    pub fn get_origin(&self) -> &str {
-        self.origin.as_str()
+    pub fn get_origin(&self) -> &Url {
+        &self.origin
     }
 
     pub fn get_url(&self) -> &str {
@@ -919,12 +919,29 @@ impl KanidmClient {
         r
     }
 
-    pub async fn auth_step_webauthn_complete(
+    pub async fn auth_step_securitykey_complete(
         &self,
         pkc: PublicKeyCredential,
     ) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Webauthn(pkc)),
+            step: AuthStep::Cred(AuthCredential::SecurityKey(pkc)),
+        };
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
+
+        if let Ok(ar) = &r {
+            if let AuthState::Success(token) = &ar.state {
+                self.set_token(token.clone()).await;
+            };
+        };
+        r
+    }
+
+    pub async fn auth_step_passkey_complete(
+        &self,
+        pkc: PublicKeyCredential,
+    ) -> Result<AuthResponse, ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::Passkey(pkc)),
         };
         let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
@@ -1091,7 +1108,7 @@ impl KanidmClient {
         }
     }
 
-    pub async fn auth_webauthn_begin(
+    pub async fn auth_passkey_begin(
         &self,
         ident: &str,
     ) -> Result<RequestChallengeResponse, ClientError> {
@@ -1100,28 +1117,25 @@ impl KanidmClient {
             Err(e) => return Err(e),
         };
 
-        if !mechs.contains(&AuthMech::Webauthn) {
+        if !mechs.contains(&AuthMech::Passkey) {
             debug!("Webauthn mech not presented");
             return Err(ClientError::AuthenticationFailed);
         }
 
-        let state = match self.auth_step_begin(AuthMech::Webauthn).await {
+        let state = match self.auth_step_begin(AuthMech::Passkey).await {
             Ok(mut s) => s.pop(),
             Err(e) => return Err(e),
         };
 
         // State is now a set of auth continues.
         match state {
-            Some(AuthAllowed::Webauthn(r)) => Ok(r),
+            Some(AuthAllowed::Passkey(r)) => Ok(r),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
 
-    pub async fn auth_webauthn_complete(
-        &self,
-        pkc: PublicKeyCredential,
-    ) -> Result<(), ClientError> {
-        let r = self.auth_step_webauthn_complete(pkc).await?;
+    pub async fn auth_passkey_complete(&self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
+        let r = self.auth_step_passkey_complete(pkc).await?;
         match r.state {
             AuthState::Success(_token) => Ok(()),
             _ => Err(ClientError::AuthenticationFailed),
@@ -1504,6 +1518,7 @@ impl KanidmClient {
         }
     }
 
+    /*
     pub async fn idm_account_primary_credential_register_webauthn(
         &self,
         id: &str,
@@ -1561,6 +1576,7 @@ impl KanidmClient {
             Err(e) => Err(e),
         }
     }
+    */
 
     pub async fn idm_account_primary_credential_generate_backup_code(
         &self,
@@ -1718,6 +1734,36 @@ impl KanidmClient {
         session_token: &CUSessionToken,
     ) -> Result<CUStatus, ClientError> {
         let scr = CURequest::PrimaryRemove;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_passkey_init(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::PasskeyInit;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_passkey_finish(
+        &self,
+        session_token: &CUSessionToken,
+        label: String,
+        registration: RegisterPublicKeyCredential,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::PasskeyFinish(label, registration);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_passkey_remove(
+        &self,
+        session_token: &CUSessionToken,
+        uuid: Uuid,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::PasskeyRemove(uuid);
         self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
             .await
     }

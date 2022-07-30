@@ -18,8 +18,7 @@ use crate::event::{
 };
 use crate::idm::event::{
     AcceptSha1TotpEvent, GeneratePasswordEvent, GenerateTotpEvent, PasswordChangeEvent,
-    RegenerateRadiusSecretEvent, RemoveTotpEvent, RemoveWebauthnEvent, UnixPasswordChangeEvent,
-    VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    RegenerateRadiusSecretEvent, RemoveTotpEvent, UnixPasswordChangeEvent, VerifyTotpEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -168,7 +167,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "create",
         skip(self, uat, req, eventid)
         fields(uuid = ?eventid)
@@ -210,11 +209,17 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "info",
+        name = "modify",
+        skip(self, uat, req, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_modify(
         &self,
         uat: Option<String>,
         req: ModifyRequest,
-        _eventid: Uuid,
+        eventid: Uuid,
     ) -> Result<(), OperationError> {
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<ModifyMessage>", {
@@ -246,7 +251,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "delete",
         skip(self, uat, req, eventid)
         fields(uuid = ?eventid)
@@ -285,12 +290,18 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "info",
+        name = "patch",
+        skip(self, uat, filter, update, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalpatch(
         &self,
         uat: Option<String>,
         filter: Filter<FilterInvalid>,
         update: ProtoEntry,
-        _eventid: Uuid,
+        eventid: Uuid,
     ) -> Result<(), OperationError> {
         // Given a protoEntry, turn this into a modification set.
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
@@ -333,8 +344,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "internal_delete",
+        level = "info",
+        name = "delete2",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -373,8 +384,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "reviverecycled",
+        level = "info",
+        name = "revive_recycled",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -415,8 +426,8 @@ impl QueryServerWriteV1 {
 
     // === IDM native types for modifications
     #[instrument(
-        level = "trace",
-        name = "credentialset",
+        level = "info",
+        name = "credential_set",
         skip(self, uat, uuid_or_name, sac, eventid)
         fields(uuid = ?eventid)
     )]
@@ -561,7 +572,8 @@ impl QueryServerWriteV1 {
                         .remove_account_totp(&rte)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
-                SetCredentialRequest::WebauthnBegin(label) => {
+                /*
+                SetCredentialRequest::SecurityKeyBegin(label) => {
                     let wre = WebauthnInitRegisterEvent::from_parts(
                         // &idms_prox_write.qs_write,
                         ident,
@@ -579,7 +591,7 @@ impl QueryServerWriteV1 {
                         .reg_account_webauthn_init(&wre, ct)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
-                SetCredentialRequest::WebauthnRegister(uuid, rpkc) => {
+                SetCredentialRequest::SecurityKeyRegister(uuid, rpkc) => {
                     let wre = WebauthnDoRegisterEvent::from_parts(
                         // &idms_prox_write.qs_write,
                         ident,
@@ -598,7 +610,7 @@ impl QueryServerWriteV1 {
                         .reg_account_webauthn_complete(&wre)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
-                SetCredentialRequest::WebauthnRemove(label) => {
+                SetCredentialRequest::SecurityKeyRemove(label) => {
                     let rwe = RemoveWebauthnEvent::from_parts(
                         // &idms_prox_write.qs_write,
                         ident,
@@ -616,6 +628,7 @@ impl QueryServerWriteV1 {
                         .remove_account_webauthn(&rwe)
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
+                */
                 SetCredentialRequest::BackupCodeGenerate => {
                     let gbe = GenerateBackupCodeEvent::from_parts(
                         // &idms_prox_write.qs_write,
@@ -657,8 +670,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmcredentialupdate",
+        level = "info",
+        name = "idm_credential_update",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -710,8 +723,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmcredentialupdateintent",
+        level = "info",
+        name = "idm_credential_update_intent",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -762,8 +775,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmcredentialexchangeintent",
+        level = "info",
+        name = "idm_credential_exchange_intent",
         skip(self, intent_token, eventid)
         fields(uuid = ?eventid)
     )]
@@ -802,8 +815,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmcredentialupdatecommit",
+        level = "info",
+        name = "idm_credential_update_commit",
         skip(self, session_token, eventid)
         fields(uuid = ?eventid)
     )]
@@ -834,8 +847,40 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmaccountsetpassword",
+        level = "info",
+        name = "idm_credential_update_cancel",
+        skip(self, session_token, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialupdatecancel(
+        &self,
+        session_token: CUSessionToken,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let res = spanned!("actors::v1_write::handle<IdmCredentialUpdateCancel>", {
+            let session_token = CredentialUpdateSessionToken {
+                token_enc: session_token.token,
+            };
+
+            idms_prox_write
+                .cancel_credential_update(session_token, ct)
+                .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin commit_credential_cancel",
+                    );
+                    e
+                })
+        });
+        res
+    }
+
+    #[instrument(
+        level = "info",
+        name = "idm_account_set_password",
         skip(self, uat, cleartext, eventid)
         fields(uuid = ?eventid)
     )]
@@ -875,8 +920,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "regenerateradius",
+        level = "info",
+        name = "regenerate_radius_secret",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -931,8 +976,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "purgeattribute",
+        level = "info",
+        name = "purge_attribute",
         skip(self, uat, uuid_or_name, attr, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -987,8 +1032,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "removeattributevalues",
+        level = "info",
+        name = "remove_attribute_values",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1051,8 +1096,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "appendattribute",
+        level = "info",
+        name = "append_attribute",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1080,8 +1125,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "setattribute",
+        level = "info",
+        name = "set_attribute",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1112,8 +1157,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "sshkeycreate",
+        level = "info",
+        name = "ssh_key_create",
         skip(self, uat, uuid_or_name, tag, key, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1137,8 +1182,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmaccountpersonextend",
+        level = "info",
+        name = "idm_account_person_extend",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1193,8 +1238,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmaccountpersonset",
+        level = "info",
+        name = "idm_account_person_set",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1248,8 +1293,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmaccountunixextend",
+        level = "info",
+        name = "idm_account_unix_extend",
         skip(self, uat, uuid_or_name, ux, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1295,8 +1340,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmgroupunixextend",
+        level = "info",
+        name = "idm_group_unix_extend",
         skip(self, uat, uuid_or_name, gx, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1330,8 +1375,8 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
-        name = "idmaccountunixsetcred",
+        level = "info",
+        name = "idm_account_unix_set_cred",
         skip(self, uat, uuid_or_name, cred, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1384,7 +1429,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_scopemap_create",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
@@ -1453,7 +1498,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_scopemap_delete",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
@@ -1514,7 +1559,7 @@ impl QueryServerWriteV1 {
 
     // ===== These below are internal only event types. =====
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "purge_tombstone_event",
         skip(self, msg)
         fields(uuid = ?msg.eventid)
@@ -1535,7 +1580,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "purge_recycled_event",
         skip(self, msg)
         fields(uuid = ?msg.eventid)
@@ -1556,7 +1601,7 @@ impl QueryServerWriteV1 {
 
     pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
         let eventid = Uuid::new_v4();
-        let nspan = span!(Level::TRACE, "delayedaction", uuid = ?eventid);
+        let nspan = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
         let _span = nspan.enter();
 
         trace!("Begin delayed action ...");

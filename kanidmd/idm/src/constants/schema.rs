@@ -928,6 +928,68 @@ pub const JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_PASSKEYS: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A set of registered passkeys"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "passkeys"
+      ],
+      "syntax": [
+        "PASSKEY"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000099"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_DEVICEKEYS: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A set of registered device keys"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "devicekeys"
+      ],
+      "syntax": [
+        "DEVICEKEY"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000100"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1031,6 +1093,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
       ],
       "systemmay": [
         "primary_credential",
+        "passkeys",
+        "devicekeys",
         "credential_update_intent_token",
         "ssh_publickey",
         "radius_secret",

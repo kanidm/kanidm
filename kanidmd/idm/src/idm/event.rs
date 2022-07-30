@@ -1,7 +1,5 @@
 use crate::prelude::*;
-
 use kanidm_proto::v1::OperationError;
-use webauthn_rs::proto::RegisterPublicKeyCredential;
 
 pub struct PasswordChangeEvent {
     pub ident: Identity,
@@ -380,107 +378,6 @@ impl RemoveTotpEvent {
         let ident = Identity::from_internal();
 
         RemoveTotpEvent { ident, target }
-    }
-}
-
-#[derive(Debug)]
-pub struct WebauthnInitRegisterEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-    pub label: String,
-}
-
-impl WebauthnInitRegisterEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-        label: String,
-    ) -> Result<Self, OperationError> {
-        Ok(WebauthnInitRegisterEvent {
-            ident,
-            target,
-            label,
-        })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid, label: String) -> Self {
-        let ident = Identity::from_internal();
-        WebauthnInitRegisterEvent {
-            ident,
-            target,
-            label,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct WebauthnDoRegisterEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-    pub session: Uuid,
-    pub chal: RegisterPublicKeyCredential,
-}
-
-impl WebauthnDoRegisterEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-        session: Uuid,
-        chal: RegisterPublicKeyCredential,
-    ) -> Result<Self, OperationError> {
-        Ok(WebauthnDoRegisterEvent {
-            ident,
-            target,
-            session,
-            chal,
-        })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid, session: Uuid, chal: RegisterPublicKeyCredential) -> Self {
-        let ident = Identity::from_internal();
-        WebauthnDoRegisterEvent {
-            ident,
-            target,
-            session,
-            chal,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct RemoveWebauthnEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-    pub label: String,
-}
-
-impl RemoveWebauthnEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-        label: String,
-    ) -> Result<Self, OperationError> {
-        Ok(RemoveWebauthnEvent {
-            ident,
-            target,
-            label,
-        })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid, label: String) -> Self {
-        let ident = Identity::from_internal();
-
-        RemoveWebauthnEvent {
-            ident,
-            target,
-            label,
-        }
     }
 }
 

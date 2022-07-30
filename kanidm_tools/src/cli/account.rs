@@ -15,6 +15,9 @@ use std::fmt::{self, Debug};
 use std::str::FromStr;
 use time::OffsetDateTime;
 use url::Url;
+use uuid::Uuid;
+
+use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
 
 impl AccountOpt {
     pub fn debug(&self) -> bool {
@@ -617,6 +620,8 @@ enum CUAction {
     TotpRemove,
     BackupCodes,
     Remove,
+    Passkey,
+    PasskeyRemove,
     End,
     Commit,
 }
@@ -628,13 +633,17 @@ impl fmt::Display for CUAction {
             r#"
 help (h, ?) - Display this help
 status (ls, st) - Show the status of the credential
+end (quit, exit, x, q) - End, without saving any changes
+commit (save) - Commit the changes to the credential
+-- Password and MFA
 password (passwd, pass, pw) - Set a new password
 totp - Generate a new totp, requires a password to be set
 totp remove (totp rm, trm) - Remove the TOTP of this account
 backup codes (bcg, bcode) - (Re)generate backup codes for this account
-remove (rm) - Remove only the primary credential
-end (quit, exit, x, q) - End, without saving any changes
-commit (save) - Commit the changes to the credential
+remove (rm) - Remove only the password based credential
+-- Passkeys
+passkey (pk) - Add a new Passkey
+passkey remove (passkey rm, pkrm) - Remove a Passkey
 "#
         )
     }
@@ -648,13 +657,15 @@ impl FromStr for CUAction {
         match s.as_str() {
             "help" | "h" | "?" => Ok(CUAction::Help),
             "status" | "ls" | "st" => Ok(CUAction::Status),
+            "end" | "quit" | "exit" | "x" | "q" => Ok(CUAction::End),
+            "commit" | "save" => Ok(CUAction::Commit),
             "password" | "passwd" | "pass" | "pw" => Ok(CUAction::Password),
             "totp" => Ok(CUAction::Totp),
             "totp remove" | "totp rm" | "trm" => Ok(CUAction::TotpRemove),
             "backup codes" | "bcode" | "bcg" => Ok(CUAction::BackupCodes),
             "remove" | "rm" => Ok(CUAction::Remove),
-            "end" | "quit" | "exit" | "x" | "q" => Ok(CUAction::End),
-            "commit" | "save" => Ok(CUAction::Commit),
+            "passkey" | "pk" => Ok(CUAction::Passkey),
+            "passkey remove" | "passkey rm" | "pkrm" => Ok(CUAction::PasskeyRemove),
             _ => Err(()),
         }
     }
@@ -823,6 +834,57 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
     // Done!
 }
 
+async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
+    let pk_reg = match client
+        .idm_account_credential_update_passkey_init(session_token)
+        .await
+    {
+        Ok(CUStatus {
+            mfaregstate: CURegState::Passkey(pk_reg),
+            ..
+        }) => pk_reg,
+        Ok(status) => {
+            debug!(?status);
+            eprintln!("An error occured -> InvalidState");
+            return;
+        }
+        Err(e) => {
+            eprintln!("An error occured -> {:?}", e);
+            return;
+        }
+    };
+
+    // Setup and connect to the webauthn handler ...
+    let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+
+    eprintln!("Your authenticator will now flash for you to interact with.");
+    eprintln!("You may be asked to enter the PIN for your device.");
+
+    let rego = match wa.do_registration(client.get_origin().clone(), pk_reg) {
+        Ok(rego) => rego,
+        Err(e) => {
+            error!("Error Signing -> {:?}", e);
+            return;
+        }
+    };
+
+    let label: String = Input::new()
+        .with_prompt("\nEnter a label for this Passkey # ")
+        .allow_empty(false)
+        .interact_text()
+        .unwrap();
+
+    match client
+        .idm_account_credential_update_passkey_finish(session_token, label, rego)
+        .await
+    {
+        Ok(_) => println!("success"),
+        Err(e) => {
+            eprintln!("An error occured -> {:?}", e);
+        }
+    };
+}
+
 // For webauthn later
 
 /*
@@ -880,6 +942,7 @@ fn display_status(status: CUStatus) {
         can_commit,
         primary,
         mfaregstate: _,
+        passkeys,
     } = status;
 
     println!("spn: {}", spn);
@@ -890,6 +953,14 @@ fn display_status(status: CUStatus) {
     } else {
         println!("Primary Credential:");
         println!("  not set");
+    }
+    println!("Passkeys:");
+    if passkeys.is_empty() {
+        println!("  not set");
+    } else {
+        for pk in passkeys {
+            println!("  {} ({})", pk.tag, pk.uuid);
+        }
     }
 
     // We may need to be able to display if there are dangling
@@ -1033,6 +1104,54 @@ async fn credential_update_exec(
                     }
                 } else {
                     println!("Primary credential was NOT removed");
+                }
+            }
+            CUAction::Passkey => passkey_enroll_prompt(&session_token, &client).await,
+            CUAction::PasskeyRemove => {
+                // TODO: make this a scrollable selector with a "cancel" option as the default
+                match client
+                .idm_account_credential_update_status(&session_token)
+                .await
+                    {
+                        Ok(status) => {
+                            if status.passkeys.is_empty() {
+                                println!("No passkeys are configured for this user");
+                                return
+                            }
+                            println!("Current passkeys:");
+                            for pk in status.passkeys {
+                                println!("  {} ({})", pk.tag, pk.uuid);
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("An error occured pulling existing credentials -> {:?}", e);
+                        }
+                    }
+                let uuid_s: String = Input::new()
+                    .with_prompt("\nEnter the UUID of the Passkey to remove (blank to stop) # ")
+                    .validate_with(|input: &String| -> Result<(), &str> {
+                        if input.is_empty() || Uuid::parse_str(input).is_ok() {
+                            Ok(())
+                        } else {
+                            Err("This is not a valid UUID")
+                        }
+                    })
+                    .allow_empty(true)
+                    .interact_text()
+                    .unwrap();
+
+                // Remeber, if it's NOT a valid uuid, it must have been empty as a termination.
+                if let Ok(uuid) = Uuid::parse_str(&uuid_s) {
+                    if let Err(e) = client
+                        .idm_account_credential_update_passkey_remove(&session_token, uuid)
+                        .await
+                    {
+                        eprintln!("An error occured -> {:?}", e);
+                    } else {
+                        println!("success");
+                    }
+                } else {
+                    println!("Passkeys were NOT changed");
                 }
             }
             CUAction::End => {

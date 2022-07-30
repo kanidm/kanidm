@@ -75,7 +75,7 @@ pub mod prelude {
     };
     pub use crate::filter::{Filter, FilterInvalid, FC};
     pub use crate::modify::{m_pres, m_purge, m_remove};
-    pub use crate::modify::{Modify, ModifyList};
+    pub use crate::modify::{Modify, ModifyInvalid, ModifyList};
 
     pub use crate::entry::{
         Entry, EntryCommitted, EntryInit, EntryInvalid, EntryInvalidCommitted, EntryNew,

@@ -1,7 +1,7 @@
+use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use url::Url;
-use webauthn_rs::base64_data::Base64UrlSafeData;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum CodeChallengeMethod {

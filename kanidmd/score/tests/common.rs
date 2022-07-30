@@ -45,6 +45,8 @@ pub async fn setup_async_test() -> KanidmClient {
         admin_password: ADMIN_TEST_PASSWORD.to_string(),
     });
 
+    let addr = format!("http://localhost:{}", port);
+
     // Setup the config ...
     let mut config = Configuration::new();
     config.address = format!("127.0.0.1:{}", port);
@@ -52,6 +54,8 @@ pub async fn setup_async_test() -> KanidmClient {
     config.integration_test_config = Some(int_config);
     config.log_level = Some(LogLevel::Quiet as u32);
     config.role = ServerRole::WriteReplicaNoUI;
+    config.domain = "localhost".to_string();
+    config.origin = addr.clone();
     // config.log_level = Some(LogLevel::Verbose as u32);
     // config.log_level = Some(LogLevel::FullTrace as u32);
     config.threads = 1;
@@ -62,7 +66,6 @@ pub async fn setup_async_test() -> KanidmClient {
     // We have to yield now to guarantee that the tide elements are setup.
     task::yield_now().await;
 
-    let addr = format!("http://127.0.0.1:{}", port);
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
         .no_proxy()

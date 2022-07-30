@@ -29,6 +29,7 @@ enum TotpCheck {
 
 enum TotpValue {
     Init,
+    Waiting,
     Secret(TotpSecret),
 }
 
@@ -39,6 +40,7 @@ pub struct TotpModalApp {
 }
 
 pub enum Msg {
+    TotpGenerate,
     TotpCancel,
     TotpSubmit,
     TotpSecretReady(TotpSecret),
@@ -101,7 +103,7 @@ impl TotpModalApp {
             });
 
             Ok(match status.mfaregstate {
-                CURegState::BackupCodes(_) => Msg::Error {
+                CURegState::Passkey(_) | CURegState::BackupCodes(_) => Msg::Error {
                     emsg: "Invalid TOTP mfa reg state response".to_string(),
                     kopid,
                 },
@@ -122,18 +124,8 @@ impl Component for TotpModalApp {
     type Message = Msg;
     type Properties = ModalProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         console::log!("totp modal create");
-
-        // SEND OFF A REQUEST TO GET THE TOTP STRING
-        let token_c = ctx.props().token.clone();
-
-        ctx.link().send_future(async {
-            match Self::submit_totp_update(token_c, CURequest::TotpGenerate).await {
-                Ok(v) => v,
-                Err(v) => v.into(),
-            }
-        });
 
         TotpModalApp {
             state: TotpState::Init,
@@ -185,6 +177,19 @@ impl Component for TotpModalApp {
                         self.state = TotpState::Init;
                     }
                 }
+            }
+            Msg::TotpGenerate => {
+                // SEND OFF A REQUEST TO GET THE TOTP STRING
+                let token_c = ctx.props().token.clone();
+
+                ctx.link().send_future(async {
+                    match Self::submit_totp_update(token_c, CURequest::TotpGenerate).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
+
+                self.secret = TotpValue::Waiting;
             }
             Msg::TotpSecretReady(secret) => {
                 // THIS IS WHATS CALLED WHEN THE SECRET IS BACK
@@ -280,6 +285,18 @@ impl Component for TotpModalApp {
 
         let totp_secret_state = match &self.secret {
             TotpValue::Init => {
+                html! {
+                    <button id="totp-generate" type="button" class="btn btn-secondary"
+                        onclick={
+                            ctx.link()
+                                .callback(move |_| {
+                                    Msg::TotpGenerate
+                                })
+                        }
+                    >{ "Generate TOTP" }</button>
+                }
+            }
+            TotpValue::Waiting => {
                 html! {
                       <div class="spinner-border text-dark" role="status">
                         <span class="visually-hidden">{ "Loading..." }</span>
