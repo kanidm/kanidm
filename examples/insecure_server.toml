@@ -10,6 +10,6 @@ tls_key = "/tmp/kanidm/key.pem"
 # log_level = "quiet"
 log_level = "verbose"
 
-domain = "idm.example.com"
-origin = "https://idm.example.com:8443"
+domain = "localhost"
+origin = "https://localhost:8443"
 
