@@ -1108,6 +1108,25 @@ async fn credential_update_exec(
             }
             CUAction::Passkey => passkey_enroll_prompt(&session_token, &client).await,
             CUAction::PasskeyRemove => {
+                // TODO: make this a scrollable selector with a "cancel" option as the default
+                match client
+                .idm_account_credential_update_status(&session_token)
+                .await
+                    {
+                        Ok(status) => {
+                            if status.passkeys.is_empty() {
+                                println!("No passkeys are configured for this user");
+                                return
+                            }
+                            println!("Current passkeys:");
+                            for pk in status.passkeys {
+                                println!("  {} ({})", pk.tag, pk.uuid);
+                            }
+                        },
+                        Err(e) => {
+                            eprintln!("An error occured pulling existing credentials -> {:?}", e);
+                        }
+                    }
                 let uuid_s: String = Input::new()
                     .with_prompt("\nEnter the UUID of the Passkey to remove (blank to stop) # ")
                     .validate_with(|input: &String| -> Result<(), &str> {
