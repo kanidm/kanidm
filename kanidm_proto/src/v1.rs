@@ -637,8 +637,8 @@ impl fmt::Display for AuthMech {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AuthMech::Anonymous => write!(f, "Anonymous (no credentials)"),
-            AuthMech::Password => write!(f, "Passwold Only"),
-            AuthMech::PasswordMfa => write!(f, "TOTP or Security Token, and Password"),
+            AuthMech::Password => write!(f, "Password"),
+            AuthMech::PasswordMfa => write!(f, "TOTP/Backup Code and Password"),
             AuthMech::Passkey => write!(f, "Passkey"),
         }
     }

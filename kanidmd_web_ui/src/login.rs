@@ -12,7 +12,7 @@ use crate::models;
 use crate::utils;
 
 use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
+    AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, AuthMech
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
 
@@ -31,12 +31,17 @@ enum TotpState {
 
 enum LoginState {
     Init(bool),
+    // Select between different cred types
+    Select(Vec<AuthMech>),
+    // The choices of current ways to proceed.
     Continue(Vec<AuthAllowed>),
+    // The different methods
     Password(bool),
     BackupCode(bool),
     Totp(TotpState),
     Passkey(web_sys::CredentialRequestOptions),
     SecurityKey(web_sys::CredentialRequestOptions),
+    // Error, state handling.
     Error { emsg: String, kopid: Option<String> },
     UnknownUser,
     Denied(String),
@@ -55,6 +60,7 @@ pub enum LoginAppMsg {
     Start(String, AuthResponse),
     Next(AuthResponse),
     Continue(usize),
+    Select(usize),
     // DoNothing,
     UnknownUser,
     Error { emsg: String, kopid: Option<String> },
@@ -176,6 +182,18 @@ impl LoginApp {
         }
     }
 
+    fn render_mech_select(&self, ctx: &Context<Self>, idx: usize, allow: &AuthMech) -> Html {
+        html! {
+            <li>
+                <button
+                    type="button"
+                    class="btn btn-dark"
+                    onclick={ ctx.link().callback(move |_| LoginAppMsg::Select(idx)) }
+                >{ allow.to_string() }</button>
+            </li>
+        }
+    }
+
     fn view_state(&self, ctx: &Context<Self>) -> Html {
         let inputvalue = self.inputvalue.clone();
         match &self.state {
@@ -210,6 +228,24 @@ impl LoginApp {
                             >{" Begin "}</button>
                         </div>
                         </form>
+                    </div>
+                    </>
+                }
+            }
+            LoginState::Select(mechs) => {
+                html! {
+                    <>
+                    <div class="container">
+                        <p>
+                        {" Which credential would you like to use? "}
+                        </p>
+                    </div>
+                    <div class="container">
+                        <ul class="list-unstyled">
+                            { for mechs.iter()
+                                .enumerate()
+                                .map(|(idx, mech)| self.render_mech_select(ctx, idx, mech)) }
+                        </ul>
                     </div>
                     </>
                 }
@@ -666,12 +702,8 @@ impl Component for LoginApp {
                             // We do NOT need to change state or redraw
                             false
                         } else {
-                            // Offer the choices.
-                            console::log!("This is currently unimplemented".to_string());
-                            self.state = LoginState::Error {
-                                emsg: "Unimplemented".to_string(),
-                                kopid: None,
-                            };
+                            console::log!("multiple mechs exist".to_string());
+                            self.state = LoginState::Select(mechs);
                             true
                         }
                     }
@@ -689,6 +721,42 @@ impl Component for LoginApp {
                         true
                     }
                 }
+            }
+            LoginAppMsg::Select(idx) => {
+                console::log!(format!("chose -> {:?}", idx));
+                match &self.state {
+                    LoginState::Select(allowed) => {
+                        match allowed.get(idx) {
+                            Some(mech) => {
+                                let authreq = AuthRequest {
+                                    step: AuthStep::Begin(mech.clone()),
+                                };
+                                let session_id = self.session_id.clone();
+                                ctx.link().send_future(async {
+                                    match Self::auth_step(authreq, session_id).await {
+                                        Ok(v) => v,
+                                        Err(v) => v.into(),
+                                    }
+                                });
+                            }
+                            None => {
+                                console::log!("invalid allowed mech idx".to_string());
+                                self.state = LoginState::Error {
+                                    emsg: "Invalid Continue Index".to_string(),
+                                    kopid: None,
+                                };
+                            }
+                        }
+                    }
+                    _ => {
+                        console::log!("invalid state transition".to_string());
+                        self.state = LoginState::Error {
+                            emsg: "Invalid UI State Transition".to_string(),
+                            kopid: None,
+                        };
+                    }
+                };
+                true
             }
             LoginAppMsg::Next(resp) => {
                 // Clear any leftover input
