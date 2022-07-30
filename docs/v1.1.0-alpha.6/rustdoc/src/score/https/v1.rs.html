@@ -1058,6 +1058,18 @@
 <span id="1053">1053</span>
 <span id="1054">1054</span>
 <span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm::event::AuthResult</span>;
 <span class="kw">use</span> <span class="ident">kanidm::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="ident">kanidm::idm::AuthState</span>;
@@ -1556,6 +1568,18 @@
         .<span class="ident">state</span>()
         .<span class="ident">qe_w_ref</span>
         .<span class="ident">handle_idmcredentialupdatecommit</span>(<span class="ident">session_token</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+    <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">credential_update_cancel</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+    <span class="kw">let</span> <span class="ident">session_token</span>: <span class="ident">CUSessionToken</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_w_ref</span>
+        .<span class="ident">handle_idmcredentialupdatecancel</span>(<span class="ident">session_token</span>, <span class="ident">eventid</span>)
         .<span class="kw">await</span>;
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }

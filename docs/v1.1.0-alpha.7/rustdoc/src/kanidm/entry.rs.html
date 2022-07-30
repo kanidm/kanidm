@@ -2860,6 +2860,22 @@
 <span id="2855">2855</span>
 <span id="2856">2856</span>
 <span id="2857">2857</span>
+<span id="2858">2858</span>
+<span id="2859">2859</span>
+<span id="2860">2860</span>
+<span id="2861">2861</span>
+<span id="2862">2862</span>
+<span id="2863">2863</span>
+<span id="2864">2864</span>
+<span id="2865">2865</span>
+<span id="2866">2866</span>
+<span id="2867">2867</span>
+<span id="2868">2868</span>
+<span id="2869">2869</span>
+<span id="2870">2870</span>
+<span id="2871">2871</span>
+<span id="2872">2872</span>
+<span id="2873">2873</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
 <span class="doccomment">//!</span>
@@ -2916,6 +2932,10 @@
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+
+<span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::DeviceKey</span> <span class="kw">as</span> <span class="ident">DeviceKeyV4</span>;
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::Passkey</span> <span class="kw">as</span> <span class="ident">PasskeyV4</span>;
 
 <span class="comment">// use std::convert::TryFrom;</span>
 <span class="comment">// use std::str::FromStr;</span>
@@ -4747,6 +4767,18 @@
         <span class="self">self</span>.<span class="ident">attrs</span>
             .<span class="ident">get</span>(<span class="ident">attr</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_credential_single</span>())
+    }
+
+    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
+    <span class="doccomment">/// Get the set of passkeys on this account, if any are present.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_passkeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">as_passkey_map</span>())
+    }
+
+    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
+    <span class="doccomment">/// Get the set of devicekeys on this account, if any are present.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_devicekeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">DeviceKeyV4</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">as_devicekey_map</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>

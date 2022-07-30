@@ -3981,87 +3981,8 @@
 <span id="3976">3976</span>
 <span id="3977">3977</span>
 <span id="3978">3978</span>
-<span id="3979">3979</span>
-<span id="3980">3980</span>
-<span id="3981">3981</span>
-<span id="3982">3982</span>
-<span id="3983">3983</span>
-<span id="3984">3984</span>
-<span id="3985">3985</span>
-<span id="3986">3986</span>
-<span id="3987">3987</span>
-<span id="3988">3988</span>
-<span id="3989">3989</span>
-<span id="3990">3990</span>
-<span id="3991">3991</span>
-<span id="3992">3992</span>
-<span id="3993">3993</span>
-<span id="3994">3994</span>
-<span id="3995">3995</span>
-<span id="3996">3996</span>
-<span id="3997">3997</span>
-<span id="3998">3998</span>
-<span id="3999">3999</span>
-<span id="4000">4000</span>
-<span id="4001">4001</span>
-<span id="4002">4002</span>
-<span id="4003">4003</span>
-<span id="4004">4004</span>
-<span id="4005">4005</span>
-<span id="4006">4006</span>
-<span id="4007">4007</span>
-<span id="4008">4008</span>
-<span id="4009">4009</span>
-<span id="4010">4010</span>
-<span id="4011">4011</span>
-<span id="4012">4012</span>
-<span id="4013">4013</span>
-<span id="4014">4014</span>
-<span id="4015">4015</span>
-<span id="4016">4016</span>
-<span id="4017">4017</span>
-<span id="4018">4018</span>
-<span id="4019">4019</span>
-<span id="4020">4020</span>
-<span id="4021">4021</span>
-<span id="4022">4022</span>
-<span id="4023">4023</span>
-<span id="4024">4024</span>
-<span id="4025">4025</span>
-<span id="4026">4026</span>
-<span id="4027">4027</span>
-<span id="4028">4028</span>
-<span id="4029">4029</span>
-<span id="4030">4030</span>
-<span id="4031">4031</span>
-<span id="4032">4032</span>
-<span id="4033">4033</span>
-<span id="4034">4034</span>
-<span id="4035">4035</span>
-<span id="4036">4036</span>
-<span id="4037">4037</span>
-<span id="4038">4038</span>
-<span id="4039">4039</span>
-<span id="4040">4040</span>
-<span id="4041">4041</span>
-<span id="4042">4042</span>
-<span id="4043">4043</span>
-<span id="4044">4044</span>
-<span id="4045">4045</span>
-<span id="4046">4046</span>
-<span id="4047">4047</span>
-<span id="4048">4048</span>
-<span id="4049">4049</span>
-<span id="4050">4050</span>
-<span id="4051">4051</span>
-<span id="4052">4052</span>
-<span id="4053">4053</span>
-<span id="4054">4054</span>
-<span id="4055">4055</span>
-<span id="4056">4056</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::BackupCodes</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">AuthEvent</span>, <span class="ident">AuthEventStep</span>, <span class="ident">AuthResult</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">IdentType</span>, <span class="ident">IdentUser</span>, <span class="ident">Limits</span>};
@@ -4071,9 +3992,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event</span>::{
     <span class="ident">AcceptSha1TotpEvent</span>, <span class="ident">CredentialStatusEvent</span>, <span class="ident">GeneratePasswordEvent</span>, <span class="ident">GenerateTotpEvent</span>,
     <span class="ident">LdapAuthEvent</span>, <span class="ident">PasswordChangeEvent</span>, <span class="ident">RadiusAuthTokenEvent</span>, <span class="ident">RegenerateRadiusSecretEvent</span>,
-    <span class="ident">RemoveTotpEvent</span>, <span class="ident">RemoveWebauthnEvent</span>, <span class="ident">UnixGroupTokenEvent</span>, <span class="ident">UnixPasswordChangeEvent</span>,
-    <span class="ident">UnixUserAuthEvent</span>, <span class="ident">UnixUserTokenEvent</span>, <span class="ident">VerifyTotpEvent</span>, <span class="ident">WebauthnDoRegisterEvent</span>,
-    <span class="ident">WebauthnInitRegisterEvent</span>,
+    <span class="ident">RemoveTotpEvent</span>, <span class="ident">UnixGroupTokenEvent</span>, <span class="ident">UnixPasswordChangeEvent</span>, <span class="ident">UnixUserAuthEvent</span>,
+    <span class="ident">UnixUserTokenEvent</span>, <span class="ident">VerifyTotpEvent</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::mfareg</span>::{<span class="ident">MfaRegCred</span>, <span class="ident">MfaRegNext</span>, <span class="ident">MfaRegSession</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::oauth2</span>::{
@@ -4132,7 +4052,7 @@
 <span class="kw">use</span> <span class="ident">tokio::sync::Mutex</span>;
 <span class="kw">use</span> <span class="ident">url::Url</span>;
 
-<span class="kw">use</span> <span class="ident">webauthn_rs::Webauthn</span>;
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude</span>::{<span class="ident">Webauthn</span>, <span class="ident">WebauthnBuilder</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::delayed::BackupCodeRemoval</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::event</span>::{<span class="ident">GenerateBackupCodeEvent</span>, <span class="ident">ReadBackupCodeEvent</span>, <span class="ident">RemoveBackupCodeEvent</span>};
@@ -4159,7 +4079,7 @@
     <span class="ident">crypto_policy</span>: <span class="ident">CryptoPolicy</span>,
     <span class="ident">async_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
     <span class="doccomment">/// [Webauthn] verifier/config</span>
-    <span class="ident">webauthn</span>: <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
+    <span class="ident">webauthn</span>: <span class="ident">Webauthn</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">oauth2rs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Oauth2ResourceServers</span><span class="op">&gt;</span>,
 
@@ -4179,7 +4099,7 @@
     <span class="ident">sid</span>: <span class="ident">Sid</span>,
     <span class="comment">// For flagging eventual actions.</span>
     <span class="ident">async_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
-    <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
+    <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">uat_jwt_signer</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span>,
     <span class="ident">uat_jwt_validator</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">JwsValidator</span><span class="op">&gt;</span>,
@@ -4188,7 +4108,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">IdmServerCredUpdateTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">_qs_read</span>: <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="comment">// sid: Sid,</span>
-    <span class="kw">pub</span> <span class="ident">_webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span>,
     <span class="kw">pub</span> <span class="ident">pw_badlist_cache</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">cred_update_sessions</span>: <span class="ident">BptreeMapReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Uuid</span>, <span class="ident">CredentialUpdateSessionMutex</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">token_enc_key</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">Fernet</span><span class="op">&gt;</span>,
@@ -4212,7 +4132,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">cred_update_sessions</span>: <span class="ident">BptreeMapWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Uuid</span>, <span class="ident">CredentialUpdateSessionMutex</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sid</span>: <span class="ident">Sid</span>,
     <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CryptoPolicy</span>,
-    <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
+    <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">uat_jwt_signer</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">JwsSigner</span><span class="op">&gt;</span>,
     <span class="ident">uat_jwt_validator</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">JwsValidator</span><span class="op">&gt;</span>,
@@ -4242,10 +4162,11 @@
         <span class="kw">let</span> (<span class="ident">async_tx</span>, <span class="ident">async_rx</span>) <span class="op">=</span> <span class="ident">unbounded</span>();
 
         <span class="comment">// Get the domain name, as the relying party id.</span>
-        <span class="kw">let</span> (<span class="ident">rp_id</span>, <span class="ident">fernet_private_key</span>, <span class="ident">es256_private_key</span>, <span class="ident">pw_badlist_set</span>, <span class="ident">oauth2rs_set</span>) <span class="op">=</span> {
+        <span class="kw">let</span> (<span class="ident">rp_id</span>, <span class="ident">rp_name</span>, <span class="ident">fernet_private_key</span>, <span class="ident">es256_private_key</span>, <span class="ident">pw_badlist_set</span>, <span class="ident">oauth2rs_set</span>) <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">qs_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">qs</span>.<span class="ident">read_async</span>());
             (
                 <span class="ident">qs_read</span>.<span class="ident">get_domain_name</span>().<span class="ident">to_string</span>(),
+                <span class="ident">qs_read</span>.<span class="ident">get_domain_display_name</span>().<span class="ident">to_string</span>(),
                 <span class="ident">qs_read</span>.<span class="ident">get_domain_fernet_private_key</span>()<span class="question-mark">?</span>,
                 <span class="ident">qs_read</span>.<span class="ident">get_domain_es256_private_key</span>()<span class="question-mark">?</span>,
                 <span class="ident">qs_read</span>.<span class="ident">get_password_badlist</span>()<span class="question-mark">?</span>,
@@ -4278,14 +4199,12 @@
                 }
             })<span class="question-mark">?</span>;
 
-        <span class="comment">// Now clone to rp_name.</span>
-        <span class="kw">let</span> <span class="ident">rp_name</span> <span class="op">=</span> <span class="ident">rp_id</span>.<span class="ident">clone</span>();
-
-        <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">Webauthn::new</span>(<span class="ident">WebauthnDomainConfig</span> {
-            <span class="ident">rp_name</span>,
-            <span class="ident">origin</span>: <span class="ident">origin_url</span>.<span class="ident">clone</span>(),
-            <span class="ident">rp_id</span>,
-        });
+        <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">WebauthnBuilder::new</span>(<span class="kw-2">&amp;</span><span class="ident">rp_id</span>, <span class="kw-2">&amp;</span><span class="ident">origin_url</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">builder</span><span class="op">|</span> <span class="ident">builder</span>.<span class="ident">allow_subdomains</span>(<span class="bool-val">true</span>).<span class="ident">rp_name</span>(<span class="kw-2">&amp;</span><span class="ident">rp_name</span>).<span class="ident">build</span>())
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid Webauthn Configuration - {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">OperationError::InvalidState</span>
+            })<span class="question-mark">?</span>;
 
         <span class="comment">// Setup our auth token signing key.</span>
         <span class="kw">let</span> <span class="ident">fernet_key</span> <span class="op">=</span> <span class="ident">Fernet::new</span>(<span class="kw-2">&amp;</span><span class="ident">fernet_private_key</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
@@ -4411,7 +4330,7 @@
         <span class="ident">IdmServerCredUpdateTransaction</span> {
             <span class="ident">_qs_read</span>: <span class="self">self</span>.<span class="ident">qs</span>.<span class="ident">read_async</span>().<span class="kw">await</span>,
             <span class="comment">// sid: Sid,</span>
-            <span class="ident">_webauthn</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">webauthn</span>,
+            <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">webauthn</span>,
             <span class="ident">pw_badlist_cache</span>: <span class="self">self</span>.<span class="ident">pw_badlist_cache</span>.<span class="ident">read</span>(),
             <span class="ident">cred_update_sessions</span>: <span class="self">self</span>.<span class="ident">cred_update_sessions</span>.<span class="ident">read</span>(),
             <span class="ident">token_enc_key</span>: <span class="self">self</span>.<span class="ident">token_enc_key</span>.<span class="ident">read</span>(),
@@ -4440,6 +4359,11 @@
             <span class="ident">Poll::Pending</span> <span class="op">|</span> <span class="ident">Poll::Ready</span>(<span class="prelude-val">None</span>) =&gt; {}
             <span class="ident">Poll::Ready</span>(<span class="prelude-val">Some</span>(<span class="ident">_m</span>)) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Task queue not empty&quot;</span>),
         }
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">blocking_recv</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>()
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -4675,11 +4599,12 @@
                 <span class="comment">// Intent to take both trees to write.</span>
                 <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
 
-                <span class="comment">// Check the credential that the auth_session will attempt to</span>
-                <span class="comment">// use.</span>
+                <span class="comment">// We don&#39;t actually check the softlock here. We just initialise</span>
+                <span class="comment">// it under the write lock we currently have, so that we can validate</span>
+                <span class="comment">// it once we understand what auth mech we will be using.</span>
                 <span class="comment">//</span>
                 <span class="comment">// NOTE: Very careful use of await here to avoid an issue with write.</span>
-                <span class="kw">let</span> <span class="ident">maybe_slock_ref</span> <span class="op">=</span>
+                <span class="kw">let</span> <span class="ident">_maybe_slock_ref</span> <span class="op">=</span>
                     <span class="ident">account</span>
                         .<span class="ident">primary_cred_uuid_and_policy</span>()
                         .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">cred_uuid</span>, <span class="ident">policy</span>)<span class="op">|</span> {
@@ -4701,30 +4626,36 @@
                             <span class="ident">slock_ref</span>
                         });
 
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">maybe_slock</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>) <span class="op">=</span> <span class="ident">maybe_slock_ref</span>.<span class="ident">as_ref</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>.<span class="ident">lock</span>().<span class="kw">await</span>)
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">None</span>
+                <span class="comment">/*
+                let mut maybe_slock = if let Some(slock_ref) = maybe_slock_ref.as_ref() {
+                    Some(slock_ref.lock().await)
+                } else {
+                    None
                 };
 
-                <span class="comment">// Need to as_mut here so that we hold the slock for the whole operation.</span>
-                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span>.<span class="ident">as_mut</span>() {
-                    <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
-                    <span class="ident">slock</span>.<span class="ident">is_valid</span>()
-                } <span class="kw">else</span> {
-                    <span class="bool-val">false</span>
+                // Need to as_mut here so that we hold the slock for the whole operation.
+                let is_valid = if let Some(slock) = maybe_slock.as_mut() {
+                    slock.apply_time_step(ct);
+                    slock.is_valid()
+                } else {
+                    false
                 };
+                */</span>
 
-                <span class="kw">let</span> (<span class="ident">auth_session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
-                    <span class="ident">AuthSession::new</span>(<span class="ident">account</span>, <span class="self">self</span>.<span class="ident">webauthn</span>, <span class="ident">ct</span>)
-                } <span class="kw">else</span> {
-                    <span class="comment">// it&#39;s softlocked, don&#39;t even bother.</span>
-                    <span class="macro">security_info!</span>(<span class="string">&quot;Account is softlocked, or has no credentials associated.&quot;</span>);
+                <span class="comment">/*
+                let (auth_session, state) = if is_valid {
+                    AuthSession::new(account, self.webauthn, ct)
+                } else {
+                    // it&#39;s softlocked, don&#39;t even bother.
+                    security_info!(&quot;Account is softlocked, or has no credentials associated.&quot;);
                     (
-                        <span class="prelude-val">None</span>,
-                        <span class="ident">AuthState::Denied</span>(<span class="string">&quot;Account is temporarily locked&quot;</span>.<span class="ident">to_string</span>()),
+                        None,
+                        AuthState::Denied(&quot;Account is temporarily locked&quot;.to_string()),
                     )
                 };
+                */</span>
+
+                <span class="kw">let</span> (<span class="ident">auth_session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">AuthSession::new</span>(<span class="ident">account</span>, <span class="self">self</span>.<span class="ident">webauthn</span>, <span class="ident">ct</span>);
 
                 <span class="kw">match</span> <span class="ident">auth_session</span> {
                     <span class="prelude-val">Some</span>(<span class="ident">auth_session</span>) =&gt; {
@@ -4776,8 +4707,11 @@
 
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">auth_session_ref</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
 
-                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span>
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cred_uuid</span>) <span class="op">=</span> <span class="ident">auth_session</span>.<span class="ident">get_account</span>().<span class="ident">primary_cred_uuid</span>() {
+                <span class="comment">// Indicate to the session which auth mech we now want to proceed with.</span>
+                <span class="kw">let</span> <span class="ident">auth_result</span> <span class="op">=</span> <span class="ident">auth_session</span>.<span class="ident">start_session</span>(<span class="kw-2">&amp;</span><span class="ident">mech</span>.<span class="ident">mech</span>);
+
+                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">auth_session</span>.<span class="ident">get_credential_uuid</span>()<span class="question-mark">?</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">cred_uuid</span>) =&gt; {
                         <span class="comment">// From the auth_session, determine if the current account</span>
                         <span class="comment">// credential that we are using has become softlocked or not.</span>
                         <span class="kw">let</span> <span class="ident">softlock_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">read</span>();
@@ -4790,13 +4724,12 @@
                         } <span class="kw">else</span> {
                             <span class="bool-val">false</span>
                         }
-                    } <span class="kw">else</span> {
-                        <span class="bool-val">false</span>
-                    };
+                    }
+                    <span class="prelude-val">None</span> =&gt; <span class="bool-val">true</span>,
+                };
 
-                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
-                    <span class="comment">// Indicate to the session which auth mech we now want to proceed with.</span>
-                    <span class="ident">auth_session</span>.<span class="ident">start_session</span>(<span class="kw-2">&amp;</span><span class="ident">mech</span>.<span class="ident">mech</span>)
+                <span class="kw">let</span> <span class="ident">auth_result</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
+                    <span class="ident">auth_result</span>
                 } <span class="kw">else</span> {
                     <span class="comment">// Fail the session</span>
                     <span class="ident">auth_session</span>.<span class="ident">end_session</span>(<span class="string">&quot;Account is temporarily locked&quot;</span>)
@@ -4809,9 +4742,8 @@
                         <span class="ident">delay</span>,
                     }
                 });
-                <span class="comment">// softlock_write.commit();</span>
-                <span class="comment">// session_write.commit();</span>
-                <span class="ident">r</span>
+
+                <span class="ident">auth_result</span>
             } <span class="comment">// End AuthEventStep::Mech</span>
             <span class="ident">AuthEventStep::Cred</span>(<span class="ident">creds</span>) =&gt; {
                 <span class="comment">// lperf_segment!(&quot;idm::server::auth&lt;Creds&gt;&quot;, || {</span>
@@ -4830,67 +4762,60 @@
 
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">auth_session_ref</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
 
-                <span class="kw">let</span> <span class="ident">maybe_slock_ref</span> <span class="op">=</span>
-                    <span class="ident">auth_session</span>
-                        .<span class="ident">get_account</span>()
-                        .<span class="ident">primary_cred_uuid</span>()
-                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">cred_uuid</span><span class="op">|</span> {
-                            <span class="kw">let</span> <span class="ident">softlock_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">read</span>();
-
-                            <span class="ident">softlock_read</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">clone</span>())
-                        });
+                <span class="kw">let</span> <span class="ident">maybe_slock_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">auth_session</span>.<span class="ident">get_credential_uuid</span>()<span class="question-mark">?</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">cred_uuid</span>) =&gt; {
+                        <span class="kw">let</span> <span class="ident">softlock_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">read</span>();
+                        <span class="ident">softlock_read</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">clone</span>())
+                    }
+                    <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
+                };
 
                 <span class="comment">// From the auth_session, determine if the current account</span>
                 <span class="comment">// credential that we are using has become softlocked or not.</span>
-
-                <span class="kw">let</span> <span class="ident">maybe_slock</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">maybe_slock_ref</span>.<span class="ident">as_ref</span>() {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">maybe_slock</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">maybe_slock_ref</span>.<span class="ident">as_ref</span>() {
                     <span class="prelude-val">Some</span>(<span class="ident">s</span>.<span class="ident">lock</span>().<span class="kw">await</span>)
                 } <span class="kw">else</span> {
                     <span class="prelude-val">None</span>
                 };
 
-                <span class="kw">let</span> <span class="ident">maybe_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span> {
+                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span> {
                     <span class="comment">// Apply the current time.</span>
                     <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
                     <span class="comment">// Now check the results</span>
-                    <span class="kw">if</span> <span class="ident">slock</span>.<span class="ident">is_valid</span>() {
-                        <span class="prelude-val">Some</span>(<span class="ident">slock</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">None</span>
-                    }
+                    <span class="ident">slock</span>.<span class="ident">is_valid</span>()
                 } <span class="kw">else</span> {
-                    <span class="prelude-val">None</span>
+                    <span class="comment">// No slock is present for this cred_uuid</span>
+                    <span class="bool-val">true</span>
                 };
 
-                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">maybe_valid</span> {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) =&gt; {
-                        <span class="comment">// Process the credentials here as required.</span>
-                        <span class="comment">// Basically throw them at the auth_session and see what</span>
-                        <span class="comment">// falls out.</span>
-                        <span class="kw">let</span> <span class="ident">pw_badlist_cache</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">pw_badlist_cache</span>));
-                        <span class="ident">auth_session</span>
-                            .<span class="ident">validate_creds</span>(
-                                <span class="kw-2">&amp;</span><span class="ident">creds</span>.<span class="ident">cred</span>,
-                                <span class="kw-2">&amp;</span><span class="ident">ct</span>,
-                                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">async_tx</span>,
-                                <span class="self">self</span>.<span class="ident">webauthn</span>,
-                                <span class="ident">pw_badlist_cache</span>,
-                                <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_signer</span>,
-                            )
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">aus</span><span class="op">|</span> {
-                                <span class="comment">// Inspect the result:</span>
-                                <span class="comment">// if it was a failure, we need to inc the softlock.</span>
-                                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">aus</span> {
-                                    <span class="comment">// Update it.</span>
+                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
+                    <span class="comment">// Process the credentials here as required.</span>
+                    <span class="comment">// Basically throw them at the auth_session and see what</span>
+                    <span class="comment">// falls out.</span>
+                    <span class="kw">let</span> <span class="ident">pw_badlist_cache</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">pw_badlist_cache</span>));
+                    <span class="ident">auth_session</span>
+                        .<span class="ident">validate_creds</span>(
+                            <span class="kw-2">&amp;</span><span class="ident">creds</span>.<span class="ident">cred</span>,
+                            <span class="kw-2">&amp;</span><span class="ident">ct</span>,
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">async_tx</span>,
+                            <span class="self">self</span>.<span class="ident">webauthn</span>,
+                            <span class="ident">pw_badlist_cache</span>,
+                            <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_signer</span>,
+                        )
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">aus</span><span class="op">|</span> {
+                            <span class="comment">// Inspect the result:</span>
+                            <span class="comment">// if it was a failure, we need to inc the softlock.</span>
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">aus</span> {
+                                <span class="comment">// Update it.</span>
+                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span> {
                                     <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
-                                };
-                                <span class="ident">aus</span>
-                            })
-                    }
-                    <span class="kw">_</span> =&gt; {
-                        <span class="comment">// Fail the session</span>
-                        <span class="ident">auth_session</span>.<span class="ident">end_session</span>(<span class="string">&quot;Account is temporarily locked&quot;</span>)
-                    }
+                                }
+                            };
+                            <span class="ident">aus</span>
+                        })
+                } <span class="kw">else</span> {
+                    <span class="comment">// Fail the session</span>
+                    <span class="ident">auth_session</span>.<span class="ident">end_session</span>(<span class="string">&quot;Account is temporarily locked&quot;</span>)
                 }
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">aus</span><span class="op">|</span> {
                     <span class="comment">// TODO: Change this william!</span>
@@ -5325,6 +5250,10 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_origin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Url</span> {
+        <span class="self">self</span>.<span class="ident">webauthn</span>.<span class="ident">get_origin</span>()
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">expire_mfareg_sessions</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) {
         <span class="comment">// ct is current time - sub the timeout. and then split.</span>
         <span class="kw">let</span> <span class="ident">expire</span> <span class="op">=</span> <span class="ident">ct</span> <span class="op">-</span> <span class="ident">Duration::from_secs</span>(<span class="ident">MFAREG_SESSION_TIMEOUT</span>);
@@ -5740,115 +5669,120 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">cleartext</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reg_account_webauthn_init</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">wre</span>: <span class="kw-2">&amp;</span><span class="ident">WebauthnInitRegisterEvent</span>,
-        <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">ct</span>, <span class="self">self</span>.<span class="ident">sid</span>);
+    <span class="comment">/*
+    pub fn reg_account_webauthn_init(
+        &amp;mut self,
+        wre: &amp;WebauthnInitRegisterEvent,
+        ct: Duration,
+    ) -&gt; Result&lt;SetCredentialResponse, OperationError&gt; {
+        let account = self.target_to_account(&amp;wre.target)?;
+        let sessionid = uuid_from_duration(ct, self.sid);
 
-        <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="ident">wre</span>.<span class="ident">label</span>.<span class="ident">clone</span>();
+        let origin = (&amp;wre.ident.origin).into();
+        let label = wre.label.clone();
 
-        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">get_domain_display_name</span>().<span class="ident">to_string</span>();
+        let issuer = self.qs_write.get_domain_display_name().to_string();
 
-        <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">mfa_reg_next</span>) <span class="op">=</span>
-            <span class="ident">MfaRegSession::webauthn_new</span>(<span class="ident">origin</span>, <span class="ident">account</span>, <span class="ident">label</span>, <span class="self">self</span>.<span class="ident">webauthn</span>, <span class="ident">issuer</span>)<span class="question-mark">?</span>;
+        let (session, mfa_reg_next) =
+            MfaRegSession::webauthn_new(origin, account, label, self.webauthn, issuer)?;
 
-        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">mfa_reg_next</span>.<span class="ident">to_proto</span>(<span class="ident">sessionid</span>);
+        let next = mfa_reg_next.to_proto(sessionid);
 
-        <span class="comment">// Add session to tree</span>
-        <span class="self">self</span>.<span class="ident">mfareg_sessions</span>.<span class="ident">insert</span>(<span class="ident">sessionid</span>, <span class="ident">session</span>);
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="string">&quot;Started mfa reg session for webauthn&quot;</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
+        // Add session to tree
+        self.mfareg_sessions.insert(sessionid, session);
+        trace!(?sessionid, &quot;Started mfa reg session for webauthn&quot;);
+        Ok(next)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reg_account_webauthn_complete</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">wre</span>: <span class="kw-2">&amp;</span><span class="ident">WebauthnDoRegisterEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">wre</span>.<span class="ident">session</span>;
-        <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">webauthn</span>;
+    pub fn reg_account_webauthn_complete(
+        &amp;mut self,
+        wre: &amp;WebauthnDoRegisterEvent,
+    ) -&gt; Result&lt;SetCredentialResponse, OperationError&gt; {
+        let sessionid = wre.session;
+        let origin = (&amp;wre.ident.origin).into();
+        let webauthn = self.webauthn;
 
-        <span class="comment">// Regardless of the outcome, we purge this session, so we get it</span>
-        <span class="comment">// from the tree instead of a mut pointer.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">mfareg_sessions</span>
-            .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to register webauthn -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
+        // Regardless of the outcome, we purge this session, so we get it
+        // from the tree instead of a mut pointer.
+        let mut session = self
+            .mfareg_sessions
+            .remove(&amp;sessionid)
+            .ok_or(OperationError::InvalidState)
+            .map_err(|e| {
+                admin_error!(&quot;Failed to register webauthn -&gt; {:?}&quot;, e);
+                e
+            })?;
 
-        <span class="kw">let</span> (<span class="ident">next</span>, <span class="ident">wan_cred</span>) <span class="op">=</span> <span class="ident">session</span>
-            .<span class="ident">webauthn_step</span>(<span class="kw-2">&amp;</span><span class="ident">origin</span>, <span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">chal</span>, <span class="ident">webauthn</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to register webauthn -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::Webauthn</span>
-            })<span class="question-mark">?</span>;
+        let (next, wan_cred) = session
+            .webauthn_step(&amp;origin, &amp;wre.target, &amp;wre.chal, webauthn)
+            .map_err(|e| {
+                admin_error!(&quot;Failed to register webauthn -&gt; {:?}&quot;, e);
+                OperationError::Webauthn
+            })?;
 
-        <span class="kw">if</span> <span class="kw">let</span> (<span class="ident">MfaRegNext::Success</span>, <span class="prelude-val">Some</span>(<span class="ident">MfaRegCred::Webauthn</span>(<span class="ident">label</span>, <span class="ident">cred</span>))) <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">next</span>, <span class="ident">wan_cred</span>) {
-            <span class="comment">// Persist the credential</span>
-            <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">gen_webauthn_mod</span>(<span class="ident">label</span>, <span class="ident">cred</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to gen webauthn mod {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
-            <span class="comment">// Perform the mod</span>
-            <span class="self">self</span>.<span class="ident">qs_write</span>
-                .<span class="ident">impersonate_modify</span>(
-                    <span class="comment">// Filter as executed</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
-                    <span class="comment">// Filter as intended (acp)</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
-                    <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">ident</span>,
+        if let (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred))) = (&amp;next, wan_cred) {
+            // Persist the credential
+            let modlist = session
+                .account
+                .gen_securitykey_mod(label, cred)
+                .map_err(|e| {
+                    admin_error!(&quot;Failed to gen webauthn mod {:?}&quot;, e);
+                    e
+                })?;
+            // Perform the mod
+            self.qs_write
+                .impersonate_modify(
+                    // Filter as executed
+                    &amp;filter!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(session.account.uuid))),
+                    // Filter as intended (acp)
+                    &amp;filter_all!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(session.account.uuid))),
+                    &amp;modlist,
+                    &amp;wre.ident,
                 )
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;reg_account_webauthn_complete {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">e</span>
-                })<span class="question-mark">?</span>;
+                .map_err(|e| {
+                    admin_error!(&quot;reg_account_webauthn_complete {:?}&quot;, e);
+                    e
+                })?;
         }
 
-        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">next</span>.<span class="ident">to_proto</span>(<span class="ident">sessionid</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
+        let next = next.to_proto(sessionid);
+        Ok(next)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_account_webauthn</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">rwe</span>: <span class="kw-2">&amp;</span><span class="ident">RemoveWebauthnEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">trace!</span>(
-            <span class="string">&quot;Attempting to remove webauthn {:?} -&gt; {:?}&quot;</span>,
-            <span class="ident">rwe</span>.<span class="ident">label</span>,
-            <span class="ident">rwe</span>.<span class="ident">target</span>
+    pub fn remove_account_webauthn(
+        &amp;mut self,
+        rwe: &amp;RemoveWebauthnEvent,
+    ) -&gt; Result&lt;SetCredentialResponse, OperationError&gt; {
+        trace!(
+            &quot;Attempting to remove webauthn {:?} -&gt; {:?}&quot;,
+            rwe.label,
+            rwe.target
         );
 
-        <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">rwe</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">account</span>
-            .<span class="ident">gen_webauthn_remove_mod</span>(<span class="ident">rwe</span>.<span class="ident">label</span>.<span class="ident">as_str</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to gen webauthn remove mod {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
-        <span class="comment">// Perform the mod</span>
-        <span class="self">self</span>.<span class="ident">qs_write</span>
-            .<span class="ident">impersonate_modify</span>(
-                <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
-                <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
-                <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
-                <span class="kw-2">&amp;</span><span class="ident">rwe</span>.<span class="ident">ident</span>,
+        let account = self.target_to_account(&amp;rwe.target)?;
+        let modlist = account
+            .gen_securitykey_remove_mod(rwe.label.as_str())
+            .map_err(|e| {
+                admin_error!(&quot;Failed to gen webauthn remove mod {:?}&quot;, e);
+                e
+            })?;
+        // Perform the mod
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &amp;filter!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(account.uuid))),
+                // Filter as intended (acp)
+                &amp;filter_all!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(account.uuid))),
+                &amp;modlist,
+                &amp;rwe.ident,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;remove_account_webauthn {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
+            .map_err(|e| {
+                admin_error!(&quot;remove_account_webauthn {:?}&quot;, e);
+                e
             })
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">SetCredentialResponse::Success</span>)
+            .map(|_| SetCredentialResponse::Success)
     }
+    */</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_account_totp</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
@@ -6075,11 +6009,11 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">wci</span>: <span class="kw-2">&amp;</span><span class="ident">WebauthnCounterIncrement</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Generate an optional mod and then attempt to apply it.</span>
         <span class="kw">let</span> <span class="ident">opt_modlist</span> <span class="op">=</span> <span class="ident">account</span>
-            .<span class="ident">gen_webauthn_counter_mod</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>.<span class="ident">cid</span>, <span class="ident">wci</span>.<span class="ident">counter</span>)
+            .<span class="ident">gen_webauthn_counter_mod</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>.<span class="ident">auth_result</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to generate webauthn counter mod {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
@@ -6231,12 +6165,11 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::totp::Totp</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential</span>::{<span class="ident">Credential</span>, <span class="ident">Password</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">AuthEvent</span>, <span class="ident">AuthResult</span>, <span class="ident">CreateEvent</span>, <span class="ident">ModifyEvent</span>};
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed</span>::{<span class="ident">BackupCodeRemoval</span>, <span class="ident">DelayedAction</span>, <span class="ident">WebauthnCounterIncrement</span>};
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed</span>::{<span class="ident">BackupCodeRemoval</span>, <span class="ident">DelayedAction</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event</span>::{
         <span class="ident">AcceptSha1TotpEvent</span>, <span class="ident">GenerateBackupCodeEvent</span>, <span class="ident">GenerateTotpEvent</span>, <span class="ident">PasswordChangeEvent</span>,
-        <span class="ident">RadiusAuthTokenEvent</span>, <span class="ident">RegenerateRadiusSecretEvent</span>, <span class="ident">RemoveTotpEvent</span>, <span class="ident">RemoveWebauthnEvent</span>,
-        <span class="ident">UnixGroupTokenEvent</span>, <span class="ident">UnixPasswordChangeEvent</span>, <span class="ident">UnixUserAuthEvent</span>, <span class="ident">UnixUserTokenEvent</span>,
-        <span class="ident">VerifyTotpEvent</span>, <span class="ident">WebauthnDoRegisterEvent</span>, <span class="ident">WebauthnInitRegisterEvent</span>,
+        <span class="ident">RadiusAuthTokenEvent</span>, <span class="ident">RegenerateRadiusSecretEvent</span>, <span class="ident">RemoveTotpEvent</span>, <span class="ident">UnixGroupTokenEvent</span>,
+        <span class="ident">UnixPasswordChangeEvent</span>, <span class="ident">UnixUserAuthEvent</span>, <span class="ident">UnixUserTokenEvent</span>, <span class="ident">VerifyTotpEvent</span>,
     };
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::AuthState</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">Modify</span>, <span class="ident">ModifyList</span>};
@@ -6253,7 +6186,6 @@
     <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
     <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
     <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-    <span class="kw">use</span> <span class="ident">webauthn_authenticator_rs</span>::{<span class="ident">softtok::U2FSoft</span>, <span class="ident">WebauthnAuthenticator</span>};
 
     <span class="kw">const</span> <span class="ident">TEST_PASSWORD</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;ntaoeuntnaoeuhraohuercahu😍&quot;</span>;
     <span class="kw">const</span> <span class="ident">TEST_PASSWORD_INC</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx &quot;</span>;
@@ -6466,13 +6398,7 @@
         } <span class="op">=</span> <span class="ident">ar</span>;
 
         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
-        <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">AuthState::Choose</span>(<span class="kw">_</span>) =&gt; {}
-            <span class="kw">_</span> =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;Sessions was not initialised&quot;</span>);
-                <span class="macro">panic!</span>();
-            }
-        };
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">state</span>, <span class="ident">AuthState::Choose</span>(<span class="kw">_</span>)));
 
         <span class="comment">// Now push that we want the Password Mech.</span>
         <span class="kw">let</span> <span class="ident">admin_begin</span> <span class="op">=</span> <span class="ident">AuthEvent::begin_mech</span>(<span class="ident">sessionid</span>, <span class="ident">AuthMech::Password</span>);
@@ -7531,6 +7457,20 @@
                 );
                 <span class="kw">let</span> <span class="ident">ar</span> <span class="op">=</span> <span class="ident">r1</span>.<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="ident">AuthResult</span> {
+                    <span class="ident">sessionid</span>,
+                    <span class="ident">state</span>,
+                    <span class="ident">delay</span>: <span class="kw">_</span>,
+                } <span class="op">=</span> <span class="ident">ar</span>;
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">state</span>, <span class="ident">AuthState::Choose</span>(<span class="kw">_</span>)));
+
+                <span class="comment">// Soft locks only apply once a mechanism is chosen</span>
+                <span class="kw">let</span> <span class="ident">admin_begin</span> <span class="op">=</span> <span class="ident">AuthEvent::begin_mech</span>(<span class="ident">sessionid</span>, <span class="ident">AuthMech::Password</span>);
+
+                <span class="kw">let</span> <span class="ident">r2</span> <span class="op">=</span> <span class="ident">task::block_on</span>(
+                    <span class="ident">idms_auth</span>.<span class="ident">auth</span>(<span class="kw-2">&amp;</span><span class="ident">admin_begin</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
+                );
+                <span class="kw">let</span> <span class="ident">ar</span> <span class="op">=</span> <span class="ident">r2</span>.<span class="ident">unwrap</span>();
+                <span class="kw">let</span> <span class="ident">AuthResult</span> {
                     <span class="ident">sessionid</span>: <span class="kw">_</span>,
                     <span class="ident">state</span>,
                     <span class="ident">delay</span>,
@@ -7761,102 +7701,6 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_idm_webauthn_registration_and_counter_inc</span>() {
-        <span class="macro">run_idm_test!</span>(
-            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>.<span class="ident">clone</span>());
-
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa_softtok</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FSoft::new</span>());
-
-                <span class="kw">let</span> <span class="ident">wrei</span> <span class="op">=</span> <span class="ident">WebauthnInitRegisterEvent::new_internal</span>(
-                    <span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(),
-                    <span class="string">&quot;softtoken&quot;</span>.<span class="ident">to_string</span>(),
-                );
-
-                <span class="kw">let</span> (<span class="ident">sessionid</span>, <span class="ident">ccr</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">reg_account_webauthn_init</span>(<span class="kw-2">&amp;</span><span class="ident">wrei</span>, <span class="ident">ct</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::WebauthnCreateChallenge</span>(<span class="ident">sessionid</span>, <span class="ident">ccr</span>)) =&gt; {
-                        (<span class="ident">sessionid</span>, <span class="ident">ccr</span>)
-                    }
-                    <span class="kw">_</span> =&gt; {
-                        <span class="macro">panic!</span>();
-                    }
-                };
-
-                <span class="kw">let</span> <span class="ident">rego</span> <span class="op">=</span> <span class="ident">wa_softtok</span>
-                    .<span class="ident">do_registration</span>(<span class="string">&quot;https://idm.example.com&quot;</span>, <span class="ident">ccr</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to register to softtoken&quot;</span>);
-
-                <span class="kw">let</span> <span class="ident">wdre</span> <span class="op">=</span>
-                    <span class="ident">WebauthnDoRegisterEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sessionid</span>, <span class="ident">rego</span>);
-
-                <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">reg_account_webauthn_complete</span>(<span class="kw-2">&amp;</span><span class="ident">wdre</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; {}
-                    <span class="kw">_</span> =&gt; {
-                        <span class="macro">panic!</span>();
-                    }
-                };
-
-                <span class="comment">// Get the account now so we can peek at the registered credential.</span>
-                <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
-                    .<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;account must exist&quot;</span>);
-
-                <span class="kw">let</span> <span class="ident">cred</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">primary</span>.<span class="ident">expect</span>(<span class="string">&quot;Must exist.&quot;</span>);
-
-                <span class="kw">let</span> <span class="ident">wcred</span> <span class="op">=</span> <span class="ident">cred</span>
-                    .<span class="ident">webauthn_ref</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;must have webauthn&quot;</span>)
-                    .<span class="ident">values</span>()
-                    .<span class="ident">next</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">clone</span>())
-                    .<span class="ident">expect</span>(<span class="string">&quot;must have a webauthn credential&quot;</span>);
-
-                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
-
-                <span class="comment">// ===</span>
-                <span class="comment">// Assert we can increment the counter if needed.</span>
-
-                <span class="comment">// Assert the delayed action queue is empty</span>
-                <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
-
-                <span class="comment">// Generate a fake counter increment</span>
-                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="ident">WebauthnCounterIncrement</span> {
-                    <span class="ident">target_uuid</span>: <span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(),
-                    <span class="ident">counter</span>: <span class="ident">wcred</span>.<span class="ident">counter</span> <span class="op">+</span> <span class="number">1</span>,
-                    <span class="ident">cid</span>: <span class="ident">wcred</span>.<span class="ident">cred_id</span>,
-                });
-                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">duration_from_epoch_now</span>(), <span class="ident">da</span>));
-                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">==</span> <span class="ident">r</span>);
-
-                <span class="comment">// Check we can remove the webauthn device - provided we set a pw.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>.<span class="ident">clone</span>());
-                <span class="kw">let</span> <span class="ident">rwe</span> <span class="op">=</span>
-                    <span class="ident">RemoveWebauthnEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="string">&quot;softtoken&quot;</span>.<span class="ident">to_string</span>());
-                <span class="comment">// This fails because the acc is webauthn only.</span>
-                <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">remove_account_webauthn</span>(<span class="kw-2">&amp;</span><span class="ident">rwe</span>) {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="kw">_</span>)) =&gt; {
-                        <span class="comment">//ok</span>
-                    }
-                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
-                };
-                <span class="comment">// Reg a pw.</span>
-                <span class="kw">let</span> <span class="ident">pce</span> <span class="op">=</span> <span class="ident">PasswordChangeEvent::new_internal</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>, <span class="ident">TEST_PASSWORD</span>);
-                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">set_account_password</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>).<span class="ident">is_ok</span>());
-                <span class="comment">// Now remove, it will work.</span>
-                <span class="ident">idms_prox_write</span>
-                    .<span class="ident">remove_account_webauthn</span>(<span class="kw-2">&amp;</span><span class="ident">rwe</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to remove webauthn&quot;</span>);
-
-                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
-
-                <span class="ident">check_admin_password</span>(<span class="ident">idms</span>, <span class="ident">TEST_PASSWORD</span>);
-                <span class="comment">// All done!</span>
-            }
-        )
-    }
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_backup_code_removal_delayed_action</span>() {
         <span class="macro">run_idm_test!</span>(
             <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
@@ -7864,7 +7708,7 @@
                 <span class="kw">let</span> <span class="ident">expire</span> <span class="op">=</span> <span class="ident">ct</span> <span class="op">-</span> <span class="ident">Duration::from_secs</span>(<span class="ident">AUTH_SESSION_TIMEOUT</span>);
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>.<span class="ident">clone</span>());
 
-                <span class="comment">// let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());</span>
+                <span class="comment">// let mut wa_softtok = WebauthnAuthenticator::new(SoftPasskey::new());</span>
 
                 <span class="comment">// The account must has primary credential + uses MFA before generating backup codes</span>
                 <span class="comment">// Set a password.</span>
@@ -8037,7 +7881,7 @@
 
             <span class="comment">// == webauthn</span>
             <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">account</span>
-                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Webauthn</span>)
+                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Passkey</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                 .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)

@@ -39,9 +39,8 @@
 <span id="34">34</span>
 <span id="35">35</span>
 <span id="36">36</span>
-<span id="37">37</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::proto</span>::{<span class="ident">Counter</span>, <span class="ident">CredentialID</span>};
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::AuthenticationResult</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">DelayedAction</span> {
     <span class="ident">PwUpgrade</span>(<span class="ident">PasswordUpgrade</span>),
@@ -63,8 +62,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">WebauthnCounterIncrement</span> {
     <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">counter</span>: <span class="ident">Counter</span>,
-    <span class="kw">pub</span> <span class="ident">cid</span>: <span class="ident">CredentialID</span>,
+    <span class="kw">pub</span> <span class="ident">auth_result</span>: <span class="ident">AuthenticationResult</span>,
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">BackupCodeRemoval</span> {

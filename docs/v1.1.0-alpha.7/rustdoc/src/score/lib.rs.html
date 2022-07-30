@@ -1136,7 +1136,7 @@
         }
     };
 
-    <span class="comment">// setup the qs - *with out* init of the migrations and schema.</span>
+    <span class="comment">// Setup the qs, and perform any migrations and changes we may have.</span>
     <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">setup_qs</span>(<span class="ident">be</span>, <span class="ident">schema</span>, <span class="ident">config</span>) {
         <span class="prelude-val">Ok</span>(<span class="ident">t</span>) =&gt; <span class="ident">t</span>,
         <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
@@ -1168,7 +1168,7 @@
     }
 
     <span class="kw">let</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">qs</span>.<span class="ident">write_async</span>(<span class="ident">duration_from_epoch_now</span>()));
-    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">domain_rename</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">qs_write</span>.<span class="ident">commit</span>());
+    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">domain_rename</span>(<span class="ident">new_domain_name</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">qs_write</span>.<span class="ident">commit</span>());
 
     <span class="kw">match</span> <span class="ident">r</span> {
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">info!</span>(<span class="string">&quot;Domain Rename Success!&quot;</span>),

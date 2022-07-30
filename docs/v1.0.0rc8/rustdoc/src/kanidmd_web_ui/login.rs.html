@@ -803,6 +803,138 @@
 <span id="798">798</span>
 <span id="799">799</span>
 <span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::prelude</span>::<span class="kw-2">*</span>;
@@ -817,10 +949,9 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span>, <span class="ident">AuthStep</span>,
+    <span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span>, <span class="ident">AuthStep</span>, <span class="ident">AuthMech</span>
 };
-
-<span class="kw">use</span> <span class="ident">webauthn_rs::proto::PublicKeyCredential</span>;
+<span class="kw">use</span> <span class="ident">kanidm_proto::webauthn::PublicKeyCredential</span>;
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoginApp</span> {
     <span class="ident">inputvalue</span>: <span class="ident">String</span>,
@@ -837,11 +968,17 @@
 
 <span class="kw">enum</span> <span class="ident">LoginState</span> {
     <span class="ident">Init</span>(<span class="ident">bool</span>),
+    <span class="comment">// Select between different cred types</span>
+    <span class="ident">Select</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>),
+    <span class="comment">// The choices of current ways to proceed.</span>
     <span class="ident">Continue</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>),
+    <span class="comment">// The different methods</span>
     <span class="ident">Password</span>(<span class="ident">bool</span>),
     <span class="ident">BackupCode</span>(<span class="ident">bool</span>),
     <span class="ident">Totp</span>(<span class="ident">TotpState</span>),
-    <span class="ident">Webauthn</span>(<span class="ident">web_sys::CredentialRequestOptions</span>),
+    <span class="ident">Passkey</span>(<span class="ident">web_sys::CredentialRequestOptions</span>),
+    <span class="ident">SecurityKey</span>(<span class="ident">web_sys::CredentialRequestOptions</span>),
+    <span class="comment">// Error, state handling.</span>
     <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
     <span class="ident">UnknownUser</span>,
     <span class="ident">Denied</span>(<span class="ident">String</span>),
@@ -855,10 +992,12 @@
     <span class="ident">PasswordSubmit</span>,
     <span class="ident">BackupCodeSubmit</span>,
     <span class="ident">TotpSubmit</span>,
-    <span class="ident">WebauthnSubmit</span>(<span class="ident">PublicKeyCredential</span>),
+    <span class="ident">PasskeySubmit</span>(<span class="ident">PublicKeyCredential</span>),
+    <span class="ident">SecurityKeySubmit</span>(<span class="ident">PublicKeyCredential</span>),
     <span class="ident">Start</span>(<span class="ident">String</span>, <span class="ident">AuthResponse</span>),
     <span class="ident">Next</span>(<span class="ident">AuthResponse</span>),
     <span class="ident">Continue</span>(<span class="ident">usize</span>),
+    <span class="ident">Select</span>(<span class="ident">usize</span>),
     <span class="comment">// DoNothing,</span>
     <span class="ident">UnknownUser</span>,
     <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
@@ -980,6 +1119,18 @@
         }
     }
 
+    <span class="kw">fn</span> <span class="ident">render_mech_select</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">idx</span>: <span class="ident">usize</span>, <span class="ident">allow</span>: <span class="kw-2">&amp;</span><span class="ident">AuthMech</span>) -&gt; <span class="ident">Html</span> {
+        <span class="macro">html!</span> {
+            <span class="op">&lt;</span><span class="ident">li</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="ident">button</span>
+                    <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span>
+                    <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark&quot;</span>
+                    <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Select</span>(<span class="ident">idx</span>)) }
+                <span class="op">&gt;</span>{ <span class="ident">allow</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+            <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+        }
+    }
+
     <span class="kw">fn</span> <span class="ident">view_state</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
         <span class="kw">let</span> <span class="ident">inputvalue</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputvalue</span>.<span class="ident">clone</span>();
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
@@ -1014,6 +1165,24 @@
                             <span class="op">&gt;</span>{<span class="string">&quot; Begin &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                }
+            }
+            <span class="ident">LoginState::Select</span>(<span class="ident">mechs</span>) =&gt; {
+                <span class="macro">html!</span> {
+                    <span class="op">&lt;</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+                        {<span class="string">&quot; Which credential would you like to use? &quot;</span>}
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">ul</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;list-unstyled&quot;</span><span class="op">&gt;</span>
+                            { <span class="kw">for</span> <span class="ident">mechs</span>.<span class="ident">iter</span>()
+                                .<span class="ident">enumerate</span>()
+                                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="ident">mech</span>)<span class="op">|</span> <span class="self">self</span>.<span class="ident">render_mech_select</span>(<span class="ident">ctx</span>, <span class="ident">idx</span>, <span class="ident">mech</span>)) }
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">ul</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
                 }
@@ -1136,7 +1305,7 @@
                     <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
                 }
             }
-            <span class="ident">LoginState::Webauthn</span>(<span class="ident">challenge</span>) =&gt; {
+            <span class="ident">LoginState::SecurityKey</span>(<span class="ident">challenge</span>) =&gt; {
                 <span class="comment">// Start the navigator parts.</span>
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">win</span>) <span class="op">=</span> <span class="ident">web_sys::window</span>() {
                     <span class="kw">let</span> <span class="ident">promise</span> <span class="op">=</span> <span class="ident">win</span>
@@ -1153,7 +1322,7 @@
                                 <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">PublicKeyCredential::from</span>(
                                     <span class="ident">web_sys::PublicKeyCredential::from</span>(<span class="ident">data</span>),
                                 );
-                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::WebauthnSubmit</span>(<span class="ident">data</span>));
+                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::SecurityKeySubmit</span>(<span class="ident">data</span>));
                             }
                             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                                 <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::Error</span> {
@@ -1173,7 +1342,49 @@
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
-                        {<span class="string">&quot; Webauthn &quot;</span>}
+                        {<span class="string">&quot; Security Key &quot;</span>}
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                }
+            }
+            <span class="ident">LoginState::Passkey</span>(<span class="ident">challenge</span>) =&gt; {
+                <span class="comment">// Start the navigator parts.</span>
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">win</span>) <span class="op">=</span> <span class="ident">web_sys::window</span>() {
+                    <span class="kw">let</span> <span class="ident">promise</span> <span class="op">=</span> <span class="ident">win</span>
+                        .<span class="ident">navigator</span>()
+                        .<span class="ident">credentials</span>()
+                        .<span class="ident">get_with_options</span>(<span class="ident">challenge</span>)
+                        .<span class="ident">expect_throw</span>(<span class="string">&quot;Unable to create promise&quot;</span>);
+                    <span class="kw">let</span> <span class="ident">fut</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">promise</span>);
+                    <span class="kw">let</span> <span class="ident">linkc</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">clone</span>();
+
+                    <span class="ident">spawn_local</span>(<span class="kw">async</span> <span class="kw">move</span> {
+                        <span class="kw">match</span> <span class="ident">fut</span>.<span class="kw">await</span> {
+                            <span class="prelude-val">Ok</span>(<span class="ident">data</span>) =&gt; {
+                                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">PublicKeyCredential::from</span>(
+                                    <span class="ident">web_sys::PublicKeyCredential::from</span>(<span class="ident">data</span>),
+                                );
+                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::PasskeySubmit</span>(<span class="ident">data</span>));
+                            }
+                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::Error</span> {
+                                    <span class="ident">emsg</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>),
+                                    <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                                });
+                            }
+                        }
+                    });
+                } <span class="kw">else</span> {
+                    <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::Error</span> {
+                        <span class="ident">emsg</span>: <span class="string">&quot;failed to access navigator credentials&quot;</span>.<span class="ident">to_string</span>(),
+                        <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                    });
+                };
+
+                <span class="macro">html!</span> {
+                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+                        {<span class="string">&quot; Passkey &quot;</span>}
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                 }
@@ -1375,10 +1586,25 @@
 
                 <span class="bool-val">true</span>
             }
-            <span class="ident">LoginAppMsg::WebauthnSubmit</span>(<span class="ident">resp</span>) =&gt; {
-                <span class="macro">console::log!</span>(<span class="string">&quot;At webauthn step&quot;</span>.<span class="ident">to_string</span>());
+            <span class="ident">LoginAppMsg::SecurityKeySubmit</span>(<span class="ident">resp</span>) =&gt; {
+                <span class="macro">console::log!</span>(<span class="string">&quot;At securitykey step&quot;</span>.<span class="ident">to_string</span>());
                 <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                    <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Webauthn</span>(<span class="ident">resp</span>)),
+                    <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::SecurityKey</span>(<span class="ident">resp</span>)),
+                };
+                <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
+                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
+                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                    }
+                });
+                <span class="comment">// Do not submit here, we need to wait for the next ui transition.</span>
+                <span class="bool-val">false</span>
+            }
+            <span class="ident">LoginAppMsg::PasskeySubmit</span>(<span class="ident">resp</span>) =&gt; {
+                <span class="macro">console::log!</span>(<span class="string">&quot;At passkey step&quot;</span>.<span class="ident">to_string</span>());
+                <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
+                    <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Passkey</span>(<span class="ident">resp</span>)),
                 };
                 <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
                 <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
@@ -1413,12 +1639,8 @@
                             <span class="comment">// We do NOT need to change state or redraw</span>
                             <span class="bool-val">false</span>
                         } <span class="kw">else</span> {
-                            <span class="comment">// Offer the choices.</span>
-                            <span class="macro">console::log!</span>(<span class="string">&quot;This is currently unimplemented&quot;</span>.<span class="ident">to_string</span>());
-                            <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                                <span class="ident">emsg</span>: <span class="string">&quot;Unimplemented&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
-                            };
+                            <span class="macro">console::log!</span>(<span class="string">&quot;multiple mechs exist&quot;</span>.<span class="ident">to_string</span>());
+                            <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Select</span>(<span class="ident">mechs</span>);
                             <span class="bool-val">true</span>
                         }
                     }
@@ -1436,6 +1658,42 @@
                         <span class="bool-val">true</span>
                     }
                 }
+            }
+            <span class="ident">LoginAppMsg::Select</span>(<span class="ident">idx</span>) =&gt; {
+                <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;chose -&gt; {:?}&quot;</span>, <span class="ident">idx</span>));
+                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
+                    <span class="ident">LoginState::Select</span>(<span class="ident">allowed</span>) =&gt; {
+                        <span class="kw">match</span> <span class="ident">allowed</span>.<span class="ident">get</span>(<span class="ident">idx</span>) {
+                            <span class="prelude-val">Some</span>(<span class="ident">mech</span>) =&gt; {
+                                <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
+                                    <span class="ident">step</span>: <span class="ident">AuthStep::Begin</span>(<span class="ident">mech</span>.<span class="ident">clone</span>()),
+                                };
+                                <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
+                                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
+                                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
+                                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                                    }
+                                });
+                            }
+                            <span class="prelude-val">None</span> =&gt; {
+                                <span class="macro">console::log!</span>(<span class="string">&quot;invalid allowed mech idx&quot;</span>.<span class="ident">to_string</span>());
+                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
+                                    <span class="ident">emsg</span>: <span class="string">&quot;Invalid Continue Index&quot;</span>.<span class="ident">to_string</span>(),
+                                    <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                                };
+                            }
+                        }
+                    }
+                    <span class="kw">_</span> =&gt; {
+                        <span class="macro">console::log!</span>(<span class="string">&quot;invalid state transition&quot;</span>.<span class="ident">to_string</span>());
+                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
+                            <span class="ident">emsg</span>: <span class="string">&quot;Invalid UI State Transition&quot;</span>.<span class="ident">to_string</span>(),
+                            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                        };
+                    }
+                };
+                <span class="bool-val">true</span>
             }
             <span class="ident">LoginAppMsg::Next</span>(<span class="ident">resp</span>) =&gt; {
                 <span class="comment">// Clear any leftover input</span>
@@ -1469,8 +1727,11 @@
                                 <span class="ident">AuthAllowed::Totp</span> =&gt; {
                                     <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Totp</span>(<span class="ident">TotpState::Enabled</span>);
                                 }
-                                <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">challenge</span>) =&gt; {
-                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Webauthn</span>(<span class="ident">challenge</span>.<span class="ident">into</span>())
+                                <span class="ident">AuthAllowed::SecurityKey</span>(<span class="ident">challenge</span>) =&gt; {
+                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::SecurityKey</span>(<span class="ident">challenge</span>.<span class="ident">into</span>())
+                                }
+                                <span class="ident">AuthAllowed::Passkey</span>(<span class="ident">challenge</span>) =&gt; {
+                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Passkey</span>(<span class="ident">challenge</span>.<span class="ident">into</span>())
                                 }
                             }
                         } <span class="kw">else</span> {
@@ -1512,8 +1773,11 @@
                             <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Totp</span>) =&gt; {
                                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Totp</span>(<span class="ident">TotpState::Enabled</span>);
                             }
-                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">challenge</span>)) =&gt; {
-                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Webauthn</span>(<span class="ident">challenge</span>.<span class="ident">clone</span>().<span class="ident">into</span>())
+                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::SecurityKey</span>(<span class="ident">challenge</span>)) =&gt; {
+                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::SecurityKey</span>(<span class="ident">challenge</span>.<span class="ident">clone</span>().<span class="ident">into</span>())
+                            }
+                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Passkey</span>(<span class="ident">challenge</span>)) =&gt; {
+                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Passkey</span>(<span class="ident">challenge</span>.<span class="ident">clone</span>().<span class="ident">into</span>())
                             }
                             <span class="prelude-val">None</span> =&gt; {
                                 <span class="macro">console::log!</span>(<span class="string">&quot;invalid allowed mech idx&quot;</span>.<span class="ident">to_string</span>());

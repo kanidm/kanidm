@@ -2194,6 +2194,10 @@
 <span id="2189">2189</span>
 <span id="2190">2190</span>
 <span id="2191">2191</span>
+<span id="2192">2192</span>
+<span id="2193">2193</span>
+<span id="2194">2194</span>
+<span id="2195">2195</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a</span>
 <span class="doccomment">//! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be</span>
 <span class="doccomment">//! considered valid for commit to the database. This allows us to provide</span>
@@ -2297,7 +2301,7 @@
 <span class="kw">impl</span> <span class="ident">SchemaAttribute</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Convert entry to a schema attribute.</span>
-        <span class="macro">trace!</span>(<span class="string">&quot;Converting -&gt; {:?}&quot;</span>, <span class="ident">value</span>);
+        <span class="macro">trace!</span>(<span class="string">&quot;Converting -&gt; {}&quot;</span>, <span class="ident">value</span>);
 
         <span class="comment">// uuid</span>
         <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_uuid</span>();
@@ -2390,6 +2394,8 @@
             <span class="ident">SyntaxType::OauthScopeMap</span> =&gt; <span class="ident">v</span>.<span class="ident">is_oauthscopemap</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">is_refer</span>(),
             <span class="ident">SyntaxType::PrivateBinary</span> =&gt; <span class="ident">v</span>.<span class="ident">is_privatebinary</span>(),
             <span class="ident">SyntaxType::IntentToken</span> =&gt; <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">PartialValue::IntentToken</span>(<span class="kw">_</span>)),
+            <span class="ident">SyntaxType::Passkey</span> =&gt; <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">PartialValue::Passkey</span>(<span class="kw">_</span>)),
+            <span class="ident">SyntaxType::DeviceKey</span> =&gt; <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">PartialValue::DeviceKey</span>(<span class="kw">_</span>)),
         };
         <span class="kw">if</span> <span class="ident">r</span> {
             <span class="prelude-val">Ok</span>(())
@@ -2430,6 +2436,8 @@
                 <span class="ident">SyntaxType::OauthScopeMap</span> =&gt; <span class="ident">v</span>.<span class="ident">is_oauthscopemap</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">is_refer</span>(),
                 <span class="ident">SyntaxType::PrivateBinary</span> =&gt; <span class="ident">v</span>.<span class="ident">is_privatebinary</span>(),
                 <span class="ident">SyntaxType::IntentToken</span> =&gt; <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">Value::IntentToken</span>(<span class="kw">_</span>, <span class="kw">_</span>)),
+                <span class="ident">SyntaxType::Passkey</span> =&gt; <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">Value::Passkey</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)),
+                <span class="ident">SyntaxType::DeviceKey</span> =&gt; <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">Value::DeviceKey</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)),
             };
         <span class="kw">if</span> <span class="ident">r</span> {
             <span class="prelude-val">Ok</span>(())
@@ -2500,7 +2508,7 @@
 
 <span class="kw">impl</span> <span class="ident">SchemaClass</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">trace!</span>(<span class="string">&quot;Converting {:?}&quot;</span>, <span class="ident">value</span>);
+        <span class="macro">trace!</span>(<span class="string">&quot;Converting {}&quot;</span>, <span class="ident">value</span>);
         <span class="comment">// uuid</span>
         <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_uuid</span>();
         <span class="comment">// Convert entry to a schema class.</span>

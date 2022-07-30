@@ -4511,6 +4511,23 @@
 <span id="4506">4506</span>
 <span id="4507">4507</span>
 <span id="4508">4508</span>
+<span id="4509">4509</span>
+<span id="4510">4510</span>
+<span id="4511">4511</span>
+<span id="4512">4512</span>
+<span id="4513">4513</span>
+<span id="4514">4514</span>
+<span id="4515">4515</span>
+<span id="4516">4516</span>
+<span id="4517">4517</span>
+<span id="4518">4518</span>
+<span id="4519">4519</span>
+<span id="4520">4520</span>
+<span id="4521">4521</span>
+<span id="4522">4522</span>
+<span id="4523">4523</span>
+<span id="4524">4524</span>
+<span id="4525">4525</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -5036,6 +5053,8 @@
                     <span class="ident">SyntaxType::OauthScopeMap</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Oauth Scope Maps can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
                     <span class="ident">SyntaxType::PrivateBinary</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Private Binary Values can not be supplied through modification&quot;</span>.<span class="ident">to_string</span>())),
                     <span class="ident">SyntaxType::IntentToken</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Intent Token Values can not be supplied through modification&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::Passkey</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Passkey Values can not be supplied through modification&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::DeviceKey</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;DeviceKey Values can not be supplied through modification&quot;</span>.<span class="ident">to_string</span>())),
                 }
             }
             <span class="prelude-val">None</span> =&gt; {
@@ -5162,6 +5181,16 @@
                                 <span class="string">&quot;Invalid Intent Token ID (uuid) syntax&quot;</span>.<span class="ident">to_string</span>(),
                             )
                         }),
+                    <span class="ident">SyntaxType::Passkey</span> =&gt; <span class="ident">PartialValue::new_passkey_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                        <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Passkey UUID syntax&quot;</span>.<span class="ident">to_string</span>())
+                    }),
+                    <span class="ident">SyntaxType::DeviceKey</span> =&gt; {
+                        <span class="ident">PartialValue::new_devicekey_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                            <span class="ident">OperationError::InvalidAttribute</span>(
+                                <span class="string">&quot;Invalid DeviceKey UUID syntax&quot;</span>.<span class="ident">to_string</span>(),
+                            )
+                        })
+                    }
                 }
             }
             <span class="prelude-val">None</span> =&gt; {
@@ -6795,7 +6824,7 @@
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">modlist</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">spanned!</span>(<span class="string">&quot;server::intenal_modify&quot;</span>, {
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_modify&quot;</span>, {
             <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
                 .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
                 .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -7067,6 +7096,8 @@
             <span class="ident">JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER</span>,
             <span class="ident">JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN</span>,
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_PASSKEYS</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_DEVICEKEYS</span>,
             <span class="ident">JSON_SCHEMA_CLASS_PERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_ORGPERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_GROUP</span>,
@@ -7465,8 +7496,11 @@
 
     <span class="doccomment">/// Initiate a domain rename process. This is generally an internal function but it&#39;s</span>
     <span class="doccomment">/// exposed to the cli for admins to be able to initiate the process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain_rename</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">domain_rename_inner</span>(<span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_name</span>.<span class="ident">as_str</span>()) }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain_rename</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_domain_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="comment">// We can&#39;t use the d_info struct here, because this has the database version of the domain</span>
+        <span class="comment">// name, not the in memory (config) version. We need to accept the domain&#39;s</span>
+        <span class="comment">// new name from the caller so we can change this.</span>
+        <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">domain_rename_inner</span>(<span class="ident">new_domain_name</span>) }
     }
 
     <span class="doccomment">/// # Safety</span>

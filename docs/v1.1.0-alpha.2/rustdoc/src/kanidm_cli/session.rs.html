@@ -468,6 +468,28 @@
 <span id="463">463</span>
 <span id="464">464</span>
 <span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::common::prompt_for_username_get_username</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">LoginOpt</span>, <span class="ident">LogoutOpt</span>, <span class="ident">SessionOpt</span>};
 
@@ -481,7 +503,9 @@
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="self">self</span>, <span class="ident">BufReader</span>, <span class="ident">BufWriter</span>, <span class="ident">Write</span>};
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-<span class="kw">use</span> <span class="ident">webauthn_authenticator_rs</span>::{<span class="ident">u2fhid::U2FHid</span>, <span class="ident">RequestChallengeResponse</span>, <span class="ident">WebauthnAuthenticator</span>};
+<span class="kw">use</span> <span class="ident">webauthn_authenticator_rs</span>::{
+    <span class="ident">prelude::RequestChallengeResponse</span>, <span class="ident">u2fhid::U2FHid</span>, <span class="ident">WebauthnAuthenticator</span>,
+};
 
 <span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">theme::ColorfulTheme</span>, <span class="ident">Select</span>};
 
@@ -660,7 +684,7 @@
         <span class="ident">client</span>.<span class="ident">auth_step_totp</span>(<span class="ident">totp</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_webauthn</span>(
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_passkey</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>,
         <span class="ident">pkr</span>: <span class="ident">RequestChallengeResponse</span>,
@@ -668,13 +692,30 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FHid::new</span>());
         <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
         <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">wa</span>
-            .<span class="ident">do_authentication</span>(<span class="ident">client</span>.<span class="ident">get_origin</span>(), <span class="ident">pkr</span>)
+            .<span class="ident">do_authentication</span>(<span class="ident">client</span>.<span class="ident">get_origin</span>().<span class="ident">clone</span>(), <span class="ident">pkr</span>)
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">std::process::exit</span>(<span class="number">1</span>);
             });
 
-        <span class="ident">client</span>.<span class="ident">auth_step_webauthn_complete</span>(<span class="ident">auth</span>).<span class="kw">await</span>
+        <span class="ident">client</span>.<span class="ident">auth_step_passkey_complete</span>(<span class="ident">auth</span>).<span class="kw">await</span>
+    }
+
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_securitykey</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>,
+        <span class="ident">pkr</span>: <span class="ident">RequestChallengeResponse</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FHid::new</span>());
+        <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
+        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">wa</span>
+            .<span class="ident">do_authentication</span>(<span class="ident">client</span>.<span class="ident">get_origin</span>().<span class="ident">clone</span>(), <span class="ident">pkr</span>)
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            });
+
+        <span class="ident">client</span>.<span class="ident">auth_step_securitykey_complete</span>(<span class="ident">auth</span>).<span class="kw">await</span>
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
@@ -767,7 +808,10 @@
                 <span class="ident">AuthAllowed::Password</span> =&gt; <span class="self">self</span>.<span class="ident">do_password</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
                 <span class="ident">AuthAllowed::BackupCode</span> =&gt; <span class="self">self</span>.<span class="ident">do_backup_code</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
                 <span class="ident">AuthAllowed::Totp</span> =&gt; <span class="self">self</span>.<span class="ident">do_totp</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
-                <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>) =&gt; <span class="self">self</span>.<span class="ident">do_webauthn</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()).<span class="kw">await</span>,
+                <span class="ident">AuthAllowed::Passkey</span>(<span class="ident">chal</span>) =&gt; <span class="self">self</span>.<span class="ident">do_passkey</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()).<span class="kw">await</span>,
+                <span class="ident">AuthAllowed::SecurityKey</span>(<span class="ident">chal</span>) =&gt; {
+                    <span class="self">self</span>.<span class="ident">do_securitykey</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()).<span class="kw">await</span>
+                }
             };
 
             <span class="comment">// Now update state.</span>

@@ -985,6 +985,25 @@
 <span id="980">980</span>
 <span id="981">981</span>
 <span id="982">982</span>
+<span id="983">983</span>
+<span id="984">984</span>
+<span id="985">985</span>
+<span id="986">986</span>
+<span id="987">987</span>
+<span id="988">988</span>
+<span id="989">989</span>
+<span id="990">990</span>
+<span id="991">991</span>
+<span id="992">992</span>
+<span id="993">993</span>
+<span id="994">994</span>
+<span id="995">995</span>
+<span id="996">996</span>
+<span id="997">997</span>
+<span id="998">998</span>
+<span id="999">999</span>
+<span id="1000">1000</span>
+<span id="1001">1001</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An `event` is a self contained module of data, that contains all of the</span>
 <span class="doccomment">//! required information for any operation to proceed. While there are many</span>
 <span class="doccomment">//! types of potential events, they all eventually lower to one of:</span>
@@ -1025,6 +1044,9 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::PublicKeyCredential</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchResult</span> {
@@ -1751,6 +1773,14 @@
             <span class="ident">cred</span>: <span class="ident">AuthCredential::BackupCode</span>(<span class="ident">code</span>.<span class="ident">to_string</span>()),
         })
     }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_passkey</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">passkey_response</span>: <span class="ident">PublicKeyCredential</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">AuthEventStep::Cred</span>(<span class="ident">AuthEventStepCred</span> {
+            <span class="ident">sessionid</span>: <span class="ident">sid</span>,
+            <span class="ident">cred</span>: <span class="ident">AuthCredential::Passkey</span>(<span class="ident">passkey_response</span>),
+        })
+    }
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
@@ -1821,6 +1851,14 @@
         <span class="ident">AuthEvent</span> {
             <span class="ident">ident</span>: <span class="prelude-val">None</span>,
             <span class="ident">step</span>: <span class="ident">AuthEventStep::cred_step_backup_code</span>(<span class="ident">sid</span>, <span class="ident">code</span>),
+        }
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_passkey</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">passkey_response</span>: <span class="ident">PublicKeyCredential</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">AuthEvent</span> {
+            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
+            <span class="ident">step</span>: <span class="ident">AuthEventStep::cred_step_passkey</span>(<span class="ident">sid</span>, <span class="ident">passkey_response</span>),
         }
     }
 }

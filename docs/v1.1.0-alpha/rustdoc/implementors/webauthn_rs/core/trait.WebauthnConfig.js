@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["kanidm"] = [{"text":"impl WebauthnConfig for <a class=\"struct\" href=\"kanidm/credential/webauthn/struct.WebauthnDomainConfig.html\" title=\"struct kanidm::credential::webauthn::WebauthnDomainConfig\">WebauthnDomainConfig</a>","synthetic":false,"types":["kanidm::credential::webauthn::WebauthnDomainConfig"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

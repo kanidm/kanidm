@@ -2127,6 +2127,52 @@
 <span id="2122">2122</span>
 <span id="2123">2123</span>
 <span id="2124">2124</span>
+<span id="2125">2125</span>
+<span id="2126">2126</span>
+<span id="2127">2127</span>
+<span id="2128">2128</span>
+<span id="2129">2129</span>
+<span id="2130">2130</span>
+<span id="2131">2131</span>
+<span id="2132">2132</span>
+<span id="2133">2133</span>
+<span id="2134">2134</span>
+<span id="2135">2135</span>
+<span id="2136">2136</span>
+<span id="2137">2137</span>
+<span id="2138">2138</span>
+<span id="2139">2139</span>
+<span id="2140">2140</span>
+<span id="2141">2141</span>
+<span id="2142">2142</span>
+<span id="2143">2143</span>
+<span id="2144">2144</span>
+<span id="2145">2145</span>
+<span id="2146">2146</span>
+<span id="2147">2147</span>
+<span id="2148">2148</span>
+<span id="2149">2149</span>
+<span id="2150">2150</span>
+<span id="2151">2151</span>
+<span id="2152">2152</span>
+<span id="2153">2153</span>
+<span id="2154">2154</span>
+<span id="2155">2155</span>
+<span id="2156">2156</span>
+<span id="2157">2157</span>
+<span id="2158">2158</span>
+<span id="2159">2159</span>
+<span id="2160">2160</span>
+<span id="2161">2161</span>
+<span id="2162">2162</span>
+<span id="2163">2163</span>
+<span id="2164">2164</span>
+<span id="2165">2165</span>
+<span id="2166">2166</span>
+<span id="2167">2167</span>
+<span id="2168">2168</span>
+<span id="2169">2169</span>
+<span id="2170">2170</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -2167,9 +2213,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">reqwest::StatusCode</span>;
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::proto</span>::{
-    <span class="ident">CreationChallengeResponse</span>, <span class="ident">PublicKeyCredential</span>, <span class="ident">RegisterPublicKeyCredential</span>,
-    <span class="ident">RequestChallengeResponse</span>,
+<span class="kw">use</span> <span class="ident">webauthn_rs_proto</span>::{
+    <span class="ident">PublicKeyCredential</span>, <span class="ident">RegisterPublicKeyCredential</span>, <span class="ident">RequestChallengeResponse</span>,
 };
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">APPLICATION_JSON</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;application/json&quot;</span>;
@@ -2214,7 +2259,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KanidmClient</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">client</span>: <span class="ident">reqwest::Client</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">addr</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">origin</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">origin</span>: <span class="ident">Url</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">builder</span>: <span class="ident">KanidmClientBuilder</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">bearer_token</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">auth_session_id</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -2503,10 +2548,11 @@
 
         <span class="comment">// Now get the origin.</span>
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">uri</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>).<span class="ident">expect</span>(<span class="string">&quot;can not fail&quot;</span>);
+        <span class="kw">let</span> <span class="ident">uri</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to parse address&quot;</span>);
 
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">origin</span>().<span class="ident">unicode_serialization</span>();
+        <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span>
+            <span class="ident">Url::parse</span>(<span class="kw-2">&amp;</span><span class="ident">uri</span>.<span class="ident">origin</span>().<span class="ident">ascii_serialization</span>()).<span class="ident">expect</span>(<span class="string">&quot;failed to parse origin&quot;</span>);
 
         <span class="prelude-val">Ok</span>(<span class="ident">KanidmClient</span> {
             <span class="ident">client</span>,
@@ -2520,8 +2566,8 @@
 }
 
 <span class="kw">impl</span> <span class="ident">KanidmClient</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_origin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="self">self</span>.<span class="ident">origin</span>.<span class="ident">as_str</span>()
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_origin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Url</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">origin</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_url</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
@@ -3048,12 +3094,29 @@
         <span class="ident">r</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_webauthn_complete</span>(
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_securitykey_complete</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-            <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Webauthn</span>(<span class="ident">pkc</span>)),
+            <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::SecurityKey</span>(<span class="ident">pkc</span>)),
+        };
+        <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">perform_auth_post_request</span>(<span class="string">&quot;/v1/auth&quot;</span>, <span class="ident">auth_req</span>).<span class="kw">await</span>;
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">r</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Success</span>(<span class="ident">token</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ar</span>.<span class="ident">state</span> {
+                <span class="self">self</span>.<span class="ident">set_token</span>(<span class="ident">token</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+            };
+        };
+        <span class="ident">r</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_passkey_complete</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
+            <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Passkey</span>(<span class="ident">pkc</span>)),
         };
         <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">perform_auth_post_request</span>(<span class="string">&quot;/v1/auth&quot;</span>, <span class="ident">auth_req</span>).<span class="kw">await</span>;
 
@@ -3220,7 +3283,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_webauthn_begin</span>(
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_passkey_begin</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RequestChallengeResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
@@ -3229,28 +3292,25 @@
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">mechs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthMech::Webauthn</span>) {
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">mechs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthMech::Passkey</span>) {
             <span class="macro">debug!</span>(<span class="string">&quot;Webauthn mech not presented&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_begin</span>(<span class="ident">AuthMech::Webauthn</span>).<span class="kw">await</span> {
+        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_begin</span>(<span class="ident">AuthMech::Passkey</span>).<span class="kw">await</span> {
             <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">s</span>) =&gt; <span class="ident">s</span>.<span class="ident">pop</span>(),
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="comment">// State is now a set of auth continues.</span>
         <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">r</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">r</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Passkey</span>(<span class="ident">r</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">r</span>),
             <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_webauthn_complete</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_step_webauthn_complete</span>(<span class="ident">pkc</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_passkey_complete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_step_passkey_complete</span>(<span class="ident">pkc</span>).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
             <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
@@ -3633,63 +3693,65 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_register_webauthn</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::WebauthnBegin</span>(<span class="ident">label</span>.<span class="ident">to_string</span>());
-        <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">perform_put_request</span>(
-                <span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_credential/primary&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(),
-                <span class="ident">r</span>,
+    <span class="comment">/*
+    pub async fn idm_account_primary_credential_register_webauthn(
+        &amp;self,
+        id: &amp;str,
+        label: &amp;str,
+    ) -&gt; Result&lt;(Uuid, CreationChallengeResponse), ClientError&gt; {
+        let r = SetCredentialRequest::WebauthnBegin(label.to_string());
+        let res: Result&lt;SetCredentialResponse, ClientError&gt; = self
+            .perform_put_request(
+                format!(&quot;/v1/account/{}/_credential/primary&quot;, id).as_str(),
+                r,
             )
-            .<span class="kw">await</span>;
-        <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::WebauthnCreateChallenge</span>(<span class="ident">u</span>, <span class="ident">s</span>)) =&gt; <span class="prelude-val">Ok</span>((<span class="ident">u</span>, <span class="ident">s</span>)),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            .await;
+        match res {
+            Ok(SetCredentialResponse::WebauthnCreateChallenge(u, s)) =&gt; Ok((u, s)),
+            Ok(_) =&gt; Err(ClientError::EmptyResponse),
+            Err(e) =&gt; Err(e),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_complete_webuthn_registration</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">rego</span>: <span class="ident">RegisterPublicKeyCredential</span>,
-        <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::WebauthnRegister</span>(<span class="ident">session</span>, <span class="ident">rego</span>);
-        <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">perform_put_request</span>(
-                <span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_credential/primary&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(),
-                <span class="ident">r</span>,
+    pub async fn idm_account_primary_credential_complete_webuthn_registration(
+        &amp;self,
+        id: &amp;str,
+        rego: RegisterPublicKeyCredential,
+        session: Uuid,
+    ) -&gt; Result&lt;(), ClientError&gt; {
+        let r = SetCredentialRequest::WebauthnRegister(session, rego);
+        let res: Result&lt;SetCredentialResponse, ClientError&gt; = self
+            .perform_put_request(
+                format!(&quot;/v1/account/{}/_credential/primary&quot;, id).as_str(),
+                r,
             )
-            .<span class="kw">await</span>;
-        <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            .await;
+        match res {
+            Ok(SetCredentialResponse::Success) =&gt; Ok(()),
+            Ok(_) =&gt; Err(ClientError::EmptyResponse),
+            Err(e) =&gt; Err(e),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_remove_webauthn</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::WebauthnRemove</span>(<span class="ident">label</span>.<span class="ident">to_string</span>());
-        <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">perform_put_request</span>(
-                <span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_credential/primary&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(),
-                <span class="ident">r</span>,
+    pub async fn idm_account_primary_credential_remove_webauthn(
+        &amp;self,
+        id: &amp;str,
+        label: &amp;str,
+    ) -&gt; Result&lt;(), ClientError&gt; {
+        let r = SetCredentialRequest::WebauthnRemove(label.to_string());
+        let res: Result&lt;SetCredentialResponse, ClientError&gt; = self
+            .perform_put_request(
+                format!(&quot;/v1/account/{}/_credential/primary&quot;, id).as_str(),
+                r,
             )
-            .<span class="kw">await</span>;
-        <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            .await;
+        match res {
+            Ok(SetCredentialResponse::Success) =&gt; Ok(()),
+            Ok(_) =&gt; Err(ClientError::EmptyResponse),
+            Err(e) =&gt; Err(e),
         }
     }
+    */</span>
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_generate_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -3847,6 +3909,36 @@
         <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::PrimaryRemove</span>;
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_passkey_init</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::PasskeyInit</span>;
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_passkey_finish</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+        <span class="ident">label</span>: <span class="ident">String</span>,
+        <span class="ident">registration</span>: <span class="ident">RegisterPublicKeyCredential</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::PasskeyFinish</span>(<span class="ident">label</span>, <span class="ident">registration</span>);
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_passkey_remove</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::PasskeyRemove</span>(<span class="ident">uuid</span>);
         <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
             .<span class="kw">await</span>
     }

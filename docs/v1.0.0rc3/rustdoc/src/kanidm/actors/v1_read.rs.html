@@ -1383,6 +1383,33 @@
 <span id="1378">1378</span>
 <span id="1379">1379</span>
 <span id="1380">1380</span>
+<span id="1381">1381</span>
+<span id="1382">1382</span>
+<span id="1383">1383</span>
+<span id="1384">1384</span>
+<span id="1385">1385</span>
+<span id="1386">1386</span>
+<span id="1387">1387</span>
+<span id="1388">1388</span>
+<span id="1389">1389</span>
+<span id="1390">1390</span>
+<span id="1391">1391</span>
+<span id="1392">1392</span>
+<span id="1393">1393</span>
+<span id="1394">1394</span>
+<span id="1395">1395</span>
+<span id="1396">1396</span>
+<span id="1397">1397</span>
+<span id="1398">1398</span>
+<span id="1399">1399</span>
+<span id="1400">1400</span>
+<span id="1401">1401</span>
+<span id="1402">1402</span>
+<span id="1403">1403</span>
+<span id="1404">1404</span>
+<span id="1405">1405</span>
+<span id="1406">1406</span>
+<span id="1407">1407</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">instrument</span>, <span class="ident">trace</span>};
 
 <span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">DateTime</span>, <span class="ident">SecondsFormat</span>, <span class="ident">Utc</span>};
@@ -1464,7 +1491,7 @@
     <span class="comment">// ! Ideally, this function takes &amp;self, uat, req, and then a `uuid` argument that is a `&amp;str` of the hyphenated uuid.</span>
     <span class="comment">// ! Then we just don&#39;t skip uuid, and we don&#39;t have to do the custom `fields(..)` stuff in this macro call.</span>
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -1511,7 +1538,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;auth&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">sessionid</span>, <span class="ident">req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -1556,7 +1583,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;online_backup&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">msg</span>, <span class="ident">outpath</span>, <span class="ident">versions</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">msg</span>.<span class="ident">eventid</span>)
@@ -1675,7 +1702,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;whoami&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -1738,8 +1765,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalsearch&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search2&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">filter</span>, <span class="ident">attrs</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -1786,8 +1813,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalsearchrecycled&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search_recycled&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">filter</span>, <span class="ident">attrs</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -1835,8 +1862,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalradiusread&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;radius_read&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -1900,8 +1927,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalradiustokenread&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;radius_token_read&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -1952,8 +1979,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalunixusertokenread&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;unix_user_token_read&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2007,8 +2034,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalunixgrouptokenread&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;unix_group_token_read&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2061,8 +2088,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalsshkeyread&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ssh_key_read&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2128,8 +2155,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;internalsshkeytagread&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ssh_key_tag_read&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2198,8 +2225,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idmaccountunixauth&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idm_account_unix_auth&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">cred</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2252,8 +2279,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idmcredentialstatus&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idm_credential_status&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2303,8 +2330,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idmbackupcodeview&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idm_backup_code_view&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2354,8 +2381,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idmcredentialupdatestatus&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idm_credential_update_status&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">session_token</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2386,8 +2413,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idmcredentialupdate&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idm_credential_update&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">session_token</span>, <span class="ident">scr</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2488,6 +2515,33 @@
                         );
                         <span class="ident">e</span>
                     }),
+                <span class="ident">CURequest::PasskeyInit</span> =&gt; <span class="ident">idms_cred_update</span>
+                    .<span class="ident">credential_passkey_init</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>, <span class="ident">ct</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(
+                            <span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>,
+                            <span class="string">&quot;Failed to begin credential_passkey_init&quot;</span>,
+                        );
+                        <span class="ident">e</span>
+                    }),
+                <span class="ident">CURequest::PasskeyFinish</span>(<span class="ident">label</span>, <span class="ident">rpkc</span>) =&gt; <span class="ident">idms_cred_update</span>
+                    .<span class="ident">credential_passkey_finish</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>, <span class="ident">ct</span>, <span class="ident">label</span>, <span class="ident">rpkc</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(
+                            <span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>,
+                            <span class="string">&quot;Failed to begin credential_passkey_init&quot;</span>,
+                        );
+                        <span class="ident">e</span>
+                    }),
+                <span class="ident">CURequest::PasskeyRemove</span>(<span class="ident">uuid</span>) =&gt; <span class="ident">idms_cred_update</span>
+                    .<span class="ident">credential_passkey_remove</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>, <span class="ident">ct</span>, <span class="ident">uuid</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(
+                            <span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>,
+                            <span class="string">&quot;Failed to begin credential_passkey_init&quot;</span>,
+                        );
+                        <span class="ident">e</span>
+                    }),
             }
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">sta</span><span class="op">|</span> <span class="ident">sta</span>.<span class="ident">into</span>())
         });
@@ -2495,7 +2549,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_authorise&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">auth_req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2528,7 +2582,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_authorise_permit&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">consent_req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2560,7 +2614,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_authorise_reject&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">consent_req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2592,7 +2646,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_token_exchange&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_authz</span>, <span class="ident">token_req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2613,7 +2667,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_token_introspect&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_authz</span>, <span class="ident">intr_req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2634,7 +2688,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_openid_userinfo&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_id</span>, <span class="ident">client_authz</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2654,7 +2708,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_openid_discovery&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_id</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2672,7 +2726,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_openid_publickey&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_id</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2690,8 +2744,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain_display_name&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_domain_display_name&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
@@ -2704,7 +2758,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;auth_valid&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
@@ -2730,8 +2784,8 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ldaprequest&quot;</span>,
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ldap_request&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">eventid</span>,  <span class="ident">protomsg</span>, <span class="ident">uat</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>

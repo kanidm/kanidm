@@ -991,12 +991,21 @@
 <span id="986">986</span>
 <span id="987">987</span>
 <span id="988">988</span>
+<span id="989">989</span>
+<span id="990">990</span>
+<span id="991">991</span>
+<span id="992">992</span>
+<span id="993">993</span>
+<span id="994">994</span>
+<span id="995">995</span>
+<span id="996">996</span>
+<span id="997">997</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::proto</span>::{
+<span class="kw">use</span> <span class="ident">webauthn_rs_proto</span>::{
     <span class="ident">CreationChallengeResponse</span>, <span class="ident">PublicKeyCredential</span>, <span class="ident">RegisterPublicKeyCredential</span>,
     <span class="ident">RequestChallengeResponse</span>,
 };
@@ -1195,11 +1204,8 @@ pub struct Application {
     <span class="ident">UnixPassword</span>,
     <span class="ident">Password</span>,
     <span class="ident">GeneratedPassword</span>,
-    <span class="ident">Webauthn</span>,
     <span class="ident">PasswordMfa</span>,
-    <span class="comment">// PasswordWebauthn,</span>
-    <span class="comment">// WebauthnVerified,</span>
-    <span class="comment">// PasswordWebauthnVerified,</span>
+    <span class="ident">Passkey</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">AuthType</span> {
@@ -1209,8 +1215,8 @@ pub struct Application {
             <span class="ident">AuthType::UnixPassword</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;unixpassword&quot;</span>),
             <span class="ident">AuthType::Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;password&quot;</span>),
             <span class="ident">AuthType::GeneratedPassword</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;generatedpassword&quot;</span>),
-            <span class="ident">AuthType::Webauthn</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;webauthn&quot;</span>),
             <span class="ident">AuthType::PasswordMfa</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;passwordmfa&quot;</span>),
+            <span class="ident">AuthType::Passkey</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;passkey&quot;</span>),
         }
     }
 }
@@ -1373,7 +1379,7 @@ pub struct AccountOrgPersonExtend {
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CredentialDetailType</span> {
     <span class="ident">Password</span>,
     <span class="ident">GeneratedPassword</span>,
-    <span class="ident">Webauthn</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
+    <span class="ident">Passkey</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
     <span class="doccomment">/// totp, webauthn</span>
     <span class="ident">PasswordMfa</span>(<span class="ident">bool</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">usize</span>),
 }
@@ -1381,7 +1387,6 @@ pub struct AccountOrgPersonExtend {
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CredentialDetail</span> {
     <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">claims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">type_</span>: <span class="ident">CredentialDetailType</span>,
 }
 
@@ -1397,11 +1402,11 @@ pub struct AccountOrgPersonExtend {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">type_</span> {
             <span class="ident">CredentialDetailType::Password</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;password: set&quot;</span>),
             <span class="ident">CredentialDetailType::GeneratedPassword</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;generated password: set&quot;</span>),
-            <span class="ident">CredentialDetailType::Webauthn</span>(<span class="ident">labels</span>) =&gt; {
+            <span class="ident">CredentialDetailType::Passkey</span>(<span class="ident">labels</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">labels</span>.<span class="ident">is_empty</span>() {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;webauthn: no authenticators&quot;</span>)
+                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;passkeys: none registered&quot;</span>)
                 } <span class="kw">else</span> {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;webauthn:&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;passkeys:&quot;</span>)<span class="question-mark">?</span>;
                     <span class="kw">for</span> <span class="ident">label</span> <span class="kw">in</span> <span class="ident">labels</span> {
                         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot; * {}&quot;</span>, <span class="ident">label</span>)<span class="question-mark">?</span>;
                     }
@@ -1432,6 +1437,12 @@ pub struct AccountOrgPersonExtend {
             }
         }
     }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PasskeyDetail</span> {
+    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    <span class="kw">pub</span> <span class="ident">tag</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
@@ -1590,8 +1601,10 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">Anonymous</span>,
     <span class="ident">Password</span>(<span class="ident">String</span>),
     <span class="ident">Totp</span>(<span class="ident">u32</span>),
-    <span class="ident">Webauthn</span>(<span class="ident">PublicKeyCredential</span>),
+    <span class="ident">SecurityKey</span>(<span class="ident">PublicKeyCredential</span>),
     <span class="ident">BackupCode</span>(<span class="ident">String</span>),
+    <span class="comment">// Should this just be discoverable?</span>
+    <span class="ident">Passkey</span>(<span class="ident">PublicKeyCredential</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">AuthCredential</span> {
@@ -1600,8 +1613,9 @@ pub struct AccountOrgPersonExtend {
             <span class="ident">AuthCredential::Anonymous</span> =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Anonymous&quot;</span>),
             <span class="ident">AuthCredential::Password</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Password(_)&quot;</span>),
             <span class="ident">AuthCredential::Totp</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;TOTP(_)&quot;</span>),
-            <span class="ident">AuthCredential::Webauthn</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Webauthn(_)&quot;</span>),
+            <span class="ident">AuthCredential::SecurityKey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;SecurityKey(_)&quot;</span>),
             <span class="ident">AuthCredential::BackupCode</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;BackupCode(_)&quot;</span>),
+            <span class="ident">AuthCredential::Passkey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Passkey(_)&quot;</span>),
         }
     }
 }
@@ -1612,9 +1626,7 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">Anonymous</span>,
     <span class="ident">Password</span>,
     <span class="ident">PasswordMfa</span>,
-    <span class="ident">Webauthn</span>,
-    <span class="comment">// WebauthnVerified,</span>
-    <span class="comment">// PasswordWebauthnVerified</span>
+    <span class="ident">Passkey</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">AuthMech</span> {
@@ -1627,9 +1639,9 @@ pub struct AccountOrgPersonExtend {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">AuthMech::Anonymous</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Anonymous (no credentials)&quot;</span>),
-            <span class="ident">AuthMech::Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Passwold Only&quot;</span>),
-            <span class="ident">AuthMech::PasswordMfa</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;TOTP or Token, and Password&quot;</span>),
-            <span class="ident">AuthMech::Webauthn</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Webauthn Token&quot;</span>),
+            <span class="ident">AuthMech::Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Password&quot;</span>),
+            <span class="ident">AuthMech::PasswordMfa</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;TOTP/Backup Code and Password&quot;</span>),
+            <span class="ident">AuthMech::Passkey</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Passkey&quot;</span>),
         }
     }
 }
@@ -1662,7 +1674,8 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">BackupCode</span>,
     <span class="ident">Password</span>,
     <span class="ident">Totp</span>,
-    <span class="ident">Webauthn</span>(<span class="ident">RequestChallengeResponse</span>),
+    <span class="ident">SecurityKey</span>(<span class="ident">RequestChallengeResponse</span>),
+    <span class="ident">Passkey</span>(<span class="ident">RequestChallengeResponse</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">AuthAllowed</span> {
@@ -1688,9 +1701,11 @@ pub struct AccountOrgPersonExtend {
                 (<span class="kw">_</span>, <span class="ident">AuthAllowed::BackupCode</span>) =&gt; <span class="ident">Ordering::Greater</span>,
                 (<span class="ident">AuthAllowed::Totp</span>, <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
                 (<span class="kw">_</span>, <span class="ident">AuthAllowed::Totp</span>) =&gt; <span class="ident">Ordering::Greater</span>,
-                (<span class="ident">AuthAllowed::Webauthn</span>(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
+                (<span class="ident">AuthAllowed::SecurityKey</span>(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
+                (<span class="kw">_</span>, <span class="ident">AuthAllowed::SecurityKey</span>(<span class="kw">_</span>)) =&gt; <span class="ident">Ordering::Greater</span>,
+                (<span class="ident">AuthAllowed::Passkey</span>(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
                 <span class="comment">// Unreachable</span>
-                <span class="comment">// (_, AuthAllowed::Webauthn(_)) =&gt; Ordering::Greater,</span>
+                <span class="comment">// (_, AuthAllowed::Passkey(_)) =&gt; Ordering::Greater,</span>
             }
         }
     }
@@ -1709,7 +1724,8 @@ pub struct AccountOrgPersonExtend {
             <span class="ident">AuthAllowed::Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Password&quot;</span>),
             <span class="ident">AuthAllowed::BackupCode</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Backup Code&quot;</span>),
             <span class="ident">AuthAllowed::Totp</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;TOTP&quot;</span>),
-            <span class="ident">AuthAllowed::Webauthn</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Webauthn Token&quot;</span>),
+            <span class="ident">AuthAllowed::SecurityKey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Security Token&quot;</span>),
+            <span class="ident">AuthAllowed::Passkey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Passkey&quot;</span>),
         }
     }
 }
@@ -1744,12 +1760,6 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">TotpVerify</span>(<span class="ident">Uuid</span>, <span class="ident">u32</span>),
     <span class="ident">TotpAcceptSha1</span>(<span class="ident">Uuid</span>),
     <span class="ident">TotpRemove</span>,
-    <span class="comment">// Start the rego.</span>
-    <span class="ident">WebauthnBegin</span>(<span class="ident">String</span>),
-    <span class="comment">// Finish it.</span>
-    <span class="ident">WebauthnRegister</span>(<span class="ident">Uuid</span>, <span class="ident">RegisterPublicKeyCredential</span>),
-    <span class="comment">// Remove</span>
-    <span class="ident">WebauthnRemove</span>(<span class="ident">String</span>),
     <span class="ident">BackupCodeGenerate</span>,
     <span class="ident">BackupCodeRemove</span>,
 }
@@ -1810,7 +1820,7 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">Token</span>(<span class="ident">String</span>),
     <span class="ident">TotpCheck</span>(<span class="ident">Uuid</span>, <span class="ident">TotpSecret</span>),
     <span class="ident">TotpInvalidSha1</span>(<span class="ident">Uuid</span>),
-    <span class="ident">WebauthnCreateChallenge</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>),
+    <span class="ident">SecurityKeyCreateChallenge</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>),
     <span class="ident">BackupCodes</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
 }
 
@@ -1836,6 +1846,9 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">TotpRemove</span>,
     <span class="ident">BackupCodeGenerate</span>,
     <span class="ident">BackupCodeRemove</span>,
+    <span class="ident">PasskeyInit</span>,
+    <span class="ident">PasskeyFinish</span>(<span class="ident">String</span>, <span class="ident">RegisterPublicKeyCredential</span>),
+    <span class="ident">PasskeyRemove</span>(<span class="ident">Uuid</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">CURequest</span> {
@@ -1850,6 +1863,9 @@ pub struct AccountOrgPersonExtend {
             <span class="ident">CURequest::TotpRemove</span> =&gt; <span class="string">&quot;CURequest::TotpRemove&quot;</span>,
             <span class="ident">CURequest::BackupCodeGenerate</span> =&gt; <span class="string">&quot;CURequest::BackupCodeGenerate&quot;</span>,
             <span class="ident">CURequest::BackupCodeRemove</span> =&gt; <span class="string">&quot;CURequest::BackupCodeRemove&quot;</span>,
+            <span class="ident">CURequest::PasskeyInit</span> =&gt; <span class="string">&quot;CURequest::PasskeyInit&quot;</span>,
+            <span class="ident">CURequest::PasskeyFinish</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::PasskeyFinish&quot;</span>,
+            <span class="ident">CURequest::PasskeyRemove</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::PasskeyRemove&quot;</span>,
         };
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">t</span>)
     }
@@ -1863,6 +1879,7 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">TotpTryAgain</span>,
     <span class="ident">TotpInvalidSha1</span>,
     <span class="ident">BackupCodes</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
+    <span class="ident">Passkey</span>(<span class="ident">CreationChallengeResponse</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
@@ -1871,6 +1888,7 @@ pub struct AccountOrgPersonExtend {
     <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">can_commit</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CredentialDetail</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">passkeys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PasskeyDetail</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">mfaregstate</span>: <span class="ident">CURegState</span>,
 }
 

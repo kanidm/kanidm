@@ -2756,6 +2756,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServerProxyReadTransaction</span>, <span class="ident">IdmServerTransaction</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::OAUTHSCOPE_RE</span>;
+<span class="kw">use</span> <span class="ident">base64urlsafedata::Base64UrlSafeData</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">JwkKeySet</span>, <span class="ident">OidcToken</span>};
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">JwsSigner</span>, <span class="ident">OidcClaims</span>, <span class="ident">OidcSubject</span>};
 <span class="kw">use</span> <span class="ident">concread::cowcell</span>::<span class="kw-2">*</span>;
@@ -2771,7 +2772,6 @@
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc::UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>;
 <span class="kw">use</span> <span class="ident">tracing::trace</span>;
 <span class="kw">use</span> <span class="ident">url</span>::{<span class="ident">Origin</span>, <span class="ident">Url</span>};
-<span class="kw">use</span> <span class="ident">webauthn_rs::base64_data::Base64UrlSafeData</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">kanidm_proto::oauth2</span>::{
     <span class="ident">AccessTokenIntrospectRequest</span>, <span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">AccessTokenRequest</span>,
@@ -4089,9 +4089,9 @@
 
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">DeleteEvent</span>, <span class="ident">ModifyEvent</span>};
 
+    <span class="kw">use</span> <span class="ident">base64urlsafedata::Base64UrlSafeData</span>;
     <span class="kw">use</span> <span class="ident">kanidm_proto::oauth2</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthType</span>, <span class="ident">UserAuthToken</span>};
-    <span class="kw">use</span> <span class="ident">webauthn_rs::base64_data::Base64UrlSafeData</span>;
 
     <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">JwaAlg</span>, <span class="ident">Jwk</span>, <span class="ident">JwkUse</span>, <span class="ident">JwsValidator</span>, <span class="ident">OidcSubject</span>, <span class="ident">OidcUnverified</span>};
 

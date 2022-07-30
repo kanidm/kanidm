@@ -525,6 +525,12 @@
 <span id="520">520</span>
 <span id="521">521</span>
 <span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::BackupCodes</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntryReduced</span>, <span class="ident">EntrySealed</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
@@ -532,6 +538,10 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthType</span>, <span class="ident">UserAuthToken</span>};
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">BackupCodesView</span>, <span class="ident">CredentialStatus</span>};
+
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::CredentialID</span>;
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::DeviceKey</span> <span class="kw">as</span> <span class="ident">DeviceKeyV4</span>;
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::Passkey</span> <span class="kw">as</span> <span class="ident">PasskeyV4</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::UUID_ANONYMOUS</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
@@ -545,8 +555,7 @@
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::proto::Credential</span> <span class="kw">as</span> <span class="ident">WebauthnCredential</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::proto</span>::{<span class="ident">Counter</span>, <span class="ident">CredentialID</span>};
+<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::AuthenticationResult</span>;
 
 <span class="macro">lazy_static!</span> {
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_ACCOUNT</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;account&quot;</span>);
@@ -579,6 +588,16 @@
         <span class="kw">let</span> <span class="ident">primary</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
             .<span class="ident">get_ava_single_credential</span>(<span class="string">&quot;primary_credential&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">clone</span>());
+
+        <span class="kw">let</span> <span class="ident">passkeys</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
+            .<span class="ident">get_ava_passkeys</span>(<span class="string">&quot;passkeys&quot;</span>)
+            .<span class="ident">cloned</span>()
+            .<span class="ident">unwrap_or_default</span>();
+
+        <span class="kw">let</span> <span class="ident">devicekeys</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
+            .<span class="ident">get_ava_devicekeys</span>(<span class="string">&quot;devicekeys&quot;</span>)
+            .<span class="ident">cloned</span>()
+            .<span class="ident">unwrap_or_default</span>();
 
         <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or</span>(
             <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>()),
@@ -615,6 +634,8 @@
             <span class="ident">displayname</span>,
             <span class="ident">groups</span>,
             <span class="ident">primary</span>,
+            <span class="ident">passkeys</span>,
+            <span class="ident">devicekeys</span>,
             <span class="ident">valid_from</span>,
             <span class="ident">expire</span>,
             <span class="ident">radius_secret</span>,
@@ -641,6 +662,8 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="kw">pub</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">passkeys</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">devicekeys</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">DeviceKeyV4</span>)<span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">valid_from</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">expire</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">radius_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -861,58 +884,42 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_webauthn_mod</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">label</span>: <span class="ident">String</span>,
-        <span class="ident">cred</span>: <span class="ident">WebauthnCredential</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; <span class="ident">primary</span>.<span class="ident">append_webauthn</span>(<span class="ident">label</span>, <span class="ident">cred</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="ident">Credential::new_webauthn_only</span>(<span class="ident">label</span>, <span class="ident">cred</span>),
-        };
-        <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_webauthn_remove_mod</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
-            <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">remove_webauthn</span>(<span class="ident">label</span>)<span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
-            }
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="comment">// No credential exists, we can&#39;t remove what is not real.</span>
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
-            }
-        }
-    }
-
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::ptr_arg</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_webauthn_counter_mod</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialID</span>,
-        <span class="ident">counter</span>: <span class="ident">Counter</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">auth_result</span>: <span class="kw-2">&amp;</span><span class="ident">AuthenticationResult</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">//</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ml</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">2</span>);
+        <span class="comment">// Where is the credential we need to update?</span>
         <span class="kw">let</span> <span class="ident">opt_ncred</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; <span class="ident">primary</span>.<span class="ident">update_webauthn_counter</span>(<span class="ident">cid</span>, <span class="ident">counter</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; <span class="ident">primary</span>.<span class="ident">update_webauthn_properties</span>(<span class="ident">auth_result</span>)<span class="question-mark">?</span>,
             <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
         };
 
-        <span class="kw">match</span> <span class="ident">opt_ncred</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">ncred</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ModifyList::new_purge_and_set</span>(
-                    <span class="string">&quot;primary_credential&quot;</span>,
-                    <span class="ident">vcred</span>,
-                )))
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ncred</span>) <span class="op">=</span> <span class="ident">opt_ncred</span> {
+            <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
+            <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Purged</span>(<span class="string">&quot;primary_credential&quot;</span>.<span class="ident">into</span>()));
+            <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(<span class="string">&quot;primary_credential&quot;</span>.<span class="ident">into</span>(), <span class="ident">vcred</span>));
+        }
+
+        <span class="comment">// Is it a passkey?</span>
+        <span class="self">self</span>.<span class="ident">passkeys</span>.<span class="ident">iter_mut</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))<span class="op">|</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) <span class="op">=</span> <span class="ident">k</span>.<span class="ident">update_credential</span>(<span class="ident">auth_result</span>) {
+                <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Removed</span>(
+                    <span class="string">&quot;passkeys&quot;</span>.<span class="ident">into</span>(),
+                    <span class="ident">PartialValue::Passkey</span>(<span class="kw-2">*</span><span class="ident">u</span>),
+                ));
+
+                <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(
+                    <span class="string">&quot;passkeys&quot;</span>.<span class="ident">into</span>(),
+                    <span class="ident">Value::Passkey</span>(<span class="kw-2">*</span><span class="ident">u</span>, <span class="ident">t</span>.<span class="ident">clone</span>(), <span class="ident">k</span>.<span class="ident">clone</span>()),
+                ));
             }
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+        });
+
+        <span class="kw">if</span> <span class="ident">ml</span>.<span class="ident">is_empty</span>() {
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ModifyList::new_list</span>(<span class="ident">ml</span>)))
         }
     }
 
@@ -1015,6 +1022,11 @@
             .<span class="ident">as_ref</span>()
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> <span class="ident">cred</span>.<span class="ident">get_backup_code_view</span>())
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">existing_credential_id_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CredentialID</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="comment">// TODO!!!</span>
+        <span class="prelude-val">None</span>
     }
 }
 

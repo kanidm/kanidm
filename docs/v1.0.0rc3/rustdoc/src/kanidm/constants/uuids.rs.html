@@ -258,6 +258,8 @@
 <span id="253">253</span>
 <span id="254">254</span>
 <span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">compiled_uuid::uuid</span>;
@@ -431,6 +433,8 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000097&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME</span>: <span class="ident">Uuid</span> <span class="op">=</span>
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000098&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_PASSKEYS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000099&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DEVICEKEYS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000100&quot;</span>);
 
 <span class="comment">// System and domain infos</span>
 <span class="comment">// I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.</span>
