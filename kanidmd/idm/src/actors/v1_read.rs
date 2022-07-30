@@ -354,7 +354,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "search",
+        name = "search2",
         skip(self, uat, filter, attrs, eventid)
         fields(uuid = ?eventid)
     )]
@@ -623,7 +623,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "internalunixgrouptokenread",
+        name = "unix_group_token_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -677,7 +677,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "internalsshkeyread",
+        name = "ssh_key_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -744,7 +744,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "internalsshkeytagread",
+        name = "ssh_key_tag_read",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -814,7 +814,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "idmaccountunixauth",
+        name = "idm_account_unix_auth",
         skip(self, uat, uuid_or_name, cred, eventid)
         fields(uuid = ?eventid)
     )]
@@ -868,7 +868,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialstatus",
+        name = "idm_credential_status",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -919,7 +919,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "idmbackupcodeview",
+        name = "idm_backup_code_view",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -970,7 +970,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialupdatestatus",
+        name = "idm_credential_update_status",
         skip(self, session_token, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1002,7 +1002,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialupdate",
+        name = "idm_credential_update",
         skip(self, session_token, scr, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1333,7 +1333,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "domain_display_name",
+        name = "get_domain_display_name",
         skip(self, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1373,7 +1373,7 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "info",
-        name = "ldaprequest",
+        name = "ldap_request",
         skip(self, eventid,  protomsg, uat)
         fields(uuid = ?eventid)
     )]

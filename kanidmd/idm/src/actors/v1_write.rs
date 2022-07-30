@@ -209,11 +209,17 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "info",
+        name = "modify",
+        skip(self, uat, req, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_modify(
         &self,
         uat: Option<String>,
         req: ModifyRequest,
-        _eventid: Uuid,
+        eventid: Uuid,
     ) -> Result<(), OperationError> {
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<ModifyMessage>", {
@@ -284,12 +290,18 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "info",
+        name = "patch",
+        skip(self, uat, filter, update, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalpatch(
         &self,
         uat: Option<String>,
         filter: Filter<FilterInvalid>,
         update: ProtoEntry,
-        _eventid: Uuid,
+        eventid: Uuid,
     ) -> Result<(), OperationError> {
         // Given a protoEntry, turn this into a modification set.
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
@@ -333,7 +345,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "internal_delete",
+        name = "delete2",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -373,7 +385,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "reviverecycled",
+        name = "revive_recycled",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -415,7 +427,7 @@ impl QueryServerWriteV1 {
     // === IDM native types for modifications
     #[instrument(
         level = "info",
-        name = "credentialset",
+        name = "credential_set",
         skip(self, uat, uuid_or_name, sac, eventid)
         fields(uuid = ?eventid)
     )]
@@ -659,7 +671,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialupdate",
+        name = "idm_credential_update",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -712,7 +724,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialupdateintent",
+        name = "idm_credential_update_intent",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -764,7 +776,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialexchangeintent",
+        name = "idm_credential_exchange_intent",
         skip(self, intent_token, eventid)
         fields(uuid = ?eventid)
     )]
@@ -804,7 +816,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialupdatecommit",
+        name = "idm_credential_update_commit",
         skip(self, session_token, eventid)
         fields(uuid = ?eventid)
     )]
@@ -836,7 +848,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmcredentialupdatecancel",
+        name = "idm_credential_update_cancel",
         skip(self, session_token, eventid)
         fields(uuid = ?eventid)
     )]
@@ -868,7 +880,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmaccountsetpassword",
+        name = "idm_account_set_password",
         skip(self, uat, cleartext, eventid)
         fields(uuid = ?eventid)
     )]
@@ -909,7 +921,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "regenerateradius",
+        name = "regenerate_radius_secret",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -965,7 +977,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "purgeattribute",
+        name = "purge_attribute",
         skip(self, uat, uuid_or_name, attr, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1021,7 +1033,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "removeattributevalues",
+        name = "remove_attribute_values",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1085,7 +1097,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "appendattribute",
+        name = "append_attribute",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1114,7 +1126,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "setattribute",
+        name = "set_attribute",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1146,7 +1158,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "sshkeycreate",
+        name = "ssh_key_create",
         skip(self, uat, uuid_or_name, tag, key, filter, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1171,7 +1183,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmaccountpersonextend",
+        name = "idm_account_person_extend",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1227,7 +1239,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmaccountpersonset",
+        name = "idm_account_person_set",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1282,7 +1294,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmaccountunixextend",
+        name = "idm_account_unix_extend",
         skip(self, uat, uuid_or_name, ux, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1329,7 +1341,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmgroupunixextend",
+        name = "idm_group_unix_extend",
         skip(self, uat, uuid_or_name, gx, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1364,7 +1376,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        name = "idmaccountunixsetcred",
+        name = "idm_account_unix_set_cred",
         skip(self, uat, uuid_or_name, cred, eventid)
         fields(uuid = ?eventid)
     )]
@@ -1589,7 +1601,7 @@ impl QueryServerWriteV1 {
 
     pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
         let eventid = Uuid::new_v4();
-        let nspan = span!(Level::TRACE, "delayedaction", uuid = ?eventid);
+        let nspan = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
         let _span = nspan.enter();
 
         trace!("Begin delayed action ...");
