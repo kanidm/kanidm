@@ -599,7 +599,10 @@ impl Credential {
         let type_ = match &self.type_ {
             CredentialType::Password(_pw) | CredentialType::GeneratedPassword(_pw) => {
                 // Should not be possible!
-                return Err(OperationError::InvalidState);
+                // -- this does occur when we have mixed pw/passkey
+                // and we need to do an update, so we just mask this no Ok(None).
+                // return Err(OperationError::InvalidState);
+                return Ok(None);
             }
             CredentialType::Webauthn(map) => {
                 let mut nmap = map.clone();
