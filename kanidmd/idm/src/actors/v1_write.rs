@@ -167,7 +167,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "create",
         skip(self, uat, req, eventid)
         fields(uuid = ?eventid)
@@ -245,7 +245,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "delete",
         skip(self, uat, req, eventid)
         fields(uuid = ?eventid)
@@ -332,7 +332,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "internal_delete",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
@@ -372,7 +372,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "reviverecycled",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
@@ -414,7 +414,7 @@ impl QueryServerWriteV1 {
 
     // === IDM native types for modifications
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "credentialset",
         skip(self, uat, uuid_or_name, sac, eventid)
         fields(uuid = ?eventid)
@@ -658,7 +658,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmcredentialupdate",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
@@ -711,7 +711,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmcredentialupdateintent",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
@@ -763,7 +763,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmcredentialexchangeintent",
         skip(self, intent_token, eventid)
         fields(uuid = ?eventid)
@@ -803,7 +803,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmcredentialupdatecommit",
         skip(self, session_token, eventid)
         fields(uuid = ?eventid)
@@ -835,7 +835,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmcredentialupdatecancel",
         skip(self, session_token, eventid)
         fields(uuid = ?eventid)
@@ -867,7 +867,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmaccountsetpassword",
         skip(self, uat, cleartext, eventid)
         fields(uuid = ?eventid)
@@ -908,7 +908,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "regenerateradius",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
@@ -964,7 +964,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "purgeattribute",
         skip(self, uat, uuid_or_name, attr, filter, eventid)
         fields(uuid = ?eventid)
@@ -1020,7 +1020,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "removeattributevalues",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
@@ -1084,7 +1084,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "appendattribute",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
@@ -1113,7 +1113,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "setattribute",
         skip(self, uat, uuid_or_name, attr, values, filter, eventid)
         fields(uuid = ?eventid)
@@ -1145,7 +1145,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "sshkeycreate",
         skip(self, uat, uuid_or_name, tag, key, filter, eventid)
         fields(uuid = ?eventid)
@@ -1170,7 +1170,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmaccountpersonextend",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
@@ -1226,7 +1226,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmaccountpersonset",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
@@ -1281,7 +1281,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmaccountunixextend",
         skip(self, uat, uuid_or_name, ux, eventid)
         fields(uuid = ?eventid)
@@ -1328,7 +1328,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmgroupunixextend",
         skip(self, uat, uuid_or_name, gx, eventid)
         fields(uuid = ?eventid)
@@ -1363,7 +1363,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "idmaccountunixsetcred",
         skip(self, uat, uuid_or_name, cred, eventid)
         fields(uuid = ?eventid)
@@ -1417,7 +1417,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_scopemap_create",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
@@ -1486,7 +1486,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "oauth2_scopemap_delete",
         skip(self, uat, filter, eventid)
         fields(uuid = ?eventid)
@@ -1547,7 +1547,7 @@ impl QueryServerWriteV1 {
 
     // ===== These below are internal only event types. =====
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "purge_tombstone_event",
         skip(self, msg)
         fields(uuid = ?msg.eventid)
@@ -1568,7 +1568,7 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(
-        level = "trace",
+        level = "info",
         name = "purge_recycled_event",
         skip(self, msg)
         fields(uuid = ?msg.eventid)

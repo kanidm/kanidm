@@ -101,7 +101,7 @@ pub struct SchemaAttribute {
 impl SchemaAttribute {
     pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
-        trace!("Converting -> {:?}", value);
+        trace!("Converting -> {}", value);
 
         // uuid
         let uuid = value.get_uuid();
@@ -308,7 +308,7 @@ pub struct SchemaClass {
 
 impl SchemaClass {
     pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
-        trace!("Converting {:?}", value);
+        trace!("Converting {}", value);
         // uuid
         let uuid = value.get_uuid();
         // Convert entry to a schema class.

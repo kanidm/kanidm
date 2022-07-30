@@ -2294,7 +2294,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         filter: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
-        spanned!("server::intenal_modify", {
+        spanned!("server::internal_modify", {
             let f_valid = filter
                 .validate(self.get_schema())
                 .map_err(OperationError::SchemaViolation)?;
@@ -2966,8 +2966,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
-    pub fn domain_rename(&self) -> Result<(), OperationError> {
-        unsafe { self.domain_rename_inner(self.d_info.d_name.as_str()) }
+    pub fn domain_rename(&self, new_domain_name: &str) -> Result<(), OperationError> {
+        // We can't use the d_info struct here, because this has the database version of the domain
+        // name, not the in memory (config) version. We need to accept the domain's
+        // new name from the caller so we can change this.
+        unsafe { self.domain_rename_inner(new_domain_name) }
     }
 
     /// # Safety
