@@ -18,7 +18,8 @@ RUN zypper install -y \
         sqlite3-devel \
         sccache \
         gcc \
-        rsync
+        rsync \
+        which
 RUN zypper clean -a
 
 COPY . /usr/src/kanidm
@@ -45,7 +46,7 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; \
             export RUSTC_WRAPPER=sccache && \
             sccache --start-server; \
     fi && \
-    ./build_wasm_dev.sh
+    ./build_wasm.sh
 
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
