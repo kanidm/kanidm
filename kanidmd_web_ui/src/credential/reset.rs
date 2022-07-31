@@ -487,9 +487,9 @@ impl CredentialResetApp {
     fn view_error(&self, _ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {
         html! {
           <main class="form-signin">
-            <div class="container">
+
+            <div class="alert alert-danger" role="alert">
               <h2>{ "An Error Occured 🥺" }</h2>
-            </div>
             <p>{ msg.to_string() }</p>
             <p>
                 {
@@ -500,6 +500,7 @@ impl CredentialResetApp {
                     }
                 }
             </p>
+            </div>
           </main>
         }
     }

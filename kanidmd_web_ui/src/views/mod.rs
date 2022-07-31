@@ -177,19 +177,20 @@ impl Component for ViewsApp {
             State::Error { emsg, kopid } => {
                 html! {
                   <main class="form-signin">
-                    <div class="container">
+                    <div class="alert alert-danger" role="alert">
                       <h2>{ "An Error Occured 🥺" }</h2>
-                    </div>
                     <p>{ emsg.to_string() }</p>
                     <p>
                         {
                             if let Some(opid) = kopid.as_ref() {
                                 format!("Operation ID: {}", opid)
                             } else {
-                                "Local Error".to_string()
+                                "Error occurred client-side.".to_string()
                             }
                         }
                     </p>
+                    </div>
+
                   </main>
                 }
             }

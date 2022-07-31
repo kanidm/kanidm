@@ -5,6 +5,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
+use yew::virtual_dom::VNode;
 use yew_router::prelude::*;
 
 use crate::error::FetchError;
@@ -12,7 +13,7 @@ use crate::models;
 use crate::utils;
 
 use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, AuthMech
+    AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
 
@@ -170,6 +171,15 @@ impl LoginApp {
         }
     }
 
+    /// Renders the "Start again" button
+    fn button_start_again(&self, ctx: &Context<Self> ) -> VNode {
+        html! {
+            <div class="col-md-auto text-center">
+                <button type="button" class="btn btn-dark" onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
+            </div>
+        }
+    }
+
     fn render_auth_allowed(&self, ctx: &Context<Self>, idx: usize, allow: &AuthAllowed) -> Html {
         html! {
             <li>
@@ -184,10 +194,10 @@ impl LoginApp {
 
     fn render_mech_select(&self, ctx: &Context<Self>, idx: usize, allow: &AuthMech) -> Html {
         html! {
-            <li>
+            <li class="text-center">
                 <button
                     type="button"
-                    class="btn btn-dark"
+                    class="btn btn-dark mb-2"
                     onclick={ ctx.link().callback(move |_| LoginAppMsg::Select(idx)) }
                 >{ allow.to_string() }</button>
             </li>
@@ -445,9 +455,9 @@ impl LoginApp {
                 };
 
                 html! {
-                    <div class="container">
+                    <div class="container text-center">
                         <p>
-                        {" Passkey "}
+                        {"Prompting for Passkey authentication..."}
                         </p>
                     </div>
                 }
@@ -473,9 +483,7 @@ impl LoginApp {
                             <p><strong>{ "Authentication Denied" }</strong></p>
                             <p>{ msg.as_str() }</p>
                         </div>
-                        <div class="col-md-auto">
-                          <button type="button" class="btn btn-dark" onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
-                        </div>
+                        { self.button_start_again(ctx) }
                     </div>
                 </div>
                 }
@@ -487,23 +495,16 @@ impl LoginApp {
                             <div class="alert alert-danger" role="alert">
                                 { "That username was not found. Please try again!" }
                             </div>
-                            <div class="col-md-auto">
-                                <button type="button"
-                                    class="btn btn-dark"
-                                    onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) }
-                                >
-                                {" Start Again "}</button>
-                            </div>
+                             { self.button_start_again(ctx) }
                         </div>
                     </div>
                 }
             }
             LoginState::Error { emsg, kopid } => {
                 html! {
-                    <div class="container">
-                        <p>
-                            { "An error has occured 😔 " }
-                        </p>
+                    <>
+                    <div class="alert alert-danger" role="alert">
+                        <h2>{ "An error has occured 😔 " }</h2>
                         <p>
                             { emsg.as_str() }
                         </p>
@@ -513,10 +514,14 @@ impl LoginApp {
                                     format!("Operation ID: {}", opid.clone())
                                 }
                                 else {
-                                    "Local Error".to_string() }
+                                    "Error occurred client-side.".to_string()
+                                }
                             }
                         </p>
                     </div>
+
+                    { self.button_start_again(ctx) }
+                    </>
                 }
             }
         }
@@ -725,29 +730,27 @@ impl Component for LoginApp {
             LoginAppMsg::Select(idx) => {
                 console::log!(format!("chose -> {:?}", idx));
                 match &self.state {
-                    LoginState::Select(allowed) => {
-                        match allowed.get(idx) {
-                            Some(mech) => {
-                                let authreq = AuthRequest {
-                                    step: AuthStep::Begin(mech.clone()),
-                                };
-                                let session_id = self.session_id.clone();
-                                ctx.link().send_future(async {
-                                    match Self::auth_step(authreq, session_id).await {
-                                        Ok(v) => v,
-                                        Err(v) => v.into(),
-                                    }
-                                });
-                            }
-                            None => {
-                                console::log!("invalid allowed mech idx".to_string());
-                                self.state = LoginState::Error {
-                                    emsg: "Invalid Continue Index".to_string(),
-                                    kopid: None,
-                                };
-                            }
+                    LoginState::Select(allowed) => match allowed.get(idx) {
+                        Some(mech) => {
+                            let authreq = AuthRequest {
+                                step: AuthStep::Begin(mech.clone()),
+                            };
+                            let session_id = self.session_id.clone();
+                            ctx.link().send_future(async {
+                                match Self::auth_step(authreq, session_id).await {
+                                    Ok(v) => v,
+                                    Err(v) => v.into(),
+                                }
+                            });
                         }
-                    }
+                        None => {
+                            console::log!("invalid allowed mech idx".to_string());
+                            self.state = LoginState::Error {
+                                emsg: "Invalid Continue Index".to_string(),
+                                kopid: None,
+                            };
+                        }
+                    },
                     _ => {
                         console::log!("invalid state transition".to_string());
                         self.state = LoginState::Error {
@@ -917,7 +920,7 @@ impl Component for LoginApp {
             </div>
         </footer>
         </>
-                }
+        }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
