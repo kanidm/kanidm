@@ -117,7 +117,7 @@ impl Component for PasskeyModalApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("passkey modal create");
+        console::debug!("passkey modal create");
 
         PasskeyModalApp {
             state: State::Init,
@@ -126,12 +126,12 @@ impl Component for PasskeyModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("passkey modal::change");
+        console::debug!("passkey modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("passkey modal::update");
+        console::debug!("passkey modal::update");
         match msg {
             Msg::LabelCheck => {
                 let label = utils::get_value_from_element_id("passkey-label")
@@ -179,7 +179,7 @@ impl Component for PasskeyModalApp {
                 self.state = State::FetchingChallenge;
             }
             Msg::ChallengeReady(challenge) => {
-                console::log!(format!("{:?}", challenge).as_str());
+                console::debug!(format!("{:?}", challenge).as_str());
                 self.state = State::ChallengeReady(challenge);
             }
             Msg::CredentialCreate => {
@@ -209,7 +209,7 @@ impl Component for PasskeyModalApp {
                                 Msg::CredentialReady(rpkc)
                             }
                             Err(e) => {
-                                console::log!(format!("error -> {:?}", e).as_str());
+                                console::error!(format!("error -> {:?}", e).as_str());
                                 Msg::NavigatorError
                             }
                         }
@@ -217,7 +217,7 @@ impl Component for PasskeyModalApp {
                 }
             }
             Msg::CredentialReady(rpkc) => {
-                console::log!(format!("{:?}", rpkc).as_str());
+                console::debug!(format!("{:?}", rpkc).as_str());
                 self.state = State::CredentialReady(rpkc);
             }
             Msg::NavigatorError => {
@@ -247,15 +247,15 @@ impl Component for PasskeyModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("passkey modal::rendered");
+        console::debug!("passkey modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("passkey modal::destroy");
+        console::debug!("passkey modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("passkey modal::view");
+        console::debug!("passkey modal::view");
 
         let label_val = self.label_val.clone();
 
@@ -355,7 +355,7 @@ impl Component for PasskeyModalApp {
 
                     <form class="row g-3 needs-validation" novalidate=true
                         onsubmit={ ctx.link().callback(move |e: FocusEvent| {
-                            console::log!("passkey modal::on form submit prevent default");
+                            console::debug!("passkey modal::on form submit prevent default");
                             e.prevent_default();
                             if submit_enabled {
                                 Msg::Submit

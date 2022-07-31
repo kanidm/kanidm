@@ -70,7 +70,7 @@ impl From<FetchError> for ViewsMsg {
 }
 
 fn switch(route: &ViewRoute) -> Html {
-    console::log!("views::switch");
+    console::debug!("views::switch");
 
     // safety - can't panic because to get to this location we MUST be authenticated!
     let token =
@@ -91,7 +91,7 @@ impl Component for ViewsApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        console::log!("views::create");
+        console::debug!("views::create");
 
         // Ensure the token is valid before we proceed. Could be
         // due to a session expiry or something else, but we want to make
@@ -115,12 +115,12 @@ impl Component for ViewsApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("views::changed");
+        console::debug!("views::changed");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("views::update");
+        console::debug!("views::update");
         match msg {
             ViewsMsg::Verified(token) => {
                 self.state = State::Authenticated(token);
@@ -139,7 +139,7 @@ impl Component for ViewsApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("views::rendered");
+        console::debug!("views::rendered");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -210,8 +210,6 @@ impl ViewsApp {
                 <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                   <img src="/pkg/img/favicon.png" />
                 </button>
-
-
                 <div class="collapse navbar-collapse" id="navbarCollapse">
                   <ul class="navbar-nav me-auto mb-2 mb-md-0">
                   <li class="mb-1">

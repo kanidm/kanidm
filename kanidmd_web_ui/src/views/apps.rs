@@ -12,17 +12,17 @@ impl Component for AppsApp {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("views::apps::create");
+        console::debug!("views::apps::create");
         AppsApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("views::apps::changed");
+        console::debug!("views::apps::changed");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
-        console::log!("views::apps::update");
+        console::debug!("views::apps::update");
         /*
         match msg {
             ViewsMsg::Logout => {
@@ -33,7 +33,7 @@ impl Component for AppsApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("views::apps::rendered");
+        console::debug!("views::apps::rendered");
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {

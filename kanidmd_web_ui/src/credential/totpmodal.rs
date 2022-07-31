@@ -125,7 +125,7 @@ impl Component for TotpModalApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("totp modal create");
+        console::debug!("totp modal create");
 
         TotpModalApp {
             state: TotpState::Init,
@@ -135,12 +135,12 @@ impl Component for TotpModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("totp modal::change");
+        console::debug!("totp modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("totp modal::update");
+        console::debug!("totp modal::update");
         let token_c = ctx.props().token.clone();
         match msg {
             Msg::TotpCancel => {
@@ -235,15 +235,15 @@ impl Component for TotpModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("totp modal::rendered");
+        console::debug!("totp modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("totp modal::destroy");
+        console::debug!("totp modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("totp modal::view");
+        console::debug!("totp modal::view");
 
         let totp_class = match &self.check {
             TotpCheck::Invalid | TotpCheck::Sha1Accept => classes!("form-control", "is-invalid"),

@@ -4,6 +4,7 @@
 //! not atuhenticated, this will determine that and send you to authentication first, then
 //! will allow you to proceed with the oauth flow.
 
+#[cfg(debug)]
 use gloo::console;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::functional::*;
@@ -49,7 +50,8 @@ fn landing() -> Html {
 }
 
 fn switch(route: &Route) -> Html {
-    console::log!("manager::switch");
+    #[cfg(debug)]
+    console::debug!("manager::switch");
     match route {
         Route::Landing => html! { <Landing /> },
         Route::Login => html! { <LoginApp /> },
@@ -76,24 +78,28 @@ impl Component for ManagerApp {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("manager::create");
+        #[cfg(debug)]
+        console::debug!("manager::create");
         ManagerApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("manager::change");
+        #[cfg(debug)]
+        console::debug!("manager::change");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
-        console::log!("manager::update");
+        #[cfg(debug)]
+        console::debug!("manager::update");
         true
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("manager::rendered");
+        #[cfg(debug)]
+        console::debug!("manager::rendered");
         // Can only access the current_route AFTER it renders.
-        // console::log!(format!("{:?}", yew_router::current_route::<Route>()).as_str())
+        // console::debug!(format!("{:?}", yew_router::current_route::<Route>()).as_str())
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {

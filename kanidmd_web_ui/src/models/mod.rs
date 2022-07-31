@@ -15,7 +15,8 @@ use kanidm_proto::v1::{CUSessionToken, CUStatus};
 
 pub fn get_bearer_token() -> Option<String> {
     let prev_session: Result<String, _> = PersistentStorage::get("kanidm_bearer_token");
-    console::log!(format!("kanidm_bearer_token -> {:?}", prev_session).as_str());
+    #[cfg(debug)]
+    console::debug!(format!("kanidm_bearer_token -> {:?}", prev_session).as_str());
 
     prev_session.ok()
 }
@@ -50,7 +51,7 @@ pub fn push_return_location(l: Location) {
 
 pub fn pop_return_location() -> Location {
     let l: Result<Location, _> = TemporaryStorage::get("return_location");
-    console::log!(format!("return_location -> {:?}", l).as_str());
+    console::debug!(format!("return_location -> {:?}", l).as_str());
     TemporaryStorage::delete("return_location");
     l.unwrap_or(Location::Manager(Route::Landing))
 }
@@ -61,7 +62,7 @@ pub fn push_oauth2_authorisation_request(r: AuthorisationRequest) {
 
 pub fn pop_oauth2_authorisation_request() -> Option<AuthorisationRequest> {
     let l: Result<AuthorisationRequest, _> = TemporaryStorage::get("oauth2_authorisation_request");
-    console::log!(format!("oauth2_authorisation_request -> {:?}", l).as_str());
+    console::debug!(format!("oauth2_authorisation_request -> {:?}", l).as_str());
     TemporaryStorage::delete("oauth2_authorisation_request");
     l.ok()
 }
@@ -72,7 +73,7 @@ pub fn push_login_hint(r: String) {
 
 pub fn pop_login_hint() -> Option<String> {
     let l: Result<String, _> = TemporaryStorage::get("login_hint");
-    console::log!(format!("login_hint -> {:?}", l).as_str());
+    console::debug!(format!("login_hint -> {:?}", l).as_str());
     TemporaryStorage::delete("login_hint");
     l.ok()
 }

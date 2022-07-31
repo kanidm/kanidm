@@ -95,7 +95,7 @@ impl Component for CredentialResetApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        console::log!("credential::reset::create");
+        console::debug!("credential::reset::create");
 
         // On a page refresh/reload, should we restart a session that *may* have existed?
         // This could be achieved with local storage
@@ -118,7 +118,7 @@ impl Component for CredentialResetApp {
             .query()
             .map_err(|e| {
                 let e_msg = format!("query decode error -> {:?}", e);
-                console::log!(e_msg.as_str());
+                console::error!(e_msg.as_str());
             })
             .ok();
 
@@ -153,12 +153,12 @@ impl Component for CredentialResetApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("credential::reset::change");
+        console::debug!("credential::reset::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("credential::reset::update");
+        console::debug!("credential::reset::update");
         let next_state = match (msg, &self.state) {
             (Msg::Ignore, _) => None,
             (Msg::TokenSubmit, State::TokenInput) => {
@@ -176,18 +176,18 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForStatus)
             }
             (Msg::BeginSession { token, status }, State::WaitingForStatus) => {
-                console::log!(format!("{:?}", status).as_str());
+                console::debug!(format!("{:?}", status).as_str());
                 Some(State::Main { token, status })
             }
             (Msg::UpdateSession { status }, State::Main { token, status: _ }) => {
-                console::log!(format!("{:?}", status).as_str());
+                console::debug!(format!("{:?}", status).as_str());
                 Some(State::Main {
                     token: token.clone(),
                     status,
                 })
             }
             (Msg::Commit, State::Main { token, status }) => {
-                console::log!(format!("{:?}", status).as_str());
+                console::debug!(format!("{:?}", status).as_str());
                 let token_c = token.clone();
 
                 ctx.link().send_future(async {
@@ -200,7 +200,7 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForCommit)
             }
             (Msg::Cancel, State::Main { token, status }) => {
-                console::log!(format!("{:?}", status).as_str());
+                console::debug!(format!("{:?}", status).as_str());
                 let token_c = token.clone();
 
                 ctx.link().send_future(async {
@@ -214,7 +214,7 @@ impl Component for CredentialResetApp {
             }
             (Msg::Success, State::WaitingForCommit) => {
                 let loc = models::pop_return_location();
-                console::log!(format!("Going to -> {:?}", loc));
+                console::debug!(format!("Going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
 
                 None
@@ -236,11 +236,11 @@ impl Component for CredentialResetApp {
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         crate::utils::autofocus();
-        console::log!("credential::reset::rendered");
+        console::debug!("credential::reset::rendered");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("credential::reset::view");
+        console::debug!("credential::reset::view");
         match &self.state {
             State::TokenInput => self.view_token_input(ctx),
             State::WaitingForStatus | State::WaitingForCommit => self.view_waiting(ctx),
@@ -250,7 +250,7 @@ impl Component for CredentialResetApp {
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("credential::reset::destroy");
+        console::debug!("credential::reset::destroy");
         remove_body_form_classes!();
     }
 }
@@ -269,7 +269,7 @@ impl CredentialResetApp {
               </p>
             <form
                   onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                      console::log!("credential::reset::view_token_input -> TokenInput - prevent_default()");
+                      console::debug!("credential::reset::view_token_input -> TokenInput - prevent_default()");
                       e.prevent_default();
 
                       Msg::TokenSubmit

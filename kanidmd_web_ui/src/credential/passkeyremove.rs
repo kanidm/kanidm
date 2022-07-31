@@ -126,7 +126,7 @@ impl Component for PasskeyRemoveModalApp {
     type Properties = PasskeyRemoveModalProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        console::log!("passkey remove modal create");
+        console::debug!("passkey remove modal create");
 
         let tag = ctx.props().tag.clone();
         let uuid = ctx.props().uuid.clone();
@@ -141,12 +141,12 @@ impl Component for PasskeyRemoveModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("passkey remove modal::change");
+        console::debug!("passkey remove modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("passkey remove modal::update");
+        console::debug!("passkey remove modal::update");
         match msg {
             Msg::Submit => {
                 self.reset_and_hide();
@@ -178,15 +178,15 @@ impl Component for PasskeyRemoveModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("passkey remove modal::rendered");
+        console::debug!("passkey remove modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("passkey remove modal::destroy");
+        console::debug!("passkey remove modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("passkey remove modal::view");
+        console::debug!("passkey remove modal::view");
 
         let remove_tgt = self.target.clone();
         let remove_id = format!("staticPasskeyRemove-{}", self.uuid);

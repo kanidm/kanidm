@@ -115,7 +115,7 @@ impl LoginApp {
         } else if status == 404 {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            console::log!(format!(
+            console::error!(format!(
                 "User not found: {:?}. Operation ID: {:?}",
                 text, kopid
             ));
@@ -172,7 +172,7 @@ impl LoginApp {
     }
 
     /// Renders the "Start again" button
-    fn button_start_again(&self, ctx: &Context<Self> ) -> VNode {
+    fn button_start_again(&self, ctx: &Context<Self>) -> VNode {
         html! {
             <div class="col-md-auto text-center">
                 <button type="button" class="btn btn-dark" onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
@@ -214,7 +214,7 @@ impl LoginApp {
                         <label for="autofocus" class="form-label">{ " Username " }</label>
                         <form
                         onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                            console::log!("login::view_state -> Init - prevent_default()".to_string());
+                            console::debug!("login::view_state -> Init - prevent_default()".to_string());
                             e.prevent_default();
                             LoginAppMsg::Begin
                         } ) }
@@ -289,7 +289,7 @@ impl LoginApp {
                     <div class="container">
                         <form class="row g-3"
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                                console::log!("login::view_state -> Password - prevent_default()".to_string());
+                                console::debug!("login::view_state -> Password - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::PasswordSubmit
                             } ) }
@@ -326,7 +326,7 @@ impl LoginApp {
                     <div class="container">
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                                console::log!("login::view_state -> BackupCode - prevent_default()".to_string());
+                                console::debug!("login::view_state -> BackupCode - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::BackupCodeSubmit
                             } ) }
@@ -358,7 +358,7 @@ impl LoginApp {
                     <div class="container">
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                                console::log!("login::view_state -> Totp - prevent_default()".to_string());
+                                console::debug!("login::view_state -> Totp - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::TotpSubmit
                             } ) }
@@ -465,7 +465,8 @@ impl LoginApp {
             LoginState::Authenticated => {
                 let loc = models::pop_return_location();
                 // redirect
-                console::log!(format!("authenticated, try going to -> {:?}", loc));
+                #[cfg(debug)]
+                console::debug!(format!("authenticated, try going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
                 html! {
                     <div class="container">
@@ -533,22 +534,27 @@ impl Component for LoginApp {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("create".to_string());
+        #[cfg(debug)]
+        console::debug!("create".to_string());
         // Assume we are here for a good reason.
         models::clear_bearer_token();
         // Do we have a login hint?
         let inputvalue = models::pop_login_hint().unwrap_or_else(|| "".to_string());
-        // Clean any cookies.
-        let document = utils::document();
 
-        let html_document = document
-            .dyn_into::<web_sys::HtmlDocument>()
-            .expect_throw("failed to dyn cast to htmldocument");
-        let cookie = html_document
-            .cookie()
-            .expect_throw("failed to access page cookies");
-        console::log!("cookies".to_string());
-        console::log!(cookie);
+        #[cfg(debug)]
+        {
+            let document = utils::document();
+            let html_document = document
+                .dyn_into::<web_sys::HtmlDocument>()
+                .expect_throw("failed to dyn cast to htmldocument");
+            let cookie = html_document
+                .cookie()
+                .expect_throw("failed to access page cookies");
+            console::debug!("cookies".to_string());
+            console::debug!(cookie);
+        }
+        // Clean any cookies.
+        // TODO: actually check that it's cleaning the cookies.
 
         let state = LoginState::Init(true);
 
@@ -579,7 +585,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::Begin => {
-                console::log!(format!("begin -> {:?}", self.inputvalue));
+                #[cfg(debug)]
+                console::debug!(format!("begin -> {:?}", self.inputvalue));
                 // Disable the button?
                 let username = self.inputvalue.clone();
                 ctx.link().send_future(async {
@@ -592,7 +599,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::PasswordSubmit => {
-                console::log!("At password step".to_string());
+                #[cfg(debug)]
+                console::debug!("At password step".to_string());
                 // Disable the button?
                 self.state = LoginState::Password(false);
                 let authreq = AuthRequest {
@@ -610,7 +618,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::BackupCodeSubmit => {
-                console::log!("backupcode".to_string());
+                #[cfg(debug)]
+                console::debug!("backupcode".to_string());
                 // Disable the button?
                 self.state = LoginState::BackupCode(false);
                 let authreq = AuthRequest {
@@ -628,7 +637,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::TotpSubmit => {
-                console::log!("totp".to_string());
+                #[cfg(debug)]
+                console::debug!("totp".to_string());
                 // Disable the button?
                 match self.inputvalue.parse::<u32>() {
                     Ok(totp) => {
@@ -655,7 +665,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::SecurityKeySubmit(resp) => {
-                console::log!("At securitykey step".to_string());
+                #[cfg(debug)]
+                console::debug!("At securitykey step".to_string());
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
                 };
@@ -670,7 +681,8 @@ impl Component for LoginApp {
                 false
             }
             LoginAppMsg::PasskeySubmit(resp) => {
-                console::log!("At passkey step".to_string());
+                #[cfg(debug)]
+                console::debug!("At passkey step".to_string());
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::Passkey(resp)),
                 };
@@ -687,7 +699,8 @@ impl Component for LoginApp {
             LoginAppMsg::Start(session_id, resp) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!(format!("start -> {:?} : {:?}", resp, session_id));
+                #[cfg(debug)]
+                console::debug!(format!("start -> {:?} : {:?}", resp, session_id));
                 match resp.state {
                     AuthState::Choose(mut mechs) => {
                         self.session_id = session_id;
@@ -707,18 +720,20 @@ impl Component for LoginApp {
                             // We do NOT need to change state or redraw
                             false
                         } else {
-                            console::log!("multiple mechs exist".to_string());
+                            #[cfg(debug)]
+                            console::debug!("multiple mechs exist".to_string());
                             self.state = LoginState::Select(mechs);
                             true
                         }
                     }
                     AuthState::Denied(reason) => {
-                        console::log!(format!("denied -> {:?}", reason));
+                        #[cfg(debug)]
+                        console::debug!(format!("denied -> {:?}", reason));
                         self.state = LoginState::Denied(reason);
                         true
                     }
                     _ => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -728,7 +743,8 @@ impl Component for LoginApp {
                 }
             }
             LoginAppMsg::Select(idx) => {
-                console::log!(format!("chose -> {:?}", idx));
+                #[cfg(debug)]
+                console::debug!(format!("chose -> {:?}", idx));
                 match &self.state {
                     LoginState::Select(allowed) => match allowed.get(idx) {
                         Some(mech) => {
@@ -744,7 +760,7 @@ impl Component for LoginApp {
                             });
                         }
                         None => {
-                            console::log!("invalid allowed mech idx".to_string());
+                            console::error!("invalid allowed mech idx".to_string());
                             self.state = LoginState::Error {
                                 emsg: "Invalid Continue Index".to_string(),
                                 kopid: None,
@@ -752,7 +768,7 @@ impl Component for LoginApp {
                         }
                     },
                     _ => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -764,12 +780,13 @@ impl Component for LoginApp {
             LoginAppMsg::Next(resp) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!(format!("next -> {:?}", resp));
+                #[cfg(debug)]
+                console::debug!(format!("next -> {:?}", resp));
 
                 // Based on the state we have, we need to chose our steps.
                 match resp.state {
                     AuthState::Choose(_mechs) => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -802,13 +819,14 @@ impl Component for LoginApp {
                             }
                         } else {
                             // Else, present the options in a choice.
-                            console::log!("multiple choices exist".to_string());
+                            #[cfg(debug)]
+                            console::debug!("multiple choices exist".to_string());
                             self.state = LoginState::Continue(allowed);
                         }
                         true
                     }
                     AuthState::Denied(reason) => {
-                        console::log!(format!("denied -> {:?}", reason));
+                        console::error!(format!("denied -> {:?}", reason));
                         self.state = LoginState::Denied(reason);
                         true
                     }
@@ -822,7 +840,8 @@ impl Component for LoginApp {
             }
             LoginAppMsg::Continue(idx) => {
                 // Are we in the correct internal state?
-                console::log!(format!("chose -> {:?}", idx));
+                #[cfg(debug)]
+                console::debug!(format!("chose -> {:?}", idx));
                 match &self.state {
                     LoginState::Continue(allowed) => {
                         match allowed.get(idx) {
@@ -846,7 +865,7 @@ impl Component for LoginApp {
                                 self.state = LoginState::Passkey(challenge.clone().into())
                             }
                             None => {
-                                console::log!("invalid allowed mech idx".to_string());
+                                console::error!("invalid allowed mech idx".to_string());
                                 self.state = LoginState::Error {
                                     emsg: "Invalid Continue Index".to_string(),
                                     kopid: None,
@@ -855,7 +874,7 @@ impl Component for LoginApp {
                         }
                     }
                     _ => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -867,14 +886,14 @@ impl Component for LoginApp {
             LoginAppMsg::UnknownUser => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!("Unknown user".to_string());
+                console::warn!("Unknown user".to_string());
                 self.state = LoginState::UnknownUser;
                 true
             }
             LoginAppMsg::Error { emsg, kopid } => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!(format!("error -> {:?}, {:?}", emsg, kopid));
+                console::error!(format!("error -> {:?}, {:?}", emsg, kopid));
                 self.state = LoginState::Error { emsg, kopid };
                 true
             }
@@ -882,7 +901,8 @@ impl Component for LoginApp {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("login::view".to_string());
+        #[cfg(debug)]
+        console::debug!("login::view".to_string());
         // How do we add a top level theme?
         /*
         let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
@@ -914,22 +934,20 @@ impl Component for LoginApp {
             </center>
             { self.view_state(ctx) }
         </main>
-        <footer class="footer mt-auto py-3 bg-light text-end">
-            <div class="container">
-                <span class="text-muted">{ "Powered by "  }<a href="https://kanidm.com">{ "Kanidm" }</a></span>
-            </div>
-        </footer>
+        { crate::utils::do_footer() }
         </>
         }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("login::destroy".to_string());
+        #[cfg(debug)]
+        console::debug!("login::destroy".to_string());
         remove_body_form_classes!();
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         crate::utils::autofocus();
-        console::log!("login::rendered".to_string());
+        #[cfg(debug)]
+        console::debug!("login::rendered".to_string());
     }
 }

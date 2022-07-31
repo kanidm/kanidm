@@ -33,7 +33,7 @@ enum State {
         pii_scopes: Vec<String>,
         consent_token: String,
     },
-    ConsentGranted,
+    ConsentGranted(String),
     ErrInvalidRequest,
 }
 
@@ -43,7 +43,7 @@ pub struct Oauth2App {
 
 pub enum Oauth2Msg {
     LoginProceed,
-    ConsentGranted,
+    ConsentGranted(String),
     TokenValid,
     Consent {
         client_name: String,
@@ -139,7 +139,7 @@ impl Oauth2App {
                 .into_serde()
                 .map_err(|e| {
                     let e_msg = format!("serde error -> {:?}", e);
-                    console::log!(e_msg.as_str());
+                    console::error!(e_msg.as_str());
                 })
                 .expect_throw("Invalid response type");
             match state {
@@ -226,7 +226,8 @@ impl Component for Oauth2App {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        console::log!("oauth2::create");
+        #[cfg(debug)]
+        console::debug!("oauth2::create");
 
         // Do we have a query here?
         // Did we get sent a valid Oauth2 request?
@@ -239,11 +240,11 @@ impl Component for Oauth2App {
             .query()
             .map_err(|e| {
                 let e_msg = format!("lstorage error -> {:?}", e);
-                console::log!(e_msg.as_str());
+                console::error!(e_msg.as_str());
             })
             .ok()
             .or_else(|| {
-                console::log!("pop_oauth2_authorisation_request");
+                console::error!("pop_oauth2_authorisation_request");
                 models::pop_oauth2_authorisation_request()
             });
 
@@ -260,7 +261,7 @@ impl Component for Oauth2App {
         };
 
         let e_msg = format!("{:?}", query);
-        console::log!(e_msg.as_str());
+        console::error!(e_msg.as_str());
 
         // In the query, if this is openid there MAY be a hint
         // as to the users name.
@@ -295,12 +296,14 @@ impl Component for Oauth2App {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("oauth2::change");
+        #[cfg(debug)]
+        console::debug!("oauth2::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("oauth2::update");
+        #[cfg(debug)]
+        console::debug!("oauth2::update");
 
         match msg {
             Oauth2Msg::LoginProceed => {
@@ -329,7 +332,7 @@ impl Component for Oauth2App {
                         State::SubmitAuthReq(token.clone())
                     }
                     _ => {
-                        console::log!("Invalid state transition");
+                        console::error!("Invalid state transition");
                         State::ErrInvalidRequest
                     }
                 };
@@ -350,17 +353,18 @@ impl Component for Oauth2App {
                         consent_token,
                     },
                     _ => {
-                        console::log!("Invalid state transition");
+                        console::error!("Invalid state transition");
                         State::ErrInvalidRequest
                     }
                 };
                 true
             }
-            Oauth2Msg::ConsentGranted => {
+            Oauth2Msg::ConsentGranted(_) => {
                 self.state = match &self.state {
                     State::Consent {
                         token,
                         consent_token,
+                        client_name,
                         ..
                     } => {
                         let token_c = token.clone();
@@ -371,10 +375,10 @@ impl Component for Oauth2App {
                                 Err(v) => v.into(),
                             }
                         });
-                        State::ConsentGranted
+                        State::ConsentGranted(client_name.to_string())
                     }
                     _ => {
-                        console::log!("Invalid state transition");
+                        console::error!("Invalid state transition");
                         State::ErrInvalidRequest
                     }
                 };
@@ -383,12 +387,13 @@ impl Component for Oauth2App {
             }
             Oauth2Msg::Error { emsg, kopid } => {
                 self.state = State::ErrInvalidRequest;
-                console::log!(format!("{:?}", kopid).as_str());
-                console::log!(emsg.as_str());
+                console::error!(format!("{:?}", kopid).as_str());
+                console::error!(emsg.as_str());
                 true
             }
             Oauth2Msg::Redirect(loc) => {
-                console::log!(format!("Redirecting to {}", loc).as_str());
+                #[cfg(debug)]
+                console::debug!(format!("Redirecting to {}", loc).as_str());
                 // Send the location here, and then update will trigger the redir via
                 // https://docs.rs/web-sys/0.3.51/web_sys/struct.Location.html#method.replace
                 // see https://developer.mozilla.org/en-US/docs/Web/API/Location/replace
@@ -400,7 +405,7 @@ impl Component for Oauth2App {
                     Ok(_) => false,
                     Err(e) => {
                         // Something went bang, opps.
-                        console::log!(format!("{:?}", e).as_str());
+                        console::error!(format!("{:?}", e).as_str());
                         self.state = State::ErrInvalidRequest;
                         true
                     }
@@ -411,29 +416,35 @@ impl Component for Oauth2App {
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         crate::utils::autofocus();
-        console::log!("oauth2::rendered");
+        #[cfg(debug)]
+        console::debug!("oauth2::rendered");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("oauth2::view");
-        match &self.state {
+        #[cfg(debug)]
+        console::debug!("oauth2::view");
+
+        let body_content = match &self.state {
             State::LoginRequired => {
                 // <body class="html-body form-body">
 
                 html! {
-                  <main class="form-signin">
                     <form
                       onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                          console::log!("oauth2::view -> LoginRequired - prevent_default()");
+                          console::debug!("oauth2::view -> LoginRequired - prevent_default()");
                           e.prevent_default();
                           Oauth2Msg::LoginProceed
                       } ) }
                       action="javascript:void(0);"
                     >
-                      <h1 class="h3 mb-3 fw-normal">{" Sign in to proceed" }</h1>
-                      <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Sign in" }</button>
+                      <h1 class="h3 mb-3 fw-normal">
+                        // TODO: include the domain display name here
+                        {"Sign in to proceed" }
+                        </h1>
+                      <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">
+                        { "Sign in" }
+                      </button>
                     </form>
-                  </main>
                 }
             }
             State::Consent {
@@ -448,54 +459,86 @@ impl Component for Oauth2App {
                 let pii_req = if pii_scopes.is_empty() {
                     html! {
                       <div>
-                        <p>{ "This site will not have access to your personal information" }</p>
-                        <p>{ "If this site requests personal information in the future we will check with you" }</p>
+                        <p>{ "This site will not have access to your personal information." }</p>
+                        <p>{ "If this site requests personal information in the future we will check with you." }</p>
                       </div>
                     }
                 } else {
                     html! {
                       <div>
-                        <p>{ "This site has requested to see the following personal information" }</p>
+                        <p>{ "This site has requested to see the following personal informatio.n" }</p>
                         <ul>
                           {
                             pii_scopes.iter().map(|s| html! { <li>{ s }</li> } ).collect::<Html>()
                           }
                         </ul>
-                        <p>{ "If this site requests different personal information in the future we will check with you again" }</p>
+                        <p>{ "If this site requests different personal information in the future we will check with you again." }</p>
                       </div>
                     }
                 };
 
                 // <body class="html-body form-body">
+                let app_name = client_name.clone();
                 html! {
-                    <main class="form-signin">
                       <form
-                        onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                            console::log!("oauth2::view -> Consent - prevent_default()");
+                        onsubmit={ ctx.link().callback(move |e: FocusEvent| {
+                            console::debug!("oauth2::view -> Consent - prevent_default()");
                             e.prevent_default();
-                            Oauth2Msg::ConsentGranted
+                            Oauth2Msg::ConsentGranted(format!("{}", client_name))
                         } ) }
                         action="javascript:void(0);"
                       >
-                        <h2 class="h3 mb-3 fw-normal">{"Consent to Proceed to " }{ client_name }</h2>
+                        <h2 class="h3 mb-3 fw-normal">{"Consent to Proceed to " }{ app_name }</h2>
                         { pii_req }
 
-                        <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Proceed" }</button>
+                        <div class="text-center">
+                            <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Proceed" }</button>
+                        </div>
                       </form>
-                    </main>
                 }
             }
-            State::ConsentGranted | State::SubmitAuthReq(_) | State::TokenCheck(_) => {
-                html! { <div> <h1>{ " ... " }</h1>  </div> }
+            State::ConsentGranted(app_name) => {
+                html! {
+                    <div class="alert alert-success" role="alert">
+                        <h2 class="text-center">{ "Taking you to " }{app_name}{" ... " }</h2>
+                    </div>
+                }
+            }
+            State::SubmitAuthReq(_) | State::TokenCheck(_) => {
+                html! {
+                    <div class="alert alert-light" role="alert">
+                        <h2 class="text-center">{ "Processing ... " }</h2>
+                    </div>
+                }
             }
             State::ErrInvalidRequest => {
-                html! { <div> <h1>{ " ❌ " }</h1>  </div> }
+                html! {
+                    <div class="alert alert-danger" role="alert">
+                        <h1>{ "Invalid request" } </h1>
+                        <p>
+                        { "Please close this window and try again again from the beginning." }
+                        </p>
+                    </div>
+                }
             }
+        };
+        html! {
+        <>
+            <main class="form-signin">
+            <center>
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+            </center>
+            <div class="container">
+            { body_content }
+            </div>
+            </main>
+            { crate::utils::do_footer() }
+        </>
         }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("oauth2::destroy");
+        console::debug!("oauth2::destroy");
         remove_body_form_classes!();
     }
 }

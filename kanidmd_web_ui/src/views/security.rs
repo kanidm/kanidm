@@ -56,17 +56,17 @@ impl Component for SecurityApp {
     type Properties = ViewProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("views::security::create");
+        console::debug!("views::security::create");
         SecurityApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("views::security::changed");
+        console::debug!("views::security::changed");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("views::security::update");
+        console::debug!("views::security::update");
         match msg {
             Msg::RequestCredentialUpdate => {
                 // Submit a req to init the session.
@@ -113,7 +113,7 @@ impl Component for SecurityApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("views::security::rendered");
+        console::debug!("views::security::rendered");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {

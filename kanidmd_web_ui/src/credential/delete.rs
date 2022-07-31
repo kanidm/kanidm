@@ -90,18 +90,18 @@ impl Component for DeleteApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("delete modal create");
+        console::debug!("delete modal create");
 
         DeleteApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("delete modal::change");
+        console::debug!("delete modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("delete modal::update");
+        console::debug!("delete modal::update");
         let token_c = ctx.props().token.clone();
         match msg {
             Msg::Cancel => {
@@ -130,15 +130,15 @@ impl Component for DeleteApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("delete modal::rendered");
+        console::debug!("delete modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("delete modal::destroy");
+        console::debug!("delete modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("delete modal::view");
+        console::debug!("delete modal::view");
 
         let submit_enabled = matches!(&self.state, State::Init);
 

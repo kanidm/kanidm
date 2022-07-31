@@ -3,6 +3,8 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
 use web_sys::{Document, Event, /*HtmlButtonElement,*/ HtmlElement, HtmlInputElement, Window};
+use yew::html;
+use yew::virtual_dom::VNode;
 
 pub fn window() -> Window {
     web_sys::window().expect_throw("Unable to retrieve window")
@@ -24,7 +26,7 @@ pub fn autofocus() {
     if let Some(element) = doc.get_element_by_id("autofocus") {
         if let Ok(htmlelement) = element.dyn_into::<web_sys::HtmlElement>() {
             if htmlelement.focus().is_err() {
-                console::log!("unable to autofocus.");
+                console::error!("unable to autofocus.");
             }
         }
     }
@@ -65,4 +67,15 @@ pub fn get_value_from_element_id(id: &str) -> Option<String> {
 #[wasm_bindgen(raw_module = "/pkg/wasmloader.js")]
 extern "C" {
     pub fn modal_hide_by_id(m: &str);
+}
+
+/// Returns the footer node for the UI
+pub fn do_footer() -> VNode {
+    html! {
+        <footer class="footer mt-auto py-3 bg-light text-end">
+            <div class="container">
+                <span class="text-muted">{ "Powered by "  }<a href="https://kanidm.com">{ "Kanidm" }</a></span>
+            </div>
+        </footer>
+    }
 }
