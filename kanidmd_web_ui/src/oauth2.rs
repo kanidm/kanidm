@@ -466,7 +466,7 @@ impl Component for Oauth2App {
                 } else {
                     html! {
                       <div>
-                        <p>{ "This site has requested to see the following personal informatio.n" }</p>
+                        <p>{ "This site has requested to see the following personal information." }</p>
                         <ul>
                           {
                             pii_scopes.iter().map(|s| html! { <li>{ s }</li> } ).collect::<Html>()

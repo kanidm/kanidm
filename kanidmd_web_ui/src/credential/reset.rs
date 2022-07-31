@@ -95,6 +95,7 @@ impl Component for CredentialResetApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
+        #[cfg(debug)]
         console::debug!("credential::reset::create");
 
         // On a page refresh/reload, should we restart a session that *may* have existed?
@@ -153,11 +154,13 @@ impl Component for CredentialResetApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        #[cfg(debug)]
         console::debug!("credential::reset::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        #[cfg(debug)]
         console::debug!("credential::reset::update");
         let next_state = match (msg, &self.state) {
             (Msg::Ignore, _) => None,
@@ -176,10 +179,12 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForStatus)
             }
             (Msg::BeginSession { token, status }, State::WaitingForStatus) => {
+                #[cfg(debug)]
                 console::debug!(format!("{:?}", status).as_str());
                 Some(State::Main { token, status })
             }
             (Msg::UpdateSession { status }, State::Main { token, status: _ }) => {
+                #[cfg(debug)]
                 console::debug!(format!("{:?}", status).as_str());
                 Some(State::Main {
                     token: token.clone(),
@@ -214,6 +219,7 @@ impl Component for CredentialResetApp {
             }
             (Msg::Success, State::WaitingForCommit) => {
                 let loc = models::pop_return_location();
+                #[cfg(debug)]
                 console::debug!(format!("Going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
 
@@ -221,7 +227,7 @@ impl Component for CredentialResetApp {
             }
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),
             (_, _) => {
-                console::debug!("CredentialResetApp state match fail on update.");
+                console::error!("CredentialResetApp state match fail on update.");
                 None
             }
         };
@@ -236,10 +242,12 @@ impl Component for CredentialResetApp {
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         crate::utils::autofocus();
+        #[cfg(debug)]
         console::debug!("credential::reset::rendered");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        #[cfg(debug)]
         console::debug!("credential::reset::view");
         match &self.state {
             State::TokenInput => self.view_token_input(ctx),
@@ -250,6 +258,7 @@ impl Component for CredentialResetApp {
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
+        #[cfg(debug)]
         console::debug!("credential::reset::destroy");
         remove_body_form_classes!();
     }
