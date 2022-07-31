@@ -418,16 +418,14 @@ impl CredentialResetApp {
             }
         } else {
             html! {
-                <div class="container">
+                <>
                 <h4>{"Registered Passkeys"}</h4>
-                    // <ul class="list-unstyled">
-                        { for status.passkeys.iter()
-                            .map(|detail|
-                                PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
-                            )
-                        }
-                    // </ul>
-                </div>
+                { for status.passkeys.iter()
+                    .map(|detail|
+                        PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                    )
+                }
+                </>
             }
         };
 
