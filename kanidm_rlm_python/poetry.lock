@@ -354,7 +354,7 @@ python-versions = ">=3.6,<4.0"
 
 [[package]]
 name = "types-requests"
-version = "2.28.3"
+version = "2.28.6"
 description = "Typing stubs for requests"
 category = "dev"
 optional = false
@@ -423,7 +423,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "6a6c32537303fae3f35885d8f40c9a132843abd7bc73c04fcd6e17b028bbab85"
+content-hash = "038d6d156a7017e95c0385ca2d635baf4055e0bcae66b814f61a34899d88960a"
 
 [metadata.files]
 aiohttp = [
@@ -791,8 +791,8 @@ tomlkit = [
     {file = "tomlkit-0.11.0.tar.gz", hash = "sha256:71ceb10c0eefd8b8f11fe34e8a51ad07812cb1dc3de23247425fbc9ddc47b9dd"},
 ]
 types-requests = [
-    {file = "types-requests-2.28.3.tar.gz", hash = "sha256:fb9ea69311766967f9e91861211ec7449f6484025b766ea709689c0dbb29d7ba"},
-    {file = "types_requests-2.28.3-py3-none-any.whl", hash = "sha256:66f0e427708588d4dac2f365a0b2c1ad8f31780429fd8ad193fec93139b22112"},
+    {file = "types-requests-2.28.6.tar.gz", hash = "sha256:cf3383bbd79394bf051a0a9202d6831fa962f186f923c178f7c059e3424bd00e"},
+    {file = "types_requests-2.28.6-py3-none-any.whl", hash = "sha256:d8d7607419cd4b41a7b9497e15e8c0bad78d50df43c48ad25bc526a11518c3a9"},
 ]
 types-toml = [
     {file = "types-toml-0.10.8.tar.gz", hash = "sha256:b7e7ea572308b1030dc86c3ba825c5210814c2825612ec679eb7814f8dd9295a"},
