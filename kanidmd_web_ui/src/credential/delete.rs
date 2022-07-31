@@ -4,6 +4,7 @@ use crate::utils;
 use super::eventbus::{EventBus, EventBusMsg};
 use super::reset::ModalProps;
 
+#[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
 use yew_agent::Dispatched;
@@ -90,17 +91,20 @@ impl Component for DeleteApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
+        #[cfg(debug)]
         console::debug!("delete modal create");
 
         DeleteApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        #[cfg(debug)]
         console::debug!("delete modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        #[cfg(debug)]
         console::debug!("delete modal::update");
         let token_c = ctx.props().token.clone();
         match msg {
@@ -130,14 +134,17 @@ impl Component for DeleteApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug)]
         console::debug!("delete modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
+        #[cfg(debug)]
         console::debug!("delete modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        #[cfg(debug)]
         console::debug!("delete modal::view");
 
         let submit_enabled = matches!(&self.state, State::Init);
@@ -160,6 +167,7 @@ impl Component for DeleteApp {
                   <div class="modal-body">
 
                     <p>{ "Delete your Password and any associated MFA?" }</p>
+                    <p><strong>{ "Note:"}</strong>{" this will not remove Passkeys." }</p>
 
                   </div>
                   <div class="modal-footer">

@@ -50,14 +50,14 @@ impl PasskeyRemoveModalApp {
         let tag = tag.to_string();
 
         html! {
-          <li>
-          <div class="row g-3">
-            <p>{ tag }</p>
-            <button type="button" class="btn btn-dark btn-sml" data-bs-toggle="modal" data-bs-target={ remove_tgt }>
+          <div class="row mb-3">
+            <div class="col">{ tag.clone() }</div>
+            <div class="col">
+            <button type="button" class="btn btn-dark btn-sml" id={tag} data-bs-toggle="modal" data-bs-target={ remove_tgt }>
               { "Remove" }
             </button>
+            </div>
           </div>
-          </li>
         }
     }
 

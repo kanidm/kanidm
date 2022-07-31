@@ -258,15 +258,14 @@ impl Component for CredentialResetApp {
 impl CredentialResetApp {
     fn view_token_input(&self, ctx: &Context<Self>) -> Html {
         html! {
+        <body class="flex-column d-flex h-100">
         <main class="flex-shrink-0 form-signin">
             <center>
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
                 // TODO: replace this with a call to domain info
-                <h3>{ "Kanidm idm.example.com" } </h3>
+                <h2>{ "Credential Reset" } </h2>
+                <h3>{ "idm.example.com" } </h3>
             </center>
-              <p>
-                {"Enter your credential reset token"}
-              </p>
             <form
                   onsubmit={ ctx.link().callback(|e: FocusEvent| {
                       console::debug!("credential::reset::view_token_input -> TokenInput - prevent_default()");
@@ -275,19 +274,28 @@ impl CredentialResetApp {
                       Msg::TokenSubmit
                   } ) }
                   action="javascript:void(0);">
+                <p class="text-center">
+                    <label for="autofocus" class="form-label">
+                    {"Enter your credential reset token."}
+                    </label>
+
                   <input
                       id="autofocus"
                       type="text"
                       class="form-control"
                       value=""
                   />
-                  <button type="submit" class="btn btn-dark">{" Submit "}</button><br />
-              </form>
-              <p>
-              <a href="/"><button href="/" class="btn btn-dark" aria-label="Return home">{"Return to the home page"}</button></a>
-              </p>
+                </p>
+                <p class="text-center">
+                <button type="submit" class="btn btn-primary">{" Submit "}</button><br />
+                </p>
+                </form>
+            <p class="text-center">
+              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+            </p>
 
           </main>
+        </body>
         }
     }
 
@@ -321,8 +329,8 @@ impl CredentialResetApp {
             }) => {
                 html! {
                     <>
-                      <p>{ "Password Set" }</p>
-                      <p>{ "Mfa Disabled" }</p>
+                      <p>{ "✅ Password Set" }</p>
+                      <p>{ "❌ MFA Disabled" }</p>
 
                       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
                         { "Add TOTP" }
@@ -373,8 +381,8 @@ impl CredentialResetApp {
             }) => {
                 html! {
                     <>
-                      <p>{ "Password Set" }</p>
-                      <p>{ "Mfa Enabled" }</p>
+                      <p>{ "✅ Password Set" }</p>
+                      <p>{ "✅ MFA Enabled" }</p>
 
                       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
                         { "Reset TOTP" }
@@ -402,13 +410,14 @@ impl CredentialResetApp {
         } else {
             html! {
                 <div class="container">
-                    <ul class="list-unstyled">
+                <h4>{"Registered Passkeys"}</h4>
+                    // <ul class="list-unstyled">
                         { for status.passkeys.iter()
                             .map(|detail|
                                 PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
                             )
                         }
-                    </ul>
+                    // </ul>
                 </div>
             }
         };
@@ -424,10 +433,11 @@ impl CredentialResetApp {
         };
 
         html! {
+        <>
           <div class="d-flex align-items-start form-cred-reset-body">
             <main class="w-100">
-              <div class="py-5 text-center">
-                <h4>{ "Updating Credentials" }</h4>
+              <div class="py-3 text-center">
+                <h3>{ "Updating Credentials" }</h3>
                 <p>{ displayname }</p>
                 <p>{ spn }</p>
               </div>
@@ -444,20 +454,22 @@ impl CredentialResetApp {
 
                     <hr class="my-4" />
 
+                    <h4>{"Password / MFA"}</h4>
                     { pw_html }
 
                     <hr class="my-4" />
 
+                    // TODO: this could probably just be a link back home, currently it breaks and sends the user to an error..
                     <button class="w-50 btn btn-danger btn-lg" type="submit"
                         disabled=false
                         onclick={
                             ctx.link()
-                                .callback(move |_| {
-                                    Msg::Cancel
-                                })
+                            .callback(move |_| {
+                                Msg::Cancel
+                            })
                         }
-                    >{ "Cancel" }</button>
-                    <button class="w-50 btn btn-success btn-lg" type="submit"
+                        >{ "Cancel" }</button>
+                        <button class="w-50 btn btn-success btn-lg" type="submit"
                         disabled={ !can_commit }
                         onclick={
                             ctx.link()
@@ -481,13 +493,17 @@ impl CredentialResetApp {
             { passkey_modals_html }
 
           </div>
+          { crate::utils::do_footer() }
+          </>
         }
     }
 
     fn view_error(&self, _ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {
         html! {
           <main class="form-signin">
-
+            <p class="text-center">
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+            </p>
             <div class="alert alert-danger" role="alert">
               <h2>{ "An Error Occured 🥺" }</h2>
             <p>{ msg.to_string() }</p>
@@ -501,6 +517,9 @@ impl CredentialResetApp {
                 }
             </p>
             </div>
+            <p class="text-center">
+              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+            </p>
           </main>
         }
     }
