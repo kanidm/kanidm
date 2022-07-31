@@ -16,8 +16,8 @@ if [ -z "$(which rsync)" ]; then
     exit 1
 fi
 
-echo "Cleaning up"
-if [ "$(find ./pkg/ -name 'kanidmd_web*' | wc -l)" ]; then
+if [ "$(find ./pkg/ -name 'kanidmd*' | wc -l)" -gt 0 ]; then
+    echo "Cleaning up"
     rm pkg/kanidmd*
 fi
 
