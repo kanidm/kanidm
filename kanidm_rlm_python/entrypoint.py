@@ -21,6 +21,7 @@ CONFIG_FILE_PATH = "/data/kanidm"
 
 CERT_SERVER_DEST = "/etc/raddb/certs/server.pem"
 CERT_CA_DEST = "/etc/raddb/certs/ca.pem"
+CERT_CA_DIR = "/etc/raddb/certs/"
 CERT_DH_DEST = "/etc/raddb/certs/dh.pem"
 
 # pylint: disable=unused-argument
@@ -59,6 +60,20 @@ def setup_certs(
         if cert_ca != CERT_CA_DEST:
             print(f"Copying {cert_ca} to {CERT_CA_DEST}")
             shutil.copyfile(cert_ca, CERT_CA_DEST)
+
+    # This dir can also contain crls!
+    if kanidm_config_object.radius_ca_dir:
+        cert_ca_dir = Path(kanidm_config_object.radius_ca_dir).expanduser().resolve()
+        if not cert_ca_dir.exists():
+            print(f"Failed to find radiusd ca dir ({cert_ca_dir}), quitting!", file=sys.stderr)
+            sys.exit(1)
+        if cert_ca_dir != CERT_CA_DIR:
+            print(f"Copying {cert_ca_dir} to {CERT_CA_DIR}")
+            shutil.copytree(cert_ca_dir, CERT_CA_DIR, dirs_exist_ok=True)
+
+    # Setup the ca-dir correctly now. We do this before we add server.pem so that it's
+    # not hashed as a ca.
+    subprocess.check_call(["openssl", "rehash", CERT_CA_DIR])
 
     # let's put some dhparams in place
     if kanidm_config_object.radius_dh_path is not None:

@@ -2,11 +2,10 @@ FROM opensuse/tumbleweed:latest
 
 EXPOSE 1812 1813
 
-# TODO: remove this once the freeradius python fix has been rolled into tumbleweed main
-RUN zypper ar -f obs://home:firstyear:branches:network home:firstyear:branches:network
-
-RUN zypper --gpg-auto-import-keys refresh --force
-RUN zypper install -y \
+# These all need to be on one line else the rpm cache ends
+# up in the layers.
+RUN zypper refresh --force && \
+    zypper install -y \
     freeradius-client \
     freeradius-server \
     freeradius-server-python3 \
@@ -18,8 +17,9 @@ RUN zypper install -y \
     timezone \
     iproute2 \
     iputils \
-    curl
-RUN zypper clean
+    openssl \
+    curl && \
+    zypper clean
 
 ADD kanidm_rlm_python/mods-available/ /etc/raddb/mods-available/
 COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/
@@ -29,6 +29,7 @@ WORKDIR /etc/raddb
 
 # Enable the python and cache module.
 RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3
+RUN ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
 
 # disable auth via methods we don't support!
 RUN rm /etc/raddb/mods-available/sql
@@ -54,6 +55,7 @@ RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/kanidmr
 RUN rm -rf /pkg/*
 
 USER radiusd
+ENV LD_PRELOAD=/usr/lib64/libpython3.so
 
 COPY kanidm_rlm_python/entrypoint.py /entrypoint.py
 CMD [ "/usr/bin/python3", "/entrypoint.py" ]

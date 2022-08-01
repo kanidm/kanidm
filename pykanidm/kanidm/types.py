@@ -143,10 +143,11 @@ class KanidmClientConfig(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
 
-    radius_cert_path: str = "/etc/raddb/certs/cert.pem"
-    radius_key_path: str = "/etc/raddb/certs/key.pem"  # the signing key for radius TLS
-    radius_dh_path: str = "/etc/raddb/certs/dh.pem"  # the diffie-hellman output
-    radius_ca_path: str = "/etc/raddb/certs/ca.pem"  # the diffie-hellman output
+    radius_cert_path: str = "/data/cert.pem"
+    radius_key_path: str = "/data/key.pem"  # the signing key for radius TLS
+    radius_dh_path: str = "/data/dh.pem"  # the diffie-hellman output
+    radius_ca_path: Optional[str] = None
+    radius_ca_dir: Optional[str] = None
 
     radius_required_groups: List[str] = []
     radius_default_vlan: int = 1
