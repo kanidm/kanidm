@@ -5,6 +5,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
+use yew::virtual_dom::VNode;
 use yew_router::prelude::*;
 
 use crate::error::FetchError;
@@ -12,7 +13,7 @@ use crate::models;
 use crate::utils;
 
 use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, AuthMech
+    AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
 
@@ -114,7 +115,7 @@ impl LoginApp {
         } else if status == 404 {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            console::log!(format!(
+            console::error!(format!(
                 "User not found: {:?}. Operation ID: {:?}",
                 text, kopid
             ));
@@ -170,6 +171,15 @@ impl LoginApp {
         }
     }
 
+    /// Renders the "Start again" button
+    fn button_start_again(&self, ctx: &Context<Self>) -> VNode {
+        html! {
+            <div class="col-md-auto text-center">
+                <button type="button" class="btn btn-dark" onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
+            </div>
+        }
+    }
+
     fn render_auth_allowed(&self, ctx: &Context<Self>, idx: usize, allow: &AuthAllowed) -> Html {
         html! {
             <li>
@@ -184,10 +194,10 @@ impl LoginApp {
 
     fn render_mech_select(&self, ctx: &Context<Self>, idx: usize, allow: &AuthMech) -> Html {
         html! {
-            <li>
+            <li class="text-center">
                 <button
                     type="button"
-                    class="btn btn-dark"
+                    class="btn btn-dark mb-2"
                     onclick={ ctx.link().callback(move |_| LoginAppMsg::Select(idx)) }
                 >{ allow.to_string() }</button>
             </li>
@@ -201,22 +211,25 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
-                        <label for="autofocus" class="form-label">{ " Username " }</label>
+                        <label for="username" class="form-label">{ "Username" }</label>
                         <form
                         onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                            console::log!("login::view_state -> Init - prevent_default()".to_string());
+                            console::debug!("login::view_state -> Init - prevent_default()".to_string());
                             e.prevent_default();
                             LoginAppMsg::Begin
                         } ) }
                         action="javascript:void(0);"
                         >
                         <div class="input-group mb-3">
-                            <input id="autofocus"
-                                type="text"
-                                class="form-control"
-                                value={ inputvalue }
+                            <input
+                                autofocus=true
+                                class="autofocus form-control"
                                 disabled={ !enable }
+                                id="username"
+                                name="username"
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                type="text"
+                                value={ inputvalue }
                             />
                         </div>
 
@@ -272,33 +285,28 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
-                        <p>
-                        {" Password: "}
-                        </p>
-                    </div>
-                    <div class="container">
                         <form class="row g-3"
+                            action="javascript:void(0);"
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                                console::log!("login::view_state -> Password - prevent_default()".to_string());
+                                console::debug!("login::view_state -> Password - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::PasswordSubmit
                             } ) }
-                            action="javascript:void(0);"
                         >
-                        <div class="col-12">
+                        <div class="col-12"><label for="password" class="form-label">{ "Password" }</label>
                             <input
-                                id="autofocus"
-                                type="password"
-                                class="form-control"
-                                value={ inputvalue }
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                autofocus=true
+                                class="autofocus form-control"
                                 disabled={ !enable }
+                                id="password"
+                                name="password"
+                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                type="password"
+                                value={ inputvalue }
                             />
                             </div>
-                            <div class="col-12">
-                            <center>
-                                <button type="submit" class="btn btn-dark" disabled={ !enable }>{" Submit "}</button>
-                            </center>
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-dark" disabled={ !enable }>{ "Submit" }</button>
                             </div>
                         </form>
                     </div>
@@ -308,29 +316,30 @@ impl LoginApp {
             LoginState::BackupCode(enable) => {
                 html! {
                     <>
-                    <div class="container">
-                        <p>
-                        {" Backup Code: "}
-                        </p>
-                    </div>
+
                     <div class="container">
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                                console::log!("login::view_state -> BackupCode - prevent_default()".to_string());
+                                console::debug!("login::view_state -> BackupCode - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::BackupCodeSubmit
                             } ) }
                             action="javascript:void(0);"
                         >
+                            <label for="backup_code" class="form-label">
+                            {"Backup Code"}
+                            </label>
                             <input
-                                id="autofocus"
-                                type="text"
-                                class="form-control"
-                                value={ inputvalue }
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                autofocus=true
+                                class="autofocus form-control"
                                 disabled={ !enable }
+                                id="backup_code"
+                                name="backup_code"
+                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                type="text"
+                                value={ inputvalue }
                             />
-                            <button type="submit" class="btn btn-dark" disabled={ !enable }>{" Submit "}</button>
+                            <button type="submit" class="btn btn-dark">{" Submit "}</button>
                         </form>
                     </div>
                     </>
@@ -340,24 +349,24 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
-                        <p>
-                        {" TOTP: "}
-                        { if state==&TotpState::Invalid { "can only contain numeric digits" } else { "" } }
-                        </p>
-                    </div>
-                    <div class="container">
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                                console::log!("login::view_state -> Totp - prevent_default()".to_string());
+                                console::debug!("login::view_state -> Totp - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::TotpSubmit
                             } ) }
                             action="javascript:void(0);"
                         >
+                        <label for="totp" class="form-label">
+                        {"TOTP"}
+                        { if state==&TotpState::Invalid { "can only contain numeric digits" } else { "" } }
+                        </label>
                             <input
-                                id="autofocus"
+                                autofocus=true
+                                name="totp"
+                                id="totp"
                                 type="text"
-                                class="form-control"
+                                class="autofocus form-control"
                                 value={ inputvalue }
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
                                 disabled={ state==&TotpState::Disabled }
@@ -445,9 +454,9 @@ impl LoginApp {
                 };
 
                 html! {
-                    <div class="container">
+                    <div class="container text-center">
                         <p>
-                        {" Passkey "}
+                        {"Prompting for Passkey authentication..."}
                         </p>
                     </div>
                 }
@@ -455,7 +464,8 @@ impl LoginApp {
             LoginState::Authenticated => {
                 let loc = models::pop_return_location();
                 // redirect
-                console::log!(format!("authenticated, try going to -> {:?}", loc));
+                #[cfg(debug)]
+                console::debug!(format!("authenticated, try going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
                 html! {
                     <div class="container">
@@ -473,9 +483,7 @@ impl LoginApp {
                             <p><strong>{ "Authentication Denied" }</strong></p>
                             <p>{ msg.as_str() }</p>
                         </div>
-                        <div class="col-md-auto">
-                          <button type="button" class="btn btn-dark" onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
-                        </div>
+                        { self.button_start_again(ctx) }
                     </div>
                 </div>
                 }
@@ -487,23 +495,16 @@ impl LoginApp {
                             <div class="alert alert-danger" role="alert">
                                 { "That username was not found. Please try again!" }
                             </div>
-                            <div class="col-md-auto">
-                                <button type="button"
-                                    class="btn btn-dark"
-                                    onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) }
-                                >
-                                {" Start Again "}</button>
-                            </div>
+                             { self.button_start_again(ctx) }
                         </div>
                     </div>
                 }
             }
             LoginState::Error { emsg, kopid } => {
                 html! {
-                    <div class="container">
-                        <p>
-                            { "An error has occured 😔 " }
-                        </p>
+                    <>
+                    <div class="alert alert-danger" role="alert">
+                        <h2>{ "An error has occured 😔 " }</h2>
                         <p>
                             { emsg.as_str() }
                         </p>
@@ -513,10 +514,14 @@ impl LoginApp {
                                     format!("Operation ID: {}", opid.clone())
                                 }
                                 else {
-                                    "Local Error".to_string() }
+                                    "Error occurred client-side.".to_string()
+                                }
                             }
                         </p>
                     </div>
+
+                    { self.button_start_again(ctx) }
+                    </>
                 }
             }
         }
@@ -528,22 +533,27 @@ impl Component for LoginApp {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("create".to_string());
+        #[cfg(debug)]
+        console::debug!("create".to_string());
         // Assume we are here for a good reason.
         models::clear_bearer_token();
         // Do we have a login hint?
         let inputvalue = models::pop_login_hint().unwrap_or_else(|| "".to_string());
-        // Clean any cookies.
-        let document = utils::document();
 
-        let html_document = document
-            .dyn_into::<web_sys::HtmlDocument>()
-            .expect_throw("failed to dyn cast to htmldocument");
-        let cookie = html_document
-            .cookie()
-            .expect_throw("failed to access page cookies");
-        console::log!("cookies".to_string());
-        console::log!(cookie);
+        #[cfg(debug)]
+        {
+            let document = utils::document();
+            let html_document = document
+                .dyn_into::<web_sys::HtmlDocument>()
+                .expect_throw("failed to dyn cast to htmldocument");
+            let cookie = html_document
+                .cookie()
+                .expect_throw("failed to access page cookies");
+            console::debug!("cookies".to_string());
+            console::debug!(cookie);
+        }
+        // Clean any cookies.
+        // TODO: actually check that it's cleaning the cookies.
 
         let state = LoginState::Init(true);
 
@@ -574,7 +584,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::Begin => {
-                console::log!(format!("begin -> {:?}", self.inputvalue));
+                #[cfg(debug)]
+                console::debug!(format!("begin -> {:?}", self.inputvalue));
                 // Disable the button?
                 let username = self.inputvalue.clone();
                 ctx.link().send_future(async {
@@ -587,7 +598,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::PasswordSubmit => {
-                console::log!("At password step".to_string());
+                #[cfg(debug)]
+                console::debug!("At password step".to_string());
                 // Disable the button?
                 self.state = LoginState::Password(false);
                 let authreq = AuthRequest {
@@ -605,7 +617,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::BackupCodeSubmit => {
-                console::log!("backupcode".to_string());
+                #[cfg(debug)]
+                console::debug!("backupcode".to_string());
                 // Disable the button?
                 self.state = LoginState::BackupCode(false);
                 let authreq = AuthRequest {
@@ -623,7 +636,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::TotpSubmit => {
-                console::log!("totp".to_string());
+                #[cfg(debug)]
+                console::debug!("totp".to_string());
                 // Disable the button?
                 match self.inputvalue.parse::<u32>() {
                     Ok(totp) => {
@@ -650,7 +664,8 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::SecurityKeySubmit(resp) => {
-                console::log!("At securitykey step".to_string());
+                #[cfg(debug)]
+                console::debug!("At securitykey step".to_string());
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
                 };
@@ -665,7 +680,8 @@ impl Component for LoginApp {
                 false
             }
             LoginAppMsg::PasskeySubmit(resp) => {
-                console::log!("At passkey step".to_string());
+                #[cfg(debug)]
+                console::debug!("At passkey step".to_string());
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::Passkey(resp)),
                 };
@@ -682,7 +698,8 @@ impl Component for LoginApp {
             LoginAppMsg::Start(session_id, resp) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!(format!("start -> {:?} : {:?}", resp, session_id));
+                #[cfg(debug)]
+                console::debug!(format!("start -> {:?} : {:?}", resp, session_id));
                 match resp.state {
                     AuthState::Choose(mut mechs) => {
                         self.session_id = session_id;
@@ -702,18 +719,20 @@ impl Component for LoginApp {
                             // We do NOT need to change state or redraw
                             false
                         } else {
-                            console::log!("multiple mechs exist".to_string());
+                            #[cfg(debug)]
+                            console::debug!("multiple mechs exist".to_string());
                             self.state = LoginState::Select(mechs);
                             true
                         }
                     }
                     AuthState::Denied(reason) => {
-                        console::log!(format!("denied -> {:?}", reason));
+                        #[cfg(debug)]
+                        console::debug!(format!("denied -> {:?}", reason));
                         self.state = LoginState::Denied(reason);
                         true
                     }
                     _ => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -723,33 +742,32 @@ impl Component for LoginApp {
                 }
             }
             LoginAppMsg::Select(idx) => {
-                console::log!(format!("chose -> {:?}", idx));
+                #[cfg(debug)]
+                console::debug!(format!("chose -> {:?}", idx));
                 match &self.state {
-                    LoginState::Select(allowed) => {
-                        match allowed.get(idx) {
-                            Some(mech) => {
-                                let authreq = AuthRequest {
-                                    step: AuthStep::Begin(mech.clone()),
-                                };
-                                let session_id = self.session_id.clone();
-                                ctx.link().send_future(async {
-                                    match Self::auth_step(authreq, session_id).await {
-                                        Ok(v) => v,
-                                        Err(v) => v.into(),
-                                    }
-                                });
-                            }
-                            None => {
-                                console::log!("invalid allowed mech idx".to_string());
-                                self.state = LoginState::Error {
-                                    emsg: "Invalid Continue Index".to_string(),
-                                    kopid: None,
-                                };
-                            }
+                    LoginState::Select(allowed) => match allowed.get(idx) {
+                        Some(mech) => {
+                            let authreq = AuthRequest {
+                                step: AuthStep::Begin(mech.clone()),
+                            };
+                            let session_id = self.session_id.clone();
+                            ctx.link().send_future(async {
+                                match Self::auth_step(authreq, session_id).await {
+                                    Ok(v) => v,
+                                    Err(v) => v.into(),
+                                }
+                            });
                         }
-                    }
+                        None => {
+                            console::error!("invalid allowed mech idx".to_string());
+                            self.state = LoginState::Error {
+                                emsg: "Invalid Continue Index".to_string(),
+                                kopid: None,
+                            };
+                        }
+                    },
                     _ => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -761,12 +779,13 @@ impl Component for LoginApp {
             LoginAppMsg::Next(resp) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!(format!("next -> {:?}", resp));
+                #[cfg(debug)]
+                console::debug!(format!("next -> {:?}", resp));
 
                 // Based on the state we have, we need to chose our steps.
                 match resp.state {
                     AuthState::Choose(_mechs) => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -799,13 +818,14 @@ impl Component for LoginApp {
                             }
                         } else {
                             // Else, present the options in a choice.
-                            console::log!("multiple choices exist".to_string());
+                            #[cfg(debug)]
+                            console::debug!("multiple choices exist".to_string());
                             self.state = LoginState::Continue(allowed);
                         }
                         true
                     }
                     AuthState::Denied(reason) => {
-                        console::log!(format!("denied -> {:?}", reason));
+                        console::error!(format!("denied -> {:?}", reason));
                         self.state = LoginState::Denied(reason);
                         true
                     }
@@ -819,7 +839,8 @@ impl Component for LoginApp {
             }
             LoginAppMsg::Continue(idx) => {
                 // Are we in the correct internal state?
-                console::log!(format!("chose -> {:?}", idx));
+                #[cfg(debug)]
+                console::debug!(format!("chose -> {:?}", idx));
                 match &self.state {
                     LoginState::Continue(allowed) => {
                         match allowed.get(idx) {
@@ -843,7 +864,7 @@ impl Component for LoginApp {
                                 self.state = LoginState::Passkey(challenge.clone().into())
                             }
                             None => {
-                                console::log!("invalid allowed mech idx".to_string());
+                                console::error!("invalid allowed mech idx".to_string());
                                 self.state = LoginState::Error {
                                     emsg: "Invalid Continue Index".to_string(),
                                     kopid: None,
@@ -852,7 +873,7 @@ impl Component for LoginApp {
                         }
                     }
                     _ => {
-                        console::log!("invalid state transition".to_string());
+                        console::error!("invalid state transition".to_string());
                         self.state = LoginState::Error {
                             emsg: "Invalid UI State Transition".to_string(),
                             kopid: None,
@@ -864,14 +885,14 @@ impl Component for LoginApp {
             LoginAppMsg::UnknownUser => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!("Unknown user".to_string());
+                console::warn!("Unknown user".to_string());
                 self.state = LoginState::UnknownUser;
                 true
             }
             LoginAppMsg::Error { emsg, kopid } => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                console::log!(format!("error -> {:?}, {:?}", emsg, kopid));
+                console::error!(format!("error -> {:?}, {:?}", emsg, kopid));
                 self.state = LoginState::Error { emsg, kopid };
                 true
             }
@@ -879,7 +900,8 @@ impl Component for LoginApp {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("login::view".to_string());
+        #[cfg(debug)]
+        console::debug!("login::view".to_string());
         // How do we add a top level theme?
         /*
         let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
@@ -911,22 +933,19 @@ impl Component for LoginApp {
             </center>
             { self.view_state(ctx) }
         </main>
-        <footer class="footer mt-auto py-3 bg-light text-end">
-            <div class="container">
-                <span class="text-muted">{ "Powered by "  }<a href="https://kanidm.com">{ "Kanidm" }</a></span>
-            </div>
-        </footer>
+        { crate::utils::do_footer() }
         </>
-                }
+        }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("login::destroy".to_string());
+        #[cfg(debug)]
+        console::debug!("login::destroy".to_string());
         remove_body_form_classes!();
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        crate::utils::autofocus();
-        console::log!("login::rendered".to_string());
+        #[cfg(debug)]
+        console::debug!("login::rendered".to_string());
     }
 }

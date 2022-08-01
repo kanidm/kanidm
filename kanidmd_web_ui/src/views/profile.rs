@@ -23,17 +23,20 @@ impl Component for ProfileApp {
     type Properties = ViewProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("views::profile::create");
+        #[cfg(debug)]
+        console::debug!("views::profile::create");
         ProfileApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("views::profile::changed");
+        #[cfg(debug)]
+        console::debug!("views::profile::changed");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
-        console::log!("views::profile::update");
+        #[cfg(debug)]
+        console::debug!("views::profile::update");
         /*
         match msg {
             ViewsMsg::Logout => {
@@ -44,17 +47,20 @@ impl Component for ProfileApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("views::profile::rendered");
+        #[cfg(debug)]
+        console::debug!("views::profile::rendered");
     }
 
     /// UI view for the user profile
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("views::profile::starting view");
+        #[cfg(debug)]
+        console::debug!("views::profile::starting view");
 
         // Submit a req to init the session.
         // The uuid we want to submit against - hint, it's us.
         let token = ctx.props().token.clone();
-        console::log!("token: ", &token);
+        #[cfg(debug)]
+        console::debug!("token: ", &token);
 
         let jwtu = JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
 
@@ -63,15 +69,14 @@ impl Component for ProfileApp {
             .expect_throw("Unvalid UAT, unable to release ");
 
         let id = uat.inner.uuid.to_string();
-
-        console::log!("uuid:", id);
+        console::debug!("uuid:", id);
         // let valid_token = ctx.link().send_future(async {
         //     match Self::fetch_token_valid(id, token).await {
         //         Ok(v) => v,
         //         Err(v) => v.into(),
         //     }
         // });
-        // console::log!("valid_token: {:?}");
+        // console::debug!("valid_token: {:?}");
 
         html! {
             <>

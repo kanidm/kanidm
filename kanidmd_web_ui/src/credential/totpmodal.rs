@@ -4,6 +4,7 @@ use crate::utils;
 use super::eventbus::{EventBus, EventBusMsg};
 use super::reset::ModalProps;
 
+#[cfg(debug)]
 use gloo::console;
 use web_sys::Node;
 use yew::prelude::*;
@@ -125,7 +126,8 @@ impl Component for TotpModalApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("totp modal create");
+        #[cfg(debug)]
+        console::debug!("totp modal create");
 
         TotpModalApp {
             state: TotpState::Init,
@@ -135,12 +137,14 @@ impl Component for TotpModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("totp modal::change");
+        #[cfg(debug)]
+        console::debug!("totp modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("totp modal::update");
+        #[cfg(debug)]
+        console::debug!("totp modal::update");
         let token_c = ctx.props().token.clone();
         match msg {
             Msg::TotpCancel => {
@@ -235,15 +239,18 @@ impl Component for TotpModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("totp modal::rendered");
+        #[cfg(debug)]
+        console::debug!("totp modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("totp modal::destroy");
+        #[cfg(debug)]
+        console::debug!("totp modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("totp modal::view");
+        #[cfg(debug)]
+        console::debug!("totp modal::view");
 
         let totp_class = match &self.check {
             TotpCheck::Invalid | TotpCheck::Sha1Accept => classes!("form-control", "is-invalid"),
@@ -268,7 +275,7 @@ impl Component for TotpModalApp {
                                 Msg::TotpAcceptSha1
                             })
                     }
-                >{ "Accept Sha1 Token" }</button>
+                >{ "Accept SHA1 Token" }</button>
             },
             _ => html! {
                 <button id="totp-submit" type="button" class="btn btn-primary"

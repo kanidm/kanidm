@@ -1897,7 +1897,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .ok_or(OperationError::InvalidRequestState)
             .and_then(|session| session.totp_accept_sha1(&origin, &aste.target))
             .map_err(|e| {
-                admin_error!("Failed to accept sha1 totp {:?}", e);
+                admin_error!("Failed to accept SHA1 TOTP {:?}", e);
                 e
             })?;
 
@@ -1913,7 +1913,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
             // reg the token
             let modlist = session.account.gen_totp_mod(token).map_err(|e| {
-                admin_error!("Failed to gen totp mod {:?}", e);
+                admin_error!("Failed to gen TOTP mod {:?}", e);
                 e
             })?;
             // Perform the mod

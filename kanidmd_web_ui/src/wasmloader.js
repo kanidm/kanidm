@@ -6,10 +6,9 @@ async function main() {
 }
 main()
 
-// this is used in
+// this is used in modals
 export function modal_hide_by_id(m) {
     var elem = document.getElementById(m);
     var modal = bootstrap.Modal.getInstance(elem);
     modal.hide();
 };
-

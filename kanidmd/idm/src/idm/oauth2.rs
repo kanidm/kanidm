@@ -470,7 +470,7 @@ impl Oauth2ResourceServersReadTransaction {
         if auth_req.redirect_uri.origin() != o2rs.origin {
             admin_warn!(
                 origin = ?o2rs.origin,
-                "Invalid oauth2 redirect_uri (must be related to origin of)"
+                "Invalid oauth2 redirect_uri (must be related to origin of) - got {:?}", auth_req.redirect_uri.origin()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }

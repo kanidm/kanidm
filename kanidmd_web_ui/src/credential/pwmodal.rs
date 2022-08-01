@@ -114,7 +114,8 @@ impl Component for PwModalApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        console::log!("pw modal create");
+        #[cfg(debug)]
+        console::debug!("pw modal create");
 
         PwModalApp {
             state: PwState::Init,
@@ -125,12 +126,14 @@ impl Component for PwModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("pw modal::change");
+        #[cfg(debug)]
+        console::debug!("pw modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("pw modal::update");
+        #[cfg(debug)]
+        console::debug!("pw modal::update");
         match msg {
             Msg::PasswordCheck => {
                 let pw =
@@ -181,15 +184,18 @@ impl Component for PwModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::log!("pw modal::rendered");
+        #[cfg(debug)]
+        console::debug!("pw modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("pw modal::destroy");
+        #[cfg(debug)]
+        console::debug!("pw modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("pw modal::view");
+        #[cfg(debug)]
+        console::debug!("pw modal::view");
 
         let (pw_class, pw_feedback) = match &self.state {
             PwState::Feedback(feedback) => {
@@ -250,7 +256,7 @@ impl Component for PwModalApp {
                   <div class="modal-body">
                     <form class="row g-3 needs-validation" novalidate=true
                         onsubmit={ ctx.link().callback(move |e: FocusEvent| {
-                            console::log!("pw modal::on form submit prevent default");
+                            console::debug!("pw modal::on form submit prevent default");
                             e.prevent_default();
                             if submit_enabled {
                                 Msg::PasswordSubmit

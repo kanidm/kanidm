@@ -44,3 +44,14 @@ webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git",
 # compact_jwt = { path = "../compact_jwt" }
 # compact_jwt = { git = "https://github.com/kanidm/compact-jwt.git" }
 
+
+# enshrinken the WASMs
+[profile.release.package.kanidmd_web_ui]
+# optimization over all codebase ( better optimization, slower build )
+codegen-units = 1
+# optimization for size ( more aggressive )
+opt-level = 'z'
+# optimization for size
+# opt-level = 's'
+# link time optimization using using whole-program analysis
+# lto = true

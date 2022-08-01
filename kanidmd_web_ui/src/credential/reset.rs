@@ -95,7 +95,8 @@ impl Component for CredentialResetApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        console::log!("credential::reset::create");
+        #[cfg(debug)]
+        console::debug!("credential::reset::create");
 
         // On a page refresh/reload, should we restart a session that *may* have existed?
         // This could be achieved with local storage
@@ -114,11 +115,12 @@ impl Component for CredentialResetApp {
             .location()
             .expect_throw("Can't access current location");
 
+        // TODO: the error here ... isn't always an error, when a user comes from the dashboard they don't set a cred token in the URL, probably should handle this with a *slightly* nicer error
         let query: Option<CUIntentToken> = location
             .query()
             .map_err(|e| {
-                let e_msg = format!("query decode error -> {:?}", e);
-                console::log!(e_msg.as_str());
+                let e_msg = format!("error decoding URL parameters -> {:?}", e);
+                console::error!(e_msg.as_str());
             })
             .ok();
 
@@ -153,18 +155,20 @@ impl Component for CredentialResetApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        console::log!("credential::reset::change");
+        #[cfg(debug)]
+        console::debug!("credential::reset::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        console::log!("credential::reset::update");
+        #[cfg(debug)]
+        console::debug!("credential::reset::update");
         let next_state = match (msg, &self.state) {
             (Msg::Ignore, _) => None,
             (Msg::TokenSubmit, State::TokenInput) => {
                 #[allow(clippy::expect_used)]
-                let token = utils::get_value_from_element_id("autofocus")
-                    .expect("Unable to find autofocus element");
+                let token = utils::get_value_from_element_id("token")
+                    .expect("Unable to find an input with id=token");
 
                 ctx.link().send_future(async {
                     match Self::exchange_intent_token(token).await {
@@ -176,18 +180,20 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForStatus)
             }
             (Msg::BeginSession { token, status }, State::WaitingForStatus) => {
-                console::log!(format!("{:?}", status).as_str());
+                #[cfg(debug)]
+                console::debug!(format!("begin session {:?}", status).as_str());
                 Some(State::Main { token, status })
             }
             (Msg::UpdateSession { status }, State::Main { token, status: _ }) => {
-                console::log!(format!("{:?}", status).as_str());
+                #[cfg(debug)]
+                console::debug!(format!("{:?}", status).as_str());
                 Some(State::Main {
                     token: token.clone(),
                     status,
                 })
             }
             (Msg::Commit, State::Main { token, status }) => {
-                console::log!(format!("{:?}", status).as_str());
+                console::debug!(format!("{:?}", status).as_str());
                 let token_c = token.clone();
 
                 ctx.link().send_future(async {
@@ -200,7 +206,7 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForCommit)
             }
             (Msg::Cancel, State::Main { token, status }) => {
-                console::log!(format!("{:?}", status).as_str());
+                console::debug!(format!("{:?}", status).as_str());
                 let token_c = token.clone();
 
                 ctx.link().send_future(async {
@@ -214,14 +220,15 @@ impl Component for CredentialResetApp {
             }
             (Msg::Success, State::WaitingForCommit) => {
                 let loc = models::pop_return_location();
-                console::log!(format!("Going to -> {:?}", loc));
+                #[cfg(debug)]
+                console::debug!(format!("Going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
 
                 None
             }
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),
             (_, _) => {
-                console::debug!("CredentialResetApp state match fail on update.");
+                console::error!("CredentialResetApp state match fail on update.");
                 None
             }
         };
@@ -235,12 +242,15 @@ impl Component for CredentialResetApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        crate::utils::autofocus();
-        console::log!("credential::reset::rendered");
+        #[cfg(debug)]
+        console::debug!("credential::reset::rendered");
+        // because sometimes bootstrap doesn't catch it, which is annoying.
+        crate::utils::autofocus("token");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("credential::reset::view");
+        #[cfg(debug)]
+        console::debug!("credential::reset::view");
         match &self.state {
             State::TokenInput => self.view_token_input(ctx),
             State::WaitingForStatus | State::WaitingForCommit => self.view_waiting(ctx),
@@ -250,7 +260,8 @@ impl Component for CredentialResetApp {
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::log!("credential::reset::destroy");
+        #[cfg(debug)]
+        console::debug!("credential::reset::destroy");
         remove_body_form_classes!();
     }
 }
@@ -261,31 +272,38 @@ impl CredentialResetApp {
         <main class="flex-shrink-0 form-signin">
             <center>
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                <h2>{ "Credential Reset" } </h2>
                 // TODO: replace this with a call to domain info
-                <h3>{ "Kanidm idm.example.com" } </h3>
+                <h3>{ "idm.example.com" } </h3>
             </center>
-              <p>
-                {"Enter your credential reset token"}
-              </p>
             <form
                   onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                      console::log!("credential::reset::view_token_input -> TokenInput - prevent_default()");
+                      console::debug!("credential::reset::view_token_input -> TokenInput - prevent_default()");
                       e.prevent_default();
 
                       Msg::TokenSubmit
                   } ) }
                   action="javascript:void(0);">
+                <p class="text-center">
+                    <label for="token" class="form-label">
+                    {"Enter your credential reset token."}
+                    </label>
                   <input
-                      id="autofocus"
+                      id="token"
+                      name="token"
+                      autofocus=true
                       type="text"
                       class="form-control"
                       value=""
                   />
-                  <button type="submit" class="btn btn-dark">{" Submit "}</button><br />
-              </form>
-              <p>
-              <a href="/"><button href="/" class="btn btn-dark" aria-label="Return home">{"Return to the home page"}</button></a>
-              </p>
+                </p>
+                <p class="text-center">
+                <button type="submit" class="btn btn-primary">{" Submit "}</button><br />
+                </p>
+                </form>
+            <p class="text-center">
+              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+            </p>
 
           </main>
         }
@@ -321,8 +339,8 @@ impl CredentialResetApp {
             }) => {
                 html! {
                     <>
-                      <p>{ "Password Set" }</p>
-                      <p>{ "Mfa Disabled" }</p>
+                      <p>{ "✅ Password Set" }</p>
+                      <p>{ "❌ MFA Disabled" }</p>
 
                       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
                         { "Add TOTP" }
@@ -373,8 +391,8 @@ impl CredentialResetApp {
             }) => {
                 html! {
                     <>
-                      <p>{ "Password Set" }</p>
-                      <p>{ "Mfa Enabled" }</p>
+                      <p>{ "✅ Password Set" }</p>
+                      <p>{ "✅ MFA Enabled" }</p>
 
                       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
                         { "Reset TOTP" }
@@ -401,15 +419,14 @@ impl CredentialResetApp {
             }
         } else {
             html! {
-                <div class="container">
-                    <ul class="list-unstyled">
-                        { for status.passkeys.iter()
-                            .map(|detail|
-                                PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
-                            )
-                        }
-                    </ul>
-                </div>
+                <>
+                <h4>{"Registered Passkeys"}</h4>
+                { for status.passkeys.iter()
+                    .map(|detail|
+                        PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                    )
+                }
+                </>
             }
         };
 
@@ -424,10 +441,11 @@ impl CredentialResetApp {
         };
 
         html! {
+        <>
           <div class="d-flex align-items-start form-cred-reset-body">
             <main class="w-100">
-              <div class="py-5 text-center">
-                <h4>{ "Updating Credentials" }</h4>
+              <div class="py-3 text-center">
+                <h3>{ "Updating Credentials" }</h3>
                 <p>{ displayname }</p>
                 <p>{ spn }</p>
               </div>
@@ -444,20 +462,22 @@ impl CredentialResetApp {
 
                     <hr class="my-4" />
 
+                    <h4>{"Password / MFA"}</h4>
                     { pw_html }
 
                     <hr class="my-4" />
 
+                    // TODO: this could probably just be a link back home, currently it breaks and sends the user to an error..
                     <button class="w-50 btn btn-danger btn-lg" type="submit"
                         disabled=false
                         onclick={
                             ctx.link()
-                                .callback(move |_| {
-                                    Msg::Cancel
-                                })
+                            .callback(move |_| {
+                                Msg::Cancel
+                            })
                         }
-                    >{ "Cancel" }</button>
-                    <button class="w-50 btn btn-success btn-lg" type="submit"
+                        >{ "Cancel" }</button>
+                        <button class="w-50 btn btn-success btn-lg" type="submit"
                         disabled={ !can_commit }
                         onclick={
                             ctx.link()
@@ -481,15 +501,19 @@ impl CredentialResetApp {
             { passkey_modals_html }
 
           </div>
+          { crate::utils::do_footer() }
+          </>
         }
     }
 
     fn view_error(&self, _ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {
         html! {
           <main class="form-signin">
-            <div class="container">
+            <p class="text-center">
+                <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+            </p>
+            <div class="alert alert-danger" role="alert">
               <h2>{ "An Error Occured 🥺" }</h2>
-            </div>
             <p>{ msg.to_string() }</p>
             <p>
                 {
@@ -499,6 +523,10 @@ impl CredentialResetApp {
                         "Local Error".to_string()
                     }
                 }
+            </p>
+            </div>
+            <p class="text-center">
+              <a href="/"><button href="/" class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
             </p>
           </main>
         }
