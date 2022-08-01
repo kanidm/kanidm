@@ -418,13 +418,15 @@ eap {
 			#  If "enable = no" below, you CANNOT enable resumption for just one
 			#  user by setting the above attribute to "yes".
 			#
-			enable = yes
+			enable = no
 
 			#
 			#  Lifetime of the cached entries, in hours. The sessions will be
 			#  deleted/invalidated after this time.
 			#
 			lifetime = 24 # hours
+
+            use_tunneled_reply = yes
 
 			#
 			#  Internal "name" of the session cache. Used to

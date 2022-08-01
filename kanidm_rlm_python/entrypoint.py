@@ -73,7 +73,7 @@ def setup_certs(
 
     # Setup the ca-dir correctly now. We do this before we add server.pem so that it's
     # not hashed as a ca.
-    subprocess.check_call(["openssl", "rehash", CERT_CA_DEST])
+    subprocess.check_call(["openssl", "rehash", CERT_CA_DIR])
 
     # let's put some dhparams in place
     if kanidm_config_object.radius_dh_path is not None:

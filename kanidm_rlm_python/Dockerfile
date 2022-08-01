@@ -29,6 +29,7 @@ WORKDIR /etc/raddb
 
 # Enable the python and cache module.
 RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3
+RUN ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
 
 # disable auth via methods we don't support!
 RUN rm /etc/raddb/mods-available/sql
@@ -54,6 +55,7 @@ RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/kanidmr
 RUN rm -rf /pkg/*
 
 USER radiusd
+ENV LD_PRELOAD=/usr/lib64/libpython3.so
 
 COPY kanidm_rlm_python/entrypoint.py /entrypoint.py
 CMD [ "/usr/bin/python3", "/entrypoint.py" ]

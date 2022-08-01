@@ -111,12 +111,6 @@ authorize {
 
     python3
 
-	if (!("%{TLS-Client-Cert-Common-Name}" == "%{User-Unique-Id}")) {
-		update config {
-			&Auth-Type := Reject
-		}
-	}
-
 	#
 	# This may be a better place to call the files modules when using
 	# EAP-TLS, as it will only be called once, after the challenge-response

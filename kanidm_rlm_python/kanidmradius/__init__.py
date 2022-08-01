@@ -138,17 +138,25 @@ def authorize(
 
     dargs = dict(args)
     logging.error("Authorise: %s", json.dumps(dargs))
+    cn_uuid = dargs.get('TLS-Client-Cert-Common-Name', None)
     username = dargs['User-Name']
+
+    if cn_uuid is not None:
+        logging.debug("Using TLS-Client-Cert-Common-Name")
+        user_id = cn_uuid
+    else:
+        logging.debug("Using User-Name")
+        user_id = username
 
     tok = None
     try:
         loop = asyncio.get_event_loop()
-        tok = loop.run_until_complete(_get_radius_token(username=username))
+        tok = loop.run_until_complete(_get_radius_token(username=user_id))
         logging.debug("radius_token: %s", tok)
     except NoMatchingEntries as error_message:
         logging.info(
-            'kanidm RLM_MODULE_NOTFOUND after NoMatchingEntries for user %s: %s',
-            username,
+            'kanidm RLM_MODULE_NOTFOUND after NoMatchingEntries for user_id %s: %s',
+            user_id,
             error_message,
             )
         return radiusd.RLM_MODULE_NOTFOUND
@@ -158,14 +166,19 @@ def authorize(
         logging.info('kanidm RLM_MODULE_NOTFOUND due to no auth token')
         return radiusd.RLM_MODULE_NOTFOUND
 
+    # Get values out of the token
+    name = tok["name"]
+    secret = tok["secret"]
+    uuid = tok["uuid"]
+
     # Are they in the required group?
     req_sat = False
     for group in tok["groups"]:
         if group['name'] in kanidm_client.config.radius_required_groups:
             req_sat = True
-            logging.info("User %s has a required group (%s)", username, group['name'])
+            logging.info("User %s has a required group (%s)", name, group['name'])
     if req_sat is not True:
-        logging.info("User %s doesn't have a group from the required list.", username)
+        logging.info("User %s doesn't have a group from the required list.", name)
         return radiusd.RLM_MODULE_NOTFOUND
 
     # look up them in config for group vlan if possible.
@@ -179,16 +192,11 @@ def authorize(
         logging.info("Invalid uservlan of 0")
 
 
-    logging.info("selected vlan %s:%s", username, uservlan)
-    # Convert the tok groups to groups.
-    name = tok["name"]
-    secret = tok["secret"]
-    uuid = tok["uuid"]
+    logging.info("selected vlan %s:%s", name, uservlan)
 
     reply = (
         ('User-Name', str(name)),
-        ('User-Unique-Id', str(uuid)),
-        ('Reply-Message', 'Welcome'),
+        ('Reply-Message', f"Kanidm-Uuid: {uuid}"),
         ('Tunnel-Type', '13'),
         ('Tunnel-Medium-Type', '6'),
         ('Tunnel-Private-Group-ID', str(uservlan)),
@@ -197,5 +205,5 @@ def authorize(
         ('Cleartext-Password', str(secret)),
     )
 
-    logging.info("OK! Returning details to radius for %s ...", username)
+    logging.info("OK! Returning details to radius for %s ...", name)
     return (radiusd.RLM_MODULE_OK, reply, config_object)
