@@ -23,16 +23,19 @@ impl Component for ProfileApp {
     type Properties = ViewProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
+        #[cfg(debug)]
         console::debug!("views::profile::create");
         ProfileApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        #[cfg(debug)]
         console::debug!("views::profile::changed");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
+        #[cfg(debug)]
         console::debug!("views::profile::update");
         /*
         match msg {
@@ -44,16 +47,19 @@ impl Component for ProfileApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug)]
         console::debug!("views::profile::rendered");
     }
 
     /// UI view for the user profile
     fn view(&self, ctx: &Context<Self>) -> Html {
+        #[cfg(debug)]
         console::debug!("views::profile::starting view");
 
         // Submit a req to init the session.
         // The uuid we want to submit against - hint, it's us.
         let token = ctx.props().token.clone();
+        #[cfg(debug)]
         console::debug!("token: ", &token);
 
         let jwtu = JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
@@ -63,7 +69,6 @@ impl Component for ProfileApp {
             .expect_throw("Unvalid UAT, unable to release ");
 
         let id = uat.inner.uuid.to_string();
-
         console::debug!("uuid:", id);
         // let valid_token = ctx.link().send_future(async {
         //     match Self::fetch_token_valid(id, token).await {

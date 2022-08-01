@@ -1,6 +1,7 @@
 use crate::error::*;
 use crate::models;
 use crate::utils;
+#[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
 
@@ -70,6 +71,7 @@ impl From<FetchError> for ViewsMsg {
 }
 
 fn switch(route: &ViewRoute) -> Html {
+    #[cfg(debug)]
     console::debug!("views::switch");
 
     // safety - can't panic because to get to this location we MUST be authenticated!
@@ -91,6 +93,7 @@ impl Component for ViewsApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
+        #[cfg(debug)]
         console::debug!("views::create");
 
         // Ensure the token is valid before we proceed. Could be
@@ -115,11 +118,13 @@ impl Component for ViewsApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        #[cfg(debug)]
         console::debug!("views::changed");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        #[cfg(debug)]
         console::debug!("views::update");
         match msg {
             ViewsMsg::Verified(token) => {
@@ -139,6 +144,7 @@ impl Component for ViewsApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug)]
         console::debug!("views::rendered");
     }
 

@@ -20,13 +20,16 @@ pub fn body() -> HtmlElement {
     document().body().expect_throw("Unable to retrieve body")
 }
 
-pub fn autofocus() {
-    // Once rendered if an element with id autofocus exists, focus it.
+pub fn autofocus(target: &str) {
+    // If an element with an id attribute matching 'target' exists, focus it.
     let doc = document();
-    if let Some(element) = doc.get_element_by_id("autofocus") {
+    if let Some(element) = doc.get_element_by_id(target) {
         if let Ok(htmlelement) = element.dyn_into::<web_sys::HtmlElement>() {
             if htmlelement.focus().is_err() {
-                console::error!("unable to autofocus.");
+                console::warn!(
+                    "unable to autofocus element, couldn't find target with id '{}'",
+                    target
+                );
             }
         }
     }

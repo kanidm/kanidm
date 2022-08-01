@@ -1,3 +1,4 @@
+#[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
 
@@ -12,16 +13,19 @@ impl Component for AppsApp {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
+        #[cfg(debug)]
         console::debug!("views::apps::create");
         AppsApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        #[cfg(debug)]
         console::debug!("views::apps::changed");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
+        #[cfg(debug)]
         console::debug!("views::apps::update");
         /*
         match msg {
@@ -33,6 +37,7 @@ impl Component for AppsApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug)]
         console::debug!("views::apps::rendered");
     }
 

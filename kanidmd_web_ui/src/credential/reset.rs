@@ -115,10 +115,11 @@ impl Component for CredentialResetApp {
             .location()
             .expect_throw("Can't access current location");
 
+        // TODO: the error here ... isn't always an error, when a user comes from the dashboard they don't set a cred token in the URL, probably should handle this with a *slightly* nicer error
         let query: Option<CUIntentToken> = location
             .query()
             .map_err(|e| {
-                let e_msg = format!("query decode error -> {:?}", e);
+                let e_msg = format!("error decoding URL parameters -> {:?}", e);
                 console::error!(e_msg.as_str());
             })
             .ok();
@@ -166,8 +167,8 @@ impl Component for CredentialResetApp {
             (Msg::Ignore, _) => None,
             (Msg::TokenSubmit, State::TokenInput) => {
                 #[allow(clippy::expect_used)]
-                let token = utils::get_value_from_element_id("autofocus")
-                    .expect("Unable to find autofocus element");
+                let token = utils::get_value_from_element_id("token")
+                    .expect("Unable to find an input with id=token");
 
                 ctx.link().send_future(async {
                     match Self::exchange_intent_token(token).await {
@@ -180,7 +181,7 @@ impl Component for CredentialResetApp {
             }
             (Msg::BeginSession { token, status }, State::WaitingForStatus) => {
                 #[cfg(debug)]
-                console::debug!(format!("{:?}", status).as_str());
+                console::debug!(format!("begin session {:?}", status).as_str());
                 Some(State::Main { token, status })
             }
             (Msg::UpdateSession { status }, State::Main { token, status: _ }) => {
@@ -241,9 +242,10 @@ impl Component for CredentialResetApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        crate::utils::autofocus();
         #[cfg(debug)]
         console::debug!("credential::reset::rendered");
+        // because sometimes bootstrap doesn't catch it, which is annoying.
+        crate::utils::autofocus("token");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -267,12 +269,11 @@ impl Component for CredentialResetApp {
 impl CredentialResetApp {
     fn view_token_input(&self, ctx: &Context<Self>) -> Html {
         html! {
-        <body class="flex-column d-flex h-100">
         <main class="flex-shrink-0 form-signin">
             <center>
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
-                // TODO: replace this with a call to domain info
                 <h2>{ "Credential Reset" } </h2>
+                // TODO: replace this with a call to domain info
                 <h3>{ "idm.example.com" } </h3>
             </center>
             <form
@@ -284,12 +285,13 @@ impl CredentialResetApp {
                   } ) }
                   action="javascript:void(0);">
                 <p class="text-center">
-                    <label for="autofocus" class="form-label">
+                    <label for="token" class="form-label">
                     {"Enter your credential reset token."}
                     </label>
-
                   <input
-                      id="autofocus"
+                      id="token"
+                      name="token"
+                      autofocus=true
                       type="text"
                       class="form-control"
                       value=""
@@ -304,7 +306,6 @@ impl CredentialResetApp {
             </p>
 
           </main>
-        </body>
         }
     }
 

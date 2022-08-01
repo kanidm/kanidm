@@ -211,7 +211,7 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
-                        <label for="autofocus" class="form-label">{ " Username " }</label>
+                        <label for="username" class="form-label">{ "Username" }</label>
                         <form
                         onsubmit={ ctx.link().callback(|e: FocusEvent| {
                             console::debug!("login::view_state -> Init - prevent_default()".to_string());
@@ -221,12 +221,15 @@ impl LoginApp {
                         action="javascript:void(0);"
                         >
                         <div class="input-group mb-3">
-                            <input id="autofocus"
-                                type="text"
-                                class="form-control"
-                                value={ inputvalue }
+                            <input
+                                autofocus=true
+                                class="autofocus form-control"
                                 disabled={ !enable }
+                                id="username"
+                                name="username"
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                type="text"
+                                value={ inputvalue }
                             />
                         </div>
 
@@ -282,33 +285,28 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
-                        <p>
-                        {" Password: "}
-                        </p>
-                    </div>
-                    <div class="container">
                         <form class="row g-3"
+                            action="javascript:void(0);"
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
                                 console::debug!("login::view_state -> Password - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::PasswordSubmit
                             } ) }
-                            action="javascript:void(0);"
                         >
-                        <div class="col-12">
+                        <div class="col-12"><label for="password" class="form-label">{ "Password" }</label>
                             <input
-                                id="autofocus"
-                                type="password"
-                                class="form-control"
-                                value={ inputvalue }
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                autofocus=true
+                                class="autofocus form-control"
                                 disabled={ !enable }
+                                id="password"
+                                name="password"
+                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                type="password"
+                                value={ inputvalue }
                             />
                             </div>
-                            <div class="col-12">
-                            <center>
-                                <button type="submit" class="btn btn-dark" disabled={ !enable }>{" Submit "}</button>
-                            </center>
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-dark" disabled={ !enable }>{ "Submit" }</button>
                             </div>
                         </form>
                     </div>
@@ -318,11 +316,7 @@ impl LoginApp {
             LoginState::BackupCode(enable) => {
                 html! {
                     <>
-                    <div class="container">
-                        <p>
-                        {" Backup Code: "}
-                        </p>
-                    </div>
+
                     <div class="container">
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
@@ -332,15 +326,20 @@ impl LoginApp {
                             } ) }
                             action="javascript:void(0);"
                         >
+                            <label for="backup_code" class="form-label">
+                            {"Backup Code"}
+                            </label>
                             <input
-                                id="autofocus"
-                                type="text"
-                                class="form-control"
-                                value={ inputvalue }
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                autofocus=true
+                                class="autofocus form-control"
                                 disabled={ !enable }
+                                id="backup_code"
+                                name="backup_code"
+                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                type="text"
+                                value={ inputvalue }
                             />
-                            <button type="submit" class="btn btn-dark" disabled={ !enable }>{" Submit "}</button>
+                            <button type="submit" class="btn btn-dark">{" Submit "}</button>
                         </form>
                     </div>
                     </>
@@ -350,12 +349,6 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
-                        <p>
-                        {" TOTP: "}
-                        { if state==&TotpState::Invalid { "can only contain numeric digits" } else { "" } }
-                        </p>
-                    </div>
-                    <div class="container">
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
                                 console::debug!("login::view_state -> Totp - prevent_default()".to_string());
@@ -364,10 +357,16 @@ impl LoginApp {
                             } ) }
                             action="javascript:void(0);"
                         >
+                        <label for="totp" class="form-label">
+                        {"TOTP"}
+                        { if state==&TotpState::Invalid { "can only contain numeric digits" } else { "" } }
+                        </label>
                             <input
-                                id="autofocus"
+                                autofocus=true
+                                name="totp"
+                                id="totp"
                                 type="text"
-                                class="form-control"
+                                class="autofocus form-control"
                                 value={ inputvalue }
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
                                 disabled={ state==&TotpState::Disabled }
@@ -946,7 +945,6 @@ impl Component for LoginApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        crate::utils::autofocus();
         #[cfg(debug)]
         console::debug!("login::rendered".to_string());
     }

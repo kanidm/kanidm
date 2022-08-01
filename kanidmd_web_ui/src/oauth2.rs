@@ -415,7 +415,6 @@ impl Component for Oauth2App {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        crate::utils::autofocus();
         #[cfg(debug)]
         console::debug!("oauth2::rendered");
     }
@@ -441,7 +440,7 @@ impl Component for Oauth2App {
                         // TODO: include the domain display name here
                         {"Sign in to proceed" }
                         </h1>
-                      <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">
+                      <button autofocus=true class="w-100 btn btn-lg btn-primary" type="submit">
                         { "Sign in" }
                       </button>
                     </form>
@@ -492,7 +491,7 @@ impl Component for Oauth2App {
                         { pii_req }
 
                         <div class="text-center">
-                            <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Proceed" }</button>
+                            <button autofocus=true class="w-100 btn btn-lg btn-primary" type="submit">{ "Proceed" }</button>
                         </div>
                       </form>
                 }

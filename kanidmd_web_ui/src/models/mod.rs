@@ -46,7 +46,8 @@ impl Location {
 }
 
 pub fn push_return_location(l: Location) {
-    TemporaryStorage::set("return_location", l).expect_throw("failed to set return_location in temporary storage");
+    TemporaryStorage::set("return_location", l)
+        .expect_throw("failed to set return_location in temporary storage");
 }
 
 pub fn pop_return_location() -> Location {
@@ -57,7 +58,8 @@ pub fn pop_return_location() -> Location {
 }
 
 pub fn push_oauth2_authorisation_request(r: AuthorisationRequest) {
-    TemporaryStorage::set("oauth2_authorisation_request", r).expect_throw("failed to set oauth2_authorisation_request in temporary storage");
+    TemporaryStorage::set("oauth2_authorisation_request", r)
+        .expect_throw("failed to set oauth2_authorisation_request in temporary storage");
 }
 
 pub fn pop_oauth2_authorisation_request() -> Option<AuthorisationRequest> {
