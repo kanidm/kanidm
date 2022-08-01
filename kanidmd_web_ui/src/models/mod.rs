@@ -46,7 +46,7 @@ impl Location {
 }
 
 pub fn push_return_location(l: Location) {
-    TemporaryStorage::set("return_location", l).expect_throw("failed to set header");
+    TemporaryStorage::set("return_location", l).expect_throw("failed to set return_location in temporary storage");
 }
 
 pub fn pop_return_location() -> Location {
@@ -57,7 +57,7 @@ pub fn pop_return_location() -> Location {
 }
 
 pub fn push_oauth2_authorisation_request(r: AuthorisationRequest) {
-    TemporaryStorage::set("oauth2_authorisation_request", r).expect_throw("failed to set header");
+    TemporaryStorage::set("oauth2_authorisation_request", r).expect_throw("failed to set oauth2_authorisation_request in temporary storage");
 }
 
 pub fn pop_oauth2_authorisation_request() -> Option<AuthorisationRequest> {
@@ -68,12 +68,12 @@ pub fn pop_oauth2_authorisation_request() -> Option<AuthorisationRequest> {
 }
 
 pub fn push_login_hint(r: String) {
-    TemporaryStorage::set("login_hint", r).expect_throw("failed to set header");
+    TemporaryStorage::set("login_hint", r).expect_throw("failed to set login hint");
 }
 
 pub fn pop_login_hint() -> Option<String> {
     let l: Result<String, _> = TemporaryStorage::get("login_hint");
-    console::debug!(format!("login_hint -> {:?}", l).as_str());
+    console::debug!(format!("login_hint::pop_login_hint -> {:?}", l).as_str());
     TemporaryStorage::delete("login_hint");
     l.ok()
 }

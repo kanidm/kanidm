@@ -275,7 +275,7 @@ impl Component for TotpModalApp {
                                 Msg::TotpAcceptSha1
                             })
                     }
-                >{ "Accept Sha1 Token" }</button>
+                >{ "Accept SHA1 Token" }</button>
             },
             _ => html! {
                 <button id="totp-submit" type="button" class="btn btn-primary"
