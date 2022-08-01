@@ -67,7 +67,7 @@ def setup_certs(
         if not cert_ca_dir.exists():
             print(f"Failed to find radiusd ca dir ({cert_ca_dir}), quitting!", file=sys.stderr)
             sys.exit(1)
-        if cert_ca != CERT_CA_DEST:
+        if cert_ca_dir != CERT_CA_DIR:
             print(f"Copying {cert_ca_dir} to {CERT_CA_DIR}")
             shutil.copytree(cert_ca_dir, CERT_CA_DIR, dirs_exist_ok=True)
 
