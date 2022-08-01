@@ -426,8 +426,6 @@ eap {
 			#
 			lifetime = 24 # hours
 
-            use_tunneled_reply = yes
-
 			#
 			#  Internal "name" of the session cache. Used to
 			#  distinguish which TLS context sessions belong to.
