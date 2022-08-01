@@ -725,6 +725,8 @@
 <span id="720">720</span>
 <span id="721">721</span>
 <span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
 </pre><pre class="rust"><code><span class="doccomment">//! These contain the server &quot;cores&quot;. These are able to startup the server</span>
 <span class="doccomment">//! (bootstrap) to a running state and then execute tasks. This is where modules</span>
 <span class="doccomment">//! are logically ordered based on their depenedncies for execution. Some of these</span>
@@ -1168,7 +1170,9 @@
     }
 
     <span class="kw">let</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">qs</span>.<span class="ident">write_async</span>(<span class="ident">duration_from_epoch_now</span>()));
-    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">domain_rename</span>(<span class="ident">new_domain_name</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">qs_write</span>.<span class="ident">commit</span>());
+    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>
+        .<span class="ident">domain_rename</span>(<span class="ident">new_domain_name</span>)
+        .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">qs_write</span>.<span class="ident">commit</span>());
 
     <span class="kw">match</span> <span class="ident">r</span> {
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">info!</span>(<span class="string">&quot;Domain Rename Success!&quot;</span>),

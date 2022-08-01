@@ -128,6 +128,11 @@
 <span id="123">123</span>
 <span id="124">124</span>
 <span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
 </pre><pre class="rust"><code><span class="comment">// use crate::error::*;</span>
 <span class="comment">// use crate::models;</span>
 <span class="comment">// use crate::utils;</span>
@@ -153,17 +158,20 @@
     <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> <span class="ident">ViewProps</span>;
 
     <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::profile::create&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::create&quot;</span>);
         <span class="ident">ProfileApp</span> {}
     }
 
     <span class="kw">fn</span> <span class="ident">changed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::profile::changed&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::changed&quot;</span>);
         <span class="bool-val">false</span>
     }
 
     <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::profile::update&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::update&quot;</span>);
         <span class="comment">/*
         match msg {
             ViewsMsg::Logout =&gt; {
@@ -174,17 +182,20 @@
     }
 
     <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::profile::rendered&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::rendered&quot;</span>);
     }
 
     <span class="doccomment">/// UI view for the user profile</span>
     <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::profile::starting view&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::starting view&quot;</span>);
 
         <span class="comment">// Submit a req to init the session.</span>
         <span class="comment">// The uuid we want to submit against - hint, it&#39;s us.</span>
         <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">token</span>.<span class="ident">clone</span>();
-        <span class="macro">console::log!</span>(<span class="string">&quot;token: &quot;</span>, <span class="kw-2">&amp;</span><span class="ident">token</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;token: &quot;</span>, <span class="kw-2">&amp;</span><span class="ident">token</span>);
 
         <span class="kw">let</span> <span class="ident">jwtu</span> <span class="op">=</span> <span class="ident">JwsUnverified::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>).<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid UAT, unable to parse&quot;</span>);
 
@@ -193,15 +204,14 @@
             .<span class="ident">expect_throw</span>(<span class="string">&quot;Unvalid UAT, unable to release &quot;</span>);
 
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">uat</span>.<span class="ident">inner</span>.<span class="ident">uuid</span>.<span class="ident">to_string</span>();
-
-        <span class="macro">console::log!</span>(<span class="string">&quot;uuid:&quot;</span>, <span class="ident">id</span>);
+        <span class="macro">console::debug!</span>(<span class="string">&quot;uuid:&quot;</span>, <span class="ident">id</span>);
         <span class="comment">// let valid_token = ctx.link().send_future(async {</span>
         <span class="comment">//     match Self::fetch_token_valid(id, token).await {</span>
         <span class="comment">//         Ok(v) =&gt; v,</span>
         <span class="comment">//         Err(v) =&gt; v.into(),</span>
         <span class="comment">//     }</span>
         <span class="comment">// });</span>
-        <span class="comment">// console::log!(&quot;valid_token: {:?}&quot;);</span>
+        <span class="comment">// console::debug!(&quot;valid_token: {:?}&quot;);</span>
 
         <span class="macro">html!</span> {
             <span class="op">&lt;</span><span class="op">&gt;</span>

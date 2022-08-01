@@ -3216,7 +3216,7 @@
         <span class="kw">if</span> <span class="ident">auth_req</span>.<span class="ident">redirect_uri</span>.<span class="ident">origin</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">o2rs</span>.<span class="ident">origin</span> {
             <span class="macro">admin_warn!</span>(
                 <span class="ident">origin</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">o2rs</span>.<span class="ident">origin</span>,
-                <span class="string">&quot;Invalid oauth2 redirect_uri (must be related to origin of)&quot;</span>
+                <span class="string">&quot;Invalid oauth2 redirect_uri (must be related to origin of) - got {:?}&quot;</span>, <span class="ident">auth_req</span>.<span class="ident">redirect_uri</span>.<span class="ident">origin</span>()
             );
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidOrigin</span>);
         }

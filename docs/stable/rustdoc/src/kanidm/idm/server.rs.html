@@ -5880,7 +5880,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidRequestState</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">session</span><span class="op">|</span> <span class="ident">session</span>.<span class="ident">totp_accept_sha1</span>(<span class="kw-2">&amp;</span><span class="ident">origin</span>, <span class="kw-2">&amp;</span><span class="ident">aste</span>.<span class="ident">target</span>))
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to accept sha1 totp {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to accept SHA1 TOTP {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })<span class="question-mark">?</span>;
 
@@ -5896,7 +5896,7 @@
                 })<span class="question-mark">?</span>;
             <span class="comment">// reg the token</span>
             <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">gen_totp_mod</span>(<span class="ident">token</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to gen totp mod {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to gen TOTP mod {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })<span class="question-mark">?</span>;
             <span class="comment">// Perform the mod</span>

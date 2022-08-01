@@ -317,9 +317,15 @@
 <span id="312">312</span>
 <span id="313">313</span>
 <span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
 
@@ -389,7 +395,8 @@
 }
 
 <span class="kw">fn</span> <span class="ident">switch</span>(<span class="ident">route</span>: <span class="kw-2">&amp;</span><span class="ident">ViewRoute</span>) -&gt; <span class="ident">Html</span> {
-    <span class="macro">console::log!</span>(<span class="string">&quot;views::switch&quot;</span>);
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+    <span class="macro">console::debug!</span>(<span class="string">&quot;views::switch&quot;</span>);
 
     <span class="comment">// safety - can&#39;t panic because to get to this location we MUST be authenticated!</span>
     <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span>
@@ -410,7 +417,8 @@
     <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> ();
 
     <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::create&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::create&quot;</span>);
 
         <span class="comment">// Ensure the token is valid before we proceed. Could be</span>
         <span class="comment">// due to a session expiry or something else, but we want to make</span>
@@ -434,12 +442,14 @@
     }
 
     <span class="kw">fn</span> <span class="ident">changed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::changed&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::changed&quot;</span>);
         <span class="bool-val">false</span>
     }
 
     <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::update&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::update&quot;</span>);
         <span class="kw">match</span> <span class="ident">msg</span> {
             <span class="ident">ViewsMsg::Verified</span>(<span class="ident">token</span>) =&gt; {
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Authenticated</span>(<span class="ident">token</span>);
@@ -458,7 +468,8 @@
     }
 
     <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
-        <span class="macro">console::log!</span>(<span class="string">&quot;views::rendered&quot;</span>);
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+        <span class="macro">console::debug!</span>(<span class="string">&quot;views::rendered&quot;</span>);
     }
 
     <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
@@ -496,19 +507,20 @@
             <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
                 <span class="macro">html!</span> {
                   <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;An Error Occured 🥺&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="ident">emsg</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
                         {
                             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opid</span>) <span class="op">=</span> <span class="ident">kopid</span>.<span class="ident">as_ref</span>() {
                                 <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, <span class="ident">opid</span>)
                             } <span class="kw">else</span> {
-                                <span class="string">&quot;Local Error&quot;</span>.<span class="ident">to_string</span>()
+                                <span class="string">&quot;Error occurred client-side.&quot;</span>.<span class="ident">to_string</span>()
                             }
                         }
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+
                   <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
                 }
             }
@@ -528,8 +540,6 @@
                 <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-toggler bg-light&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">toggle</span><span class="op">=</span><span class="string">&quot;collapse&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">target</span><span class="op">=</span><span class="string">&quot;#navbarCollapse&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">controls</span><span class="op">=</span><span class="string">&quot;navbarCollapse&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">expanded</span><span class="op">=</span><span class="string">&quot;false&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">label</span><span class="op">=</span><span class="string">&quot;Toggle navigation&quot;</span><span class="op">&gt;</span>
                   <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/favicon.png&quot;</span> <span class="op">/</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-
-
                 <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;collapse navbar-collapse&quot;</span> <span class="ident">id</span><span class="op">=</span><span class="string">&quot;navbarCollapse&quot;</span><span class="op">&gt;</span>
                   <span class="op">&lt;</span><span class="ident">ul</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-nav me-auto mb-2 mb-md-0&quot;</span><span class="op">&gt;</span>
                   <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;mb-1&quot;</span><span class="op">&gt;</span>
