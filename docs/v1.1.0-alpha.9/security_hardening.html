@@ -1,0 +1,299 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Security Hardening - Kanidm Administration</title>
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction to Kanidm</a></li><li class="chapter-item expanded "><a href="installing_the_server.html"><strong aria-hidden="true">2.</strong> Installing the Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="server_configuration.html"><strong aria-hidden="true">2.1.</strong> Server Configuration</a></li><li class="chapter-item expanded "><a href="security_hardening.html" class="active"><strong aria-hidden="true">2.2.</strong> Security Hardening</a></li></ol></li><li class="chapter-item expanded "><a href="client_tools.html"><strong aria-hidden="true">3.</strong> Client Tools</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installing_client_tools.html"><strong aria-hidden="true">3.1.</strong> Installing client tools</a></li></ol></li><li class="chapter-item expanded "><a href="accounts_and_groups.html"><strong aria-hidden="true">4.</strong> Accounts and Groups</a></li><li class="chapter-item expanded "><a href="administrivia.html"><strong aria-hidden="true">5.</strong> Administrative Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="monitoring.html"><strong aria-hidden="true">5.1.</strong> Monitoring the platform</a></li><li class="chapter-item expanded "><a href="password_quality.html"><strong aria-hidden="true">5.2.</strong> Password Quality and Badlisting</a></li><li class="chapter-item expanded "><a href="posix_accounts.html"><strong aria-hidden="true">5.3.</strong> POSIX Accounts and Groups</a></li><li class="chapter-item expanded "><a href="ssh_key_dist.html"><strong aria-hidden="true">5.4.</strong> SSH Key Distribution</a></li><li class="chapter-item expanded "><a href="recycle_bin.html"><strong aria-hidden="true">5.5.</strong> The Recycle Bin</a></li><li class="chapter-item expanded "><a href="why_tls.html"><strong aria-hidden="true">5.6.</strong> Why TLS?</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">For Developers</li><li class="chapter-item expanded "><a href="DEVELOPER_README.html"><strong aria-hidden="true">6.</strong> Developer Guide</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">7.</strong> Design Documents</div></li><li><ol class="section"><li class="chapter-item expanded "><a href="developers/designs/access_profiles_and_security.html"><strong aria-hidden="true">7.1.</strong> Access Profiles</a></li><li class="chapter-item expanded "><a href="developers/designs/rest_interface.html"><strong aria-hidden="true">7.2.</strong> REST Interface</a></li></ol></li><li class="chapter-item expanded "><a href="developers/python.html"><strong aria-hidden="true">8.</strong> Python Module</a></li><li class="chapter-item expanded "><a href="developers/radius.html"><strong aria-hidden="true">9.</strong> RADIUS Integration</a></li><li class="chapter-item expanded affix "><li class="part-title">Integrations</li><li class="chapter-item expanded "><a href="integrations/oauth2.html"><strong aria-hidden="true">10.</strong> Oauth2</a></li><li class="chapter-item expanded "><a href="integrations/pam_and_nsswitch.html"><strong aria-hidden="true">11.</strong> PAM and nsswitch</a></li><li class="chapter-item expanded "><a href="integrations/radius.html"><strong aria-hidden="true">12.</strong> RADIUS</a></li><li class="chapter-item expanded "><a href="integrations/ldap.html"><strong aria-hidden="true">13.</strong> LDAP</a></li><li class="chapter-item expanded affix "><li class="part-title">Integration Examples</li><li class="chapter-item expanded "><a href="examples/k8s_ingress_example.html"><strong aria-hidden="true">14.</strong> Kubernetes Ingress</a></li><li class="chapter-item expanded affix "><li class="part-title">Packaging</li><li class="chapter-item expanded "><a href="packaging.html"><strong aria-hidden="true">15.</strong> Packaging</a></li><li class="chapter-item expanded "><a href="packaging_debs.html"><strong aria-hidden="true">16.</strong> Debian/Ubuntu</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Kanidm Administration</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/kanidm/kanidm" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/kanidm/kanidm/edit/master/kanidm_book/src/security_hardening.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="security-hardening"><a class="header" href="#security-hardening">Security Hardening</a></h1>
+<p>Kanidm ships with a secure-by-default configuration, however that is only as strong
+as the platform that Kanidm operates in. This could be your container environment
+or your Unix-like system.</p>
+<p>This chapter will detail a number of warnings and security practices you should
+follow to ensure that Kanidm operates in a secure environment.</p>
+<p>The main server is a high-value target for a potential attack, as Kanidm serves as
+the authority on identity and authorisation in a network. Compromise of the Kanidm
+server is equivalent to a full-network take over, also known as &quot;game over&quot;.</p>
+<p>The unixd resolver is also a high value target as it can be accessed to allow unauthorised
+access to a server, to intercept communications to the server, or more. This also must be protected
+carefully.</p>
+<p>For this reason, Kanidm's components must be protected carefully. Kanidm avoids many classic
+attacks by being developed in a memory safe language, but risks still exist.</p>
+<h2 id="startup-warnings"><a class="header" href="#startup-warnings">Startup Warnings</a></h2>
+<p>At startup Kanidm will warn you if the environment it is running in is suspicious or
+has risks. For example:</p>
+<pre><code>kanidmd server -c /tmp/server.toml
+WARNING: permissions on /tmp/server.toml may not be secure. Should be readonly to running uid. This could be a security risk ...
+WARNING: /tmp/server.toml has 'everyone' permission bits in the mode. This could be a security risk ...
+WARNING: /tmp/server.toml owned by the current uid, which may allow file permission changes. This could be a security risk ...
+WARNING: permissions on ../insecure/ca.pem may not be secure. Should be readonly to running uid. This could be a security risk ...
+WARNING: permissions on ../insecure/cert.pem may not be secure. Should be readonly to running uid. This could be a security risk ...
+WARNING: permissions on ../insecure/key.pem may not be secure. Should be readonly to running uid. This could be a security risk ...
+WARNING: ../insecure/key.pem has 'everyone' permission bits in the mode. This could be a security risk ...
+WARNING: DB folder /tmp has 'everyone' permission bits in the mode. This could be a security risk ...
+</code></pre>
+<p>Each warning highlights an issue that may exist in your environment. It is not possible for us to
+prescribe an exact configuration that may secure your system. This is why we only present
+possible risks.</p>
+<h3 id="should-be-read-only-to-running-uid"><a class="header" href="#should-be-read-only-to-running-uid">Should be Read-only to Running UID</a></h3>
+<p>Files, such as configuration files, should be read-only to the UID of the Kanidm daemon. If an attacker is
+able to gain code execution, they are then unable to modify the configuration to write, or to over-write
+files in other locations, or to tamper with the systems configuration.</p>
+<p>This can be prevented by changing the files ownership to another user, or removing &quot;write&quot; bits
+from the group.</p>
+<h3 id="everyone-permission-bits-in-the-mode"><a class="header" href="#everyone-permission-bits-in-the-mode">'everyone' Permission Bits in the Mode</a></h3>
+<p>This means that given a permission mask, &quot;everyone&quot; or all users of the system can read, write or
+execute the content of this file. This may mean that if an account on the system is compromised the
+attacker can read Kanidm content and may be able to further attack the system as a result.</p>
+<p>This can be prevented by removing &quot;everyone: execute bits from parent directories containing the
+configuration, and removing &quot;everyone&quot; bits from the files in question.</p>
+<h3 id="owned-by-the-current-uid-which-may-allow-file-permission-changes"><a class="header" href="#owned-by-the-current-uid-which-may-allow-file-permission-changes">Owned by the Current UID, Which May Allow File Permission Changes</a></h3>
+<p>File permissions in UNIX systems are a discretionary access control system, which means the
+named UID owner is able to further modify the access of a file regardless of the current
+settings. For example:</p>
+<pre><code>[william@amethyst 12:25] /tmp &gt; touch test
+[william@amethyst 12:25] /tmp &gt; ls -al test
+-rw-r--r--  1 william  wheel  0 29 Jul 12:25 test
+[william@amethyst 12:25] /tmp &gt; chmod 400 test
+[william@amethyst 12:25] /tmp &gt; ls -al test
+-r--------  1 william  wheel  0 29 Jul 12:25 test
+[william@amethyst 12:25] /tmp &gt; chmod 644 test
+[william@amethyst 12:26] /tmp &gt; ls -al test
+-rw-r--r--  1 william  wheel  0 29 Jul 12:25 test
+</code></pre>
+<p>Notice that even though the file was set to &quot;read only&quot; to william, and no permission to any
+other users, user &quot;william&quot; can change the bits to add write permissions back or permissions
+for other users.</p>
+<p>This can be prevent by making the file owner a different UID than the running process for kanidm.</p>
+<h3 id="a-secure-example"><a class="header" href="#a-secure-example">A Secure Example</a></h3>
+<p>Between these three issues it can be hard to see a possible strategy to secure files, however
+one way exists - group read permissions. The most effective method to secure resources for Kanidm
+is to set configurations to:</p>
+<pre><code>[william@amethyst 12:26] /etc/kanidm &gt; ls -al server.toml
+-r--r-----   1 root           kanidm      212 28 Jul 16:53 server.toml
+</code></pre>
+<p>The Kanidm server should be run as &quot;kanidm:kanidm&quot; with the appropriate user and user private
+group created on your system. This applies to unixd configuration as well.</p>
+<p>For the database your data folder should be:</p>
+<pre><code>[root@amethyst 12:38] /data/kanidm &gt; ls -al .
+total 1064
+drwxrwx---   3 root     kanidm      96 29 Jul 12:38 .
+-rw-r-----   1 kanidm   kanidm  544768 29 Jul 12:38 kanidm.db
+</code></pre>
+<p>This means 770 root:kanidm. This allows Kanidm to create new files in the folder, but prevents
+Kanidm from being able to change the permissions of the folder. Because the folder does not have
+&quot;everyone&quot; mode bits, the content of the database is secure because users can now cd/read
+from the directory.</p>
+<p>Configurations for clients, such as /etc/kanidm/config, should be secured with read-only permissions
+and owned by root:</p>
+<pre><code>[william@amethyst 12:26] /etc/kanidm &gt; ls -al config
+-r--r--r--    1 root  root    38 10 Jul 10:10 config
+</code></pre>
+<p>This file should be &quot;everyone&quot;-readable, which is why the bits are defined as such.</p>
+<blockquote>
+<p>NOTE: Why do you use 440 or 444 modes?</p>
+<p>A bug exists in the implementation of readonly() in rust that checks this as &quot;does a write
+bit exist for any user&quot; vs &quot;can the current UID write the file?&quot;. This distinction is subtle
+but it affects the check. We don't believe this is a significant issue though, because
+setting these to 440 and 444 helps to prevent accidental changes by an administrator anyway</p>
+</blockquote>
+<h2 id="running-as-non-root-in-docker"><a class="header" href="#running-as-non-root-in-docker">Running as Non-root in docker</a></h2>
+<p>The commands provided in this book will run kanidmd as &quot;root&quot; in the container to make the onboarding
+smoother. However, this is not recommended in production for security reasons.</p>
+<p>You should allocate unique UID and GID numbers for the service to run as on your host
+system. In this example we use <code>1000:1000</code></p>
+<p>You will need to adjust the permissions on the <code>/data</code> volume to ensure that the process
+can manage the files. Kanidm requires the ability to write to the <code>/data</code> directory to create
+the sqlite files. This UID/GID number should match the above. You could consider the following
+changes to help isolate these changes:</p>
+<pre><code>docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
+mkdir /data/db/
+chown 1000:1000 /data/db/
+chmod 750 /data/db/
+sed -i -e &quot;s/db_path.*/db_path = \&quot;\/data\/db\/kanidm.db\&quot;/g&quot; /data/server.toml
+chown root:root /data/server.toml
+chmod 644 /data/server.toml
+</code></pre>
+<p>Note that the example commands all run inside the docker container.</p>
+<p>You can then use this to run the Kanidm server in docker with a user:</p>
+<pre><code>docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/kanidmd ...
+</code></pre>
+<blockquote>
+<p><strong>HINT</strong>
+You need to use the UID or GID number with the <code>-u</code> argument, as the container can't resolve
+usernames from the host system.</p>
+</blockquote>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="server_configuration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                            <a rel="next" href="client_tools.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="server_configuration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a rel="next" href="client_tools.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+    </body>
+</html>

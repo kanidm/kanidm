@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["run_app",""]],"macro":[["add_body_form_classes","! Macros for the web UI Adds a set of CSS classes to the body element when we’re presenting a full-page form"],["remove_body_form_classes","Removes the set of CSS classes from the body element after we’re presenting a full-page form"]]});
