@@ -30,6 +30,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
         # don't log in if we're not going to push!
         if: ${{ github.ref == 'refs/heads/master' }}
+
       - name: Build and push kanidmd
         id: docker_build_kanidmd
         uses: docker/build-push-action@v3
