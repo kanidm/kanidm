@@ -33,11 +33,8 @@ RUN mkdir /scratch
 RUN echo $KANIDM_BUILD_PROFILE
 RUN echo $KANIDM_FEATURES
 
-# Set the build profile
-ENV KANIDM_BUILD_PROFILE="${KANIDM_BUILD_PROFILE}"
 
 ENV CARGO_HOME=/scratch/.cargo
-ENV RUSTFLAGS="-Clinker=clang"
 
 WORKDIR /usr/src/kanidm/kanidmd_web_ui
 RUN if [ "${SCCACHE_REDIS}" != "" ]; \
@@ -47,6 +44,10 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; \
             sccache --start-server; \
     fi && \
     ./build_wasm.sh
+# This has to be after the WASM build because weird reasons.
+# Set the build profile
+ENV KANIDM_BUILD_PROFILE="${KANIDM_BUILD_PROFILE}"
+ENV RUSTFLAGS="-Clinker=clang"
 
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
