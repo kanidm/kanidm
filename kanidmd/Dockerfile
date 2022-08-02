@@ -37,7 +37,6 @@ RUN echo $KANIDM_FEATURES
 ENV KANIDM_BUILD_PROFILE="${KANIDM_BUILD_PROFILE}"
 
 ENV CARGO_HOME=/scratch/.cargo
-ENV RUSTFLAGS="-Clinker=clang"
 
 WORKDIR /usr/src/kanidm/kanidmd_web_ui
 RUN if [ "${SCCACHE_REDIS}" != "" ]; \
@@ -48,6 +47,7 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; \
     fi && \
     ./build_wasm.sh
 
+ENV RUSTFLAGS="-Clinker=clang"
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
 ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
