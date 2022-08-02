@@ -16,6 +16,30 @@ can help. If you find a bug or issue, we'd love you to report it to our
 
 # Release Notes
 
+## 2022-08-02 - Kanidm 1.1.0-alpha9
+
+This is the ninth alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+The project is shaping up very nicely, and a beta will be coming soon!
+
+### Release Highlights
+
+* Inclusion of a Python3 API library
+* Improve orca usability
+* Improved content security hashes of js/wasm elements
+* Performance improvements in builds
+* Windows development and service support
+* WebUI polish and improvements
+* Consent is remembered in oauth2 improving access flows
+* Replication changelog foundations
+* Compression middleware for static assests to reduce load times
+* User on boarding now possible with self service credential reset
+* TOTP and Webauthn/Passkey support in self service credential reset
+* CTAP2+ support in Webauthn via CLI
+* Radius supports EAP TLS identities in addition to EAP PEAP
+
 ## 2022-05-01 - Kanidm 1.1.0-alpha8
 
 This is the eighth alpha series release of the Kanidm Identity Management

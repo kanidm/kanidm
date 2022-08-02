@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_tools"
-version = "1.1.0-alpha.8"
+version = "1.1.0-alpha.9"
 authors = ["William Brown <william@blackhats.net.au>"]
 rust-version = "1.59"
 edition = "2021"
@@ -36,7 +36,7 @@ tracing-subscriber = { version = "^0.3.14", features = ["env-filter", "fmt"] }
 rpassword = "^7.0.0"
 clap = { version = "^3.2", features = ["derive", "env"] }
 libc = "^0.2.126"
-serde = { version = "^1.0.139", features = ["derive"] }
+serde = { version = "^1.0.141", features = ["derive"] }
 serde_json = "^1.0.82"
 shellexpand = "^2.1.0"
 rayon = "^1.5.3"

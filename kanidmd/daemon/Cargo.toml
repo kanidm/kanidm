@@ -1,6 +1,6 @@
 [package]
 name = "daemon"
-version = "1.1.0-alpha.8"
+version = "1.1.0-alpha.9"
 authors = ["William Brown <william@blackhats.net.au>"]
 rust-version = "1.59"
 edition = "2021"
@@ -21,7 +21,7 @@ kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
 score = { path = "../score" }
 clap = { version = "^3.2", features = ["derive", "env"] }
-serde = { version = "^1.0.139", features = ["derive"] }
+serde = { version = "^1.0.141", features = ["derive"] }
 tokio = { version = "^1.20.0", features = ["rt-multi-thread", "macros", "signal"] }
 toml = "0.5.9"
 

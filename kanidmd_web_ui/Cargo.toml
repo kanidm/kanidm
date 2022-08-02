@@ -1,6 +1,6 @@
 [package]
 name = "kanidmd_web_ui"
-version = "1.1.0-alpha.8"
+version = "1.1.0-alpha.9"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -28,7 +28,7 @@ gloo = "^0.8.0"
 js-sys = "^0.3.58"
 kanidm_proto = { path = "../kanidm_proto", features = ["wasm"] }
 qrcode = { version = "^0.12.0", default-features = false, features = ["svg"] }
-serde = { version = "^1.0.139", features = ["derive"] }
+serde = { version = "^1.0.141", features = ["derive"] }
 serde_json = "^1.0.82"
 uuid = "^1.1.2"
 wasm-bindgen = { version = "^0.2.81", features = ["serde-serialize"] }
