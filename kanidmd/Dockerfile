@@ -6,7 +6,7 @@ RUN /usr/sbin/mirrorsorcerer -x; true
 RUN zypper refresh --force
 RUN zypper dup -y
 
-
+# ======================
 FROM repos AS builder
 
 RUN zypper install -y \
@@ -19,6 +19,7 @@ RUN zypper install -y \
         sccache \
         gcc \
         rsync \
+        findutils \
         which
 RUN zypper clean -a
 
@@ -36,7 +37,11 @@ RUN echo $KANIDM_FEATURES
 
 ENV CARGO_HOME=/scratch/.cargo
 
+# ======================
+
 WORKDIR /usr/src/kanidm/kanidmd_web_ui
+# This can't be used in the wasm build for now.
+# ENV RUSTFLAGS="-Clinker=clang"
 RUN if [ "${SCCACHE_REDIS}" != "" ]; \
         then \
             export CARGO_INCREMENTAL=false && \
@@ -44,15 +49,16 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; \
             sccache --start-server; \
     fi && \
     ./build_wasm.sh
-# This has to be after the WASM build because weird reasons.
-# Set the build profile
-ENV KANIDM_BUILD_PROFILE="${KANIDM_BUILD_PROFILE}"
-ENV RUSTFLAGS="-Clinker=clang"
+
+# ======================
 
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
+# Set the build profile
+ENV KANIDM_BUILD_PROFILE="${KANIDM_BUILD_PROFILE}"
 ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
 
+# Exports don't persist through RUN statements.
 RUN if [ "${SCCACHE_REDIS}" != "" ]; \
 then \
   export CARGO_INCREMENTAL=false && \
@@ -61,9 +67,8 @@ then \
   sccache --start-server; \
 else \
   export CC="/usr/bin/clang"; \
-fi
-
-RUN if [ -z "${KANIDM_FEATURES}" ]; then \
+fi && \
+if [ -z "${KANIDM_FEATURES}" ]; then \
   cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
     --target-dir="/usr/src/kanidm/target/" \
     --release; \
@@ -72,10 +77,12 @@ else \
     --target-dir="/usr/src/kanidm/target/" \
     --features="${KANIDM_FEATURES}" \
     --release; \
-fi
-RUN if [ "${SCCACHE_REDIS}" != "" ]; then sccache -s; fi
+fi && \
+if [ "${SCCACHE_REDIS}" != "" ]; then sccache -s; fi
 
 RUN ls -al /usr/src/kanidm/target/release
+
+# ======================
 
 FROM repos
 

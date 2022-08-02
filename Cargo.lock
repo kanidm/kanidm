@@ -457,17 +457,6 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 [[package]]
 name = "base64urlsafedata"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d02340c3f25c8422ba85d481123406dd7506505485bac1c694b26eb538da8daf"
-dependencies = [
- "base64 0.13.0",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "base64urlsafedata"
-version = "0.1.1"
 source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
 dependencies = [
  "base64 0.13.0",
@@ -740,7 +729,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9417bb4f581b7a5e08fabb4398b910064363bbfd7b75a10d1da3bfff3ef9b36"
 dependencies = [
  "base64 0.13.0",
- "base64urlsafedata 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "base64urlsafedata",
  "openssl",
  "serde",
  "serde_json",
@@ -2088,7 +2077,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "base64 0.13.0",
- "base64urlsafedata 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "base64urlsafedata",
  "chrono",
  "compact_jwt",
  "compiled-uuid",
@@ -2163,7 +2152,7 @@ name = "kanidm_proto"
 version = "1.1.0-alpha.9"
 dependencies = [
  "base32",
- "base64urlsafedata 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "base64urlsafedata",
  "serde",
  "serde_json",
  "time 0.2.27",
@@ -4539,7 +4528,7 @@ version = "0.4.2-beta.3"
 source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
 dependencies = [
  "authenticator",
- "base64urlsafedata 0.1.1 (git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360)",
+ "base64urlsafedata",
  "nom 7.1.1",
  "openssl",
  "rpassword 5.0.1",
@@ -4555,7 +4544,7 @@ name = "webauthn-rs"
 version = "0.4.2-beta.3"
 source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
 dependencies = [
- "base64urlsafedata 0.1.1 (git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360)",
+ "base64urlsafedata",
  "serde",
  "tracing",
  "url",
@@ -4569,7 +4558,7 @@ version = "0.4.2-beta.3"
 source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
 dependencies = [
  "base64 0.13.0",
- "base64urlsafedata 0.1.1 (git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360)",
+ "base64urlsafedata",
  "compact_jwt",
  "der-parser",
  "nom 7.1.1",
@@ -4591,7 +4580,7 @@ name = "webauthn-rs-proto"
 version = "0.4.2-beta.3"
 source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
 dependencies = [
- "base64urlsafedata 0.1.1 (git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360)",
+ "base64urlsafedata",
  "js-sys",
  "serde",
  "serde_json",

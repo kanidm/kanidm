@@ -32,6 +32,7 @@ exclude = [
 
 # ldap3_server = { path = "../ldap3_server" }
 
+base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7a8e6c6b351ab7544f08cf8ba48424baacee1360" }
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
 webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7a8e6c6b351ab7544f08cf8ba48424baacee1360" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
