@@ -3,11 +3,12 @@ use gloo::console;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
-use web_sys::{Request, RequestInit, RequestMode, Response};
+use web_sys::{CredentialRequestOptions, Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_router::prelude::*;
 
+use crate::constants::{CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
 use crate::error::FetchError;
 use crate::models;
 use crate::utils;
@@ -32,16 +33,16 @@ enum TotpState {
 
 enum LoginState {
     Init(bool),
-    // Select between different cred types
+    // Select between different cred types, either password (and MFA) or Passkey
     Select(Vec<AuthMech>),
-    // The choices of current ways to proceed.
+    // The choices of authentication mechanism.
     Continue(Vec<AuthAllowed>),
     // The different methods
     Password(bool),
     BackupCode(bool),
     Totp(TotpState),
-    Passkey(web_sys::CredentialRequestOptions),
-    SecurityKey(web_sys::CredentialRequestOptions),
+    Passkey(CredentialRequestOptions),
+    SecurityKey(CredentialRequestOptions),
     // Error, state handling.
     Error { emsg: String, kopid: Option<String> },
     UnknownUser,
@@ -175,17 +176,17 @@ impl LoginApp {
     fn button_start_again(&self, ctx: &Context<Self>) -> VNode {
         html! {
             <div class="col-md-auto text-center">
-                <button type="button" class="btn btn-dark" onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
+                <button type="button" class={CLASS_BUTTON_DARK} onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
             </div>
         }
     }
 
     fn render_auth_allowed(&self, ctx: &Context<Self>, idx: usize, allow: &AuthAllowed) -> Html {
         html! {
-            <li>
+            <li class="text-center mb-2">
                 <button
                     type="button"
-                    class="btn btn-dark"
+                    class={CLASS_BUTTON_DARK}
                     onclick={ ctx.link().callback(move |_| LoginAppMsg::Continue(idx)) }
                 >{ allow.to_string() }</button>
             </li>
@@ -194,13 +195,35 @@ impl LoginApp {
 
     fn render_mech_select(&self, ctx: &Context<Self>, idx: usize, allow: &AuthMech) -> Html {
         html! {
-            <li class="text-center">
+            <li class="text-center mb-2">
                 <button
                     type="button"
-                    class="btn btn-dark mb-2"
+                    class={CLASS_BUTTON_DARK}
                     onclick={ ctx.link().callback(move |_| LoginAppMsg::Select(idx)) }
                 >{ allow.to_string() }</button>
             </li>
+        }
+    }
+
+    /// shows an error-alert in a bootstrap alert container
+    fn do_alert_error(
+        &self,
+        alert_title: &str,
+        alert_message: Option<&str>,
+        ctx: &Context<Self>,
+    ) -> VNode {
+        html! {
+        <div class="container">
+            <div class="row justify-content-md-center">
+                <div class="alert alert-danger" role="alert">
+                    <p><strong>{ alert_title }</strong></p>
+                    if let Some(value) = alert_message {
+                        <p>{ value }</p>
+                    }
+                </div>
+                { self.button_start_again(ctx) }
+            </div>
+        </div>
         }
     }
 
@@ -214,13 +237,13 @@ impl LoginApp {
                         <label for="username" class="form-label">{ "Username" }</label>
                         <form
                         onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            #[cfg(debug)]
                             console::debug!("login::view_state -> Init - prevent_default()".to_string());
                             e.prevent_default();
                             LoginAppMsg::Begin
                         } ) }
-                        action="javascript:void(0);"
                         >
-                        <div class="input-group mb-3">
+                        <div class={CLASS_DIV_LOGIN_FIELD}>
                             <input
                                 autofocus=true
                                 class="autofocus form-control"
@@ -233,10 +256,10 @@ impl LoginApp {
                             />
                         </div>
 
-                        <div class="input-group mb-3 justify-content-md-center">
+                        <div class={CLASS_DIV_LOGIN_BUTTON}>
                             <button
                                 type="submit"
-                                class="btn btn-dark"
+                                class={CLASS_BUTTON_DARK}
                                 disabled={ !enable }
                             >{" Begin "}</button>
                         </div>
@@ -245,6 +268,7 @@ impl LoginApp {
                     </>
                 }
             }
+            // Selecting between password (and MFA) or Passkey
             LoginState::Select(mechs) => {
                 html! {
                     <>
@@ -268,7 +292,7 @@ impl LoginApp {
                     <>
                     <div class="container">
                         <p>
-                        {" Choose how to proceed: "}
+                        {"Choose how to proceed:"}
                         </p>
                     </div>
                     <div class="container">
@@ -285,15 +309,15 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
-                        <form class="row g-3"
-                            action="javascript:void(0);"
+                        <label for="password" class="form-label">{ "Password" }</label>
+                        <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
                                 console::debug!("login::view_state -> Password - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::PasswordSubmit
                             } ) }
                         >
-                        <div class="col-12"><label for="password" class="form-label">{ "Password" }</label>
+                        <div class={CLASS_DIV_LOGIN_FIELD}>
                             <input
                                 autofocus=true
                                 class="autofocus form-control"
@@ -305,8 +329,8 @@ impl LoginApp {
                                 value={ inputvalue }
                             />
                             </div>
-                            <div class="col-12 text-center">
-                                <button type="submit" class="btn btn-dark" disabled={ !enable }>{ "Submit" }</button>
+                            <div class={CLASS_DIV_LOGIN_BUTTON}>
+                                <button type="submit" class={CLASS_BUTTON_DARK} disabled={ !enable }>{ "Submit" }</button>
                             </div>
                         </form>
                     </div>
@@ -318,17 +342,17 @@ impl LoginApp {
                     <>
 
                     <div class="container">
+                        <label for="backup_code" class="form-label">
+                        {"Backup Code"}
+                        </label>
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
                                 console::debug!("login::view_state -> BackupCode - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::BackupCodeSubmit
                             } ) }
-                            action="javascript:void(0);"
                         >
-                            <label for="backup_code" class="form-label">
-                            {"Backup Code"}
-                            </label>
+                        <div class={CLASS_DIV_LOGIN_FIELD}>
                             <input
                                 autofocus=true
                                 class="autofocus form-control"
@@ -339,7 +363,10 @@ impl LoginApp {
                                 type="text"
                                 value={ inputvalue }
                             />
-                            <button type="submit" class="btn btn-dark">{" Submit "}</button>
+                            </div>
+                            <div class={CLASS_DIV_LOGIN_BUTTON}>
+                                <button type="submit" class={CLASS_BUTTON_DARK}>{" Submit "}</button>
+                            </div>
                         </form>
                     </div>
                     </>
@@ -349,29 +376,29 @@ impl LoginApp {
                 html! {
                     <>
                     <div class="container">
+                        <label for="totp" class="form-label">{"TOTP"}</label>
                         <form
                             onsubmit={ ctx.link().callback(|e: FocusEvent| {
                                 console::debug!("login::view_state -> Totp - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::TotpSubmit
                             } ) }
-                            action="javascript:void(0);"
                         >
-                        <label for="totp" class="form-label">
-                        {"TOTP"}
-                        { if state==&TotpState::Invalid { "can only contain numeric digits" } else { "" } }
-                        </label>
-                            <input
-                                autofocus=true
-                                name="totp"
-                                id="totp"
-                                type="text"
-                                class="autofocus form-control"
-                                value={ inputvalue }
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
-                                disabled={ state==&TotpState::Disabled }
+                        <div class={CLASS_DIV_LOGIN_FIELD}>
+                        <input
+                            autofocus=true
+                            class="autofocus form-control"
+                            disabled={ state==&TotpState::Disabled }
+                            id="totp"
+                            name="totp"
+                            oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
+                            type="text"
+                            value={ inputvalue }
                             />
-                            <button type="submit" class="btn btn-dark" disabled={ state==&TotpState::Disabled }>{" Submit "}</button>
+                        </div>
+                            <div class={CLASS_DIV_LOGIN_BUTTON}>
+                            <button type="submit" class={CLASS_BUTTON_DARK} disabled={ state==&TotpState::Disabled }>{" Submit "}</button>
+                            </div>
                         </form>
                     </div>
                     </>
@@ -414,7 +441,7 @@ impl LoginApp {
                 html! {
                     <div class="container">
                         <p>
-                        {" Security Key "}
+                        {"Security Key"}
                         </p>
                     </div>
                 }
@@ -468,62 +495,33 @@ impl LoginApp {
                 console::debug!(format!("authenticated, try going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
                 html! {
-                    <div class="container">
-                        <p>
-                            { "Login Success 🎉" }
-                        </p>
+                    <div class="alert alert-success">
+                        <h3>{ "Login Success 🎉" }</h3>
                     </div>
                 }
             }
             LoginState::Denied(msg) => {
-                html! {
-                <div class="container">
-                    <div class="row justify-content-md-center">
-                        <div class="alert alert-danger" role="alert">
-                            <p><strong>{ "Authentication Denied" }</strong></p>
-                            <p>{ msg.as_str() }</p>
-                        </div>
-                        { self.button_start_again(ctx) }
-                    </div>
-                </div>
-                }
+                self.do_alert_error("Authentication Denied", Some(msg.as_str()), ctx)
             }
             LoginState::UnknownUser => {
-                html! {
-                    <div class="container">
-                        <div class="row justify-content-md-center">
-                            <div class="alert alert-danger" role="alert">
-                                { "That username was not found. Please try again!" }
-                            </div>
-                             { self.button_start_again(ctx) }
-                        </div>
-                    </div>
-                }
+                self.do_alert_error("Username not found", Some("Please try again"), ctx)
             }
-            LoginState::Error { emsg, kopid } => {
-                html! {
-                    <>
-                    <div class="alert alert-danger" role="alert">
-                        <h2>{ "An error has occured 😔 " }</h2>
-                        <p>
-                            { emsg.as_str() }
-                        </p>
-                        <p>
-                            {
-                                if let Some(opid) = kopid.as_ref() {
-                                    format!("Operation ID: {}", opid.clone())
-                                }
-                                else {
-                                    "Error occurred client-side.".to_string()
-                                }
-                            }
-                        </p>
-                    </div>
-
-                    { self.button_start_again(ctx) }
-                    </>
-                }
-            }
+            LoginState::Error { emsg, kopid } => self.do_alert_error(
+                "An error has occured 😔 ",
+                Some(
+                    format!(
+                        "{}\n\n{}",
+                        emsg.as_str(),
+                        if let Some(opid) = kopid.as_ref() {
+                            format!("Operation ID: {}", opid.clone())
+                        } else {
+                            "Error occurred client-side.".to_string()
+                        }
+                    )
+                    .as_str(),
+                ),
+                ctx,
+            ),
         }
     }
 }

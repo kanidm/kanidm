@@ -212,7 +212,9 @@ impl ViewsApp {
           <>
           <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
               <div class="container-fluid">
-                <a class="navbar-brand" href="{ViewRoute::Profile}">{"Kanidm"}</a>
+              <Link<ViewRoute> classes="navbar-brand navbar-dark" to={ViewRoute::Apps}>
+                {"Kanidm"}
+                </Link<ViewRoute>>
                 <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                   <img src="/pkg/img/favicon.png" />
                 </button>

@@ -124,7 +124,7 @@ impl Component for CredentialResetApp {
             })
             .ok();
 
-        let m_session = models::pop_cred_update_session();
+        let m_session = models::get_cred_update_session();
 
         let state = match (query, m_session) {
             (Some(cu_intent), None) => {
@@ -205,8 +205,8 @@ impl Component for CredentialResetApp {
 
                 Some(State::WaitingForCommit)
             }
-            (Msg::Cancel, State::Main { token, status }) => {
-                console::debug!(format!("{:?}", status).as_str());
+            (Msg::Cancel, State::Main { token, status: _ }) => {
+                console::debug!(format!("msg::cancel").as_str());
                 let token_c = token.clone();
 
                 ctx.link().send_future(async {
@@ -467,8 +467,7 @@ impl CredentialResetApp {
 
                     <hr class="my-4" />
 
-                    // TODO: this could probably just be a link back home, currently it breaks and sends the user to an error..
-                    <button class="w-50 btn btn-danger btn-lg" type="submit"
+                    <button class="w-50 btn btn-danger btn-lg"
                         disabled=false
                         onclick={
                             ctx.link()
@@ -477,7 +476,8 @@ impl CredentialResetApp {
                             })
                         }
                         >{ "Cancel" }</button>
-                        <button class="w-50 btn btn-success btn-lg" type="submit"
+                    <button
+                        class="w-50 btn btn-success btn-lg"
                         disabled={ !can_commit }
                         onclick={
                             ctx.link()
@@ -485,7 +485,8 @@ impl CredentialResetApp {
                                     Msg::Commit
                                 })
                         }
-                    >{ "Submit Changes" }</button>
+                        type="submit"
+                        >{ "Submit Changes" }</button>
                   </form>
               </div>
             </main>
