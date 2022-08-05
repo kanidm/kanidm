@@ -861,18 +861,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // Apply to the account!
-        trace!(?modlist, "processing change");
+        if !modlist.is_empty() {
+            trace!(?modlist, "processing change");
 
-        self.qs_write
-            .internal_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
-                &modlist,
-            )
-            .map_err(|e| {
-                request_error!(error = ?e);
-                e
-            })
+            self.qs_write
+                .internal_modify(
+                    // Filter as executed
+                    &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
+                    &modlist,
+                )
+                .map_err(|e| {
+                    request_error!(error = ?e);
+                    e
+                })
+        } else {
+            Ok(())
+        }
     }
 }
 
