@@ -4,6 +4,7 @@ use crate::utils;
 use super::eventbus::{EventBus, EventBusMsg};
 use super::reset::PasskeyRemoveModalProps;
 
+#[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
 use yew_agent::Dispatched;
@@ -126,6 +127,7 @@ impl Component for PasskeyRemoveModalApp {
     type Properties = PasskeyRemoveModalProps;
 
     fn create(ctx: &Context<Self>) -> Self {
+        #[cfg(debug)]
         console::debug!("passkey remove modal create");
 
         let tag = ctx.props().tag.clone();
@@ -141,11 +143,13 @@ impl Component for PasskeyRemoveModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        #[cfg(debug)]
         console::debug!("passkey remove modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        #[cfg(debug)]
         console::debug!("passkey remove modal::update");
         match msg {
             Msg::Submit => {
@@ -178,14 +182,17 @@ impl Component for PasskeyRemoveModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        #[cfg(debug)]
         console::debug!("passkey remove modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
+        #[cfg(debug)]
         console::debug!("passkey remove modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        #[cfg(debug)]
         console::debug!("passkey remove modal::view");
 
         let remove_tgt = self.target.clone();

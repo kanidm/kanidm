@@ -83,19 +83,6 @@ impl Component for ProfileApp {
             user: None,
         };
 
-        // // TODO: if the token's not valid then redirect to home
-        // let location = utils::window().location();
-
-        // match location.replace(loc.as_str()) {
-        //     // No need to redraw, we are leaving.
-        //     Ok(_) => false,
-        //     Err(e) => {
-        //         // Something went bang, opps.
-        //         console::error!(format!("{:?}", e).as_str());
-        //         self.state = State::ErrInvalidRequest;
-        //         true
-        //     }
-        // }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -110,7 +97,7 @@ impl Component for ProfileApp {
         match msg {
             Msg::Error { emsg, kopid } => {
                 console::error!(format!(
-                    "Failed to something {:?} - kopid {:?}",
+                    "Failed to do something {:?} - kopid {:?}",
                     emsg, kopid
                 ));
             }
@@ -215,7 +202,7 @@ impl Component for ProfileApp {
                                         for grouplist.iter()
                                             .map(|group|
                                     {
-                                        html!{ <li>{ format!( "{}", group.split("@").nth(0).unwrap() ) }</li> }
+                                        html!{ <li>{ group.split('@').next().unwrap().to_string() }</li> }
 
                                     })
                                 }
@@ -251,9 +238,6 @@ impl Component for ProfileApp {
             <>
             <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>{ "Profile" }</h2>
-            </div>
-            <div class="alert alert-warning" role="alert">
-                { "🦀 Kanidm is still in early Alpha, this interface is a placeholder! " }
             </div>
 
             { pagecontent }
