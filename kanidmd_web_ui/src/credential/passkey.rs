@@ -270,7 +270,7 @@ impl Component for PasskeyModalApp {
                                 })
                         }
                     >
-                    // TODO: they probably already want to create one if they've cliekd the button but I won't judge for making really sure.
+                    // TODO: they probably already want to create one if they've clicked the button but I won't judge for making really sure.
                     { "Start Creating a New Passkey" }</button>
                 }
             }
