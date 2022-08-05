@@ -131,7 +131,7 @@ impl Component for PasskeyRemoveModalApp {
         console::debug!("passkey remove modal create");
 
         let tag = ctx.props().tag.clone();
-        let uuid = ctx.props().uuid.clone();
+        let uuid = ctx.props().uuid;
         let target = format!("staticPasskeyRemove-{}", uuid);
 
         PasskeyRemoveModalApp {
@@ -157,7 +157,7 @@ impl Component for PasskeyRemoveModalApp {
 
                 // Do the call back.
                 let token_c = ctx.props().token.clone();
-                let uuid = self.uuid.clone();
+                let uuid = self.uuid;
 
                 ctx.link().send_future(async move {
                     match Self::submit_passkey_update(token_c, CURequest::PasskeyRemove(uuid)).await

@@ -33,6 +33,7 @@ pub struct PwModalApp {
     pw_check_val: String,
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum Msg {
     PasswordCheck,
     PasswordSubmit,

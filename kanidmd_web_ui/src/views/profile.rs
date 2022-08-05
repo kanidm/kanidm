@@ -19,7 +19,6 @@ use yew::prelude::*;
 // use web_sys::{Request, RequestInit, RequestMode, Response};
 
 pub enum Msg {
-    // Nothing
     TokenValid(String),
     TokenInvalid,
     Error { emsg: String, kopid: Option<String> },
@@ -43,7 +42,6 @@ impl From<FetchError> for Msg {
 
 // User Profile UI
 pub struct ProfileApp {
-    // #[allow(dead_code)] // not really, because it's read in update()
     state: ProfileAppState,
     token: Option<String>,
     user: Option<WhoamiResponse>,
@@ -63,26 +61,18 @@ impl Component for ProfileApp {
         #[cfg(debug)]
         console::debug!("token: ", &token);
 
-        // let jwtu = JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
-
-        // let uat: Jws<UserAuthToken> = jwtu
-        //     .unsafe_release_without_verification()
-        //     .expect_throw("Unvalid UAT, unable to release ");
-
-        let token_c = token.clone();
         ctx.link().send_future(async {
-            match Self::fetch_token_valid(token_c).await {
+            match Self::fetch_token_valid(token).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
         });
 
-        return ProfileApp {
+        ProfileApp {
             state: ProfileAppState::Loading,
             token: None,
             user: None,
-        };
-
+        }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -121,10 +111,8 @@ impl Component for ProfileApp {
                 #[cfg(debug)]
                 console::debug!(format!("Token is valid! ({})", token));
 
-                // TODO: start doing the thing with the update of the window etc
-                let token_c = token.clone();
                 ctx.link().send_future(async {
-                    match Self::fetch_user_data(token_c).await {
+                    match Self::fetch_user_data(token).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -162,6 +150,7 @@ impl Component for ProfileApp {
                 }
             }
             ProfileAppState::Loaded => {
+                #[allow(clippy::unwrap_used)]
                 let userinfo = self.user.as_ref().unwrap();
 
                 let mail_primary = match userinfo.uat.mail_primary.as_ref() {
@@ -174,12 +163,13 @@ impl Component for ProfileApp {
                     }
                     None => html! { {"<primary email is unset>"}},
                 };
-                // .unwrap_or(&"<primary email is unset>".to_string()).into();
 
                 let spn = &userinfo.uat.spn.to_owned();
-                let spn_split = spn.split("@");
+                let spn_split = spn.split('@');
 
-                let username = &spn_split.clone().nth(0).unwrap();
+                #[allow(clippy::unwrap_used)]
+                let username = &spn_split.clone().next().unwrap();
+                #[allow(clippy::unwrap_used)]
                 let domain = &spn_split.clone().last().unwrap();
                 let display_name = userinfo.uat.displayname.to_owned();
                 let user_groups = userinfo.youare.attrs.get("memberof");
@@ -202,7 +192,10 @@ impl Component for ProfileApp {
                                         for grouplist.iter()
                                             .map(|group|
                                     {
-                                        html!{ <li>{ group.split('@').next().unwrap().to_string() }</li> }
+                                        html!{ <li>{
+                                            #[allow(clippy::unwrap_used)]
+                                            group.split('@').next().unwrap().to_string()
+                                        }</li> }
 
                                     })
                                 }

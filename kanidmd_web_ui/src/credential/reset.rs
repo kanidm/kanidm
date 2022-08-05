@@ -206,7 +206,8 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForCommit)
             }
             (Msg::Cancel, State::Main { token, status: _ }) => {
-                console::debug!(format!("msg::cancel").as_str());
+                #[cfg(debug)]
+                console::debug!("msg::cancel");
                 let token_c = token.clone();
 
                 ctx.link().send_future(async {

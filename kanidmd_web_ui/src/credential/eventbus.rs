@@ -6,6 +6,7 @@ use yew_agent::{Agent, AgentLink, Context, HandlerId};
 use kanidm_proto::v1::CUStatus;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum EventBusMsg {
     UpdateStatus { status: CUStatus },
     Error { emsg: String, kopid: Option<String> },
