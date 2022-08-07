@@ -37,7 +37,7 @@ rpassword = "^7.0.0"
 clap = { version = "^3.2", features = ["derive", "env"] }
 libc = "^0.2.126"
 serde = { version = "^1.0.141", features = ["derive"] }
-serde_json = "^1.0.82"
+serde_json = "^1.0.83"
 shellexpand = "^2.1.0"
 rayon = "^1.5.3"
 time = { version = "=0.2.27", features = ["serde", "std"] }
