@@ -7,9 +7,13 @@ authentication for many years, with almost every application in the world being
 able to search and bind to LDAP. As many organization still rely on LDAP, Kanidm 
 can host a read-only LDAP interface.
 
-> **WARNING** The LDAP server in Kanidm is not RFC compliant. This
-> is intentional, as Kanidm wants to cover the common use case, 
-> simple bind and search.
+{{#template  
+    ../templates/kani-warning.md
+    imagepath=../images
+    title=Warning!
+    text=The LDAP server in Kanidm is not RFC compliant. This is intentional, as Kanidm wants to cover the common use case,  simple bind and search.
+}}
+
 
 ## What is LDAP
 
@@ -105,10 +109,22 @@ Kanidm native attributes.
 ## Example
 
 Given a default install with domain "example.com" the configured LDAP DN will be "dc=example,dc=com".
+
+Run your server:
+
+    cargo run -- server \
+        -D kanidm.db \
+        -C ca.pem -c cert.pem \
+        -k key.pem \
+        -b 127.0.0.1:8443 \
+        -l 127.0.0.1:3636
+
 This can be queried with:
 
-    cargo run -- server -D kanidm.db -C ca.pem -c cert.pem -k key.pem -b 127.0.0.1:8443 -l 127.0.0.1:3636
-    > LDAPTLS_CACERT=ca.pem ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
+    LDAPTLS_CACERT=ca.pem ldapsearch \
+        -H ldaps://127.0.0.1:3636 \
+        -b 'dc=example,dc=com' \
+        -x '(name=test1)'
 
     # test1@example.com, example.com
     dn: spn=test1@example.com,dc=example,dc=com
@@ -122,10 +138,10 @@ This can be queried with:
     spn: test1@example.com
     entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 
-It is recommended that client applications filter accounts that can login with '(class=account)'
-and groups with '(class=group)'. If possible, group membership is defined in RFC2307bis or
-Active Directory style. This means groups are determined from the "memberof" attribute which contains
-a DN to a group.
+It is recommended that client applications filter accounts that can login with `(class=account)`
+and groups with `(class=group)`. If possible, group membership is defined in RFC2307bis or
+Active Directory style. This means groups are determined from the "memberof" attribute which 
+contains a DN to a group.
 
 LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
 the object listed above (if it was a POSIX account, that is).
@@ -138,8 +154,8 @@ the object listed above (if it was a POSIX account, that is).
     ldapwhoami ... -x -D 'spn=test1@example.com,dc=example,dc=com'
     ldapwhoami ... -x -D 'name=test1,dc=example,dc=com'
 
-Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. For example
-these commands:
+Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. 
+For example these commands:
 
     ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
     ldapsearch -H ldap://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
