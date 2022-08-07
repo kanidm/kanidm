@@ -745,7 +745,12 @@ impl AuthSession {
                         // call functions that call this indirectly without opening a span first,
                         // and this returns `None` when not in a span (and panics if the tree isn't initialized).
                         let session_id = Uuid::new_v4();
-                        security_info!("Starting session {} for {} {}", session_id, self.account.spn, self.account.uuid);
+                        security_info!(
+                            "Starting session {} for {} {}",
+                            session_id,
+                            self.account.spn,
+                            self.account.uuid
+                        );
                         let uat = self
                             .account
                             .to_userauthtoken(session_id, *time, auth_type)

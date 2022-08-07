@@ -954,7 +954,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
             }
 
             let session_id = Uuid::new_v4();
-            security_info!("Starting session {} for {} {}", session_id, account.spn, account.uuid);
+            security_info!(
+                "Starting session {} for {} {}",
+                session_id,
+                account.spn,
+                account.uuid
+            );
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
@@ -1035,7 +1040,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         Account::try_from_entry_ro(anon_entry.as_ref(), &mut self.qs_read)?;
 
                     let session_id = Uuid::new_v4();
-                    security_info!("Starting session {} for {} {}", session_id, account.spn, account.uuid);
+                    security_info!(
+                        "Starting session {} for {} {}",
+                        session_id,
+                        account.spn,
+                        account.uuid
+                    );
 
                     Ok(Some(LdapBoundToken {
                         spn: account.spn,

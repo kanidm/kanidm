@@ -55,7 +55,7 @@ tokio-util = { version = "^0.7.3", features = ["codec"] }
 toml = "^0.5.9"
 touch = "^0.0.1"
 
-sketching = { path = "../sketching" }
+sketching = { path = "../../sketching" }
 tracing = { version = "^0.1.35", features = ["attributes"] }
 
 url = { version = "^2.2.2", features = ["serde"] }

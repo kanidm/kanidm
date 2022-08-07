@@ -20,7 +20,7 @@ path = "src/main.rs"
 kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
 score = { path = "../score" }
-sketching = { path = "../sketching" }
+sketching = { path = "../../sketching" }
 
 clap = { version = "^3.2", features = ["derive", "env"] }
 serde = { version = "^1.0.141", features = ["derive"] }

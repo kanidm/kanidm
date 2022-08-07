@@ -1,15 +1,26 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use tracing_forest::ForestLayer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::registry::Registry;
+use tracing_subscriber::util::SubscriberInitExt;
 
 pub mod macros;
 pub mod middleware;
 
 pub use tracing;
 pub use tracing_forest;
+pub use tracing_subscriber;
 
+/*
 pub fn test_init() -> Result<(), Box<(dyn std::error::Error + Send + Sync + 'static)>> {
     tracing_subscriber::fmt::try_init()
 }
+*/
 
+pub fn test_init() -> () {
+    // tracing_forest::init()
+    let _ = Registry::default().with(ForestLayer::default()).try_init();
+}
 
 #[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
 #[repr(u64)]
@@ -69,6 +80,3 @@ impl EventTag {
         }
     }
 }
-
-
-

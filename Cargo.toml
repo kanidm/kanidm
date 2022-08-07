@@ -12,12 +12,12 @@ members = [
     "kanidm_unix_int/nss_kanidm",
     "kanidm_unix_int/pam_kanidm",
     "kanidmd_web_ui",
-    "kanidmd/sketching",
     "kanidmd/daemon",
     "kanidmd/idm",
     "kanidmd/score",
     "orca",
     "profiles",
+    "sketching",
 ]
 
 exclude = [

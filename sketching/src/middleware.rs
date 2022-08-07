@@ -1,4 +1,4 @@
-use crate::{security_info, request_error, request_warn, request_info};
+use crate::{request_error, request_info, request_warn, security_info};
 use tide::{self, Middleware, Next, Request};
 use tracing::{self, instrument};
 
@@ -92,6 +92,3 @@ impl<State: Clone + Send + Sync + 'static> Middleware<State> for TreeMiddleware 
         self.log(req, next).await
     }
 }
-
-
-

@@ -453,7 +453,6 @@ async fn main() {
                     vacuum_server_core(&config);
                 }
             }
-
         })
         .await;
 }

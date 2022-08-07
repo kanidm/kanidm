@@ -10,9 +10,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[macro_use]
-extern crate tracing;
-
 use users::{get_effective_gid, get_effective_uid};
 
 use std::os::unix::fs::symlink;
@@ -23,6 +20,7 @@ use std::ffi::CString;
 use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
 use futures::StreamExt;
+use sketching::tracing_forest::{self, traits::*, util::*};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -213,49 +211,61 @@ async fn main() {
         std::process::exit(1);
     }
 
-    tracing_subscriber::fmt::init();
-
-    let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
-    let unixd_path_str = match unixd_path.to_str() {
-        Some(cps) => cps,
-        None => {
-            error!("Unable to turn unixd_path to str");
-            std::process::exit(1);
-        }
-    };
-
-    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
-        Ok(v) => v,
-        Err(_) => {
-            error!("Failed to parse {}", unixd_path_str);
-            std::process::exit(1);
-        }
-    };
-
-    let task_sock_path = cfg.task_sock_path.clone();
-    debug!("Attempting to use {} ...", task_sock_path);
-
-    let server = async move {
-        loop {
-            info!("Attempting to connect to kanidm_unixd ...");
-            // Try to connect to the daemon.
-            match UnixStream::connect(&task_sock_path).await {
-                // Did we connect?
-                Ok(stream) => {
-                    info!("Found kanidm_unixd, waiting for tasks ...");
-                    // Yep! Now let the main handler do it's job.
-                    // If it returns (dc, etc, then we loop and try again).
-                    handle_tasks(stream, &cfg.home_prefix).await;
+    tracing_forest::worker_task()
+        .set_global(true)
+        // Fall back to stderr
+        .map_sender(|sender| sender.or_stderr())
+        .build_on(|subscriber| {
+            subscriber.with(
+                EnvFilter::try_from_default_env()
+                    .or_else(|_| EnvFilter::try_new("info"))
+                    .expect("Failed to init envfilter"),
+            )
+        })
+        .on(async {
+            let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
+            let unixd_path_str = match unixd_path.to_str() {
+                Some(cps) => cps,
+                None => {
+                    error!("Unable to turn unixd_path to str");
+                    std::process::exit(1);
                 }
-                Err(e) => {
-                    error!("Unable to find kanidm_unixd, sleeping ...");
-                    debug!("\\---> {:?}", e);
-                    // Back off.
-                    time::sleep(Duration::from_millis(5000)).await;
-                }
-            }
-        }
-    };
+            };
 
-    server.await;
+            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
+                Ok(v) => v,
+                Err(_) => {
+                    error!("Failed to parse {}", unixd_path_str);
+                    std::process::exit(1);
+                }
+            };
+
+            let task_sock_path = cfg.task_sock_path.clone();
+            debug!("Attempting to use {} ...", task_sock_path);
+
+            let server = async move {
+                loop {
+                    info!("Attempting to connect to kanidm_unixd ...");
+                    // Try to connect to the daemon.
+                    match UnixStream::connect(&task_sock_path).await {
+                        // Did we connect?
+                        Ok(stream) => {
+                            info!("Found kanidm_unixd, waiting for tasks ...");
+                            // Yep! Now let the main handler do it's job.
+                            // If it returns (dc, etc, then we loop and try again).
+                            handle_tasks(stream, &cfg.home_prefix).await;
+                        }
+                        Err(e) => {
+                            error!("Unable to find kanidm_unixd, sleeping ...");
+                            debug!("\\---> {:?}", e);
+                            // Back off.
+                            time::sleep(Duration::from_millis(5000)).await;
+                        }
+                    }
+                }
+            };
+
+            server.await;
+        })
+        .await;
 }
