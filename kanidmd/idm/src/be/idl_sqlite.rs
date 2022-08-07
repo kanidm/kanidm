@@ -1412,7 +1412,7 @@ mod tests {
 
     #[test]
     fn test_idl_sqlite_verify() {
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
         let cfg = BackendConfig::new_test();
         let be = IdlSqlite::new(&cfg, false).unwrap();
         let be_w = be.write();

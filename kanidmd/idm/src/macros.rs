@@ -1,16 +1,6 @@
 macro_rules! setup_test {
     () => {{
-        /*
-        use env_logger;
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
-        */
-
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
 
         // Create an in memory BE
         let schema_outer = Schema::new().expect("Failed to init schema");
@@ -32,16 +22,7 @@ macro_rules! setup_test {
         use crate::utils::duration_from_epoch_now;
         use async_std::task;
 
-        /*
-        use env_logger;
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
-        */
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
 
         // Create an in memory BE
         let schema_outer = Schema::new().expect("Failed to init schema");
@@ -75,16 +56,7 @@ macro_rules! run_test_no_init {
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
 
-        let _ = crate::tracing_tree::test_init();
-        /*
-        use env_logger;
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
-        */
+        let _ = sketching::test_init();
 
         let schema_outer = Schema::new().expect("Failed to init schema");
         let idxmeta = {
@@ -117,16 +89,7 @@ macro_rules! run_test {
         #[allow(unused_imports)]
         use crate::utils::duration_from_epoch_now;
 
-        let _ = crate::tracing_tree::test_init();
-        /*
-        use env_logger;
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
-        */
+        let _ = sketching::test_init();
 
         let test_server = setup_test!();
 
@@ -198,7 +161,7 @@ macro_rules! run_idm_test_inner {
 #[cfg(test)]
 macro_rules! run_idm_test {
     ($test_fn:expr) => {{
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
         run_idm_test_inner!($test_fn);
     }};
 }
@@ -211,7 +174,7 @@ where
         &crate::idm::server::IdmServerDelayed,
     ),
 {
-    let _ = crate::tracing_tree::test_level(tracing::Level::ERROR);
+    let _ = sketching::test_init();
     let _ = run_idm_test_inner!(test_fn);
 }
 
@@ -382,7 +345,7 @@ macro_rules! run_delete_test {
 #[cfg(test)]
 macro_rules! run_entrychangelog_test {
     ($test_fn:expr) => {{
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
         let schema_outer = Schema::new().expect("Failed to init schema");
 
         let schema_txn = schema_outer.read();

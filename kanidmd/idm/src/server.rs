@@ -1892,8 +1892,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
                 .into_iter()
-                .map(|e| {
-                    e.validate(&self.schema)
+                .map(|entry| {
+                    entry
+                        .validate(&self.schema)
                         .map_err(|e| {
                             admin_error!(
                                 "Schema Violation in validation of modify_pre_apply {:?}",
@@ -1901,7 +1902,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             );
                             OperationError::SchemaViolation(e)
                         })
-                        .map(|e| e.seal(&self.schema))
+                        .map(|entry| entry.seal(&self.schema))
                 })
                 .collect();
 

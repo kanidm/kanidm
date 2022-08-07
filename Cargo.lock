@@ -1081,6 +1081,7 @@ dependencies = [
  "profiles",
  "score",
  "serde",
+ "sketching",
  "tikv-jemallocator",
  "tokio",
  "toml",
@@ -2107,6 +2108,7 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
+ "sketching",
  "smartstring",
  "smolset",
  "sshkeys",
@@ -2117,8 +2119,6 @@ dependencies = [
  "toml",
  "touch",
  "tracing",
- "tracing-serde",
- "tracing-subscriber",
  "url",
  "urlencoding",
  "users",
@@ -2212,6 +2212,7 @@ dependencies = [
  "score",
  "serde",
  "serde_json",
+ "sketching",
  "tokio",
  "tokio-util",
  "toml",
@@ -3398,6 +3399,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sketching",
  "tide",
  "tide-compress",
  "tide-openssl",
@@ -3405,7 +3407,6 @@ dependencies = [
  "tokio-openssl",
  "tokio-util",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid 1.1.2",
  "webauthn-authenticator-rs",
@@ -3647,6 +3648,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38aabbeafa6f6dead8cebf246fe9fae1f9215c8d29b3a69f93bd62a9e4a3dcd6"
 dependencies = [
  "event-listener",
+]
+
+[[package]]
+name = "sketching"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "num_enum",
+ "tide",
+ "tracing",
+ "tracing-forest",
+ "tracing-serde",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -4183,6 +4197,20 @@ checksum = "5aeea4303076558a00714b823f9ad67d58a3bbda1df83d8827d21193156e22f7"
 dependencies = [
  "once_cell",
  "valuable",
+]
+
+[[package]]
+name = "tracing-forest"
+version = "0.1.4"
+source = "git+https://github.com/Firstyear/tracing-forest.git?rev=c0bdfb997d62684e0820616fa14808103ca3a94f#c0bdfb997d62684e0820616fa14808103ca3a94f"
+dependencies = [
+ "ansi_term",
+ "smallvec",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid 1.1.2",
 ]
 
 [[package]]

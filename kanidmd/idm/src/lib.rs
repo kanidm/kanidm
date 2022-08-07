@@ -25,6 +25,9 @@ extern crate tracing;
 #[macro_use]
 extern crate lazy_static;
 
+// #[macro_use]
+// extern crate sketching;
+
 // This has to be before 'be' so the import order works
 #[macro_use]
 pub mod macros;
@@ -66,9 +69,6 @@ pub mod prelude {
     pub use url::Url;
     pub use uuid::Uuid;
 
-    pub use crate::tagged_event;
-    pub use crate::tracing_tree::EventTag;
-
     pub use crate::constants::*;
     pub use crate::filter::{
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub,
@@ -92,11 +92,10 @@ pub mod prelude {
         ValueSetSecret, ValueSetSpn, ValueSetSyntax, ValueSetT, ValueSetUint32, ValueSetUtf8,
         ValueSetUuid,
     };
-    pub use crate::{
+    pub use sketching::{
+        EventTag, tagged_event,
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
         filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
         security_access, security_critical, security_error, security_info, spanned,
     };
 }
-
-pub mod tracing_tree;

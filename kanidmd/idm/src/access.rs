@@ -2529,7 +2529,7 @@ mod tests {
 
     #[test]
     fn test_access_effective_permission_check_1() {
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
 
         let admin = unsafe { Identity::from_impersonate_entry_ser(JSON_ADMIN_V1) };
 
@@ -2567,7 +2567,7 @@ mod tests {
 
     #[test]
     fn test_access_effective_permission_check_2() {
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
 
         let admin = unsafe { Identity::from_impersonate_entry_ser(JSON_ADMIN_V1) };
 

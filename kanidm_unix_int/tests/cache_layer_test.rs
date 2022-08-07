@@ -7,7 +7,6 @@ use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
 use score::create_server_core;
 
-use kanidm::tracing_tree;
 use kanidm_unix_common::cache::{CacheLayer, Id};
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
@@ -46,7 +45,7 @@ where
 }
 
 async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
-    let _ = tracing_tree::test_init();
+    let _ = sketching::test_init();
 
     let mut counter = 0;
     let port = loop {

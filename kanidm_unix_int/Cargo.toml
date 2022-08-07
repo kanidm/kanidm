@@ -80,6 +80,7 @@ lru = "^0.7.7"
 [dev-dependencies]
 # kanidm = { path = "../kanidmd/idm" }
 score = { path = "../kanidmd/score" }
+sketching = { path = "../kanidmd/sketching" }
 
 [build-dependencies]
 clap = { version = "^3.2", features = ["derive"] }

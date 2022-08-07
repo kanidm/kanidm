@@ -27,6 +27,7 @@ openssl = "^0.10.41"
 regex = "1.5.6"
 serde = { version = "^1.0.141", features = ["derive"] }
 serde_json = "^1.0.83"
+sketching = { path = "../sketching" }
 tide = "^0.16.0"
 # I tried including brotli and it didn't work, including "default" pulls a mime-type list from the internet on build
 tide-compress = { version = "0.10.6", default-features = false, features = [ "deflate", "gzip", "regex-check" ] }
@@ -41,12 +42,7 @@ uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
 profiles = { path = "../../profiles" }
 
 [dev-dependencies]
-tracing-subscriber = "^0.3.14"
-# tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
-# kanidm = { path = "../kanidmd" }
-# score = { path = "../kanidmd/score" }
 futures = "^0.3.21"
-# async-std = { version = "1.6", features = ["tokio1"] }
 
 webauthn-authenticator-rs = "0.4.2-beta.3"
 oauth2_ext = { package = "oauth2", version = "^4.1.0", default-features = false }
