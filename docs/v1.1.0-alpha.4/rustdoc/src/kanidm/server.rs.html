@@ -4528,6 +4528,11 @@
 <span id="4523">4523</span>
 <span id="4524">4524</span>
 <span id="4525">4525</span>
+<span id="4526">4526</span>
+<span id="4527">4527</span>
+<span id="4528">4528</span>
+<span id="4529">4529</span>
+<span id="4530">4530</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -6791,7 +6796,12 @@
         <span class="macro">spanned!</span>(<span class="string">&quot;server::migrate_5_to_6&quot;</span>, {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 5 to 6 migration.&quot;</span>);
             <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, (<span class="kw-2">*</span><span class="ident">PVUUID_DOMAIN_INFO</span>).<span class="ident">clone</span>()));
-            <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge</span>(<span class="string">&quot;domain_token_key&quot;</span>);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge</span>(<span class="string">&quot;domain_token_key&quot;</span>);
+            <span class="comment">// We need to also push the version here so that we pass schema.</span>
+            <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Present</span>(
+                <span class="ident">AttrString::from</span>(<span class="string">&quot;version&quot;</span>),
+                <span class="ident">Value::Uint32</span>(<span class="number">0</span>),
+            ));
             <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>, <span class="kw-2">&amp;</span><span class="ident">modlist</span>)
             <span class="comment">// Complete</span>
         })
