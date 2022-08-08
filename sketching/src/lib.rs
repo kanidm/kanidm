@@ -1,10 +1,7 @@
+#![deny(warnings)]
+#![warn(unused_extern_crates)]
+
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use tracing_forest::ForestLayer;
-use tracing_forest::tag::NoTag;
-use tracing_forest::printer::{Printer, MakeStdout};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::registry::Registry;
-use tracing_subscriber::util::SubscriberInitExt;
 
 pub mod macros;
 pub mod middleware;
@@ -16,11 +13,13 @@ pub use tracing_subscriber;
 
 pub fn test_init() -> () {
     // tracing_subscriber::fmt::try_init()
+    let _ = tracing_forest::test_init();
+    /*
     let _ = Registry::default().with(ForestLayer::new(
-        Printer::new()
-            .writer(MakeStdout),
+        TestCapturePrinter::new(),
         NoTag,
     )).try_init();
+    */
 }
 
 #[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]

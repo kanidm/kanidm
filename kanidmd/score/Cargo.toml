@@ -26,7 +26,7 @@ openssl = "^0.10.41"
 regex = "1.5.6"
 serde = { version = "^1.0.141", features = ["derive"] }
 serde_json = "^1.0.83"
-sketching = { path = "../sketching" }
+sketching = { path = "../../sketching" }
 tide = "^0.16.0"
 # I tried including brotli and it didn't work, including "default" pulls a mime-type list from the internet on build
 tide-compress = { version = "0.10.6", default-features = false, features = [ "deflate", "gzip", "regex-check" ] }

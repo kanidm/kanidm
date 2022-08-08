@@ -4200,9 +4200,8 @@ dependencies = [
 [[package]]
 name = "tracing-forest"
 version = "0.1.4"
-source = "git+https://github.com/Firstyear/tracing-forest.git?rev=c0bdfb997d62684e0820616fa14808103ca3a94f#c0bdfb997d62684e0820616fa14808103ca3a94f"
+source = "git+https://github.com/Firstyear/tracing-forest.git?rev=18d242a4dde060c4946ade0a2c4d5be1df048aea#18d242a4dde060c4946ade0a2c4d5be1df048aea"
 dependencies = [
- "ansi_term",
  "smallvec",
  "thiserror",
  "tokio",
