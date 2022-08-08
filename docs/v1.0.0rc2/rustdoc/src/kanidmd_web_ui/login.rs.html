@@ -952,18 +952,17 @@
 <span id="947">947</span>
 <span id="948">948</span>
 <span id="949">949</span>
-<span id="950">950</span>
-<span id="951">951</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::JsCast</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen_futures</span>::{<span class="ident">spawn_local</span>, <span class="ident">JsFuture</span>};
-<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
+<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">CredentialRequestOptions</span>, <span class="ident">Request</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">yew::virtual_dom::VNode</span>;
 <span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">CLASS_BUTTON_DARK</span>, <span class="ident">CLASS_DIV_LOGIN_BUTTON</span>, <span class="ident">CLASS_DIV_LOGIN_FIELD</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::FetchError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
@@ -988,16 +987,16 @@
 
 <span class="kw">enum</span> <span class="ident">LoginState</span> {
     <span class="ident">Init</span>(<span class="ident">bool</span>),
-    <span class="comment">// Select between different cred types</span>
+    <span class="comment">// Select between different cred types, either password (and MFA) or Passkey</span>
     <span class="ident">Select</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>),
-    <span class="comment">// The choices of current ways to proceed.</span>
+    <span class="comment">// The choices of authentication mechanism.</span>
     <span class="ident">Continue</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>),
     <span class="comment">// The different methods</span>
     <span class="ident">Password</span>(<span class="ident">bool</span>),
     <span class="ident">BackupCode</span>(<span class="ident">bool</span>),
     <span class="ident">Totp</span>(<span class="ident">TotpState</span>),
-    <span class="ident">Passkey</span>(<span class="ident">web_sys::CredentialRequestOptions</span>),
-    <span class="ident">SecurityKey</span>(<span class="ident">web_sys::CredentialRequestOptions</span>),
+    <span class="ident">Passkey</span>(<span class="ident">CredentialRequestOptions</span>),
+    <span class="ident">SecurityKey</span>(<span class="ident">CredentialRequestOptions</span>),
     <span class="comment">// Error, state handling.</span>
     <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
     <span class="ident">UnknownUser</span>,
@@ -1131,17 +1130,17 @@
     <span class="kw">fn</span> <span class="ident">button_start_again</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">VNode</span> {
         <span class="macro">html!</span> {
             <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-md-auto text-center&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark&quot;</span> <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Restart</span>) } <span class="op">&gt;</span>{<span class="string">&quot; Start Again &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>} <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Restart</span>) } <span class="op">&gt;</span>{<span class="string">&quot; Start Again &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
         }
     }
 
     <span class="kw">fn</span> <span class="ident">render_auth_allowed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">idx</span>: <span class="ident">usize</span>, <span class="ident">allow</span>: <span class="kw-2">&amp;</span><span class="ident">AuthAllowed</span>) -&gt; <span class="ident">Html</span> {
         <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="ident">li</span><span class="op">&gt;</span>
+            <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center mb-2&quot;</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="ident">button</span>
                     <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span>
-                    <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark&quot;</span>
+                    <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}
                     <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Continue</span>(<span class="ident">idx</span>)) }
                 <span class="op">&gt;</span>{ <span class="ident">allow</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
@@ -1150,13 +1149,35 @@
 
     <span class="kw">fn</span> <span class="ident">render_mech_select</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">idx</span>: <span class="ident">usize</span>, <span class="ident">allow</span>: <span class="kw-2">&amp;</span><span class="ident">AuthMech</span>) -&gt; <span class="ident">Html</span> {
         <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center&quot;</span><span class="op">&gt;</span>
+            <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center mb-2&quot;</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="ident">button</span>
                     <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span>
-                    <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark mb-2&quot;</span>
+                    <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}
                     <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Select</span>(<span class="ident">idx</span>)) }
                 <span class="op">&gt;</span>{ <span class="ident">allow</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+        }
+    }
+
+    <span class="doccomment">/// shows an error-alert in a bootstrap alert container</span>
+    <span class="kw">fn</span> <span class="ident">do_alert_error</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">alert_title</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">alert_message</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">VNode</span> {
+        <span class="macro">html!</span> {
+        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;row justify-content-md-center&quot;</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="ident">strong</span><span class="op">&gt;</span>{ <span class="ident">alert_title</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">strong</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">alert_message</span> {
+                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="ident">value</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                    }
+                <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                { <span class="self">self</span>.<span class="ident">button_start_again</span>(<span class="ident">ctx</span>) }
+            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
         }
     }
 
@@ -1170,13 +1191,13 @@
                         <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;username&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Username&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">form</span>
                         <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
+                            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
                             <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Init - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
                             <span class="ident">e</span>.<span class="ident">prevent_default</span>();
                             <span class="ident">LoginAppMsg::Begin</span>
                         } ) }
-                        <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
                         <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;input-group mb-3&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
                             <span class="op">&lt;</span><span class="ident">input</span>
                                 <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
                                 <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
@@ -1189,10 +1210,10 @@
                             <span class="op">/</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
 
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;input-group mb-3 justify-content-md-center&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
                             <span class="op">&lt;</span><span class="ident">button</span>
                                 <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span>
-                                <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark&quot;</span>
+                                <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}
                                 <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }
                             <span class="op">&gt;</span>{<span class="string">&quot; Begin &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
@@ -1201,6 +1222,7 @@
                     <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
                 }
             }
+            <span class="comment">// Selecting between password (and MFA) or Passkey</span>
             <span class="ident">LoginState::Select</span>(<span class="ident">mechs</span>) =&gt; {
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="op">&gt;</span>
@@ -1224,7 +1246,7 @@
                     <span class="op">&lt;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
-                        {<span class="string">&quot; Choose how to proceed: &quot;</span>}
+                        {<span class="string">&quot;Choose how to proceed:&quot;</span>}
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
@@ -1241,15 +1263,15 @@
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">form</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;row g-3&quot;</span>
-                            <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
+                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;password&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Password&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">form</span>
                             <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
                                 <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Password - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
                                 <span class="ident">e</span>.<span class="ident">prevent_default</span>();
                                 <span class="ident">LoginAppMsg::PasswordSubmit</span>
                             } ) }
                         <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-12&quot;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;password&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Password&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
                             <span class="op">&lt;</span><span class="ident">input</span>
                                 <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
                                 <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
@@ -1261,8 +1283,8 @@
                                 <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
                             <span class="op">/</span><span class="op">&gt;</span>
                             <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-12 text-center&quot;</span><span class="op">&gt;</span>
-                                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark&quot;</span> <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }<span class="op">&gt;</span>{ <span class="string">&quot;Submit&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
+                                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>} <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }<span class="op">&gt;</span>{ <span class="string">&quot;Submit&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
                             <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
@@ -1274,17 +1296,17 @@
                     <span class="op">&lt;</span><span class="op">&gt;</span>
 
                     <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;backup_code&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>
+                        {<span class="string">&quot;Backup Code&quot;</span>}
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">form</span>
                             <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
                                 <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; BackupCode - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
                                 <span class="ident">e</span>.<span class="ident">prevent_default</span>();
                                 <span class="ident">LoginAppMsg::BackupCodeSubmit</span>
                             } ) }
-                            <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
                         <span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;backup_code&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>
-                            {<span class="string">&quot;Backup Code&quot;</span>}
-                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
                             <span class="op">&lt;</span><span class="ident">input</span>
                                 <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
                                 <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
@@ -1295,7 +1317,10 @@
                                 <span class="kw">type</span><span class="op">=</span><span class="string">&quot;text&quot;</span>
                                 <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
                             <span class="op">/</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark&quot;</span><span class="op">&gt;</span>{<span class="string">&quot; Submit &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
+                                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}<span class="op">&gt;</span>{<span class="string">&quot; Submit &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
@@ -1305,29 +1330,29 @@
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;totp&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;TOTP&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">form</span>
                             <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
                                 <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Totp - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
                                 <span class="ident">e</span>.<span class="ident">prevent_default</span>();
                                 <span class="ident">LoginAppMsg::TotpSubmit</span>
                             } ) }
-                            <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
                         <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;totp&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>
-                        {<span class="string">&quot;TOTP&quot;</span>}
-                        { <span class="kw">if</span> <span class="ident">state</span><span class="op">==</span><span class="kw-2">&amp;</span><span class="ident">TotpState::Invalid</span> { <span class="string">&quot;can only contain numeric digits&quot;</span> } <span class="kw">else</span> { <span class="string">&quot;&quot;</span> } }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">input</span>
-                                <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
-                                <span class="ident">name</span><span class="op">=</span><span class="string">&quot;totp&quot;</span>
-                                <span class="ident">id</span><span class="op">=</span><span class="string">&quot;totp&quot;</span>
-                                <span class="kw">type</span><span class="op">=</span><span class="string">&quot;text&quot;</span>
-                                <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
-                                <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
-                                <span class="ident">oninput</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">InputEvent</span><span class="op">|</span> <span class="ident">LoginAppMsg::Input</span>(<span class="ident">utils::get_value_from_input_event</span>(<span class="ident">e</span>)))}
-                                <span class="ident">disabled</span><span class="op">=</span>{ <span class="ident">state</span><span class="op">==</span><span class="kw-2">&amp;</span><span class="ident">TotpState::Disabled</span> }
+                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">input</span>
+                            <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
+                            <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
+                            <span class="ident">disabled</span><span class="op">=</span>{ <span class="ident">state</span><span class="op">==</span><span class="kw-2">&amp;</span><span class="ident">TotpState::Disabled</span> }
+                            <span class="ident">id</span><span class="op">=</span><span class="string">&quot;totp&quot;</span>
+                            <span class="ident">name</span><span class="op">=</span><span class="string">&quot;totp&quot;</span>
+                            <span class="ident">oninput</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">InputEvent</span><span class="op">|</span> <span class="ident">LoginAppMsg::Input</span>(<span class="ident">utils::get_value_from_input_event</span>(<span class="ident">e</span>)))}
+                            <span class="kw">type</span><span class="op">=</span><span class="string">&quot;text&quot;</span>
+                            <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
                             <span class="op">/</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-dark&quot;</span> <span class="ident">disabled</span><span class="op">=</span>{ <span class="ident">state</span><span class="op">==</span><span class="kw-2">&amp;</span><span class="ident">TotpState::Disabled</span> }<span class="op">&gt;</span>{<span class="string">&quot; Submit &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
+                            <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>} <span class="ident">disabled</span><span class="op">=</span>{ <span class="ident">state</span><span class="op">==</span><span class="kw-2">&amp;</span><span class="ident">TotpState::Disabled</span> }<span class="op">&gt;</span>{<span class="string">&quot; Submit &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
@@ -1370,7 +1395,7 @@
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
-                        {<span class="string">&quot; Security Key &quot;</span>}
+                        {<span class="string">&quot;Security Key&quot;</span>}
                         <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                 }
@@ -1424,62 +1449,33 @@
                 <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;authenticated, try going to -&gt; {:?}&quot;</span>, <span class="ident">loc</span>));
                 <span class="ident">loc</span>.<span class="ident">goto</span>(<span class="kw-2">&amp;</span><span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">history</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;failed to read history&quot;</span>));
                 <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
-                            { <span class="string">&quot;Login Success 🎉&quot;</span> }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-success&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">h3</span><span class="op">&gt;</span>{ <span class="string">&quot;Login Success 🎉&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h3</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                 }
             }
             <span class="ident">LoginState::Denied</span>(<span class="ident">msg</span>) =&gt; {
-                <span class="macro">html!</span> {
-                <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;row justify-content-md-center&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="ident">strong</span><span class="op">&gt;</span>{ <span class="string">&quot;Authentication Denied&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">strong</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="ident">msg</span>.<span class="ident">as_str</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                        { <span class="self">self</span>.<span class="ident">button_start_again</span>(<span class="ident">ctx</span>) }
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                }
+                <span class="self">self</span>.<span class="ident">do_alert_error</span>(<span class="string">&quot;Authentication Denied&quot;</span>, <span class="prelude-val">Some</span>(<span class="ident">msg</span>.<span class="ident">as_str</span>()), <span class="ident">ctx</span>)
             }
             <span class="ident">LoginState::UnknownUser</span> =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;row justify-content-md-center&quot;</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
-                                { <span class="string">&quot;That username was not found. Please try again!&quot;</span> }
-                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                             { <span class="self">self</span>.<span class="ident">button_start_again</span>(<span class="ident">ctx</span>) }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                }
+                <span class="self">self</span>.<span class="ident">do_alert_error</span>(<span class="string">&quot;Username not found&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Please try again&quot;</span>), <span class="ident">ctx</span>)
             }
-            <span class="ident">LoginState::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;An error has occured 😔 &quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
-                            { <span class="ident">emsg</span>.<span class="ident">as_str</span>() }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
-                            {
-                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opid</span>) <span class="op">=</span> <span class="ident">kopid</span>.<span class="ident">as_ref</span>() {
-                                    <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, <span class="ident">opid</span>.<span class="ident">clone</span>())
-                                }
-                                <span class="kw">else</span> {
-                                    <span class="string">&quot;Error occurred client-side.&quot;</span>.<span class="ident">to_string</span>()
-                                }
-                            }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-
-                    { <span class="self">self</span>.<span class="ident">button_start_again</span>(<span class="ident">ctx</span>) }
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
-                }
-            }
+            <span class="ident">LoginState::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; <span class="self">self</span>.<span class="ident">do_alert_error</span>(
+                <span class="string">&quot;An error has occured 😔 &quot;</span>,
+                <span class="prelude-val">Some</span>(
+                    <span class="macro">format!</span>(
+                        <span class="string">&quot;{}\n\n{}&quot;</span>,
+                        <span class="ident">emsg</span>.<span class="ident">as_str</span>(),
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opid</span>) <span class="op">=</span> <span class="ident">kopid</span>.<span class="ident">as_ref</span>() {
+                            <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, <span class="ident">opid</span>.<span class="ident">clone</span>())
+                        } <span class="kw">else</span> {
+                            <span class="string">&quot;Error occurred client-side.&quot;</span>.<span class="ident">to_string</span>()
+                        }
+                    )
+                    .<span class="ident">as_str</span>(),
+                ),
+                <span class="ident">ctx</span>,
+            ),
         }
     }
 }

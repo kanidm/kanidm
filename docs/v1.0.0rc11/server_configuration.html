@@ -141,7 +141,7 @@
                     <main>
                         <h2 id="configuring-the-server"><a class="header" href="#configuring-the-server">Configuring the Server</a></h2>
 <h3 id="configuring-servertoml"><a class="header" href="#configuring-servertoml">Configuring server.toml</a></h3>
-<p>You need a configuration file in the volume named <code>server.toml</code>. (Within the container it should be <code>/data/server.toml</code>.) Its contents should be as follows:</p>
+<p>You need a configuration file in the volume named <code>server.toml</code>. (Within the container it should be <code>/data/server.toml</code>) Its contents should be as follows:</p>
 <pre><code>#   The webserver bind address. Will use HTTPS if tls_* 
 #   is provided.
 #   Defaults to &quot;127.0.0.1:8443&quot;
@@ -239,11 +239,16 @@ origin = &quot;https://idm.example.com:8443&quot;
 # versions = 7
 #
 </code></pre>
-<p>An example is located in <a href="../../examples/server.toml">examples/server.toml</a>.</p>
-<blockquote>
-<p><strong>WARNING</strong> You MUST set the <code>domain</code> name correctly, aligned with your <code>origin</code>, else the server
-may refuse to start, or some features (e.g. webauthn, oauth) may not work correctly!</p>
-</blockquote>
+<p>An example is located in <a href="https://github.com/kanidm/kanidm/blob/master/examples/server.toml">examples/server.toml</a>.</p>
+<table>
+<tr>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>Warning!</strong></td>
+    </tr>
+<tr>
+    <td>You MUST set the `domain` name correctly, aligned with your `origin`, else the server may refuse to start or some features (e.g. webauthn, oauth) may not work correctly!</td>
+</tr>
+</table>
 <h3 id="check-the-configuration-is-valid"><a class="header" href="#check-the-configuration-is-valid">Check the configuration is valid.</a></h3>
 <p>You should test your configuration is valid before you proceed.</p>
 <pre><code>docker run --rm -i -t -v kanidmd:/data \

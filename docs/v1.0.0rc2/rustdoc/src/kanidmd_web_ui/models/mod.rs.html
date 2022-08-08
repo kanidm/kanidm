@@ -95,8 +95,23 @@
 <span id="90">90</span>
 <span id="91">91</span>
 <span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm_proto::oauth2::AuthorisationRequest</span>;
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">gloo::storage::LocalStorage</span> <span class="kw">as</span> <span class="ident">PersistentStorage</span>;
 <span class="kw">use</span> <span class="ident">gloo::storage::SessionStorage</span> <span class="kw">as</span> <span class="ident">TemporaryStorage</span>;
@@ -127,7 +142,7 @@
     <span class="ident">PersistentStorage::delete</span>(<span class="string">&quot;kanidm_bearer_token&quot;</span>);
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Location</span> {
     <span class="ident">Manager</span>(<span class="ident">Route</span>),
     <span class="ident">Views</span>(<span class="ident">ViewRoute</span>),
@@ -149,6 +164,7 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_return_location</span>() -&gt; <span class="ident">Location</span> {
     <span class="kw">let</span> <span class="ident">l</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Location</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">TemporaryStorage::get</span>(<span class="string">&quot;return_location&quot;</span>);
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
     <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;return_location -&gt; {:?}&quot;</span>, <span class="ident">l</span>).<span class="ident">as_str</span>());
     <span class="ident">TemporaryStorage::delete</span>(<span class="string">&quot;return_location&quot;</span>);
     <span class="ident">l</span>.<span class="ident">unwrap_or</span>(<span class="ident">Location::Manager</span>(<span class="ident">Route::Landing</span>))
@@ -161,6 +177,7 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_oauth2_authorisation_request</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">AuthorisationRequest</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">l</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisationRequest</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">TemporaryStorage::get</span>(<span class="string">&quot;oauth2_authorisation_request&quot;</span>);
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
     <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;oauth2_authorisation_request -&gt; {:?}&quot;</span>, <span class="ident">l</span>).<span class="ident">as_str</span>());
     <span class="ident">TemporaryStorage::delete</span>(<span class="string">&quot;oauth2_authorisation_request&quot;</span>);
     <span class="ident">l</span>.<span class="ident">ok</span>()
@@ -172,21 +189,32 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_login_hint</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">l</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">TemporaryStorage::get</span>(<span class="string">&quot;login_hint&quot;</span>);
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
     <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;login_hint::pop_login_hint -&gt; {:?}&quot;</span>, <span class="ident">l</span>).<span class="ident">as_str</span>());
     <span class="ident">TemporaryStorage::delete</span>(<span class="string">&quot;login_hint&quot;</span>);
     <span class="ident">l</span>.<span class="ident">ok</span>()
 }
 
+<span class="doccomment">/// Pushes the &quot;cred_update_session&quot; element into the browser&#39;s temporary storage</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_cred_update_session</span>(<span class="ident">s</span>: (<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>)) {
     <span class="ident">TemporaryStorage::set</span>(<span class="string">&quot;cred_update_session&quot;</span>, <span class="ident">s</span>)
         .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set cred session token&quot;</span>);
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_cred_update_session</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>)<span class="op">&gt;</span> {
+<span class="doccomment">/// Pulls the &quot;cred_update_session&quot; element from the browser&#39;s temporary storage</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_cred_update_session</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>)<span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">l</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>), <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">TemporaryStorage::get</span>(<span class="string">&quot;cred_update_session&quot;</span>);
-    <span class="ident">TemporaryStorage::delete</span>(<span class="string">&quot;cred_update_session&quot;</span>);
     <span class="ident">l</span>.<span class="ident">ok</span>()
 }
+
+<span class="comment">/*
+/// pops the &quot;cred_update_session&quot; element from the browser&#39;s temporary storage
+pub fn pop_cred_update_session() -&gt; Option&lt;(CUSessionToken, CUStatus)&gt; {
+    let l: Result&lt;(CUSessionToken, CUStatus), _&gt; = TemporaryStorage::get(&quot;cred_update_session&quot;);
+    TemporaryStorage::delete(&quot;cred_update_session&quot;);
+    l.ok()
+}
+*/</span>
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
 </body></html>

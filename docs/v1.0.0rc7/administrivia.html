@@ -181,12 +181,16 @@ This allows you to run regular backups, defined by a cron schedule, and maintain
 the number of backup versions to keep. An example is located in 
 <a href="https://github.com/kanidm/kanidm/blob/master/examples/server.toml">examples/server.toml</a>.</p>
 <h1 id="configuration-test"><a class="header" href="#configuration-test">Configuration Test</a></h1>
-<p>You can test your configuration will correctly start with the server.</p>
-<blockquote>
-<p><strong>WARNING:</strong> While this is a configuration test, it still needs to open the database so that
-it can check a number of internal values are consistent with the configuration. As a result,
-this requires the instance under config test to be stopped!</p>
-</blockquote>
+<table>
+<tr>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>Take note!</strong></td>
+    </tr>
+<tr>
+    <td>While this is a configuration file test, it still needs to open the database so that it can check a number of internal values are consistent with the configuration. As a result, this requires the instance under config test to be stopped!</td>
+</tr>
+</table>
+<p>You can test that your configuration is correct, and the server should correctly start.</p>
 <pre><code>docker stop &lt;container name&gt;
 docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml

@@ -148,7 +148,7 @@ and authorisation within a technical environment.</p>
 </ul>
 <table>
 <tr>
-    <td rowspan=2><img src="/images/kani-warning.png" alt="Kani Warning" /></td>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
     <td><strong>NOTICE</strong></td>
     </tr>
 <tr>
@@ -326,7 +326,7 @@ in place you can use a shell container that mounts the volume such as:</p>
 <h1 id="continue-on-to-configuring-the-server"><a class="header" href="#continue-on-to-configuring-the-server">Continue on to <a href="server_configuration.html">Configuring the Server</a></a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="configuring-the-server"><a class="header" href="#configuring-the-server">Configuring the Server</a></h2>
 <h3 id="configuring-servertoml"><a class="header" href="#configuring-servertoml">Configuring server.toml</a></h3>
-<p>You need a configuration file in the volume named <code>server.toml</code>. (Within the container it should be <code>/data/server.toml</code>.) Its contents should be as follows:</p>
+<p>You need a configuration file in the volume named <code>server.toml</code>. (Within the container it should be <code>/data/server.toml</code>) Its contents should be as follows:</p>
 <pre><code>#   The webserver bind address. Will use HTTPS if tls_* 
 #   is provided.
 #   Defaults to &quot;127.0.0.1:8443&quot;
@@ -424,11 +424,16 @@ origin = &quot;https://idm.example.com:8443&quot;
 # versions = 7
 #
 </code></pre>
-<p>An example is located in <a href="../../examples/server.toml">examples/server.toml</a>.</p>
-<blockquote>
-<p><strong>WARNING</strong> You MUST set the <code>domain</code> name correctly, aligned with your <code>origin</code>, else the server
-may refuse to start, or some features (e.g. webauthn, oauth) may not work correctly!</p>
-</blockquote>
+<p>An example is located in <a href="https://github.com/kanidm/kanidm/blob/master/examples/server.toml">examples/server.toml</a>.</p>
+<table>
+<tr>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>Warning!</strong></td>
+    </tr>
+<tr>
+    <td>You MUST set the `domain` name correctly, aligned with your `origin`, else the server may refuse to start or some features (e.g. webauthn, oauth) may not work correctly!</td>
+</tr>
+</table>
 <h3 id="check-the-configuration-is-valid"><a class="header" href="#check-the-configuration-is-valid">Check the configuration is valid.</a></h3>
 <p>You should test your configuration is valid before you proceed.</p>
 <pre><code>docker run --rm -i -t -v kanidmd:/data \
@@ -676,7 +681,7 @@ and sensitive data), group management, and more.</p>
 admin (system admin) account.</p>
 <table>
 <tr>
-    <td rowspan=2><img src="/images/kani-warning.png" alt="Kani Warning" /></td>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
     <td><strong></strong></td>
     </tr>
 <tr>
@@ -886,12 +891,16 @@ This allows you to run regular backups, defined by a cron schedule, and maintain
 the number of backup versions to keep. An example is located in 
 <a href="https://github.com/kanidm/kanidm/blob/master/examples/server.toml">examples/server.toml</a>.</p>
 <h1 id="configuration-test"><a class="header" href="#configuration-test">Configuration Test</a></h1>
-<p>You can test your configuration will correctly start with the server.</p>
-<blockquote>
-<p><strong>WARNING:</strong> While this is a configuration test, it still needs to open the database so that
-it can check a number of internal values are consistent with the configuration. As a result,
-this requires the instance under config test to be stopped!</p>
-</blockquote>
+<table>
+<tr>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>Take note!</strong></td>
+    </tr>
+<tr>
+    <td>While this is a configuration file test, it still needs to open the database so that it can check a number of internal values are consistent with the configuration. As a result, this requires the instance under config test to be stopped!</td>
+</tr>
+</table>
+<p>You can test that your configuration is correct, and the server should correctly start.</p>
 <pre><code>docker stop &lt;container name&gt;
 docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
@@ -1200,11 +1209,15 @@ management tool such as salt or ansible.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="recycle-bin"><a class="header" href="#recycle-bin">Recycle Bin</a></h1>
 <p>The recycle bin is a storage of deleted entries from the server. This allows
 recovery from mistakes for a period of time.</p>
-<blockquote>
-<p><strong>WARNING:</strong> The recycle bin is a best effort - when recovering in some cases
-not everything can be &quot;put back&quot; the way it was. Be sure to check your entries
-are valid once they have been revived.</p>
-</blockquote>
+<table>
+<tr>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>Warning!</strong></td>
+    </tr>
+<tr>
+    <td>The recycle bin is a best effort - when recovering in some cases not everything can be "put back" the way it was. Be sure to check your entries are valid once they have been revived.</td>
+</tr>
+</table>
 <h2 id="where-is-the-recycle-bin"><a class="header" href="#where-is-the-recycle-bin">Where is the Recycle Bin?</a></h2>
 <p>The recycle bin is stored as part of your main database - it is included in all
 backups and restores, just like any other data. It is also replicated between
@@ -1855,7 +1868,7 @@ should not be able to revive a deleted high-privilege user.</li>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="rest-interface"><a class="header" href="#rest-interface">REST Interface</a></h1>
 <table>
 <tr>
-    <td rowspan=2><img src="developers/designs//images/kani-warning.png" alt="Kani Warning" /></td>
+    <td rowspan=2><img src="developers/designs/../../images/kani-warning.png" alt="Kani Warning" /></td>
     <td><strong></strong></td>
     </tr>
 <tr>
@@ -2761,11 +2774,15 @@ Lightweight Directory Access Protocol (LDAP) has been the &quot;lingua franca&qu
 authentication for many years, with almost every application in the world being 
 able to search and bind to LDAP. As many organization still rely on LDAP, Kanidm 
 can host a read-only LDAP interface.</p>
-<blockquote>
-<p><strong>WARNING</strong> The LDAP server in Kanidm is not RFC compliant. This
-is intentional, as Kanidm wants to cover the common use case, 
-simple bind and search.</p>
-</blockquote>
+<table>
+<tr>
+    <td rowspan=2><img src="integrations/../images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>Warning!</strong></td>
+    </tr>
+<tr>
+    <td>The LDAP server in Kanidm is not RFC compliant. This is intentional, as Kanidm wants to cover the common use case,  simple bind and search.</td>
+</tr>
+</table>
 <h2 id="what-is-ldap"><a class="header" href="#what-is-ldap">What is LDAP</a></h2>
 <p>LDAP is a protocol to read data from a directory of information. It is not
 a server, but a way to communicate to a server. There are many famous LDAP
@@ -2837,10 +2854,20 @@ Kanidm native attributes.</p>
 <pre><code>ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 </code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
-<p>Given a default install with domain &quot;example.com&quot; the configured LDAP DN will be &quot;dc=example,dc=com&quot;.
-This can be queried with:</p>
-<pre><code>cargo run -- server -D kanidm.db -C ca.pem -c cert.pem -k key.pem -b 127.0.0.1:8443 -l 127.0.0.1:3636
-&gt; LDAPTLS_CACERT=ca.pem ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
+<p>Given a default install with domain &quot;example.com&quot; the configured LDAP DN will be &quot;dc=example,dc=com&quot;.</p>
+<p>Run your server:</p>
+<pre><code>cargo run -- server \
+    -D kanidm.db \
+    -C ca.pem -c cert.pem \
+    -k key.pem \
+    -b 127.0.0.1:8443 \
+    -l 127.0.0.1:3636
+</code></pre>
+<p>This can be queried with:</p>
+<pre><code>LDAPTLS_CACERT=ca.pem ldapsearch \
+    -H ldaps://127.0.0.1:3636 \
+    -b 'dc=example,dc=com' \
+    -x '(name=test1)'
 
 # test1@example.com, example.com
 dn: spn=test1@example.com,dc=example,dc=com
@@ -2854,10 +2881,10 @@ name: test1
 spn: test1@example.com
 entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 </code></pre>
-<p>It is recommended that client applications filter accounts that can login with '(class=account)'
-and groups with '(class=group)'. If possible, group membership is defined in RFC2307bis or
-Active Directory style. This means groups are determined from the &quot;memberof&quot; attribute which contains
-a DN to a group.</p>
+<p>It is recommended that client applications filter accounts that can login with <code>(class=account)</code>
+and groups with <code>(class=group)</code>. If possible, group membership is defined in RFC2307bis or
+Active Directory style. This means groups are determined from the &quot;memberof&quot; attribute which 
+contains a DN to a group.</p>
 <p>LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
 the object listed above (if it was a POSIX account, that is).</p>
 <pre><code>ldapwhoami ... -x -D 'name=test1'
@@ -2868,8 +2895,8 @@ ldapwhoami ... -x -D '22a65b6c-80c8-4e1a-9b76-3f3afdff8400'
 ldapwhoami ... -x -D 'spn=test1@example.com,dc=example,dc=com'
 ldapwhoami ... -x -D 'name=test1,dc=example,dc=com'
 </code></pre>
-<p>Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. For example
-these commands:</p>
+<p>Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. 
+For example these commands:</p>
 <pre><code>ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
 ldapsearch -H ldap://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
 ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'

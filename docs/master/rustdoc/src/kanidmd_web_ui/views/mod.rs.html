@@ -322,6 +322,8 @@
 <span id="317">317</span>
 <span id="318">318</span>
 <span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
@@ -536,7 +538,9 @@
           <span class="op">&lt;</span><span class="op">&gt;</span>
           <span class="op">&lt;</span><span class="ident">nav</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar navbar-expand-md navbar-dark bg-dark mb-4&quot;</span><span class="op">&gt;</span>
               <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container-fluid&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">a</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-brand&quot;</span> <span class="ident">href</span><span class="op">=</span><span class="string">&quot;{ViewRoute::Profile}&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;Kanidm&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">a</span><span class="op">&gt;</span>
+              <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;navbar-brand navbar-dark&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">ViewRoute::Apps</span>}<span class="op">&gt;</span>
+                {<span class="string">&quot;Kanidm&quot;</span>}
+                <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-toggler bg-light&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">toggle</span><span class="op">=</span><span class="string">&quot;collapse&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">target</span><span class="op">=</span><span class="string">&quot;#navbarCollapse&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">controls</span><span class="op">=</span><span class="string">&quot;navbarCollapse&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">expanded</span><span class="op">=</span><span class="string">&quot;false&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">label</span><span class="op">=</span><span class="string">&quot;Toggle navigation&quot;</span><span class="op">&gt;</span>
                   <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/favicon.png&quot;</span> <span class="op">/</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>

@@ -115,13 +115,21 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This is the top level router of the web ui for kanidm. It decides based on the incoming</span>
 <span class="doccomment">//! request, where to direct this too, and if the requirements for that request have been</span>
 <span class="doccomment">//! met before rendering. For example, if you land here with an oauth request, but you are</span>
 <span class="doccomment">//! not atuhenticated, this will determine that and send you to authentication first, then</span>
 <span class="doccomment">//! will allow you to proceed with the oauth flow.</span>
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::UnwrapThrowExt</span>;
 <span class="kw">use</span> <span class="ident">yew::functional</span>::<span class="kw-2">*</span>;
@@ -176,13 +184,23 @@
         <span class="ident">Route::Views</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">ViewsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">Route::CredentialReset</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">CredentialResetApp</span> <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">Route::NotFound</span> =&gt; {
+            <span class="macro">add_body_form_classes!</span>();
+
             <span class="macro">html!</span> {
-                <span class="op">&lt;</span><span class="ident">main</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">h1</span><span class="op">&gt;</span>{ <span class="string">&quot;404&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{ <span class="ident">ViewRoute::Apps</span> }<span class="op">&gt;</span>
-                    { <span class="string">&quot;Home&quot;</span> }
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;flex-shrink-0 form-signin text-center&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/logo-square.svg&quot;</span> <span class="ident">alt</span><span class="op">=</span><span class="string">&quot;Kanidm&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;kanidm_logo&quot;</span><span class="op">/</span><span class="op">&gt;</span>
+                        <span class="comment">// TODO: replace this with a call to domain info</span>
+                        <span class="op">&lt;</span><span class="ident">h3</span><span class="op">&gt;</span>{ <span class="string">&quot;404 - Page not found&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h3</span><span class="op">&gt;</span>
+
+                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{ <span class="ident">ViewRoute::Apps</span> }<span class="op">&gt;</span>
+                        { <span class="string">&quot;Home&quot;</span> }
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
+                { <span class="ident"><span class="kw">crate</span>::utils::do_footer</span>() }
+                <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
             }
         }
     }
