@@ -31,6 +31,7 @@ admin (system admin) account.
 
 {{#template  
     templates/kani-warning.md
+    imagepath=images
     text=Warning: The server must not be running at this point, as it requires exclusive access to the database.
 }}
 

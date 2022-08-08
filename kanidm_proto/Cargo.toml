@@ -14,8 +14,8 @@ repository = "https://github.com/kanidm/kanidm/"
 wasm = ["webauthn-rs-proto/wasm"]
 
 [dependencies]
-serde = { version = "^1.0.141", features = ["derive"] }
-serde_json = "^1.0.82"
+serde = { version = "^1.0.142", features = ["derive"] }
+serde_json = "^1.0.83"
 uuid = { version = "^1.1.2", features = ["serde"] }
 base32 = "^0.4.0"
 base64urlsafedata = "0.1.0"

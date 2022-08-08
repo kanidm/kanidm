@@ -55,11 +55,14 @@ the number of backup versions to keep. An example is located in
 
 # Configuration Test
 
-You can test your configuration will correctly start with the server.
+{{#template  
+    templates/kani-warning.md
+    imagepath=images
+    title=Take note!
+    text=While this is a configuration file test, it still needs to open the database so that it can check a number of internal values are consistent with the configuration. As a result, this requires the instance under config test to be stopped!
+}}
 
-> **WARNING:** While this is a configuration test, it still needs to open the database so that
-> it can check a number of internal values are consistent with the configuration. As a result,
-> this requires the instance under config test to be stopped!
+You can test that your configuration is correct, and the server should correctly start.
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data \
