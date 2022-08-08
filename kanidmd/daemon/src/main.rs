@@ -30,7 +30,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use sketching::tracing_forest::{self, traits::*, util::*, Tag};
+use sketching::tracing_forest::{self, traits::*, util::*};
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, OnlineBackup, ServerRole};
@@ -168,16 +168,11 @@ fn get_user_details_windows() {
     );
 }
 
-/// This is for tagging events. Currently not wired in.
-fn simple_tag(_event: &Event) -> Option<Tag> {
-    None
-}
-
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     tracing_forest::worker_task()
         .set_global(true)
-        .set_tag(simple_tag)
+        .set_tag(sketching::event_tagger)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
         .build_on(|subscriber| subscriber
@@ -269,7 +264,7 @@ async fn main() {
                 // TODO: windows support for DB folder permissions checks
                 #[cfg(target_family = "unix")]
                 {
-                    if !file_permissions_readonly(&i_meta) {
+                    if file_permissions_readonly(&i_meta) {
                         eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                     }
                     if i_meta.mode() & 0o007 != 0 {

@@ -2,6 +2,7 @@
 #![warn(unused_extern_crates)]
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use tracing_forest::{util::*, Tag};
 
 pub mod macros;
 pub mod middleware;
@@ -9,7 +10,6 @@ pub mod middleware;
 pub use tracing;
 pub use tracing_forest;
 pub use tracing_subscriber;
-
 
 pub fn test_init() -> () {
     // tracing_subscriber::fmt::try_init()
@@ -20,6 +20,11 @@ pub fn test_init() -> () {
         NoTag,
     )).try_init();
     */
+}
+
+/// This is for tagging events. Currently not wired in.
+pub fn event_tagger(_event: &Event) -> Option<Tag> {
+    None
 }
 
 #[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
