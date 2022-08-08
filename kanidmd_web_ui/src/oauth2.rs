@@ -483,7 +483,7 @@ impl Component for Oauth2App {
                         onsubmit={ ctx.link().callback(move |e: FocusEvent| {
                             console::debug!("oauth2::view -> Consent - prevent_default()");
                             e.prevent_default();
-                            Oauth2Msg::ConsentGranted(format!("{}", client_name))
+                            Oauth2Msg::ConsentGranted(client_name.to_string())
                         } ) }
                         action="javascript:void(0);"
                       >

@@ -4,7 +4,6 @@
 //! not atuhenticated, this will determine that and send you to authentication first, then
 //! will allow you to proceed with the oauth flow.
 
-#[cfg(debug)]
 use gloo::console;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::functional::*;
@@ -59,13 +58,23 @@ fn switch(route: &Route) -> Html {
         Route::Views => html! { <ViewsApp /> },
         Route::CredentialReset => html! { <CredentialResetApp /> },
         Route::NotFound => {
+            add_body_form_classes!();
+
             html! {
-                <main>
-                    <h1>{ "404" }</h1>
-                    <Link<ViewRoute> to={ ViewRoute::Apps }>
-                    { "Home" }
-                    </Link<ViewRoute>>
+                <>
+                <main class="flex-shrink-0 form-signin text-center">
+                        <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                        // TODO: replace this with a call to domain info
+                        <h3>{ "404 - Page not found" }</h3>
+
+                        <div class="container">
+                        <Link<ViewRoute> to={ ViewRoute::Apps }>
+                        { "Home" }
+                        </Link<ViewRoute>>
+                        </div>
                 </main>
+                { crate::utils::do_footer() }
+                </>
             }
         }
     }

@@ -33,6 +33,7 @@ pub struct PwModalApp {
     pw_check_val: String,
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum Msg {
     PasswordCheck,
     PasswordSubmit,
@@ -267,36 +268,38 @@ impl Component for PwModalApp {
                     >
                       <label for="password" class="form-label">{ "Enter New Password" }</label>
                       <input
-                        type="password"
+                        aria-describedby="password-validation-feedback"
+                        autocomplete="new-password"
                         class={ pw_class }
                         id="password"
-                        placeholder=""
-                        aria-describedby="password-validation-feedback"
-                        value={ pw_val }
-                        required=true
                         oninput={
                             ctx.link()
-                                .callback(move |_| {
-                                    Msg::PasswordCheck
-                                })
+                            .callback(move |_| {
+                                Msg::PasswordCheck
+                            })
                         }
+                        placeholder=""
+                        required=true
+                        type="password"
+                        value={ pw_val }
                       />
                       { pw_feedback }
                       <label for="password-check" class="form-label">{ "Repeat Password" }</label>
                       <input
-                        type="password"
+                        aria-describedby="password-check-feedback"
+                        autocomplete="new-password"
                         class={ pw_check_class }
                         id="password-check"
-                        placeholder=""
-                        aria-describedby="password-check-feedback"
-                        value={ pw_check_val }
-                        required=true
                         oninput={
                             ctx.link()
                                 .callback(move |_| {
                                     Msg::PasswordCheck
                                 })
                         }
+                        placeholder=""
+                        required=true
+                        type="password"
+                        value={ pw_check_val }
                       />
                     </form>
                   </div>

@@ -269,7 +269,9 @@ impl Component for PasskeyModalApp {
                                     Msg::Generate
                                 })
                         }
-                    >{ "Start Creating a New Passkey" }</button>
+                    >
+                    // TODO: start the session once the modal is popped up
+                    { "Start Creating a New Passkey" }</button>
                 }
             }
             State::Submitting | State::FetchingChallenge => {
@@ -305,7 +307,36 @@ impl Component for PasskeyModalApp {
         let submit_state = match &self.state {
             State::CredentialReady(_rpkc) => {
                 html! {
-                    <button id="passkey-submit" type="button" class="btn btn-primary"
+                    <>
+                    <form class="row needs-validation" novalidate=true
+                        onsubmit={ ctx.link().callback(move |e: FocusEvent| {
+                            #[cfg(debug)]
+                            console::debug!("passkey modal::on form submit prevent default");
+                            e.prevent_default();
+                            if submit_enabled {
+                                Msg::Submit
+                            } else {
+                                Msg::Cancel
+                            }
+                        } ) }
+                    >
+                      <label for="passkey-label" class="form-label">{ "Please name this Passkey" }</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="passkey-label"
+                        placeholder=""
+                        value={ label_val }
+                        required=true
+                        oninput={
+                            ctx.link()
+                                .callback(move |_| {
+                                    Msg::LabelCheck
+                                })
+                        }
+                      />
+                    </form>
+                    <button id="passkey-submit" type="button" class={crate::constants::CLASS_BUTTON_SUCCESS}
                         disabled={ !submit_enabled }
                         onclick={
                             ctx.link()
@@ -314,6 +345,7 @@ impl Component for PasskeyModalApp {
                                 })
                         }
                     >{ "Submit" }</button>
+                    </>
                 }
             }
             _ => {
@@ -352,34 +384,6 @@ impl Component for PasskeyModalApp {
                         { passkey_state }
                       </div>
                     </div>
-
-                    <form class="row g-3 needs-validation" novalidate=true
-                        onsubmit={ ctx.link().callback(move |e: FocusEvent| {
-                            console::debug!("passkey modal::on form submit prevent default");
-                            e.prevent_default();
-                            if submit_enabled {
-                                Msg::Submit
-                            } else {
-                                Msg::Cancel
-                            }
-                        } ) }
-                    >
-                      <label for="passkey-label" class="form-label">{ "Enter Label for Passkey" }</label>
-                      <input
-                        type="text"
-                        class="form-control"
-                        id="passkey-label"
-                        placeholder=""
-                        value={ label_val }
-                        required=true
-                        oninput={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::LabelCheck
-                                })
-                        }
-                      />
-                    </form>
                   </div>
                   <div class="modal-footer">
                     { submit_state }
