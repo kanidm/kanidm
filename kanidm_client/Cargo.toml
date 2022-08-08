@@ -14,7 +14,7 @@ repository = "https://github.com/kanidm/kanidm/"
 tracing = "^0.1.35"
 reqwest = { version = "^0.11.11", features=["cookies", "json", "native-tls"] }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.8" }
-serde = { version = "^1.0.141", features = ["derive"] }
+serde = { version = "^1.0.142", features = ["derive"] }
 serde_json = "^1.0.83"
 tokio = { version = "^1.20.0", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 toml = "^0.5.9"
