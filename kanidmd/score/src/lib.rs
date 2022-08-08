@@ -548,6 +548,8 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
 pub async fn create_server_core(config: Configuration, config_test: bool) -> Result<(), ()> {
     // Until this point, we probably want to write to the log macro fns.
 
+    error!(what = "What happened", why = "Why it failed", next="Next do this");
+
     if config.integration_test_config.is_some() {
         warn!("RUNNING IN INTEGRATION TEST MODE.");
         warn!("IF YOU SEE THIS IN PRODUCTION YOU MUST CONTACT SUPPORT IMMEDIATELY.");
