@@ -2261,7 +2261,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         spanned!("server::migrate_5_to_6", {
             admin_warn!("starting 5 to 6 migration.");
             let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
-            let modlist = ModifyList::new_purge("domain_token_key");
+            let mut modlist = ModifyList::new_purge("domain_token_key");
+            // We need to also push the version here so that we pass schema.
+            modlist.push_mod(Modify::Present(
+                AttrString::from("version"),
+                Value::Uint32(0),
+            ));
             self.internal_modify(&filter, &modlist)
             // Complete
         })
