@@ -258,7 +258,8 @@ impl Component for TotpModalApp {
         };
 
         let invalid_text = match &self.check {
-            TotpCheck::Sha1Accept => "Your authenticator appears to be broken, and uses Sha1, rather than Sha256. Are you sure you want to proceed? If you want to try with a new authenticator, enter a new code",
+            // TODO it'd be handy to link to some kind of explainer here.
+            TotpCheck::Sha1Accept => "Your authenticator appears to be implemented in a way that uses SHA1, rather than SHA256. Are you sure you want to proceed? If you want to try with a new authenticator, enter a new code.",
             _ => "Incorrect TOTP code - Please try again",
 
         };
@@ -278,29 +279,36 @@ impl Component for TotpModalApp {
                 >{ "Accept SHA1 Token" }</button>
             },
             _ => html! {
-                <button id="totp-submit" type="button" class="btn btn-primary"
+                <button
+                    class="btn btn-primary"
                     disabled={ !submit_enabled }
+                    id="totp-submit"
                     onclick={
                         ctx.link()
-                            .callback(move |_| {
-                                Msg::TotpSubmit
-                            })
+                        .callback(move |_| {
+                            Msg::TotpSubmit
+                        })
                     }
+                    type="button"
                 >{ "Submit" }</button>
             },
         };
 
         let totp_secret_state = match &self.secret {
+            // TODO: change this so it automagically starts the cred update session once the modal is created.
             TotpValue::Init => {
                 html! {
-                    <button id="totp-generate" type="button" class="btn btn-secondary"
+                    <button
+                        class="btn btn-secondary"
+                        id="totp-generate"
+                        type="button"
                         onclick={
                             ctx.link()
                                 .callback(move |_| {
                                     Msg::TotpGenerate
                                 })
                         }
-                    >{ "Generate TOTP" }</button>
+                    >{ "Click here to start the TOTP registration process" }</button>
                 }
             }
             TotpValue::Waiting => {
@@ -340,7 +348,6 @@ impl Component for TotpModalApp {
                         <p>{ secret_b32 }</p>
                         <p>{ algo }</p>
                         <p>{ step }</p>
-
                       </div>
                     </>
                 }
@@ -353,13 +360,16 @@ impl Component for TotpModalApp {
                 <div class="modal-content">
                   <div class="modal-header">
                     <h5 class="modal-title" id="staticTotpLabel">{ "Add a New TOTP Authenticator" }</h5>
-                    <button type="button" class="btn-close" aria-label="Close"
+                    <button
+                        aria-label="Close"
+                        class="btn-close"
                         onclick={
                             ctx.link()
                                 .callback(move |_| {
                                     Msg::TotpCancel
                                 })
                         }
+                        type="button"
                     ></button>
                   </div>
                   <div class="modal-body">
@@ -370,31 +380,50 @@ impl Component for TotpModalApp {
                       </div>
                     </div>
 
-                    <form class="row g-3 needs-validation" novalidate=true
+                    {
+                    match &self.secret {
+                        TotpValue::Secret(secret)  => {
+                    html! {
+                        <form class="row g-3 needs-validation" novalidate=true
                         onsubmit={ ctx.link().callback(|e: FocusEvent| {
                             e.prevent_default();
                             Msg::TotpSubmit
                         } ) }
                     >
-                      <label for="totp" class="form-label">{ "Enter a TOTP" }</label>
+                    // TODO: the wording on this needs some improving.
+                      <label for="totp_uri" class="form-label">{ "If your application accepts a URL, copy the one below" }</label>
                       <input
-                        type="totp"
+                        class="form-control"
+                        required=false
+                        type="text"
+                        value={secret.to_uri()}
+                       />
+
+                      <label for="totp" class="form-label">{ "Enter a TOTP code to confirm it's working" }</label>
+                      <input
+                        aria-describedby="totp-validation-feedback"
                         class={ totp_class }
                         id="totp"
-                        placeholder=""
-                        aria-describedby="totp-validation-feedback"
-                        required=true
                         oninput={
                             ctx.link()
                                 .callback(move |_| {
                                     Msg::TotpClearInvalid
                                 })
                         }
+                        placeholder=""
+                        required=true
+                        type="totp"
                       />
                       <div id="totp-validation-feedback" class="invalid-feedback">
                         { invalid_text }
                       </div>
                     </form>
+                    }
+                    },
+                    _ => html!{}
+                }
+            }
+
                   </div>
                   <div class="modal-footer">
                     <button id="totp-cancel" type="button" class="btn btn-secondary"

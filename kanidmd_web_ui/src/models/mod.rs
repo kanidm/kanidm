@@ -1,5 +1,6 @@
 use kanidm_proto::oauth2::AuthorisationRequest;
 
+#[cfg(debug)]
 use gloo::console;
 use gloo::storage::LocalStorage as PersistentStorage;
 use gloo::storage::SessionStorage as TemporaryStorage;
@@ -30,7 +31,7 @@ pub fn clear_bearer_token() {
     PersistentStorage::delete("kanidm_bearer_token");
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum Location {
     Manager(Route),
     Views(ViewRoute),
@@ -52,6 +53,7 @@ pub fn push_return_location(l: Location) {
 
 pub fn pop_return_location() -> Location {
     let l: Result<Location, _> = TemporaryStorage::get("return_location");
+    #[cfg(debug)]
     console::debug!(format!("return_location -> {:?}", l).as_str());
     TemporaryStorage::delete("return_location");
     l.unwrap_or(Location::Manager(Route::Landing))
@@ -64,6 +66,7 @@ pub fn push_oauth2_authorisation_request(r: AuthorisationRequest) {
 
 pub fn pop_oauth2_authorisation_request() -> Option<AuthorisationRequest> {
     let l: Result<AuthorisationRequest, _> = TemporaryStorage::get("oauth2_authorisation_request");
+    #[cfg(debug)]
     console::debug!(format!("oauth2_authorisation_request -> {:?}", l).as_str());
     TemporaryStorage::delete("oauth2_authorisation_request");
     l.ok()
@@ -75,18 +78,29 @@ pub fn push_login_hint(r: String) {
 
 pub fn pop_login_hint() -> Option<String> {
     let l: Result<String, _> = TemporaryStorage::get("login_hint");
+    #[cfg(debug)]
     console::debug!(format!("login_hint::pop_login_hint -> {:?}", l).as_str());
     TemporaryStorage::delete("login_hint");
     l.ok()
 }
 
+/// Pushes the "cred_update_session" element into the browser's temporary storage
 pub fn push_cred_update_session(s: (CUSessionToken, CUStatus)) {
     TemporaryStorage::set("cred_update_session", s)
         .expect_throw("failed to set cred session token");
 }
 
+/// Pulls the "cred_update_session" element from the browser's temporary storage
+pub fn get_cred_update_session() -> Option<(CUSessionToken, CUStatus)> {
+    let l: Result<(CUSessionToken, CUStatus), _> = TemporaryStorage::get("cred_update_session");
+    l.ok()
+}
+
+/*
+/// pops the "cred_update_session" element from the browser's temporary storage
 pub fn pop_cred_update_session() -> Option<(CUSessionToken, CUStatus)> {
     let l: Result<(CUSessionToken, CUStatus), _> = TemporaryStorage::get("cred_update_session");
     TemporaryStorage::delete("cred_update_session");
     l.ok()
 }
+*/

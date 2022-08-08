@@ -2,7 +2,7 @@ use gloo::console;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
-use web_sys::{Document, Event, /*HtmlButtonElement,*/ HtmlElement, HtmlInputElement, Window};
+use web_sys::{Document, Event, HtmlElement, HtmlInputElement, Window};
 use yew::html;
 use yew::virtual_dom::VNode;
 

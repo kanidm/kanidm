@@ -59,7 +59,7 @@ futures = "^0.3.21"
 bytes = "^1.1.0"
 
 libc = "^0.2.126"
-serde = { version = "^1.0.141", features = ["derive"] }
+serde = { version = "^1.0.142", features = ["derive"] }
 serde_json = "^1.0.83"
 clap = { version = "^3.2", features = ["derive"] }
 
