@@ -325,9 +325,9 @@ impl TryFrom<DbCred> for Credential {
             }
             | DbCred::Pw {
                 password: Some(db_password),
-                webauthn: None,
-                totp: None,
-                backup_code: None,
+                webauthn: _,
+                totp: _,
+                backup_code: _,
                 claims: _,
                 uuid,
             } => {
@@ -345,9 +345,9 @@ impl TryFrom<DbCred> for Credential {
             }
             | DbCred::GPw {
                 password: Some(db_password),
-                webauthn: None,
-                totp: None,
-                backup_code: None,
+                webauthn: _,
+                totp: _,
+                backup_code: _,
                 claims: _,
                 uuid,
             } => {
@@ -361,7 +361,7 @@ impl TryFrom<DbCred> for Credential {
             }
             DbCred::PwMfa {
                 password: Some(db_password),
-                webauthn: Some(db_webauthn),
+                webauthn: maybe_db_webauthn,
                 totp,
                 backup_code,
                 claims: _,
@@ -374,21 +374,26 @@ impl TryFrom<DbCred> for Credential {
                     None => None,
                 };
 
-                let v_webauthn = db_webauthn
-                    .into_iter()
-                    .map(|wc| {
-                        (
-                            wc.label,
-                            SecurityKey::from(WebauthnCredential::from(CredentialV3 {
-                                cred_id: wc.id,
-                                cred: wc.cred,
-                                counter: wc.counter,
-                                verified: wc.verified,
-                                registration_policy: wc.registration_policy,
-                            })),
-                        )
-                    })
-                    .collect();
+                let v_webauthn = match maybe_db_webauthn {
+                    Some(db_webauthn) => {
+                        db_webauthn
+                        .into_iter()
+                        .map(|wc| {
+                            (
+                                wc.label,
+                                SecurityKey::from(WebauthnCredential::from(CredentialV3 {
+                                    cred_id: wc.id,
+                                    cred: wc.cred,
+                                    counter: wc.counter,
+                                    verified: wc.verified,
+                                    registration_policy: wc.registration_policy,
+                                })),
+                            )
+                        })
+                        .collect()
+                    }
+                    None => Default::default(),
+                };
 
                 let v_backup_code = match backup_code {
                     Some(dbb) => Some(BackupCodes::try_from(dbb)?),
@@ -405,10 +410,10 @@ impl TryFrom<DbCred> for Credential {
                 }
             }
             DbCred::Wn {
-                password: None,
+                password: _,
                 webauthn: Some(db_webauthn),
-                totp: None,
-                backup_code: None,
+                totp: _,
+                backup_code: _,
                 claims: _,
                 uuid,
             } => {
@@ -436,8 +441,18 @@ impl TryFrom<DbCred> for Credential {
                     Err(())
                 }
             }
-            DbCred::TmpWn { .. } => {
-                todo!()
+            DbCred::TmpWn {
+                webauthn: db_webauthn,
+                uuid,
+            } => {
+                let v_webauthn = db_webauthn.into_iter().collect();
+                let type_ = CredentialType::Webauthn(v_webauthn);
+
+                if type_.is_valid() {
+                    Ok(Credential { type_, uuid })
+                } else {
+                    Err(())
+                }
             }
             DbCred::V2PasswordMfa {
                 password: db_password,
@@ -466,8 +481,10 @@ impl TryFrom<DbCred> for Credential {
                     Err(())
                 }
             }
-            _ => {
-                error!("Database content may be corrupt - invalid credential");
+            credential => {
+                error!("Database content may be corrupt - invalid credential state");
+                debug!(%credential);
+                debug!(?credential);
                 Err(())
             }
         }

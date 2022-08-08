@@ -1,5 +1,6 @@
 use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -25,8 +26,8 @@ pub enum DbPasswordV1 {
     SSHA512(Vec<u8>, Vec<u8>),
 }
 
-impl std::fmt::Debug for DbPasswordV1 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Debug for DbPasswordV1 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             DbPasswordV1::PBKDF2(_, _, _) => write!(f, "PBKDF2"),
             DbPasswordV1::SSHA512(_, _) => write!(f, "SSHA512"),
@@ -180,6 +181,100 @@ pub enum DbCred {
         webauthn: Vec<(String, SecurityKeyV4)>,
         uuid: Uuid,
     },
+}
+
+impl fmt::Display for DbCred {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DbCred::Pw {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
+            } => write!(
+                f,
+                "Pw (p {}, w {}, t {}, b {}, c {}, u {})",
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
+            ),
+            DbCred::GPw {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
+            } => write!(
+                f,
+                "GPw (p {}, w {}, t {}, b {}, c {}, u {})",
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
+            ),
+            DbCred::PwMfa {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
+            } => write!(
+                f,
+                "PwMfa (p {}, w {}, t {}, b {}, c {}, u {})",
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
+            ),
+            DbCred::Wn {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
+            } => write!(
+                f,
+                "Wn (p {}, w {}, t {}, b {}, c {}, u {})",
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
+            ),
+            DbCred::TmpWn { webauthn, uuid } => {
+                write!(f, "TmpWn ( w {}, u {} )", webauthn.len(), uuid)
+            }
+            DbCred::V2Password { password: _, uuid } => write!(f, "V2Pw ( u {} )", uuid),
+            DbCred::V2GenPassword { password: _, uuid } => write!(f, "V2GPw ( u {} )", uuid),
+            DbCred::V2PasswordMfa {
+                password: _,
+                totp,
+                backup_code,
+                webauthn,
+                uuid,
+            } => write!(
+                f,
+                "Wn (p true, w {}, t {}, b {}, u {})",
+                webauthn.len(),
+                totp.is_some(),
+                backup_code.is_some(),
+                uuid
+            ),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
