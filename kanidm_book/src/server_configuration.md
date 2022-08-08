@@ -2,7 +2,7 @@
 
 ### Configuring server.toml
 
-You need a configuration file in the volume named `server.toml`. (Within the container it should be `/data/server.toml`.) Its contents should be as follows:
+You need a configuration file in the volume named `server.toml`. (Within the container it should be `/data/server.toml`) Its contents should be as follows:
 
     #   The webserver bind address. Will use HTTPS if tls_* 
     #   is provided.
@@ -102,10 +102,14 @@ You need a configuration file in the volume named `server.toml`. (Within the con
     #
 
 
-An example is located in [examples/server.toml](../../examples/server.toml).
+An example is located in [examples/server.toml](https://github.com/kanidm/kanidm/blob/master/examples/server.toml).
 
-> **WARNING** You MUST set the `domain` name correctly, aligned with your `origin`, else the server
-> may refuse to start, or some features (e.g. webauthn, oauth) may not work correctly!
+{{#template  
+    templates/kani-warning.md
+    imagepath=images
+    title=Warning!
+    text=You MUST set the `domain` name correctly, aligned with your `origin`, else the server may refuse to start or some features (e.g. webauthn, oauth) may not work correctly!
+}}
 
 ### Check the configuration is valid.
 
