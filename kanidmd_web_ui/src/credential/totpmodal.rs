@@ -295,7 +295,7 @@ impl Component for TotpModalApp {
         };
 
         let totp_secret_state = match &self.secret {
-            // TODO: the user's already clicked start, why are we asking them to press it again? :D
+            // TODO: change this so it automagically starts the cred update session once the modal is created.
             TotpValue::Init => {
                 html! {
                     <button
