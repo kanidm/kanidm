@@ -33,7 +33,7 @@ idlset = { version = "^0.2.4" }
 kanidm_proto = { path = "../../kanidm_proto" }
 lazy_static = "^1.4.0"
 ldap3_proto = "^0.2.3"
-libc = "^0.2.126"
+libc = "^0.2.127"
 libsqlite3-sys = "^0.25.0"
 num_enum = "^0.5.7"
 openssl = "^0.10.41"
