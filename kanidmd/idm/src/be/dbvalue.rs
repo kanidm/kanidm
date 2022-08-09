@@ -267,7 +267,7 @@ impl fmt::Display for DbCred {
                 uuid,
             } => write!(
                 f,
-                "Wn (p true, w {}, t {}, b {}, u {})",
+                "V2PwMfa (p true, w {}, t {}, b {}, u {})",
                 webauthn.len(),
                 totp.is_some(),
                 backup_code.is_some(),

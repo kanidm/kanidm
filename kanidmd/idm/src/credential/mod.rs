@@ -375,8 +375,7 @@ impl TryFrom<DbCred> for Credential {
                 };
 
                 let v_webauthn = match maybe_db_webauthn {
-                    Some(db_webauthn) => {
-                        db_webauthn
+                    Some(db_webauthn) => db_webauthn
                         .into_iter()
                         .map(|wc| {
                             (
@@ -390,8 +389,7 @@ impl TryFrom<DbCred> for Credential {
                                 })),
                             )
                         })
-                        .collect()
-                    }
+                        .collect(),
                     None => Default::default(),
                 };
 
@@ -456,14 +454,18 @@ impl TryFrom<DbCred> for Credential {
             }
             DbCred::V2PasswordMfa {
                 password: db_password,
-                totp: Some(db_totp),
+                totp: maybe_db_totp,
                 backup_code,
                 webauthn: db_webauthn,
                 uuid,
             } => {
                 let v_password = Password::try_from(db_password)?;
 
-                let v_totp = Some(Totp::try_from(db_totp)?);
+                let v_totp = if let Some(db_totp) = maybe_db_totp {
+                    Some(Totp::try_from(db_totp)?)
+                } else {
+                    None
+                };
 
                 let v_backup_code = match backup_code {
                     Some(dbb) => Some(BackupCodes::try_from(dbb)?),
