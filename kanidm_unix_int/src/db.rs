@@ -724,7 +724,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_account_basic() {
-        let _ = tracing_subscriber::fmt::try_init();
+        let _ = sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -808,7 +808,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_group_basic() {
-        let _ = tracing_subscriber::fmt::try_init();
+        let _ = sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -883,7 +883,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_account_group_update() {
-        let _ = tracing_subscriber::fmt::try_init();
+        let _ = sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -951,7 +951,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_account_password() {
-        let _ = tracing_subscriber::fmt::try_init();
+        let _ = sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -1000,7 +1000,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_group_rename_duplicate() {
-        let _ = tracing_subscriber::fmt::try_init();
+        let _ = sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -1055,7 +1055,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_account_rename_duplicate() {
-        let _ = tracing_subscriber::fmt::try_init();
+        let _ = sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());

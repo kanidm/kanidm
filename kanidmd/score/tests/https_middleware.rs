@@ -5,7 +5,6 @@ use crate::common::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, PORT_ALLOC};
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
-use kanidm::tracing_tree;
 use score::create_server_core;
 use tokio::task;
 
@@ -14,7 +13,7 @@ use crate::common::is_free_port;
 #[tokio::test]
 async fn test_https_middleware_headers() {
     // tests stuff
-    let _ = tracing_tree::test_init();
+    let _ = sketching::test_init();
 
     let mut counter = 0;
     let port = loop {

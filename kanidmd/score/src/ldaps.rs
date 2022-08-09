@@ -35,7 +35,7 @@ async fn client_process_msg(
     protomsg: LdapMsg,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Option<LdapResponseState> {
-    let eventid = kanidm::tracing_tree::operation_id().unwrap();
+    let eventid = sketching::tracing_forest::id();
     security_info!(
         client_ip = %client_address.ip(),
         client_port = %client_address.port(),

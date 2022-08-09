@@ -7,7 +7,6 @@ use crate::idm::account::Account;
 use crate::idm::delayed::BackupCodeRemoval;
 use crate::idm::AuthState;
 use crate::prelude::*;
-use crate::tracing_tree;
 use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech, AuthType};
@@ -745,13 +744,16 @@ impl AuthSession {
                         // Can't `unwrap` the uuid until full integration, because some unit tests
                         // call functions that call this indirectly without opening a span first,
                         // and this returns `None` when not in a span (and panics if the tree isn't initialized).
-                        let tracing_id = tracing_tree::operation_id().unwrap_or_else(|| {
-                            admin_warn!("Recoverable - Invalid Tracing Operation ID State");
-                            Uuid::new_v4()
-                        });
+                        let session_id = Uuid::new_v4();
+                        security_info!(
+                            "Starting session {} for {} {}",
+                            session_id,
+                            self.account.spn,
+                            self.account.uuid
+                        );
                         let uat = self
                             .account
-                            .to_userauthtoken(tracing_id, *time, auth_type)
+                            .to_userauthtoken(session_id, *time, auth_type)
                             .ok_or(OperationError::InvalidState)?;
 
                         let jwt = Jws { inner: uat };
@@ -840,7 +842,6 @@ mod tests {
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
-    use crate::tracing_tree;
     use hashbrown::HashSet;
     pub use std::collections::BTreeSet as Set;
 
@@ -874,7 +875,8 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
+
         let webauthn = create_webauthn();
 
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
@@ -935,7 +937,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
@@ -988,7 +990,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_badlist() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
@@ -1076,7 +1078,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_totp_password_mech() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
@@ -1231,7 +1233,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_password_mfa_badlist() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
@@ -1391,7 +1393,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_only_mech() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1522,7 +1524,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_mech() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1692,7 +1694,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_totp_mech() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1929,7 +1931,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_backup_code_mech() {
-        let _ = tracing_tree::test_init();
+        let _ = sketching::test_init();
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent

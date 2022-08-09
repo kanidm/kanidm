@@ -1375,7 +1375,7 @@ mod tests {
 
     #[test]
     fn test_filter_optimise() {
-        let _ = tracing_subscriber::fmt().try_init();
+        let _ = sketching::test_init();
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
             f_and(vec![f_and(vec![f_eq(

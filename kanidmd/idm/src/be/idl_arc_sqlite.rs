@@ -707,7 +707,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.idl_cache.iter_mut_dirty().for_each(|(k, maybe_idl)| {
             if let Some(idl) = maybe_idl {
                 if idl.maybe_compress() {
-                    filter_info!(?k, "Compressed idl");
+                    filter_trace!(?k, "Compressed idl");
                 }
             }
         })

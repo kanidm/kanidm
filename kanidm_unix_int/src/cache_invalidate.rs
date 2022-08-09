@@ -30,7 +30,7 @@ async fn main() {
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }
-    tracing_subscriber::fmt::init();
+    sketching::tracing_subscriber::fmt::init();
 
     debug!("Starting cache invalidate tool ...");
 

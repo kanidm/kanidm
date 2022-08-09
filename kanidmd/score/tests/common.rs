@@ -3,7 +3,6 @@ use std::sync::atomic::{AtomicU16, Ordering};
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
-use kanidm::tracing_tree;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use score::create_server_core;
 use tokio::task;
@@ -25,7 +24,7 @@ pub fn is_free_port(port: u16) -> bool {
 // allowed because the use of this function is behind a test gate
 #[allow(dead_code)]
 pub async fn setup_async_test() -> KanidmClient {
-    let _ = tracing_tree::test_init();
+    let _ = sketching::test_init();
 
     let mut counter = 0;
     let port = loop {
