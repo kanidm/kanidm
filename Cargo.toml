@@ -17,6 +17,7 @@ members = [
     "kanidmd/score",
     "orca",
     "profiles",
+    "sketching",
 ]
 
 exclude = [

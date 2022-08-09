@@ -24,7 +24,6 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::ldap::LdapBoundToken;
 use crate::prelude::*;
-use crate::tracing_tree;
 use crate::utils::{
     backup_code_from_random, password_from_random, readable_password_from_random,
     uuid_from_duration, Sid,
@@ -954,16 +953,19 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 return Ok(None);
             }
 
-            let tracing_id = tracing_tree::operation_id().unwrap_or_else(|| {
-                admin_warn!("Recoverable - Invalid Tracing Operation ID State");
-                Uuid::new_v4()
-            });
+            let session_id = Uuid::new_v4();
+            security_info!(
+                "Starting session {} for {} {}",
+                session_id,
+                account.spn,
+                account.uuid
+            );
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
                 uuid: UUID_ANONYMOUS,
                 effective_uat: account
-                    .to_userauthtoken(tracing_id, ct, AuthType::Anonymous)
+                    .to_userauthtoken(session_id, ct, AuthType::Anonymous)
                     .ok_or(OperationError::InvalidState)
                     .map_err(|e| {
                         admin_error!("Unable to generate effective_uat -> {:?}", e);
@@ -1037,16 +1039,19 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     let anon_account =
                         Account::try_from_entry_ro(anon_entry.as_ref(), &mut self.qs_read)?;
 
-                    let tracing_id = tracing_tree::operation_id().unwrap_or_else(|| {
-                        admin_warn!("Recoverable - Invalid Tracing Operation ID State");
-                        Uuid::new_v4()
-                    });
+                    let session_id = Uuid::new_v4();
+                    security_info!(
+                        "Starting session {} for {} {}",
+                        session_id,
+                        account.spn,
+                        account.uuid
+                    );
 
                     Ok(Some(LdapBoundToken {
                         spn: account.spn,
                         uuid: account.uuid,
                         effective_uat: anon_account
-                            .to_userauthtoken(tracing_id, ct, AuthType::UnixPassword)
+                            .to_userauthtoken(session_id, ct, AuthType::UnixPassword)
                             .ok_or(OperationError::InvalidState)
                             .map_err(|e| {
                                 admin_error!("Unable to generate effective_uat -> {:?}", e);

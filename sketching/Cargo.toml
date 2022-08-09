@@ -1,0 +1,18 @@
+[package]
+name = "sketching"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "^0.1.57"
+tide = "^0.16.0"
+num_enum = "^0.5.7"
+
+tracing = { version = "^0.1.35", features = ["attributes", "max_level_trace", "release_max_level_debug"] }
+tracing-subscriber = { version = "^0.3.14", features = ["env-filter"] }
+
+# tracing-forest = { version = "0.1.4", features = ["uuid", "smallvec", "tokio", "env-filter"] }
+tracing-forest = { git = "https://github.com/Firstyear/tracing-forest.git", rev = "18d242a4dde060c4946ade0a2c4d5be1df048aea", features = ["uuid", "smallvec", "tokio", "env-filter"] }
+

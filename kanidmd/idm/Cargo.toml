@@ -33,7 +33,7 @@ idlset = { version = "^0.2.4" }
 kanidm_proto = { path = "../../kanidm_proto" }
 lazy_static = "^1.4.0"
 ldap3_proto = "^0.2.3"
-libc = "^0.2.126"
+libc = "^0.2.127"
 libsqlite3-sys = "^0.25.0"
 num_enum = "^0.5.7"
 openssl = "^0.10.41"
@@ -54,9 +54,10 @@ tokio = { version = "^1.20.0", features = ["net", "sync", "time"] }
 tokio-util = { version = "^0.7.3", features = ["codec"] }
 toml = "^0.5.9"
 touch = "^0.0.1"
-tracing = { version = "^0.1.35", features = ["attributes", "max_level_trace", "release_max_level_debug"] }
-tracing-serde = "^0.1.3"
-tracing-subscriber = { version = "^0.3.14", features = ["env-filter"] }
+
+sketching = { path = "../../sketching" }
+tracing = { version = "^0.1.35", features = ["attributes"] }
+
 url = { version = "^2.2.2", features = ["serde"] }
 urlencoding = "2.1.0"
 uuid = { version = "^1.1.2", features = ["serde", "v4" ] }

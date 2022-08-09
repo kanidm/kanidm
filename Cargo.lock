@@ -1082,6 +1082,7 @@ dependencies = [
  "profiles",
  "score",
  "serde",
+ "sketching",
  "tikv-jemallocator",
  "tokio",
  "toml",
@@ -2107,6 +2108,7 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_json",
+ "sketching",
  "smartstring",
  "smolset",
  "sshkeys",
@@ -2117,8 +2119,6 @@ dependencies = [
  "toml",
  "touch",
  "tracing",
- "tracing-serde",
- "tracing-subscriber",
  "url",
  "urlencoding",
  "users",
@@ -2212,11 +2212,11 @@ dependencies = [
  "score",
  "serde",
  "serde_json",
+ "sketching",
  "tokio",
  "tokio-util",
  "toml",
  "tracing",
- "tracing-subscriber",
  "users",
 ]
 
@@ -2294,9 +2294,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.126"
+version = "0.2.127"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
+checksum = "505e71a4706fa491e9b1b55f51b95d4037d0821ee40131190475f692b35b009b"
 
 [[package]]
 name = "libnss"
@@ -3398,6 +3398,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sketching",
  "tide",
  "tide-compress",
  "tide-openssl",
@@ -3405,7 +3406,6 @@ dependencies = [
  "tokio-openssl",
  "tokio-util",
  "tracing",
- "tracing-subscriber",
  "url",
  "uuid 1.1.2",
  "webauthn-authenticator-rs",
@@ -3647,6 +3647,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38aabbeafa6f6dead8cebf246fe9fae1f9215c8d29b3a69f93bd62a9e4a3dcd6"
 dependencies = [
  "event-listener",
+]
+
+[[package]]
+name = "sketching"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "num_enum",
+ "tide",
+ "tracing",
+ "tracing-forest",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -4186,6 +4198,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-forest"
+version = "0.1.4"
+source = "git+https://github.com/Firstyear/tracing-forest.git?rev=18d242a4dde060c4946ade0a2c4d5be1df048aea#18d242a4dde060c4946ade0a2c4d5be1df048aea"
+dependencies = [
+ "smallvec",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid 1.1.2",
+]
+
+[[package]]
 name = "tracing-log"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4193,16 +4218,6 @@ checksum = "78ddad33d2d10b1ed7eb9d1f518a5674713876e97e5bb9b7345a7984fbb4f922"
 dependencies = [
  "lazy_static",
  "log",
- "tracing-core",
-]
-
-[[package]]
-name = "tracing-serde"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc6b213177105856957181934e4920de57730fc69bf42c37ee5bb664d406d9e1"
-dependencies = [
- "serde",
  "tracing-core",
 ]
 

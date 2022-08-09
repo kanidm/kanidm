@@ -16,7 +16,6 @@ use kanidm::actors::v1_write::QueryServerWriteV1;
 use kanidm::config::{ServerRole, TlsConfiguration};
 use kanidm::prelude::*;
 use kanidm::status::StatusActor;
-use kanidm::tracing_tree::TreeMiddleware;
 use serde::Serialize;
 use std::fs::canonicalize;
 use std::path::PathBuf;
@@ -135,7 +134,7 @@ impl RequestExtensions for tide::Request<AppState> {
     }
 
     fn new_eventid(&self) -> (Uuid, String) {
-        let eventid = kanidm::tracing_tree::operation_id().unwrap();
+        let eventid = sketching::tracing_forest::id();
         let hv = eventid.as_hyphenated().to_string();
         (eventid, hv)
     }
@@ -349,7 +348,7 @@ pub fn create_https_server(
     });
 
     // Add middleware?
-    tserver.with(TreeMiddleware::with_stdout());
+    tserver.with(sketching::middleware::TreeMiddleware::default());
     // tserver.with(tide::log::LogMiddleware::new());
     // We do not force a session ttl, because we validate this elsewhere in usage.
     tserver.with(

@@ -1847,7 +1847,7 @@ mod tests {
 
     #[test]
     fn test_schema_entries() {
-        let _ = crate::tracing_tree::test_init();
+        let _ = sketching::test_init();
         // Given an entry, assert it's schema is valid
         // We do
         let schema_outer = Schema::new().expect("failed to create schema");

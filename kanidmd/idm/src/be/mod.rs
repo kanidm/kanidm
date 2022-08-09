@@ -1792,7 +1792,7 @@ mod tests {
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
-            let _ = crate::tracing_tree::test_init();
+            let _ = sketching::test_init();
 
             // This is a demo idxmeta, purely for testing.
             let idxmeta = vec![

@@ -10,9 +10,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[macro_use]
-extern crate tracing;
-
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use std::fs::metadata;
@@ -25,10 +22,12 @@ use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
 use futures::StreamExt;
 use libc::umask;
+use sketching::tracing_forest::{self, traits::*, util::*};
 use std::error::Error;
 use std::io;
 use std::sync::Arc;
 use std::time::Duration;
+
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
@@ -380,302 +379,313 @@ async fn main() {
         std::process::exit(1);
     }
 
-    tracing_subscriber::fmt::init();
+    tracing_forest::worker_task()
+        .set_global(true)
+        // Fall back to stderr
+        .map_sender(|sender| sender.or_stderr())
+        .build_on(|subscriber| subscriber
+            .with(EnvFilter::try_from_default_env()
+                .or_else(|_| EnvFilter::try_new("info"))
+                .expect("Failed to init envfilter")
+            )
+        )
+        .on(async {
+            debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
+            debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-    debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-    debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
-
-    let cfg_path = Path::new("/etc/kanidm/config");
-    let cfg_path_str = match cfg_path.to_str() {
-        Some(cps) => cps,
-        None => {
-            error!("Unable to turn cfg_path to str");
-            std::process::exit(1);
-        }
-    };
-    if !cfg_path.exists() {
-        // there's no point trying to start up if we can't read a usable config!
-        error!(
-            "Client config missing from {} - cannot start up. Quitting.",
-            cfg_path_str
-        );
-        std::process::exit(1);
-    }
-
-    if cfg_path.exists() {
-        let cfg_meta = match metadata(&cfg_path) {
-            Ok(v) => v,
-            Err(e) => {
-                error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                std::process::exit(1);
-            }
-        };
-        if !file_permissions_readonly(&cfg_meta) {
-            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                cfg_path_str
-                );
-        }
-
-        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                cfg_path_str
-            );
-        }
-    }
-
-    let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
-    let unixd_path_str = match unixd_path.to_str() {
-        Some(cps) => cps,
-        None => {
-            error!("Unable to turn unixd_path to str");
-            std::process::exit(1);
-        }
-    };
-    if !unixd_path.exists() {
-        // there's no point trying to start up if we can't read a usable config!
-        error!(
-            "unixd config missing from {} - cannot start up. Quitting.",
-            unixd_path_str
-        );
-        std::process::exit(1);
-    } else {
-        let unixd_meta = match metadata(&unixd_path) {
-            Ok(v) => v,
-            Err(e) => {
-                error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                std::process::exit(1);
-            }
-        };
-        if !file_permissions_readonly(&unixd_meta) {
-            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                unixd_path_str);
-        }
-
-        if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
-            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                unixd_path_str
-            );
-        }
-    }
-
-    // setup
-    let cb = match KanidmClientBuilder::new().read_options_from_optional_config(cfg_path) {
-        Ok(v) => v,
-        Err(_) => {
-            error!("Failed to parse {}", cfg_path_str);
-            std::process::exit(1);
-        }
-    };
-
-    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
-        Ok(v) => v,
-        Err(_) => {
-            error!("Failed to parse {}", unixd_path_str);
-            std::process::exit(1);
-        }
-    };
-
-    debug!("🧹 Cleaning up sockets from previous invocations");
-    rm_if_exist(cfg.sock_path.as_str());
-    rm_if_exist(cfg.task_sock_path.as_str());
-
-    let cb = cb.connect_timeout(cfg.conn_timeout);
-
-    let rsclient = match cb.build() {
-        Ok(rsc) => rsc,
-        Err(_e) => {
-            error!("Failed to build async client");
-            std::process::exit(1);
-        }
-    };
-
-    // Check the pb path will be okay.
-    if cfg.db_path != "" {
-        let db_path = PathBuf::from(cfg.db_path.as_str());
-        // We only need to check the parent folder path permissions as the db itself may not exist yet.
-        if let Some(db_parent_path) = db_path.parent() {
-            if !db_parent_path.exists() {
-                error!(
-                    "Refusing to run, DB folder {} does not exist",
-                    db_parent_path
-                        .to_str()
-                        .unwrap_or_else(|| "<db_parent_path invalid>")
-                );
-                std::process::exit(1);
-            }
-
-            let db_par_path_buf = db_parent_path.to_path_buf();
-
-            let i_meta = match metadata(&db_par_path_buf) {
-                Ok(v) => v,
-                Err(e) => {
-                    error!(
-                        "Unable to read metadata for {} - {:?}",
-                        db_par_path_buf
-                            .to_str()
-                            .unwrap_or_else(|| "<db_par_path_buf invalid>"),
-                        e
-                    );
+            let cfg_path = Path::new("/etc/kanidm/config");
+            let cfg_path_str = match cfg_path.to_str() {
+                Some(cps) => cps,
+                None => {
+                    error!("Unable to turn cfg_path to str");
                     std::process::exit(1);
                 }
             };
-
-            if !i_meta.is_dir() {
+            if !cfg_path.exists() {
+                // there's no point trying to start up if we can't read a usable config!
                 error!(
-                    "Refusing to run - DB folder {} may not be a directory",
-                    db_par_path_buf
-                        .to_str()
-                        .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                    "Client config missing from {} - cannot start up. Quitting.",
+                    cfg_path_str
                 );
                 std::process::exit(1);
             }
-            if !file_permissions_readonly(&i_meta) {
-                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
-                .unwrap_or_else(|| "<db_par_path_buf invalid>")
-                );
-            }
 
-            if i_meta.mode() & 0o007 != 0 {
-                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
-                .unwrap_or_else(|| "<db_par_path_buf invalid>")
-                );
-            }
-        }
-
-        // check to see if the db's already there
-        if db_path.exists() {
-            if !db_path.is_file() {
-                error!(
-                    "Refusing to run - DB path {} already exists and is not a file.",
-                    db_path.to_str().unwrap_or_else(|| "<db_path invalid>")
-                );
-                std::process::exit(1);
-            };
-
-            match metadata(&db_path) {
-                Ok(v) => v,
-                Err(e) => {
-                    error!(
-                        "Unable to read metadata for {} - {:?}",
-                        db_path.to_str().unwrap_or_else(|| "<db_path invalid>"),
-                        e
-                    );
-                    std::process::exit(1);
-                }
-            };
-            // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
-        };
-    }
-
-    let cl_inner = match CacheLayer::new(
-        cfg.db_path.as_str(), // The sqlite db path
-        cfg.cache_timeout,
-        rsclient,
-        cfg.pam_allowed_login_groups.clone(),
-        cfg.default_shell.clone(),
-        cfg.home_prefix.clone(),
-        cfg.home_attr,
-        cfg.home_alias,
-        cfg.uid_attr_map,
-        cfg.gid_attr_map,
-    )
-    .await
-    {
-        Ok(c) => c,
-        Err(_e) => {
-            error!("Failed to build cache layer.");
-            std::process::exit(1);
-        }
-    };
-
-    let cachelayer = Arc::new(cl_inner);
-
-    // Set the umask while we open the path for most clients.
-    let before = unsafe { umask(0) };
-    let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
-        Ok(l) => l,
-        Err(_e) => {
-            error!("Failed to bind unix socket.");
-            std::process::exit(1);
-        }
-    };
-    // Setup the root-only socket. Take away all others.
-    let _ = unsafe { umask(0o0077) };
-    let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
-        Ok(l) => l,
-        Err(_e) => {
-            error!("Failed to bind unix socket.");
-            std::process::exit(1);
-        }
-    };
-
-    // Undo it.
-    let _ = unsafe { umask(before) };
-
-    let (task_channel_tx, mut task_channel_rx) = channel(16);
-    let task_channel_tx = Arc::new(task_channel_tx);
-
-    let task_channel_tx_cln = task_channel_tx.clone();
-
-    tokio::spawn(async move {
-        loop {
-            match task_listener.accept().await {
-                Ok((socket, _addr)) => {
-                    // Did it come from root?
-                    if let Ok(ucred) = socket.peer_cred() {
-                        if ucred.uid() == 0 {
-                            // all good!
-                        } else {
-                            // move along.
-                            debug!("Task handler not running as root, ignoring ...");
-                            continue;
-                        }
-                    } else {
-                        // move along.
-                        debug!("Task handler not running as root, ignoring ...");
-                        continue;
-                    };
-                    debug!("A task handler has connected.");
-                    // It did? Great, now we can wait and spin on that one
-                    // client.
-                    if let Err(e) =
-                        handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
-                    {
-                        error!("Task client error occured; error = {:?}", e);
+            if cfg_path.exists() {
+                let cfg_meta = match metadata(&cfg_path) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+                        std::process::exit(1);
                     }
-                    // If they DC we go back to accept.
+                };
+                if !file_permissions_readonly(&cfg_meta) {
+                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                        cfg_path_str
+                        );
                 }
-                Err(err) => {
-                    error!("Task Accept error -> {:?}", err);
+
+                if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+                    warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                        cfg_path_str
+                    );
                 }
             }
-            // done
-        }
-    });
 
-    // TODO: Setup a task that handles pre-fetching here.
+            let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
+            let unixd_path_str = match unixd_path.to_str() {
+                Some(cps) => cps,
+                None => {
+                    error!("Unable to turn unixd_path to str");
+                    std::process::exit(1);
+                }
+            };
+            if !unixd_path.exists() {
+                // there's no point trying to start up if we can't read a usable config!
+                error!(
+                    "unixd config missing from {} - cannot start up. Quitting.",
+                    unixd_path_str
+                );
+                std::process::exit(1);
+            } else {
+                let unixd_meta = match metadata(&unixd_path) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
+                        std::process::exit(1);
+                    }
+                };
+                if !file_permissions_readonly(&unixd_meta) {
+                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                        unixd_path_str);
+                }
 
-    let server = async move {
-        loop {
-            let tc_tx = task_channel_tx_cln.clone();
-            match listener.accept().await {
-                Ok((socket, _addr)) => {
-                    let cachelayer_ref = cachelayer.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
-                        {
-                            error!("an error occured; error = {:?}", e);
+                if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
+                    warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                        unixd_path_str
+                    );
+                }
+            }
+
+            // setup
+            let cb = match KanidmClientBuilder::new().read_options_from_optional_config(cfg_path) {
+                Ok(v) => v,
+                Err(_) => {
+                    error!("Failed to parse {}", cfg_path_str);
+                    std::process::exit(1);
+                }
+            };
+
+            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
+                Ok(v) => v,
+                Err(_) => {
+                    error!("Failed to parse {}", unixd_path_str);
+                    std::process::exit(1);
+                }
+            };
+
+            debug!("🧹 Cleaning up sockets from previous invocations");
+            rm_if_exist(cfg.sock_path.as_str());
+            rm_if_exist(cfg.task_sock_path.as_str());
+
+            let cb = cb.connect_timeout(cfg.conn_timeout);
+
+            let rsclient = match cb.build() {
+                Ok(rsc) => rsc,
+                Err(_e) => {
+                    error!("Failed to build async client");
+                    std::process::exit(1);
+                }
+            };
+
+            // Check the pb path will be okay.
+            if cfg.db_path != "" {
+                let db_path = PathBuf::from(cfg.db_path.as_str());
+                // We only need to check the parent folder path permissions as the db itself may not exist yet.
+                if let Some(db_parent_path) = db_path.parent() {
+                    if !db_parent_path.exists() {
+                        error!(
+                            "Refusing to run, DB folder {} does not exist",
+                            db_parent_path
+                                .to_str()
+                                .unwrap_or_else(|| "<db_parent_path invalid>")
+                        );
+                        std::process::exit(1);
+                    }
+
+                    let db_par_path_buf = db_parent_path.to_path_buf();
+
+                    let i_meta = match metadata(&db_par_path_buf) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            error!(
+                                "Unable to read metadata for {} - {:?}",
+                                db_par_path_buf
+                                    .to_str()
+                                    .unwrap_or_else(|| "<db_par_path_buf invalid>"),
+                                e
+                            );
+                            std::process::exit(1);
                         }
-                    });
+                    };
+
+                    if !i_meta.is_dir() {
+                        error!(
+                            "Refusing to run - DB folder {} may not be a directory",
+                            db_par_path_buf
+                                .to_str()
+                                .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                        );
+                        std::process::exit(1);
+                    }
+                    if !file_permissions_readonly(&i_meta) {
+                        warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
+                        .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                        );
+                    }
+
+                    if i_meta.mode() & 0o007 != 0 {
+                        warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
+                        .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                        );
+                    }
                 }
-                Err(err) => {
-                    error!("Accept error -> {:?}", err);
-                }
+
+                // check to see if the db's already there
+                if db_path.exists() {
+                    if !db_path.is_file() {
+                        error!(
+                            "Refusing to run - DB path {} already exists and is not a file.",
+                            db_path.to_str().unwrap_or_else(|| "<db_path invalid>")
+                        );
+                        std::process::exit(1);
+                    };
+
+                    match metadata(&db_path) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            error!(
+                                "Unable to read metadata for {} - {:?}",
+                                db_path.to_str().unwrap_or_else(|| "<db_path invalid>"),
+                                e
+                            );
+                            std::process::exit(1);
+                        }
+                    };
+                    // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
+                };
             }
-        }
-    };
 
-    info!("Server started ...");
+            let cl_inner = match CacheLayer::new(
+                cfg.db_path.as_str(), // The sqlite db path
+                cfg.cache_timeout,
+                rsclient,
+                cfg.pam_allowed_login_groups.clone(),
+                cfg.default_shell.clone(),
+                cfg.home_prefix.clone(),
+                cfg.home_attr,
+                cfg.home_alias,
+                cfg.uid_attr_map,
+                cfg.gid_attr_map,
+            )
+            .await
+            {
+                Ok(c) => c,
+                Err(_e) => {
+                    error!("Failed to build cache layer.");
+                    std::process::exit(1);
+                }
+            };
 
-    server.await;
+            let cachelayer = Arc::new(cl_inner);
+
+            // Set the umask while we open the path for most clients.
+            let before = unsafe { umask(0) };
+            let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
+                Ok(l) => l,
+                Err(_e) => {
+                    error!("Failed to bind unix socket.");
+                    std::process::exit(1);
+                }
+            };
+            // Setup the root-only socket. Take away all others.
+            let _ = unsafe { umask(0o0077) };
+            let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
+                Ok(l) => l,
+                Err(_e) => {
+                    error!("Failed to bind unix socket.");
+                    std::process::exit(1);
+                }
+            };
+
+            // Undo it.
+            let _ = unsafe { umask(before) };
+
+            let (task_channel_tx, mut task_channel_rx) = channel(16);
+            let task_channel_tx = Arc::new(task_channel_tx);
+
+            let task_channel_tx_cln = task_channel_tx.clone();
+
+            tokio::spawn(async move {
+                loop {
+                    match task_listener.accept().await {
+                        Ok((socket, _addr)) => {
+                            // Did it come from root?
+                            if let Ok(ucred) = socket.peer_cred() {
+                                if ucred.uid() == 0 {
+                                    // all good!
+                                } else {
+                                    // move along.
+                                    debug!("Task handler not running as root, ignoring ...");
+                                    continue;
+                                }
+                            } else {
+                                // move along.
+                                debug!("Task handler not running as root, ignoring ...");
+                                continue;
+                            };
+                            debug!("A task handler has connected.");
+                            // It did? Great, now we can wait and spin on that one
+                            // client.
+                            if let Err(e) =
+                                handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
+                            {
+                                error!("Task client error occured; error = {:?}", e);
+                            }
+                            // If they DC we go back to accept.
+                        }
+                        Err(err) => {
+                            error!("Task Accept error -> {:?}", err);
+                        }
+                    }
+                    // done
+                }
+            });
+
+            // TODO: Setup a task that handles pre-fetching here.
+
+            let server = async move {
+                loop {
+                    let tc_tx = task_channel_tx_cln.clone();
+                    match listener.accept().await {
+                        Ok((socket, _addr)) => {
+                            let cachelayer_ref = cachelayer.clone();
+                            tokio::spawn(async move {
+                                if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                                {
+                                    error!("an error occured; error = {:?}", e);
+                                }
+                            });
+                        }
+                        Err(err) => {
+                            error!("Accept error -> {:?}", err);
+                        }
+                    }
+                }
+            };
+
+            info!("Server started ...");
+
+            server.await;
+    })
+    .await;
 }
