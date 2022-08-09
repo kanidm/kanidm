@@ -23,7 +23,7 @@ chrono = "^0.4.20"
 compact_jwt = "^0.2.3"
 compiled-uuid = "0.1.2"
 concread = "^0.3.7"
-dyn-clone = "^1.0.8"
+dyn-clone = "^1.0.9"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 filetime = "^0.2.17"
 futures = "^0.3.21"
