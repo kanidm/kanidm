@@ -4047,7 +4047,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_schema_entries</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="comment">// Given an entry, assert it&#39;s schema is valid</span>
         <span class="comment">// We do</span>
         <span class="kw">let</span> <span class="ident">schema_outer</span> <span class="op">=</span> <span class="ident">Schema::new</span>().<span class="ident">expect</span>(<span class="string">&quot;failed to create schema&quot;</span>);

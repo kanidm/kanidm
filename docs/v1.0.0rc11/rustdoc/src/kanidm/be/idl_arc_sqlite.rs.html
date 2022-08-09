@@ -1938,7 +1938,7 @@
         <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">iter_mut_dirty</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">maybe_idl</span>)<span class="op">|</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span> <span class="ident">maybe_idl</span> {
                 <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">maybe_compress</span>() {
-                    <span class="macro">filter_info!</span>(<span class="question-mark">?</span><span class="ident">k</span>, <span class="string">&quot;Compressed idl&quot;</span>);
+                    <span class="macro">filter_trace!</span>(<span class="question-mark">?</span><span class="ident">k</span>, <span class="string">&quot;Compressed idl&quot;</span>);
                 }
             }
         })

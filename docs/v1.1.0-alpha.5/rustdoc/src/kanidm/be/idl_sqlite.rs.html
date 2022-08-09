@@ -2839,7 +2839,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idl_sqlite_verify</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">BackendConfig::new_test</span>();
         <span class="kw">let</span> <span class="ident">be</span> <span class="op">=</span> <span class="ident">IdlSqlite::new</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>, <span class="bool-val">false</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">be_w</span> <span class="op">=</span> <span class="ident">be</span>.<span class="ident">write</span>();

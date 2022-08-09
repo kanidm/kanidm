@@ -264,6 +264,16 @@
 <span id="259">259</span>
 <span id="260">260</span>
 <span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -276,9 +286,6 @@
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
-
 <span class="kw">use</span> <span class="ident">users</span>::{<span class="ident">get_effective_gid</span>, <span class="ident">get_effective_uid</span>};
 
 <span class="kw">use</span> <span class="ident">std::os::unix::fs::symlink</span>;
@@ -289,6 +296,7 @@
 <span class="kw">use</span> <span class="ident">bytes</span>::{<span class="ident">BufMut</span>, <span class="ident">BytesMut</span>};
 <span class="kw">use</span> <span class="ident">futures::SinkExt</span>;
 <span class="kw">use</span> <span class="ident">futures::StreamExt</span>;
+<span class="kw">use</span> <span class="ident">sketching::tracing_forest</span>::{<span class="self">self</span>, <span class="ident">traits</span>::<span class="kw-2">*</span>, <span class="ident">util</span>::<span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident">std::fs</span>;
 <span class="kw">use</span> <span class="ident">std::io</span>;
 <span class="kw">use</span> <span class="ident">std::path::Path</span>;
@@ -479,51 +487,63 @@
         <span class="ident">std::process::exit</span>(<span class="number">1</span>);
     }
 
-    <span class="ident">tracing_subscriber::fmt::init</span>();
-
-    <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>);
-    <span class="kw">let</span> <span class="ident">unixd_path_str</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">unixd_path</span>.<span class="ident">to_str</span>() {
-        <span class="prelude-val">Some</span>(<span class="ident">cps</span>) =&gt; <span class="ident">cps</span>,
-        <span class="prelude-val">None</span> =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to turn unixd_path to str&quot;</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
-        }
-    };
-
-    <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">unixd_path</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, <span class="ident">unixd_path_str</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
-        }
-    };
-
-    <span class="kw">let</span> <span class="ident">task_sock_path</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">task_sock_path</span>.<span class="ident">clone</span>();
-    <span class="macro">debug!</span>(<span class="string">&quot;Attempting to use {} ...&quot;</span>, <span class="ident">task_sock_path</span>);
-
-    <span class="kw">let</span> <span class="ident">server</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
-        <span class="kw">loop</span> {
-            <span class="macro">info!</span>(<span class="string">&quot;Attempting to connect to kanidm_unixd ...&quot;</span>);
-            <span class="comment">// Try to connect to the daemon.</span>
-            <span class="kw">match</span> <span class="ident">UnixStream::connect</span>(<span class="kw-2">&amp;</span><span class="ident">task_sock_path</span>).<span class="kw">await</span> {
-                <span class="comment">// Did we connect?</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">stream</span>) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;Found kanidm_unixd, waiting for tasks ...&quot;</span>);
-                    <span class="comment">// Yep! Now let the main handler do it&#39;s job.</span>
-                    <span class="comment">// If it returns (dc, etc, then we loop and try again).</span>
-                    <span class="ident">handle_tasks</span>(<span class="ident">stream</span>, <span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">home_prefix</span>).<span class="kw">await</span>;
+    <span class="ident">tracing_forest::worker_task</span>()
+        .<span class="ident">set_global</span>(<span class="bool-val">true</span>)
+        <span class="comment">// Fall back to stderr</span>
+        .<span class="ident">map_sender</span>(<span class="op">|</span><span class="ident">sender</span><span class="op">|</span> <span class="ident">sender</span>.<span class="ident">or_stderr</span>())
+        .<span class="ident">build_on</span>(<span class="op">|</span><span class="ident">subscriber</span><span class="op">|</span> {
+            <span class="ident">subscriber</span>.<span class="ident">with</span>(
+                <span class="ident">EnvFilter::try_from_default_env</span>()
+                    .<span class="ident">or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">EnvFilter::try_new</span>(<span class="string">&quot;info&quot;</span>))
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to init envfilter&quot;</span>),
+            )
+        })
+        .<span class="ident">on</span>(<span class="kw">async</span> {
+            <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>);
+            <span class="kw">let</span> <span class="ident">unixd_path_str</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">unixd_path</span>.<span class="ident">to_str</span>() {
+                <span class="prelude-val">Some</span>(<span class="ident">cps</span>) =&gt; <span class="ident">cps</span>,
+                <span class="prelude-val">None</span> =&gt; {
+                    <span class="macro">error!</span>(<span class="string">&quot;Unable to turn unixd_path to str&quot;</span>);
+                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;Unable to find kanidm_unixd, sleeping ...&quot;</span>);
-                    <span class="macro">debug!</span>(<span class="string">&quot;\\---&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="comment">// Back off.</span>
-                    <span class="ident">time::sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">5000</span>)).<span class="kw">await</span>;
-                }
-            }
-        }
-    };
+            };
 
-    <span class="ident">server</span>.<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">unixd_path</span>) {
+                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                    <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, <span class="ident">unixd_path_str</span>);
+                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                }
+            };
+
+            <span class="kw">let</span> <span class="ident">task_sock_path</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">task_sock_path</span>.<span class="ident">clone</span>();
+            <span class="macro">debug!</span>(<span class="string">&quot;Attempting to use {} ...&quot;</span>, <span class="ident">task_sock_path</span>);
+
+            <span class="kw">let</span> <span class="ident">server</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
+                <span class="kw">loop</span> {
+                    <span class="macro">info!</span>(<span class="string">&quot;Attempting to connect to kanidm_unixd ...&quot;</span>);
+                    <span class="comment">// Try to connect to the daemon.</span>
+                    <span class="kw">match</span> <span class="ident">UnixStream::connect</span>(<span class="kw-2">&amp;</span><span class="ident">task_sock_path</span>).<span class="kw">await</span> {
+                        <span class="comment">// Did we connect?</span>
+                        <span class="prelude-val">Ok</span>(<span class="ident">stream</span>) =&gt; {
+                            <span class="macro">info!</span>(<span class="string">&quot;Found kanidm_unixd, waiting for tasks ...&quot;</span>);
+                            <span class="comment">// Yep! Now let the main handler do it&#39;s job.</span>
+                            <span class="comment">// If it returns (dc, etc, then we loop and try again).</span>
+                            <span class="ident">handle_tasks</span>(<span class="ident">stream</span>, <span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">home_prefix</span>).<span class="kw">await</span>;
+                        }
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Unable to find kanidm_unixd, sleeping ...&quot;</span>);
+                            <span class="macro">debug!</span>(<span class="string">&quot;\\---&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="comment">// Back off.</span>
+                            <span class="ident">time::sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">5000</span>)).<span class="kw">await</span>;
+                        }
+                    }
+                }
+            };
+
+            <span class="ident">server</span>.<span class="kw">await</span>;
+        })
+        .<span class="kw">await</span>;
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unixd_tasks" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>

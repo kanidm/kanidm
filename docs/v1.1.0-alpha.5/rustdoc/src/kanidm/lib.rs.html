@@ -104,7 +104,6 @@
 <span id="99">99</span>
 <span id="100">100</span>
 <span id="101">101</span>
-<span id="102">102</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server</span>
 <span class="doccomment">//! which is used to process authentication, store identities and enforce access controls.</span>
 
@@ -131,6 +130,9 @@
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lazy_static</span>;
+
+<span class="comment">// #[macro_use]</span>
+<span class="comment">// extern crate sketching;</span>
 
 <span class="comment">// This has to be before &#39;be&#39; so the import order works</span>
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
@@ -173,9 +175,6 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">url::Url</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tagged_event</span>;
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tracing_tree::EventTag</span>;
-
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::<span class="kw-2">*</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{
         <span class="ident">f_and</span>, <span class="ident">f_andnot</span>, <span class="ident">f_eq</span>, <span class="ident">f_id</span>, <span class="ident">f_inc</span>, <span class="ident">f_lt</span>, <span class="ident">f_or</span>, <span class="ident">f_pres</span>, <span class="ident">f_self</span>, <span class="ident">f_spn_name</span>, <span class="ident">f_sub</span>,
@@ -199,14 +198,13 @@
         <span class="ident">ValueSetSecret</span>, <span class="ident">ValueSetSpn</span>, <span class="ident">ValueSetSyntax</span>, <span class="ident">ValueSetT</span>, <span class="ident">ValueSetUint32</span>, <span class="ident">ValueSetUtf8</span>,
         <span class="ident">ValueSetUuid</span>,
     };
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sketching</span>::{
         <span class="ident">admin_debug</span>, <span class="ident">admin_error</span>, <span class="ident">admin_info</span>, <span class="ident">admin_warn</span>, <span class="ident">filter_error</span>, <span class="ident">filter_info</span>, <span class="ident">filter_trace</span>,
         <span class="ident">filter_warn</span>, <span class="ident">perf_trace</span>, <span class="ident">request_error</span>, <span class="ident">request_info</span>, <span class="ident">request_trace</span>, <span class="ident">request_warn</span>,
-        <span class="ident">security_access</span>, <span class="ident">security_critical</span>, <span class="ident">security_error</span>, <span class="ident">security_info</span>, <span class="ident">spanned</span>,
+        <span class="ident">security_access</span>, <span class="ident">security_critical</span>, <span class="ident">security_error</span>, <span class="ident">security_info</span>, <span class="ident">spanned</span>, <span class="ident">tagged_event</span>,
+        <span class="ident">EventTag</span>,
     };
 }
-
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tracing_tree</span>;
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.1 (e092d0b6b 2022-07-16)" ></div>
 </body></html>

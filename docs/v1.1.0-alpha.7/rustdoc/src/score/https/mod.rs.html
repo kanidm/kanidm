@@ -811,7 +811,6 @@
 <span id="806">806</span>
 <span id="807">807</span>
 <span id="808">808</span>
-<span id="809">809</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
@@ -830,7 +829,6 @@
 <span class="kw">use</span> <span class="ident">kanidm::config</span>::{<span class="ident">ServerRole</span>, <span class="ident">TlsConfiguration</span>};
 <span class="kw">use</span> <span class="ident">kanidm::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">kanidm::status::StatusActor</span>;
-<span class="kw">use</span> <span class="ident">kanidm::tracing_tree::TreeMiddleware</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::fs::canonicalize</span>;
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
@@ -949,7 +947,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">new_eventid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">Uuid</span>, <span class="ident">String</span>) {
-        <span class="kw">let</span> <span class="ident">eventid</span> <span class="op">=</span> <span class="ident">kanidm::tracing_tree::operation_id</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">eventid</span> <span class="op">=</span> <span class="ident">sketching::tracing_forest::id</span>();
         <span class="kw">let</span> <span class="ident">hv</span> <span class="op">=</span> <span class="ident">eventid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
         (<span class="ident">eventid</span>, <span class="ident">hv</span>)
     }
@@ -1163,7 +1161,7 @@ Disallow: /
     });
 
     <span class="comment">// Add middleware?</span>
-    <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">TreeMiddleware::with_stdout</span>());
+    <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">sketching::middleware::TreeMiddleware::default</span>());
     <span class="comment">// tserver.with(tide::log::LogMiddleware::new());</span>
     <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.</span>
     <span class="ident">tserver</span>.<span class="ident">with</span>(

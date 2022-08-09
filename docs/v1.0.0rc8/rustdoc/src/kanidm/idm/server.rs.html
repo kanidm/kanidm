@@ -3981,6 +3981,11 @@
 <span id="3976">3976</span>
 <span id="3977">3977</span>
 <span id="3978">3978</span>
+<span id="3979">3979</span>
+<span id="3980">3980</span>
+<span id="3981">3981</span>
+<span id="3982">3982</span>
+<span id="3983">3983</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::BackupCodes</span>;
@@ -4007,7 +4012,6 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::AuthState</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap::LdapBoundToken</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tracing_tree</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::{
     <span class="ident">backup_code_from_random</span>, <span class="ident">password_from_random</span>, <span class="ident">readable_password_from_random</span>,
     <span class="ident">uuid_from_duration</span>, <span class="ident">Sid</span>,
@@ -4937,16 +4941,19 @@
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             }
 
-            <span class="kw">let</span> <span class="ident">tracing_id</span> <span class="op">=</span> <span class="ident">tracing_tree::operation_id</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="macro">admin_warn!</span>(<span class="string">&quot;Recoverable - Invalid Tracing Operation ID State&quot;</span>);
-                <span class="ident">Uuid::new_v4</span>()
-            });
+            <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+            <span class="macro">security_info!</span>(
+                <span class="string">&quot;Starting session {} for {} {}&quot;</span>,
+                <span class="ident">session_id</span>,
+                <span class="ident">account</span>.<span class="ident">spn</span>,
+                <span class="ident">account</span>.<span class="ident">uuid</span>
+            );
 
             <span class="comment">// Account must be anon, so we can gen the uat.</span>
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">LdapBoundToken</span> {
                 <span class="ident">uuid</span>: <span class="ident">UUID_ANONYMOUS</span>,
                 <span class="ident">effective_uat</span>: <span class="ident">account</span>
-                    .<span class="ident">to_userauthtoken</span>(<span class="ident">tracing_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Anonymous</span>)
+                    .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Anonymous</span>)
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to generate effective_uat -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
@@ -5020,16 +5027,19 @@
                     <span class="kw">let</span> <span class="ident">anon_account</span> <span class="op">=</span>
                         <span class="ident">Account::try_from_entry_ro</span>(<span class="ident">anon_entry</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">qs_read</span>)<span class="question-mark">?</span>;
 
-                    <span class="kw">let</span> <span class="ident">tracing_id</span> <span class="op">=</span> <span class="ident">tracing_tree::operation_id</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                        <span class="macro">admin_warn!</span>(<span class="string">&quot;Recoverable - Invalid Tracing Operation ID State&quot;</span>);
-                        <span class="ident">Uuid::new_v4</span>()
-                    });
+                    <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+                    <span class="macro">security_info!</span>(
+                        <span class="string">&quot;Starting session {} for {} {}&quot;</span>,
+                        <span class="ident">session_id</span>,
+                        <span class="ident">account</span>.<span class="ident">spn</span>,
+                        <span class="ident">account</span>.<span class="ident">uuid</span>
+                    );
 
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">LdapBoundToken</span> {
                         <span class="ident">spn</span>: <span class="ident">account</span>.<span class="ident">spn</span>,
                         <span class="ident">uuid</span>: <span class="ident">account</span>.<span class="ident">uuid</span>,
                         <span class="ident">effective_uat</span>: <span class="ident">anon_account</span>
-                            .<span class="ident">to_userauthtoken</span>(<span class="ident">tracing_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::UnixPassword</span>)
+                            .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::UnixPassword</span>)
                             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
                             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                                 <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to generate effective_uat -&gt; {:?}&quot;</span>, <span class="ident">e</span>);

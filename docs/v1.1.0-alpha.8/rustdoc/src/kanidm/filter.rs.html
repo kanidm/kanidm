@@ -3345,7 +3345,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_filter_optimise</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt</span>().<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="comment">// Given sets of &quot;optimisable&quot; filters, optimise them.</span>
         <span class="macro">filter_optimise_assert!</span>(
             <span class="ident">f_and</span>(<span class="macro">vec!</span>[<span class="ident">f_and</span>(<span class="macro">vec!</span>[<span class="ident">f_eq</span>(

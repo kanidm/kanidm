@@ -104,7 +104,7 @@
     <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">debug</span> {
         <span class="ident">::std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
     }
-    <span class="ident">tracing_subscriber::fmt::init</span>();
+    <span class="ident">sketching::tracing_subscriber::fmt::init</span>();
 
     <span class="macro">trace!</span>(<span class="string">&quot;Starting cache status tool ...&quot;</span>);
 

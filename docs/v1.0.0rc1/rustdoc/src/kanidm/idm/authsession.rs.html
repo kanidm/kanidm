@@ -2115,6 +2115,8 @@
 <span id="2110">2110</span>
 <span id="2111">2111</span>
 <span id="2112">2112</span>
+<span id="2113">2113</span>
+<span id="2114">2114</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.</span>
 <span class="doccomment">//! Generally this has to process an authentication attempt, and validate each</span>
 <span class="doccomment">//! factor to assert that the user is legitimate. This also contains some</span>
@@ -2124,7 +2126,6 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed::BackupCodeRemoval</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::AuthState</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tracing_tree</span>;
 <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthType</span>};
@@ -2862,13 +2863,16 @@
                         <span class="comment">// Can&#39;t `unwrap` the uuid until full integration, because some unit tests</span>
                         <span class="comment">// call functions that call this indirectly without opening a span first,</span>
                         <span class="comment">// and this returns `None` when not in a span (and panics if the tree isn&#39;t initialized).</span>
-                        <span class="kw">let</span> <span class="ident">tracing_id</span> <span class="op">=</span> <span class="ident">tracing_tree::operation_id</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                            <span class="macro">admin_warn!</span>(<span class="string">&quot;Recoverable - Invalid Tracing Operation ID State&quot;</span>);
-                            <span class="ident">Uuid::new_v4</span>()
-                        });
+                        <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+                        <span class="macro">security_info!</span>(
+                            <span class="string">&quot;Starting session {} for {} {}&quot;</span>,
+                            <span class="ident">session_id</span>,
+                            <span class="self">self</span>.<span class="ident">account</span>.<span class="ident">spn</span>,
+                            <span class="self">self</span>.<span class="ident">account</span>.<span class="ident">uuid</span>
+                        );
                         <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="self">self</span>
                             .<span class="ident">account</span>
-                            .<span class="ident">to_userauthtoken</span>(<span class="ident">tracing_id</span>, <span class="kw-2">*</span><span class="ident">time</span>, <span class="ident">auth_type</span>)
+                            .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="kw-2">*</span><span class="ident">time</span>, <span class="ident">auth_type</span>)
                             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)<span class="question-mark">?</span>;
 
                         <span class="kw">let</span> <span class="ident">jwt</span> <span class="op">=</span> <span class="ident">Jws</span> { <span class="ident">inner</span>: <span class="ident">uat</span> };
@@ -2957,7 +2961,6 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed::DelayedAction</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::AuthState</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tracing_tree</span>;
     <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span> <span class="kw">as</span> <span class="ident">Set</span>;
 
@@ -2991,7 +2994,8 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_anonymous_auth_mech</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
+
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">create_webauthn</span>();
 
         <span class="kw">let</span> <span class="ident">anon_account</span> <span class="op">=</span> <span class="macro">entry_str_to_account!</span>(<span class="ident">JSON_ANONYMOUS_V1</span>);
@@ -3052,7 +3056,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_simple_password_mech</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">create_webauthn</span>();
         <span class="comment">// create the ent</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">account</span> <span class="op">=</span> <span class="macro">entry_str_to_account!</span>(<span class="ident">JSON_ADMIN_V1</span>);
@@ -3105,7 +3109,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_simple_password_badlist</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="ident">create_jwt_signer</span>();
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">create_webauthn</span>();
         <span class="comment">// create the ent</span>
@@ -3193,7 +3197,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_totp_password_mech</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">create_webauthn</span>();
         <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="ident">create_jwt_signer</span>();
         <span class="comment">// create the ent</span>
@@ -3348,7 +3352,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_password_mfa_badlist</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">create_webauthn</span>();
         <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="ident">create_jwt_signer</span>();
         <span class="comment">// create the ent</span>
@@ -3508,7 +3512,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_webauthn_only_mech</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> (<span class="ident">async_tx</span>, <span class="kw-2">mut</span> <span class="ident">async_rx</span>) <span class="op">=</span> <span class="ident">unbounded</span>();
         <span class="kw">let</span> <span class="ident">ts</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="comment">// create the ent</span>
@@ -3639,7 +3643,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_webauthn_password_mech</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> (<span class="ident">async_tx</span>, <span class="kw-2">mut</span> <span class="ident">async_rx</span>) <span class="op">=</span> <span class="ident">unbounded</span>();
         <span class="kw">let</span> <span class="ident">ts</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="comment">// create the ent</span>
@@ -3809,7 +3813,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_webauthn_password_totp_mech</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> (<span class="ident">async_tx</span>, <span class="kw-2">mut</span> <span class="ident">async_rx</span>) <span class="op">=</span> <span class="ident">unbounded</span>();
         <span class="kw">let</span> <span class="ident">ts</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="comment">// create the ent</span>
@@ -4046,7 +4050,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_authsession_backup_code_mech</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_tree::test_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
         <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="ident">create_jwt_signer</span>();
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">create_webauthn</span>();
         <span class="comment">// create the ent</span>

@@ -4957,7 +4957,7 @@
 
     <span class="macro">macro_rules!</span> <span class="ident">run_test</span> {
         (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>:<span class="ident">expr</span>) =&gt; {{
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::tracing_tree::test_init</span>();
+            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
 
             <span class="comment">// This is a demo idxmeta, purely for testing.</span>
             <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> <span class="macro">vec!</span>[

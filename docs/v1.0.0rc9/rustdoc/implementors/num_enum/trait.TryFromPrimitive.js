@@ -1,3 +1,3 @@
 (function() {var implementors = {};
-implementors["kanidm"] = [{"text":"impl TryFromPrimitive for <a class=\"enum\" href=\"kanidm/prelude/enum.EventTag.html\" title=\"enum kanidm::prelude::EventTag\">EventTag</a>","synthetic":false,"types":["kanidm::tracing_tree::event_tag::EventTag"]}];
+implementors["sketching"] = [{"text":"impl TryFromPrimitive for <a class=\"enum\" href=\"sketching/enum.EventTag.html\" title=\"enum sketching::EventTag\">EventTag</a>","synthetic":false,"types":["sketching::EventTag"]}];
 if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
