@@ -91,6 +91,14 @@ impl SystemOpt {
     }
 }
 
+/// Shows the version string and current git commit status at build
+fn show_version() -> bool {
+    let version = env!("CARGO_PKG_VERSION");
+    let git_status = git_version::git_version!(cargo_prefix = "cargo:", fallback="unknown git version");
+    println!("kanidm {} ({})", version, git_status);
+    true
+}
+
 impl KanidmClientOpt {
     pub fn debug(&self) -> bool {
         match self {
@@ -103,10 +111,14 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group { commands } => commands.debug(),
             KanidmClientOpt::System { commands } => commands.debug(),
             KanidmClientOpt::Recycle { commands } => commands.debug(),
+<<<<<<< HEAD
             KanidmClientOpt::Version {} => {
                 kanidm_proto::utils::show_version("kanidm");
                 true
             }
+=======
+            KanidmClientOpt::Version {} => show_version(),
+>>>>>>> 99be0c7f (first commit of this change)
         }
     }
 
@@ -121,7 +133,11 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group { commands } => commands.exec().await,
             KanidmClientOpt::System { commands } => commands.exec().await,
             KanidmClientOpt::Recycle { commands } => commands.exec().await,
+<<<<<<< HEAD
             KanidmClientOpt::Version {} => (),
+=======
+            KanidmClientOpt::Version { } => (),
+>>>>>>> 99be0c7f (first commit of this change)
         }
     }
 }
