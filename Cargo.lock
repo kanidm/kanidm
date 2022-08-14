@@ -4098,7 +4098,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db76ff9fa4b1458b3c7f077f3ff9887394058460d21e634355b273aaf11eea45"
 dependencies = [
  "itoa 1.0.2",
- "js-sys",
  "libc",
  "num_threads",
  "time-macros 0.2.4",
