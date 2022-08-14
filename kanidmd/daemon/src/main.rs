@@ -28,6 +28,7 @@ use std::os::unix::fs::MetadataExt;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::exit;
 use std::str::FromStr;
 
 use sketching::tracing_forest::{self, traits::*, util::*};
@@ -119,6 +120,7 @@ impl KanidmdOpt {
             KanidmdOpt::Database {
                 commands: DbCommands::Vacuum(copt),
             } => &copt,
+            KanidmdOpt::Version(copt) => &copt,
         }
     }
 }
@@ -192,6 +194,12 @@ async fn main() {
 
             // Read cli args, determine if we should backup/restore
             let opt = KanidmdParser::parse();
+
+            // print the app version and bail
+            if let KanidmdOpt::Version(_) = &opt.commands {
+                kanidm_proto::utils::show_version("kanidmd");
+                exit(0);
+            };
 
             let mut config = Configuration::new();
             // Check the permissions are OK.
@@ -446,6 +454,9 @@ async fn main() {
                 } => {
                     eprintln!("Running in vacuum mode ...");
                     vacuum_server_core(&config);
+                }
+                _ => {
+                    panic!("How'd you get here?");
                 }
             }
         })

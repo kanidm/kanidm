@@ -4,13 +4,14 @@ use tracing::{self, instrument};
 
 use crate::*;
 
+#[derive(Default)]
 pub struct TreeMiddleware {}
 
-impl Default for TreeMiddleware {
-    fn default() -> Self {
-        TreeMiddleware {}
-    }
-}
+// impl Default for TreeMiddleware {
+//     fn default() -> Self {
+//         TreeMiddleware {}
+//     }
+// }
 
 impl TreeMiddleware {
     #[instrument(name = "tide-request", skip(self, req, next))]
