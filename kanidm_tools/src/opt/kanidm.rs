@@ -556,7 +556,7 @@ pub enum KanidmClientOpt {
         #[clap(subcommand)]
         commands: RawOpt,
     },
-    /// Show the client version
+    /// Print the program version and exit
     Version {
 
     }
