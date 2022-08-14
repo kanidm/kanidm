@@ -94,8 +94,9 @@ impl SystemOpt {
 /// Shows the version string and current git commit status at build
 fn show_version() -> bool {
     let version = env!("CARGO_PKG_VERSION");
-    let git_status = git_version::git_version!(cargo_prefix = "cargo:", fallback="unknown git version");
+    let git_status = git_version::git_version!(prefix = "git:", cargo_prefix = "cargo:", fallback="unknown git version");
     println!("kanidm {} ({})", version, git_status);
+
     true
 }
 
