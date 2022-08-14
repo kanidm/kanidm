@@ -3,7 +3,7 @@ struct CommonOpt {
     #[clap(short, long, env = "KANIDM_DEBUG")]
     /// Logging level. quiet, default, filter, verbose, perffull
     debug: Option<LogLevel>,
-    #[clap(parse(from_os_str), default_value = "/data/server.toml", short, long = "config", env = "KANIDM_CONFIG")]
+    #[clap(parse(from_os_str), default_value = "", short, long = "config", env = "KANIDM_CONFIG")]
     /// Path to the server's configuration file. If it does not exist, it will be created.
     config_path: PathBuf,
     /// Log format (still in very early development)
