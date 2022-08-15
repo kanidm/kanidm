@@ -20,7 +20,7 @@ classifiers=[
 python = "^3.8"
 requests = "^2.28.1"
 toml = "^0.10.2"
-pydantic = "^1.9.1"
+pydantic = "^1.9.2"
 aiohttp = "^3.8.1"
 
 [tool.poetry.dev-dependencies]
