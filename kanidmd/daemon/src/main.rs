@@ -455,8 +455,8 @@ async fn main() {
                     eprintln!("Running in vacuum mode ...");
                     vacuum_server_core(&config);
                 }
-                _ => {
-                    panic!("How'd you get here?");
+                KanidmdOpt::Version(_) => {
+                    return
                 }
             }
         })
