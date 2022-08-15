@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["HomeAttr",""],["UidAttr",""]],"struct":[["KanidmUnixdConfig",""]]});
