@@ -55,6 +55,9 @@ load-plugins="pylint_pydantic,pylint_pytest"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "network: Tests that require network access",
+]
 
 [tool.coverage.run]
 source = ["kanidm"]

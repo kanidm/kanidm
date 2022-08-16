@@ -52,6 +52,8 @@ def test_kanidmconfig_parse_toml() -> None:
     config = KanidmClientConfig()
     config.parse_toml("uri = 'https://crabzrool.example.com'")
 
+
+@pytest.mark.network
 def test_radius_client_bad_hostname() -> None:
     """tests with a bad hostname"""
     with pytest.raises(pydantic.error_wrappers.ValidationError):
