@@ -11,6 +11,7 @@ import pytest
 from kanidm import KanidmClient
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_valid() -> None:
     """tests a valid connection"""
@@ -28,6 +29,7 @@ async def test_ssl_valid() -> None:
         print(f"{result.status_code=}")
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_self_signed() -> None:
     """tests with a self-signed cert"""
@@ -44,6 +46,7 @@ async def test_ssl_self_signed() -> None:
             await client.call_get("/")
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_self_signed_with_verify() -> None:
     """tests with a self-signed cert"""
@@ -58,6 +61,7 @@ async def test_ssl_self_signed_with_verify() -> None:
         assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_self_signed_no_verify_certificate() -> None:
     """tests with a self-signed cert"""
@@ -72,6 +76,7 @@ async def test_ssl_self_signed_no_verify_certificate() -> None:
         assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_wrong_hostname_throws_error() -> None:
     """tests with validate hostnames and wrong hostname in the cert"""
@@ -88,6 +93,7 @@ async def test_ssl_wrong_hostname_throws_error() -> None:
             assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_wrong_hostname_dont_verify_hostnames() -> None:
     """tests with validate hostnames and wrong hostname in the cert"""
@@ -102,6 +108,7 @@ async def test_ssl_wrong_hostname_dont_verify_hostnames() -> None:
         assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_wrong_hostname_verify_certificate() -> None:
     """tests with validate hostnames and wrong hostname in the cert"""
@@ -117,6 +124,7 @@ async def test_ssl_wrong_hostname_verify_certificate() -> None:
         assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_revoked() -> None:
     """tests with a revoked certificate, it'll pass but one day this should be a thing"""
@@ -130,6 +138,7 @@ async def test_ssl_revoked() -> None:
         assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_expired() -> None:
     """tests with an expired certificate"""
@@ -147,6 +156,7 @@ async def test_ssl_expired() -> None:
             assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_expired_ignore() -> None:
     """tests with an expired certificate"""
@@ -161,6 +171,7 @@ async def test_ssl_expired_ignore() -> None:
         assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_untrusted_root_throws() -> None:
     """tests with an untrusted root, which should throw an error"""
@@ -178,6 +189,7 @@ async def test_ssl_untrusted_root_throws() -> None:
             assert result.content
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_untrusted_root_configured() -> None:
     """tests with an untrusted root, which should throw an error"""
