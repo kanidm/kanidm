@@ -1,12 +1,28 @@
 [tool.poetry]
 name = "kanidm"
-version = "0.0.1"
+version = "0.0.2"
 description = "Kanidm client library"
+license = "MPL-2.0"
+
 authors = [
     "James Hodgkinson <james@terminaloutcomes.com>"
 ]
+
+readme = "README.md"
+repository = "https://github.com/kanidm/kanidm"
+homepage = "https://kanidm.com/"
+
 packages = [
-    {include = "kanidm"}
+    {include = "kanidm"},
+    {include = "tests"},
+
+
+]
+
+keywords = [
+    "kanidm",
+    "idm",
+    "api",
 ]
 classifiers=[
     "Development Status :: 3 - Alpha",
@@ -18,7 +34,6 @@ classifiers=[
 ]
 [tool.poetry.dependencies]
 python = "^3.8"
-requests = "^2.28.1"
 toml = "^0.10.2"
 pydantic = "^1.9.2"
 aiohttp = "^3.8.1"
@@ -26,7 +41,6 @@ aiohttp = "^3.8.1"
 [tool.poetry.dev-dependencies]
 pylint = "^2.14.5"
 mypy = "^0.971"
-types-requests = "^2.28.8"
 pytest = "^7.1.2"
 types-toml = "^0.10.8"
 pylint-pydantic = "^0.1.4"
