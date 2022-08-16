@@ -18,6 +18,7 @@ from kanidm.types import AuthBeginResponse
 logging.basicConfig(level=logging.DEBUG)
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_auth_init(client_configfile: KanidmClient) -> None:
     """tests the auth init step"""
@@ -34,6 +35,7 @@ async def test_auth_init(client_configfile: KanidmClient) -> None:
     assert result.sessionid
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_auth_begin(client_configfile: KanidmClient) -> None:
     """tests the auth begin step"""
@@ -66,6 +68,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
         assert AuthBeginResponse.parse_obj(retval)
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow"""
@@ -76,6 +79,7 @@ async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
     print(result)
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_authenticate_flow_fail(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow with a valid (hopefully) usernamd and invalid password"""
@@ -139,6 +143,7 @@ async def test_authenticate_inputs_validation(
             await client.authenticate_password()
 
 
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_auth_step_password(client: KanidmClient) -> None:
     """tests things"""
