@@ -44,6 +44,12 @@ jobs:
           export
           ./build_all_the_docs.sh
 
+      - name: pykanidm docs
+        run: |
+          python -m pip install poetry
+          make docs/pykanidm/build
+          mv pykanidm/site ./docs/pykanidm
+
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
