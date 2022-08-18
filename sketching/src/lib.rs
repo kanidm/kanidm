@@ -11,7 +11,7 @@ pub use tracing;
 pub use tracing_forest;
 pub use tracing_subscriber;
 
-pub fn test_init() -> () {
+pub fn test_init() {
     // tracing_subscriber::fmt::try_init()
     let _ = tracing_forest::test_init();
     /*

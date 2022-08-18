@@ -23,5 +23,9 @@ jobs:
           libssl-dev \
           libsqlite3-dev
 
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
     - name: Build
       run: cargo build --verbose

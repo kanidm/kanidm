@@ -103,6 +103,10 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group { commands } => commands.debug(),
             KanidmClientOpt::System { commands } => commands.debug(),
             KanidmClientOpt::Recycle { commands } => commands.debug(),
+            KanidmClientOpt::Version {} => {
+                kanidm_proto::utils::show_version("kanidm");
+                true
+            }
         }
     }
 
@@ -117,6 +121,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group { commands } => commands.exec().await,
             KanidmClientOpt::System { commands } => commands.exec().await,
             KanidmClientOpt::Recycle { commands } => commands.exec().await,
+            KanidmClientOpt::Version {} => (),
         }
     }
 }
