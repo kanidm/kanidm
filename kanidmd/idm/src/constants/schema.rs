@@ -1077,6 +1077,7 @@ pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
     }
   }
 "#;
+
 pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
   {
     "attrs": {
@@ -1110,6 +1111,37 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000046"
+      ],
+      "systemsupplements": [
+        "person",
+        "service_account"
+      ]
+    }
+  }
+"#;
+
+pub const JSON_SCHEMA_CLASS_SERVICE_ACCOUNT: &str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Object representation of service account"
+      ],
+      "classname": [
+        "service_account"
+      ],
+      "systemmay": [
+        "primary_credential"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000106"
+      ],
+      "systemexcludes": [
+        "person"
       ]
     }
   }
@@ -1172,6 +1204,9 @@ pub const JSON_SCHEMA_CLASS_POSIXGROUP: &str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000058"
+      ],
+      "systemsupplements": [
+        "group"
       ]
     }
   }
@@ -1200,6 +1235,9 @@ pub const JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000057"
+      ],
+      "systemsupplements": [
+        "account"
       ]
     }
   }

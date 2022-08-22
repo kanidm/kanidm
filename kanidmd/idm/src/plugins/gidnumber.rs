@@ -173,7 +173,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["account"],
+                "class": ["account", "service_account"],
                 "name": ["testperson"],
                 "uuid": ["83a0927f-3de1-45ec-bea0-2f7b997ef244"],
                 "description": ["testperson"],

@@ -139,24 +139,24 @@ async fn test_fixture(rsclient: KanidmClient) {
 
     // Create a new account
     rsclient
-        .idm_account_create("testaccount1", "Posix Demo Account")
+        .idm_person_account_create("testaccount1", "Posix Demo Account")
         .await
         .unwrap();
 
     // Extend the account with posix attrs.
     rsclient
-        .idm_account_unix_extend("testaccount1", Some(20000), None)
+        .idm_person_account_unix_extend("testaccount1", Some(20000), None)
         .await
         .unwrap();
     // Assign an ssh public key.
     rsclient
-        .idm_account_post_ssh_pubkey("testaccount1", "tk",
+        .idm_person_account_post_ssh_pubkey("testaccount1", "tk",
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst")
         .await
         .unwrap();
     // Set a posix password
     rsclient
-        .idm_account_unix_cred_put("testaccount1", TESTACCOUNT1_PASSWORD_A)
+        .idm_person_account_unix_cred_put("testaccount1", TESTACCOUNT1_PASSWORD_A)
         .await
         .unwrap();
 
@@ -370,7 +370,7 @@ async fn test_cache_account_delete() {
         .await
         .expect("failed to auth as admin");
     adminclient
-        .idm_account_delete("testaccount1")
+        .idm_person_account_delete("testaccount1")
         .await
         .expect("failed to delete");
 
@@ -420,7 +420,7 @@ async fn test_cache_account_password() {
         .await
         .expect("failed to auth as admin");
     adminclient
-        .idm_account_unix_cred_put("testaccount1", TESTACCOUNT1_PASSWORD_B)
+        .idm_person_account_unix_cred_put("testaccount1", TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("Failed to change password");
 
@@ -570,7 +570,7 @@ async fn test_cache_account_expiry() {
         .await
         .expect("failed to auth as admin");
     adminclient
-        .idm_account_set_attr("testaccount1", "account_expire", &[ACCOUNT_EXPIRE])
+        .idm_person_account_set_attr("testaccount1", "account_expire", &[ACCOUNT_EXPIRE])
         .await
         .unwrap();
     // auth will fail

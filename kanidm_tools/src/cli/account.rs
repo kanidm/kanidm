@@ -136,7 +136,7 @@ impl AccountOpt {
                 AccountPosix::Set(aopt) => {
                     let client = aopt.copt.to_client().await;
                     if let Err(e) = client
-                        .idm_account_unix_extend(
+                        .idm_person_account_unix_extend(
                             aopt.aopts.account_id.as_str(),
                             aopt.gidnumber,
                             aopt.shell.as_deref(),
@@ -157,7 +157,7 @@ impl AccountOpt {
                     };
 
                     if let Err(e) = client
-                        .idm_account_unix_cred_put(
+                        .idm_person_account_unix_cred_put(
                             aopt.aopts.account_id.as_str(),
                             password.as_str(),
                         )
@@ -294,7 +294,7 @@ impl AccountOpt {
                 AccountSsh::Add(aopt) => {
                     let client = aopt.copt.to_client().await;
                     if let Err(e) = client
-                        .idm_account_post_ssh_pubkey(
+                        .idm_person_account_post_ssh_pubkey(
                             aopt.aopts.account_id.as_str(),
                             aopt.tag.as_str(),
                             aopt.pubkey.as_str(),
@@ -347,7 +347,7 @@ impl AccountOpt {
                     status: MessageStatus::Success,
                 };
                 match client
-                    .idm_account_delete(aopt.aopts.account_id.as_str())
+                    .idm_person_account_delete(aopt.aopts.account_id.as_str())
                     .await
                 {
                     Err(e) => {
@@ -364,7 +364,7 @@ impl AccountOpt {
             AccountOpt::Create(acopt) => {
                 let client = acopt.copt.to_client().await;
                 if let Err(e) = client
-                    .idm_account_create(
+                    .idm_person_account_create(
                         acopt.aopts.account_id.as_str(),
                         acopt.display_name.as_str(),
                     )

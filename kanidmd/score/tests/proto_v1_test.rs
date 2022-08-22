@@ -418,7 +418,7 @@ async fn test_server_radius_credential_lifecycle() {
     assert!(res.is_ok());
 
     rsclient
-        .idm_account_create("demo_account", "Deeeeemo")
+        .idm_person_account_create("demo_account", "Deeeeemo")
         .await
         .unwrap();
 
@@ -490,7 +490,7 @@ async fn test_server_rest_account_lifecycle() {
 
     // Create a new account
     rsclient
-        .idm_account_create("demo_account", "Deeeeemo")
+        .idm_person_account_create("demo_account", "Deeeeemo")
         .await
         .unwrap();
 
@@ -517,7 +517,7 @@ async fn test_server_rest_account_lifecycle() {
     assert!(r == Some(vec!["demo@idm.example.com".to_string()]));
 
     // Delete the account
-    rsclient.idm_account_delete("demo_account").await.unwrap();
+    rsclient.idm_person_account_delete("demo_account").await.unwrap();
 }
 
 #[tokio::test]
@@ -539,13 +539,13 @@ async fn test_server_rest_sshkey_lifecycle() {
 
     // Post an invalid key (should error)
     let r1 = rsclient
-        .idm_account_post_ssh_pubkey("admin", "inv", "invalid key")
+        .idm_person_account_post_ssh_pubkey("admin", "inv", "invalid key")
         .await;
     assert!(r1.is_err());
 
     // Post a valid key
     let r2 = rsclient
-            .idm_account_post_ssh_pubkey("admin", "k1", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst").await;
+            .idm_person_account_post_ssh_pubkey("admin", "k1", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst").await;
     println!("{:?}", r2);
     assert!(r2.is_ok());
 
@@ -555,7 +555,7 @@ async fn test_server_rest_sshkey_lifecycle() {
 
     // Post a valid key
     let r3 = rsclient
-            .idm_account_post_ssh_pubkey("admin", "k2", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst").await;
+            .idm_person_account_post_ssh_pubkey("admin", "k2", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst").await;
     assert!(r3.is_ok());
 
     // Get, should have both keys.
@@ -622,13 +622,13 @@ async fn test_server_rest_posix_lifecycle() {
 
     // Create a new account
     rsclient
-        .idm_account_create("posix_account", "Posix Demo Account")
+        .idm_person_account_create("posix_account", "Posix Demo Account")
         .await
         .unwrap();
 
     // Extend the account with posix attrs.
     rsclient
-        .idm_account_unix_extend("posix_account", None, None)
+        .idm_person_account_unix_extend("posix_account", None, None)
         .await
         .unwrap();
 
@@ -723,19 +723,19 @@ async fn test_server_rest_posix_auth_lifecycle() {
 
     // Setup a unix user
     rsclient
-        .idm_account_create("posix_account", "Posix Demo Account")
+        .idm_person_account_create("posix_account", "Posix Demo Account")
         .await
         .unwrap();
 
     // Extend the account with posix attrs.
     rsclient
-        .idm_account_unix_extend("posix_account", None, None)
+        .idm_person_account_unix_extend("posix_account", None, None)
         .await
         .unwrap();
 
     // add their password (unix self)
     rsclient
-        .idm_account_unix_cred_put("posix_account", UNIX_TEST_PASSWORD)
+        .idm_person_account_unix_cred_put("posix_account", UNIX_TEST_PASSWORD)
         .await
         .unwrap();
 
@@ -793,13 +793,13 @@ async fn test_server_rest_recycle_lifecycle() {
 
     // Setup a unix user
     rsclient
-        .idm_account_create("recycle_account", "Recycle Demo Account")
+        .idm_person_account_create("recycle_account", "Recycle Demo Account")
         .await
         .unwrap();
 
     // delete them
     rsclient
-        .idm_account_delete("recycle_account")
+        .idm_person_account_delete("recycle_account")
         .await
         .unwrap();
 
@@ -846,7 +846,7 @@ async fn test_server_rest_account_import_password() {
 
     // Create a new account
     rsclient
-        .idm_account_create("demo_account", "Deeeeemo")
+        .idm_person_account_create("demo_account", "Deeeeemo")
         .await
         .unwrap();
 
@@ -910,7 +910,7 @@ async fn test_server_rest_totp_auth_lifecycle() {
 
     // Create a new account
     rsclient
-        .idm_account_create("demo_account", "Deeeeemo")
+        .idm_person_account_create("demo_account", "Deeeeemo")
         .await
         .unwrap();
 
@@ -994,7 +994,7 @@ async fn test_server_rest_backup_code_auth_lifecycle() {
 
     // Create a new account
     rsclient
-        .idm_account_create("demo_account", "Deeeeemo")
+        .idm_person_account_create("demo_account", "Deeeeemo")
         .await
         .unwrap();
 
@@ -1200,7 +1200,7 @@ async fn test_server_credential_update_session_pw() {
 
     // Create an account
     rsclient
-        .idm_account_create("demo_account", "Demo Account")
+        .idm_person_account_create("demo_account", "Demo Account")
         .await
         .unwrap();
 
@@ -1259,7 +1259,7 @@ async fn test_server_credential_update_session_totp_pw() {
 
     // Create an account
     rsclient
-        .idm_account_create("demo_account", "Demo Account")
+        .idm_person_account_create("demo_account", "Demo Account")
         .await
         .unwrap();
 
@@ -1382,7 +1382,7 @@ async fn test_server_credential_update_session_passkey() {
 
     // Create an account
     rsclient
-        .idm_account_create("demo_account", "Demo Account")
+        .idm_person_account_create("demo_account", "Demo Account")
         .await
         .unwrap();
 

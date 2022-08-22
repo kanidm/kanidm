@@ -448,7 +448,7 @@ pub const JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         ],
         "name": ["idm_acp_account_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000011"],
-        "description": ["Builtin IDM Control for managing accounts."],
+        "description": ["Builtin IDM Control for managing all accounts (both person and service)."],
         "acp_receiver": [
             "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000006\"]}"
         ],
@@ -495,7 +495,7 @@ pub const JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
             "devicekeys"
         ],
         "acp_create_class": [
-            "object", "account"
+            "object", "account", "service_account"
         ]
     }
 }"#;
@@ -605,7 +605,7 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         ],
         "name": ["idm_acp_hp_account_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000016"],
-        "description": ["Builtin IDM Control for managing high privilege accounts."],
+        "description": ["Builtin IDM Control for managing high privilege accounts (both person and service)."],
         "acp_receiver": [
             "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
         ],
@@ -922,7 +922,7 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
             "devicekeys"
         ],
         "acp_create_class": [
-            "object", "account"
+            "object", "account", "service_account"
         ]
     }
 }"#;

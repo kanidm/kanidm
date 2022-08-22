@@ -57,7 +57,7 @@ static DEFAULT_NOT_HP_GROUP_NAMES: [&str; 2] =
     ["idm_account_unix_extend_priv", "idm_group_unix_extend_priv"];
 
 async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
-    rsclient.idm_account_create(id, id).await.unwrap();
+    rsclient.idm_person_account_create(id, id).await.unwrap();
 
     // Create group and add to user to test read attr: member_of
     if rsclient.idm_group_get(&group_name).await.unwrap().is_none() {
@@ -87,7 +87,7 @@ async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Opti
         ),
         "ssh_publickey" => Some(
             rsclient
-                .idm_account_post_ssh_pubkey(
+                .idm_person_account_post_ssh_pubkey(
                     id,
                     "k1",
                     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0\
@@ -98,19 +98,19 @@ async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Opti
         ),
         "unix_password" => Some(
             rsclient
-                .idm_account_unix_cred_put(id, "dsadjasiodqwjk12asdl")
+                .idm_person_account_unix_cred_put(id, "dsadjasiodqwjk12asdl")
                 .await
                 .is_ok(),
         ),
         "legalname" => Some(
             rsclient
-                .idm_account_person_set(id, None, Some("test legal name".into()))
+                .idm_person_account_set_attr(id, "legalname", &["test legal name"])
                 .await
                 .is_ok(),
         ),
         "mail" => Some(
             rsclient
-                .idm_account_person_set(id, Some(&[format!("{}@example.com", id)]), None)
+                .idm_person_account_set_attr(id, "mail", &[&format!("{}@example.com", id)])
                 .await
                 .is_ok(),
         ),
@@ -133,21 +133,11 @@ async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Opti
 async fn add_all_attrs(rsclient: &KanidmClient, id: &str, group_name: &str) {
     // Extend with posix attrs to test read attr: gidnumber and loginshell
     rsclient
-        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
-        .await
-        .unwrap();
-    rsclient
-        .idm_account_unix_extend(id, None, Some(&"/bin/sh"))
+        .idm_person_account_unix_extend(id, None, Some(&"/bin/sh"))
         .await
         .unwrap();
     rsclient
         .idm_group_unix_extend(&group_name, None)
-        .await
-        .unwrap();
-
-    // Extend with person to allow legalname
-    rsclient
-        .idm_account_person_extend(id, None, None)
         .await
         .unwrap();
 
@@ -195,7 +185,7 @@ async fn login_account(rsclient: &KanidmClient, id: &str) -> () {
         .unwrap();
 
     rsclient
-        .idm_account_primary_credential_set_password(id, "eicieY7ahchaoCh0eeTa")
+        .idm_person_account_primary_credential_set_password(id, "eicieY7ahchaoCh0eeTa")
         .await
         .unwrap();
 
@@ -292,6 +282,10 @@ async fn test_default_entries_rbac_users() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
 
     create_user_with_all_attrs(&rsclient, "self_account", Some("self_group")).await;
     create_user_with_all_attrs(&rsclient, "other_account", Some("other_group")).await;
@@ -329,6 +323,10 @@ async fn test_default_entries_rbac_account_managers() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
 
     create_user(&rsclient, "account_manager", "idm_account_manage_priv").await;
     create_user_with_all_attrs(&rsclient, "test", Some("test_group")).await;
@@ -359,6 +357,10 @@ async fn test_default_entries_rbac_group_managers() {
     let rsclient = setup_async_test().await;
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await
+        .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
         .await
         .unwrap();
 
@@ -405,6 +407,11 @@ async fn test_default_entries_rbac_admins_access_control_entries() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
+
     static ACP_COMMON_ATTRS: [&str; 4] = ["name", "description", "acp_receiver", "acp_targetscope"];
     static ACP_ENTRIES: [&str; 28] = [
         "idm_admins_acp_recycle_search",
@@ -452,6 +459,11 @@ async fn test_default_entries_rbac_admins_schema_entries() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
+
     let default_classnames: HashSet<String> = [
         "access_control_create",
         "access_control_delete",
@@ -563,6 +575,11 @@ async fn test_default_entries_rbac_admins_group_entries() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
+
     create_user(&rsclient, "test", "test_group").await;
 
     let default_group_names =
@@ -579,6 +596,10 @@ async fn test_default_entries_rbac_admins_ha_accounts() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
 
     static MAIN_ATTRS: [&str; 3] = ["name", "displayname", "primary_credential"];
     test_write_attrs(&rsclient, "idm_admin", &MAIN_ATTRS, true).await;
@@ -592,9 +613,14 @@ async fn test_default_entries_rbac_admins_recycle_accounts() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
+
     create_user(&rsclient, "test", "test_group").await;
 
-    rsclient.idm_account_delete("test").await.unwrap();
+    rsclient.idm_person_account_delete("test").await.unwrap();
     rsclient.recycle_bin_revive("test").await.unwrap();
 
     let acc = rsclient.idm_account_get("test").await.unwrap();
@@ -609,6 +635,10 @@ async fn test_default_entries_rbac_people_managers() {
     let rsclient = setup_async_test().await;
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await
+        .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
         .await
         .unwrap();
 
@@ -650,6 +680,11 @@ async fn test_default_entries_rbac_anonymous_entry() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
+
     create_user_with_all_attrs(&rsclient, "test", Some("test_group")).await;
     rsclient
         .idm_group_add_members("test_group", &["anonymous"])
@@ -676,6 +711,11 @@ async fn test_default_entries_rbac_radius_servers() {
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
+
     create_user(&rsclient, "radius_server", "idm_radius_servers").await;
     create_user_with_all_attrs(&rsclient, "test", Some("test_group")).await;
 
@@ -692,6 +732,10 @@ async fn test_self_write_mail_priv_people() {
     let rsclient = setup_async_test().await;
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await
+        .unwrap();
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
         .await
         .unwrap();
 

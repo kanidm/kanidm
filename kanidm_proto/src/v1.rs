@@ -22,6 +22,8 @@ pub enum SchemaError {
     InvalidAttribute(String),
     InvalidAttributeSyntax(String),
     AttributeNotValidForClass(String),
+    SupplementsNotSatisfied(Vec<String>),
+    ExcludesNotSatisfied(Vec<String>),
     EmptyFilter,
     Corrupted,
     PhantomAttribute(String),

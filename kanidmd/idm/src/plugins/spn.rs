@@ -203,7 +203,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["account"],
+                "class": ["account", "service_account"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]
@@ -230,7 +230,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["account"],
+                "class": ["account", "service_account"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]
@@ -257,7 +257,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["account"],
+                "class": ["account", "service_account"],
                 "spn": ["testperson@invalid_domain.com"],
                 "name": ["testperson"],
                 "description": ["testperson"],
@@ -284,7 +284,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["account"],
+                "class": ["account", "service_account"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]

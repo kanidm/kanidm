@@ -42,6 +42,8 @@ use webauthn_rs_proto::{
     PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
 };
 
+mod person;
+
 pub const APPLICATION_JSON: &str = "application/json";
 pub const KOPID: &str = "X-KANIDM-OPID";
 pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
@@ -1316,7 +1318,7 @@ impl KanidmClient {
         self.perform_get_request("/v1/account").await
     }
 
-    pub async fn idm_account_create(&self, name: &str, dn: &str) -> Result<(), ClientError> {
+    pub async fn idm_service_account_create(&self, name: &str, displayname: &str) -> Result<(), ClientError> {
         let mut new_acct = Entry {
             attrs: BTreeMap::new(),
         };
@@ -1325,8 +1327,8 @@ impl KanidmClient {
             .insert("name".to_string(), vec![name.to_string()]);
         new_acct
             .attrs
-            .insert("displayname".to_string(), vec![dn.to_string()]);
-        self.perform_post_request("/v1/account", new_acct).await
+            .insert("displayname".to_string(), vec![displayname.to_string()]);
+        self.perform_post_request("/v1/service_account", new_acct).await
     }
 
     pub async fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
@@ -1344,11 +1346,6 @@ impl KanidmClient {
         // Format doesn't work in async
         // format!("/v1/account/{}/_unix/_token", id).as_str()
         self.perform_get_request(["/v1/account/", id, "/_unix/_token"].concat().as_str())
-            .await
-    }
-
-    pub async fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(["/v1/account/", id].concat().as_str())
             .await
     }
 
@@ -1515,66 +1512,6 @@ impl KanidmClient {
             Err(e) => Err(e),
         }
     }
-
-    /*
-    pub async fn idm_account_primary_credential_register_webauthn(
-        &self,
-        id: &str,
-        label: &str,
-    ) -> Result<(Uuid, CreationChallengeResponse), ClientError> {
-        let r = SetCredentialRequest::WebauthnBegin(label.to_string());
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::WebauthnCreateChallenge(u, s)) => Ok((u, s)),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub async fn idm_account_primary_credential_complete_webuthn_registration(
-        &self,
-        id: &str,
-        rego: RegisterPublicKeyCredential,
-        session: Uuid,
-    ) -> Result<(), ClientError> {
-        let r = SetCredentialRequest::WebauthnRegister(session, rego);
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub async fn idm_account_primary_credential_remove_webauthn(
-        &self,
-        id: &str,
-        label: &str,
-    ) -> Result<(), ClientError> {
-        let r = SetCredentialRequest::WebauthnRemove(label.to_string());
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-    */
 
     pub async fn idm_account_primary_credential_generate_backup_code(
         &self,
@@ -1803,7 +1740,7 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn idm_account_unix_extend(
+    pub async fn idm_person_account_unix_extend(
         &self,
         id: &str,
         gidnumber: Option<u32>,
@@ -1813,16 +1750,16 @@ impl KanidmClient {
             shell: shell.map(str::to_string),
             gidnumber,
         };
-        self.perform_post_request(format!("/v1/account/{}/_unix", id).as_str(), ux)
+        self.perform_post_request(format!("/v1/person/{}/_unix", id).as_str(), ux)
             .await
     }
 
-    pub async fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
+    pub async fn idm_person_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
         self.perform_put_request(
-            ["/v1/account/", id, "/_unix/_credential"].concat().as_str(),
+            ["/v1/person/", id, "/_unix/_credential"].concat().as_str(),
             req,
         )
         .await
@@ -1845,33 +1782,19 @@ impl KanidmClient {
             .await
     }
 
-    /*
-    pub async fn idm_account_orgperson_extend(
-        &self,
-        id: &str,
-        mail: &str,
-    ) -> Result<(), ClientError> {
-        let x = AccountOrgPersonExtend {
-            mail: mail.to_string(),
-        };
-        self.perform_post_request(format!("/v1/account/{}/_orgperson", id).as_str(), x)
-            .await
-    }
-    */
-
     pub async fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
             .await
     }
 
-    pub async fn idm_account_post_ssh_pubkey(
+    pub async fn idm_person_account_post_ssh_pubkey(
         &self,
         id: &str,
         tag: &str,
         pubkey: &str,
     ) -> Result<(), ClientError> {
         let sk = (tag.to_string(), pubkey.to_string());
-        self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
+        self.perform_post_request(format!("/v1/person/{}/_ssh_pubkeys", id).as_str(), sk)
             .await
     }
 

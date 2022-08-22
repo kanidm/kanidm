@@ -102,7 +102,7 @@ impl KaniHttpServer {
             match e {
                 Entity::Account(a) => {
                     self.client
-                        .idm_account_create(&a.name, &a.display_name)
+                        .idm_person_account_create(&a.name, &a.display_name)
                         .await
                         .map(|_| ())
                         .or_else(|e| {
@@ -134,7 +134,7 @@ impl KaniHttpServer {
 
                     // For ldap tests, we need to make these posix accounts.
                     self.client
-                        .idm_account_unix_extend(&a.name, None, None)
+                        .idm_person_account_unix_extend(&a.name, None, None)
                         .await
                         .map(|_| ())
                         .map_err(|e| {
@@ -142,7 +142,7 @@ impl KaniHttpServer {
                         })?;
 
                     self.client
-                        .idm_account_unix_cred_put(&a.name, &a.password)
+                        .idm_person_account_unix_cred_put(&a.name, &a.password)
                         .await
                         .map(|_| ())
                         .map_err(|e| {

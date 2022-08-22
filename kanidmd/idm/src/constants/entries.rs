@@ -3,7 +3,7 @@
 /// Builtin System Admin account.
 pub const JSON_ADMIN_V1: &str = r#"{
     "attrs": {
-        "class": ["account", "memberof", "object"],
+        "class": ["account", "service_account", "memberof", "object"],
         "name": ["admin"],
         "uuid": ["00000000-0000-0000-0000-000000000000"],
         "description": ["Builtin System Admin account."],
@@ -14,7 +14,7 @@ pub const JSON_ADMIN_V1: &str = r#"{
 /// Builtin IDM Admin account.
 pub const JSON_IDM_ADMIN_V1: &str = r#"{
     "attrs": {
-        "class": ["account", "memberof", "object"],
+        "class": ["account", "service_account", "memberof", "object"],
         "name": ["idm_admin"],
         "uuid": ["00000000-0000-0000-0000-000000000018"],
         "description": ["Builtin IDM Admin account."],
@@ -464,7 +464,7 @@ pub const JSON_DOMAIN_INFO_V1: &str = r#"{
 // Anonymous should be the last object in the range here.
 pub const JSON_ANONYMOUS_V1: &str = r#"{
     "attrs": {
-        "class": ["account", "object"],
+        "class": ["account", "service_account", "object"],
         "name": ["anonymous"],
         "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
         "description": ["Anonymous access account."],

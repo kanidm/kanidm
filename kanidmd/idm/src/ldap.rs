@@ -848,4 +848,35 @@ mod tests {
             }
         )
     }
+
+    #[test]
+    fn test_ldap_token_privilege_granting() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
+                // Configure the user account that will have the tokens issued.
+                // Should be a SERVICE account.
+
+                // Should I finally do the class rules shit?
+
+                // Issue a token, make it purpose = ldap.
+
+                // assert the uat fails on non-ldap events.
+
+                // Setup a person with 
+                // Setup an access control for the service account to view mail attrs.
+
+                // Setup the ldap server
+                let _ldaps = LdapServer::new(idms).expect("failed to start ldap");
+
+                // Bind with account pw, search and show attr isn't accessible.
+
+                // Bind using the token instead of the PW.
+
+                // Search and retrieve an attribute that's now accessible.
+
+                assert!(true);
+
+            }
+        )
+    }
 }

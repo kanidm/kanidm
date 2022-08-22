@@ -1506,6 +1506,7 @@ mod tests {
             let e1 = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("account")),
+                ("class", Value::new_class("service_account")),
                 ("name", Value::new_iname("user_account_only")),
                 ("uuid", Value::new_uuid(testaccount_uuid)),
                 ("description", Value::new_utf8s("testaccount")),
