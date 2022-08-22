@@ -189,7 +189,7 @@ pub fn to_tide_response<T: Serialize>(
 async fn robots_txt(_req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
 
-    res.set_content_type("text/plain");
+    res.set_content_type("text/plain;charset=utf-8");
     res.set_body(
         r#"
 User-agent: *

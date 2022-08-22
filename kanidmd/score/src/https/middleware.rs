@@ -8,27 +8,31 @@ use regex::Regex;
 /// use score::https::middleware::compression_content_type_checker;
 /// let these_should_match = vec![
 ///     "application/wasm",
+///     "application/x-javascript",
+///     "application/x-javascript; charset=utf-8",
+///     "image/svg+xml",
 ///     "text/json",
-///     "text/javascript"
+///     "text/javascript",
 /// ];
 /// for test_value in these_should_match {
 ///     eprintln!("checking {:?}", test_value);
 ///     assert!(compression_content_type_checker().is_match(test_value));
 /// }
 /// assert!(compression_content_type_checker().is_match("application/wasm"));
-/// let these_should_fail = vec![
+/// let these_should_be_skipped = vec![
+///     "application/manifest+json",
 ///     "image/jpeg",
 ///     "image/wasm",
 ///     "text/html",
 /// ];
-/// for test_value in these_should_fail {
+/// for test_value in these_should_be_skipped {
 ///     eprintln!("checking {:?}", test_value);
 ///     assert!(!compression_content_type_checker().is_match(test_value));
 /// }
 /// ```
 pub fn compression_content_type_checker() -> Regex {
-    Regex::new(r"^(?:(image/svg\+xml)|(?:application|text)/(?:css|javascript|json|text|xml|wasm))$")
-        .expect("regex matcher for tide_compress content-type check failed to compile")
+    Regex::new(r"^(?:(image/svg\+xml)|(?:application|text)/(?:css|javascript|json|text|x-javascript|xml|wasm))(|; charset=utf-8)$")
+    .expect("regex matcher for tide_compress content-type check failed to compile")
 }
 
 #[derive(Default)]
@@ -102,7 +106,6 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRes
         response.insert_header("cross-origin-opener-policy", "same-origin");
         response.insert_header("cross-origin-resource-policy", "same-origin");
         response.insert_header("x-content-type-options", "nosniff");
-        response.insert_header("x-frame-options", "deny");
         Ok(response)
     }
 }
@@ -198,6 +201,8 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                 // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
                 "report-uri 'none'",
                 "base-uri 'self'",
+                // nobody wants to be in a frame
+                "frame-ancestors 'none'",
             ]
             .join(";"),
         );

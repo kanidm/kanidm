@@ -4,7 +4,7 @@ use crate::https::{AppState, RequestExtensions};
 use serde::{Deserialize, Serialize};
 
 /// The MIME type for `.webmanifest` files.
-const MIME_TYPE_MANIFEST: &str = "application/manifest+json";
+const MIME_TYPE_MANIFEST: &str = "application/manifest+json;charset=utf-8";
 
 /// Create a new manifest builder.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,39 +155,3 @@ pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
 
     Ok(res)
 }
-
-//     "start_url": "/?source=pwa",
-//     "background_color": "#3367D6",
-//     "display": "standalone",
-//     "scope": "/",
-//     "theme_color": "#3367D6",
-//     "shortcuts": [
-//       {
-//         "name": "How's weather today?",
-//         "short_name": "Today",
-//         "description": "View weather information for today",
-//         "url": "/today?source=pwa",
-//         "icons": [{ "src": "/images/today.png", "sizes": "192x192" }]
-//       },
-//       {
-//         "name": "How's weather tomorrow?",
-//         "short_name": "Tomorrow",
-//         "description": "View weather information for tomorrow",
-//         "url": "/tomorrow?source=pwa",
-//         "icons": [{ "src": "/images/tomorrow.png", "sizes": "192x192" }]
-//       }
-//     ],
-//     "description": "Weather forecast information",
-//     "screenshots": [
-//       {
-//         "src": "/images/screenshot1.png",
-//         "type": "image/png",
-//         "sizes": "540x720"
-//       },
-//       {
-//         "src": "/images/screenshot2.jpg",
-//         "type": "image/jpg",
-//         "sizes": "540x720"
-//       }
-//     ]
-//   }
