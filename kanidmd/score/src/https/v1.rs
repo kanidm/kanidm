@@ -6,9 +6,9 @@ use kanidm::status::StatusRequestEvent;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
-    CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, OperationError, SearchRequest, SingleStringRequest,
+    AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState, CUIntentToken,
+    CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest,
+    OperationError, SearchRequest, SingleStringRequest,
 };
 
 use super::{to_tide_response, AppState, RequestExtensions, RouteMap};
@@ -343,7 +343,11 @@ pub async fn person_get(req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn person_post(req: tide::Request<AppState>) -> tide::Result {
-    let classes = vec!["person".to_string(), "account".to_string(), "object".to_string()];
+    let classes = vec![
+        "person".to_string(),
+        "account".to_string(),
+        "object".to_string(),
+    ];
     json_rest_event_post(req, classes).await
 }
 
@@ -360,7 +364,11 @@ pub async fn account_get(req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn account_post(req: tide::Request<AppState>) -> tide::Result {
-    let classes = vec!["service_account".to_string(), "account".to_string(), "object".to_string()];
+    let classes = vec![
+        "service_account".to_string(),
+        "account".to_string(),
+        "object".to_string(),
+    ];
     json_rest_event_post(req, classes).await
 }
 

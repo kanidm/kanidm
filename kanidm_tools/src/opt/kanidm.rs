@@ -222,14 +222,6 @@ pub struct AccountPersonOpt {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum AccountPerson {
-    #[clap(name = "extend")]
-    Extend(AccountPersonOpt),
-    #[clap(name = "set")]
-    Set(AccountPersonOpt),
-}
-
-#[derive(Debug, Subcommand)]
 pub enum AccountSsh {
     #[clap(name = "list_publickeys")]
     List(AccountNamedOpt),
@@ -265,11 +257,6 @@ pub enum AccountOpt {
     Posix {
         #[clap(subcommand)]
         commands: AccountPosix,
-    },
-    #[clap(name = "person")]
-    Person {
-        #[clap(subcommand)]
-        commands: AccountPerson,
     },
     #[clap(name = "ssh")]
     Ssh {

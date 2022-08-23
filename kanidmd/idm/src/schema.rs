@@ -1257,10 +1257,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("syntax"),
                         AttrString::from("description"),
                     ],
-                    systemexcludes: vec![
-                        AttrString::from("classtype")
-                    ],
-                    .. Default::default()
+                    systemexcludes: vec![AttrString::from("classtype")],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1284,10 +1282,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("classname"),
                         AttrString::from("description"),
                     ],
-                    systemexcludes: vec![
-                        AttrString::from("attributetype")
-                    ],
-                    .. Default::default()
+                    systemexcludes: vec![AttrString::from("attributetype")],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1304,7 +1300,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("uuid"),
                         AttrString::from("last_modified_cid"),
                     ],
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1328,7 +1324,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from(
                         "A class type that has green hair and turns off all rules ...",
                     ),
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             /* These two classes are core to the entry lifecycle for recycling and tombstoning */
@@ -1362,7 +1358,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     uuid: UUID_SCHEMA_CLASS_SYSTEM_INFO,
                     description: String::from("System metadata object class"),
                     systemmust: vec![AttrString::from("version")],
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             // ACP
@@ -1387,7 +1383,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("access_control_modify"),
                         AttrString::from("access_control_create"),
                     ],
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1397,7 +1393,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
                     description: String::from("System Access Control Search Class"),
                     systemmust: vec![AttrString::from("acp_search_attr")],
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1406,7 +1402,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("access_control_delete"),
                     uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE,
                     description: String::from("System Access Control DELETE Class"),
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1420,7 +1416,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("acp_modify_presentattr"),
                         AttrString::from("acp_modify_class"),
                     ],
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1433,7 +1429,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("acp_create_class"),
                         AttrString::from("acp_create_attr"),
                     ],
-                    .. Default::default()
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -2278,7 +2274,7 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from("test object"),
             systemmay: vec![AttrString::from("claim")],
-            .. Default::default()
+            ..Default::default()
         };
 
         assert!(schema.update_classes(vec![class]).is_ok());
@@ -2306,11 +2302,8 @@ mod tests {
                 AttrString::from("uuid"),
                 AttrString::from("last_modified_cid"),
             ],
-            systemsupplements: vec![
-                AttrString::from("service"),
-                AttrString::from("person"),
-            ],
-            .. Default::default()
+            systemsupplements: vec![AttrString::from("service"), AttrString::from("person")],
+            ..Default::default()
         };
 
         let class_person = SchemaClass {
@@ -2322,7 +2315,7 @@ mod tests {
                 AttrString::from("uuid"),
                 AttrString::from("last_modified_cid"),
             ],
-            .. Default::default()
+            ..Default::default()
         };
 
         let class_service = SchemaClass {
@@ -2334,23 +2327,22 @@ mod tests {
                 AttrString::from("uuid"),
                 AttrString::from("last_modified_cid"),
             ],
-            excludes: vec![
-                AttrString::from("person")
-            ],
-            .. Default::default()
+            excludes: vec![AttrString::from("person")],
+            ..Default::default()
         };
 
-        assert!(schema.update_classes(vec![
-            class_account,
-            class_person,
-            class_service
-        ]).is_ok());
+        assert!(schema
+            .update_classes(vec![class_account, class_person, class_service])
+            .is_ok());
 
         // Missing person or service account.
-        let e_account = unsafe { entry_init!(
-            ("class", Value::new_class("account")),
-            ("uuid", Value::new_uuid(Uuid::new_v4()))
-        ).into_invalid_new() };
+        let e_account = unsafe {
+            entry_init!(
+                ("class", Value::new_class("account")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_account.validate(&schema),
@@ -2374,39 +2366,53 @@ mod tests {
         */
 
         // Service can't have person
-        let e_service_person = unsafe { entry_init!(
-            ("class", Value::new_class("service")),
-            ("class", Value::new_class("account")),
-            ("class", Value::new_class("person")),
-            ("uuid", Value::new_uuid(Uuid::new_v4()))
-        ).into_invalid_new() };
+        let e_service_person = unsafe {
+            entry_init!(
+                ("class", Value::new_class("service")),
+                ("class", Value::new_class("account")),
+                ("class", Value::new_class("person")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_service_person.validate(&schema),
-            Err(SchemaError::ExcludesNotSatisfied(vec!["person".to_string()]))
+            Err(SchemaError::ExcludesNotSatisfied(
+                vec!["person".to_string()]
+            ))
         );
 
         // These are valid configurations.
-        let e_service_valid = unsafe { entry_init!(
-            ("class", Value::new_class("service")),
-            ("class", Value::new_class("account")),
-            ("uuid", Value::new_uuid(Uuid::new_v4()))
-        ).into_invalid_new() };
+        let e_service_valid = unsafe {
+            entry_init!(
+                ("class", Value::new_class("service")),
+                ("class", Value::new_class("account")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
 
         assert!(e_service_valid.validate(&schema).is_ok());
 
-        let e_person_valid = unsafe { entry_init!(
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
-            ("uuid", Value::new_uuid(Uuid::new_v4()))
-        ).into_invalid_new() };
+        let e_person_valid = unsafe {
+            entry_init!(
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
 
         assert!(e_person_valid.validate(&schema).is_ok());
 
-        let e_person_valid = unsafe { entry_init!(
-            ("class", Value::new_class("person")),
-            ("uuid", Value::new_uuid(Uuid::new_v4()))
-        ).into_invalid_new() };
+        let e_person_valid = unsafe {
+            entry_init!(
+                ("class", Value::new_class("person")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
 
         assert!(e_person_valid.validate(&schema).is_ok());
     }

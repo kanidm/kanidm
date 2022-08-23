@@ -663,11 +663,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             // Do we have extensible?
             let extensible = ne.attribute_equality("class", &CLASS_EXTENSIBLE);
 
-            let entry_classes = ne.get_ava_set("class")
-                .ok_or_else(|| {
-                    admin_debug!("Attribute 'class' missing from entry");
-                    SchemaError::NoClassFound
-                })?;
+            let entry_classes = ne.get_ava_set("class").ok_or_else(|| {
+                admin_debug!("Attribute 'class' missing from entry");
+                SchemaError::NoClassFound
+            })?;
             let mut invalid_classes = Vec::with_capacity(0);
 
             let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
@@ -675,13 +674,14 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             // We need to keep the btreeset of entry classes here so we can check the
             // requires and excludes.
             let entry_classes = if let Some(ec) = entry_classes.as_iutf8_set() {
-                ec.iter().for_each(|s| match schema_classes.get(s.as_str()) {
-                    Some(x) => classes.push(x),
-                    None => {
-                        admin_debug!("invalid class: {:?}", s);
-                        invalid_classes.push(s.to_string())
-                    }
-                });
+                ec.iter()
+                    .for_each(|s| match schema_classes.get(s.as_str()) {
+                        Some(x) => classes.push(x),
+                        None => {
+                            admin_debug!("invalid class: {:?}", s);
+                            invalid_classes.push(s.to_string())
+                        }
+                    });
                 ec
             } else {
                 admin_debug!("corrupt class attribute");
@@ -695,7 +695,8 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             // Now determine the set of excludes and requires we have, and then
             // assert we don't violate them.
 
-            let supplements_classes: Vec<_> = classes.iter()
+            let supplements_classes: Vec<_> = classes
+                .iter()
                 .flat_map(|cls| cls.systemsupplements.iter().chain(cls.supplements.iter()))
                 .collect();
 
@@ -704,9 +705,9 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // No need to check.
                 true
             } else {
-            supplements_classes.iter().any(|class| {
-                entry_classes.contains(class.as_str())
-            })
+                supplements_classes
+                    .iter()
+                    .any(|class| entry_classes.contains(class.as_str()))
             };
 
             if !valid_supplements {
@@ -714,11 +715,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                     "Validation error, the following possible supplement classes are missing - {:?}",
                     supplements_classes
                 );
-                let supplements_classes = supplements_classes.iter().map(|s| s.to_string()).collect();
+                let supplements_classes =
+                    supplements_classes.iter().map(|s| s.to_string()).collect();
                 return Err(SchemaError::SupplementsNotSatisfied(supplements_classes));
             }
 
-            let excludes_classes: Vec<_> = classes.iter()
+            let excludes_classes: Vec<_> = classes
+                .iter()
                 .flat_map(|cls| cls.systemexcludes.iter().chain(cls.excludes.iter()))
                 .collect();
 

@@ -862,7 +862,7 @@ mod tests {
 
                 // assert the uat fails on non-ldap events.
 
-                // Setup a person with 
+                // Setup a person with
                 // Setup an access control for the service account to view mail attrs.
 
                 // Setup the ldap server
@@ -875,7 +875,6 @@ mod tests {
                 // Search and retrieve an attribute that's now accessible.
 
                 assert!(true);
-
             }
         )
     }

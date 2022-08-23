@@ -11,7 +11,6 @@ use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
 
 use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
-const ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
 #[tokio::test]
@@ -20,9 +19,9 @@ async fn test_server_create() {
     let e: Entry = serde_json::from_str(
         r#"{
             "attrs": {
-                "class": ["account"],
-                "name": ["testperson"],
-                "displayname": ["testperson"]
+                "class": ["account", "service_account"],
+                "name": ["testaccount"],
+                "displayname": ["testaccount"]
             }
         }"#,
     )
@@ -139,123 +138,6 @@ async fn test_server_search() {
     assert!(name == &vec!["admin".to_string()]);
 }
 
-#[tokio::test]
-async fn test_server_admin_change_simple_password() {
-    let rsclient = setup_async_test().await;
-    // First show we are un-authenticated.
-    let pre_res = rsclient.whoami().await;
-    // This means it was okay whoami, but no uat attached.
-    assert!(pre_res.unwrap().is_none());
-
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-
-    // Now change the password.
-    rsclient
-        .idm_account_set_password(ADMIN_TEST_PASSWORD_CHANGE.to_string())
-        .await
-        .unwrap();
-
-    // Now "reset" the client.
-    let _ = rsclient.logout().await;
-    // New password works!
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD_CHANGE)
-        .await;
-
-    assert!(res.is_ok());
-
-    // On the admin, show our credential state.
-    let cred_state = rsclient
-        .idm_account_get_credential_status("admin")
-        .await
-        .unwrap();
-    // Check the creds are what we expect.
-    if cred_state.creds.len() != 1 {
-        assert!(false);
-    }
-
-    if let Some(cred) = cred_state.creds.get(0) {
-        assert!(cred.type_ == CredentialDetailType::Password)
-    } else {
-        assert!(false);
-    }
-
-    // Old password fails, check after to prevent soft-locking.
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_err());
-}
-
-// Add a test for resetting another accounts pws via the rest api
-#[tokio::test]
-async fn test_server_admin_reset_simple_password() {
-    let rsclient = setup_async_test().await;
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-    // Create a diff account
-    let e: Entry = serde_json::from_str(
-        r#"{
-            "attrs": {
-                "class": ["account"],
-                "name": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
-    )
-    .unwrap();
-
-    // Not logged in - should fail!
-    let res = rsclient.create(vec![e]).await;
-    assert!(res.is_ok());
-    // By default, admin's can't actually administer accounts, so mod them into
-    // the account admin group.
-    let f = Filter::Eq("name".to_string(), "idm_admins".to_string());
-    let m = ModifyList::new_list(vec![Modify::Present(
-        "member".to_string(),
-        "system_admins".to_string(),
-    )]);
-    let res = rsclient.modify(f, m).await;
-    assert!(res.is_ok());
-
-    // Now set it's password - should be rejected based on low quality
-    let res = rsclient
-        .idm_account_primary_credential_set_password("testperson", "password")
-        .await;
-    assert!(res.is_err());
-    // Set the password to ensure it's good
-    let res = rsclient
-        .idm_account_primary_credential_set_password(
-            "testperson",
-            "tai4eCohtae9aegheo3Uw0oobahVighaig6heeli",
-        )
-        .await;
-    assert!(res.is_ok());
-    // Check it stuck.
-    let tclient = rsclient.new_session().expect("failed to build new session");
-    assert!(tclient
-        .auth_simple_password("testperson", "tai4eCohtae9aegheo3Uw0oobahVighaig6heeli")
-        .await
-        .is_ok());
-
-    // Generate a pw instead
-    let res = rsclient
-        .idm_account_primary_credential_set_generated("testperson")
-        .await;
-    assert!(res.is_ok());
-    let gpw = res.unwrap();
-    let tclient = rsclient.new_session().expect("failed to build new session");
-    assert!(tclient
-        .auth_simple_password("testperson", gpw.as_str())
-        .await
-        .is_ok());
-}
-
 // test the rest group endpoint.
 #[tokio::test]
 async fn test_server_rest_group_read() {
@@ -358,10 +240,10 @@ async fn test_server_rest_account_read() {
     assert!(res.is_ok());
 
     // List the accounts
-    let a_list = rsclient.idm_account_list().await.unwrap();
+    let a_list = rsclient.idm_service_account_list().await.unwrap();
     assert!(!a_list.is_empty());
 
-    let a = rsclient.idm_account_get("admin").await.unwrap();
+    let a = rsclient.idm_service_account_get("admin").await.unwrap();
     assert!(a.is_some());
     println!("{:?}", a);
 }
@@ -403,20 +285,13 @@ async fn test_server_radius_credential_lifecycle() {
         .await;
     assert!(res.is_ok());
 
-    // self management of credentials is only for persons.
+    // All admin to create persons.
     rsclient
-        .idm_account_person_extend("admin", None, None)
+        .idm_group_add_members("idm_admins", &["admin"])
         .await
         .unwrap();
 
-    let f = Filter::Eq("name".to_string(), "idm_admins".to_string());
-    let m = ModifyList::new_list(vec![Modify::Present(
-        "member".to_string(),
-        "system_admins".to_string(),
-    )]);
-    let res = rsclient.modify(f, m).await;
-    assert!(res.is_ok());
-
+    // self management of credentials is only for persons.
     rsclient
         .idm_person_account_create("demo_account", "Deeeeemo")
         .await
@@ -475,7 +350,7 @@ async fn test_server_radius_credential_lifecycle() {
 }
 
 #[tokio::test]
-async fn test_server_rest_account_lifecycle() {
+async fn test_server_rest_person_account_lifecycle() {
     let rsclient = setup_async_test().await;
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
@@ -484,7 +359,7 @@ async fn test_server_rest_account_lifecycle() {
     // To enable the admin to actually make some of these changes, we have
     // to make them a people admin. NOT recommended in production!
     rsclient
-        .idm_group_add_members("idm_account_write_priv", &["admin"])
+        .idm_group_add_members("idm_admins", &["admin"])
         .await
         .unwrap();
 
@@ -495,29 +370,35 @@ async fn test_server_rest_account_lifecycle() {
         .unwrap();
 
     // View the account
-    rsclient.idm_account_get("demo_account").await.unwrap();
+    rsclient
+        .idm_person_account_get("demo_account")
+        .await
+        .unwrap();
 
     // change the name?
     rsclient
-        .idm_account_set_displayname("demo_account", "Demo Account")
+        .idm_person_account_set_attr("demo_account", "displayname", &["Demo Account"])
         .await
         .unwrap();
 
     // Test adding some mail addrs
     rsclient
-        .idm_account_add_attr("demo_account", "mail", &["demo@idm.example.com"])
+        .idm_person_account_add_attr("demo_account", "mail", &["demo@idm.example.com"])
         .await
         .unwrap();
 
     let r = rsclient
-        .idm_account_get_attr("demo_account", "mail")
+        .idm_person_account_get_attr("demo_account", "mail")
         .await
         .unwrap();
 
     assert!(r == Some(vec!["demo@idm.example.com".to_string()]));
 
     // Delete the account
-    rsclient.idm_person_account_delete("demo_account").await.unwrap();
+    rsclient
+        .idm_person_account_delete("demo_account")
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -539,13 +420,13 @@ async fn test_server_rest_sshkey_lifecycle() {
 
     // Post an invalid key (should error)
     let r1 = rsclient
-        .idm_person_account_post_ssh_pubkey("admin", "inv", "invalid key")
+        .idm_service_account_post_ssh_pubkey("admin", "inv", "invalid key")
         .await;
     assert!(r1.is_err());
 
     // Post a valid key
     let r2 = rsclient
-            .idm_person_account_post_ssh_pubkey("admin", "k1", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst").await;
+            .idm_service_account_post_ssh_pubkey("admin", "k1", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst").await;
     println!("{:?}", r2);
     assert!(r2.is_ok());
 
@@ -555,7 +436,7 @@ async fn test_server_rest_sshkey_lifecycle() {
 
     // Post a valid key
     let r3 = rsclient
-            .idm_person_account_post_ssh_pubkey("admin", "k2", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst").await;
+            .idm_service_account_post_ssh_pubkey("admin", "k2", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst").await;
     assert!(r3.is_ok());
 
     // Get, should have both keys.
@@ -563,7 +444,9 @@ async fn test_server_rest_sshkey_lifecycle() {
     assert!(sk3.len() == 2);
 
     // Delete a key (by tag)
-    let r4 = rsclient.idm_account_delete_ssh_pubkey("admin", "k1").await;
+    let r4 = rsclient
+        .idm_service_account_delete_ssh_pubkey("admin", "k1")
+        .await;
     assert!(r4.is_ok());
 
     // Get, should have remaining key.
@@ -763,7 +646,7 @@ async fn test_server_rest_posix_auth_lifecycle() {
 
     // clear password? (unix self)
     rsclient
-        .idm_account_unix_cred_delete("posix_account")
+        .idm_person_account_unix_cred_delete("posix_account")
         .await
         .unwrap();
 
@@ -804,7 +687,10 @@ async fn test_server_rest_recycle_lifecycle() {
         .unwrap();
 
     // not there
-    let acc = rsclient.idm_account_get("recycle_account").await.unwrap();
+    let acc = rsclient
+        .idm_person_account_get("recycle_account")
+        .await
+        .unwrap();
     assert!(acc.is_none());
 
     // list the recycle bin
@@ -822,7 +708,10 @@ async fn test_server_rest_recycle_lifecycle() {
         .unwrap();
 
     // they are there!
-    let acc = rsclient.idm_account_get("recycle_account").await.unwrap();
+    let acc = rsclient
+        .idm_person_account_get("recycle_account")
+        .await
+        .unwrap();
     assert!(acc.is_some());
 }
 
@@ -840,25 +729,19 @@ async fn test_server_rest_account_import_password() {
         .await
         .unwrap();
     rsclient
-        .idm_group_add_members("idm_people_extend_priv", &["admin"])
+        .idm_group_add_members("idm_admins", &["admin"])
         .await
         .unwrap();
 
-    // Create a new account
+    // Create a new person
     rsclient
         .idm_person_account_create("demo_account", "Deeeeemo")
         .await
         .unwrap();
 
-    // Make them a person, so we can import the password
-    rsclient
-        .idm_account_person_extend("demo_account", None, None)
-        .await
-        .unwrap();
-
     // Attempt to import a bad password
     let r = rsclient
-        .idm_account_primary_credential_import_password("demo_account", "password")
+        .idm_person_account_primary_credential_import_password("demo_account", "password")
         .await;
     assert!(r.is_err());
 
@@ -866,7 +749,7 @@ async fn test_server_rest_account_import_password() {
     // eicieY7ahchaoCh0eeTa
     // pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=
     rsclient
-        .idm_account_primary_credential_import_password(
+        .idm_person_account_primary_credential_import_password(
             "demo_account",
             "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=",
         )
@@ -883,7 +766,7 @@ async fn test_server_rest_account_import_password() {
 
     // And that the account can self read the cred status.
     let cred_state = rsclient
-        .idm_account_get_credential_status("demo_account")
+        .idm_person_account_get_credential_status("demo_account")
         .await
         .unwrap();
 
@@ -892,174 +775,6 @@ async fn test_server_rest_account_import_password() {
     } else {
         assert!(false);
     }
-}
-
-#[tokio::test]
-async fn test_server_rest_totp_auth_lifecycle() {
-    let rsclient = setup_async_test().await;
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
-
-    // Create a new account
-    rsclient
-        .idm_person_account_create("demo_account", "Deeeeemo")
-        .await
-        .unwrap();
-
-    // Enroll a totp to the account
-    assert!(rsclient
-        .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
-        .await
-        .is_ok());
-    let (sessionid, tok) = rsclient
-        .idm_account_primary_credential_generate_totp("demo_account")
-        .await
-        .unwrap();
-
-    let r_tok: Totp = tok.into();
-    let totp = r_tok
-        .do_totp_duration_from_epoch(
-            &SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap(),
-        )
-        .expect("Failed to do totp?");
-
-    rsclient
-        .idm_account_primary_credential_verify_totp("demo_account", totp, sessionid)
-        .await
-        .unwrap(); // the result
-
-    // Check a good auth
-    let rsclient_good = rsclient.new_session().unwrap();
-    let totp = r_tok
-        .do_totp_duration_from_epoch(
-            &SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap(),
-        )
-        .expect("Failed to do totp?");
-    // TODO: It's extremely rare, but it's happened ONCE where, the time window
-    // elapsed DURING this test, so there is a minor possibility of this actually
-    // having a false negative. Is it possible to prevent this?
-    assert!(rsclient_good
-        .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", totp)
-        .await
-        .is_ok());
-
-    // Check a bad auth - needs to be second as we are going to trigger the slock.
-    // Get a new connection
-    let rsclient_bad = rsclient.new_session().unwrap();
-    assert!(rsclient_bad
-        .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
-        .await
-        .is_err());
-    // Delay by one second to allow the account to recover from the softlock.
-    std::thread::sleep(std::time::Duration::from_millis(1100));
-
-    // Remove TOTP on the account.
-    rsclient
-        .idm_account_primary_credential_remove_totp("demo_account")
-        .await
-        .unwrap();
-    // Check password auth.
-    let rsclient_good = rsclient.new_session().unwrap();
-    assert!(rsclient_good
-        .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
-        .await
-        .is_ok());
-}
-
-#[tokio::test]
-async fn test_server_rest_backup_code_auth_lifecycle() {
-    let rsclient = setup_async_test().await;
-    let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-        .await;
-    assert!(res.is_ok());
-
-    // Not recommended in production!
-    rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
-        .await
-        .unwrap();
-
-    // Create a new account
-    rsclient
-        .idm_person_account_create("demo_account", "Deeeeemo")
-        .await
-        .unwrap();
-
-    // Enroll a totp to the account
-    assert!(rsclient
-        .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
-        .await
-        .is_ok());
-    let (sessionid, tok) = rsclient
-        .idm_account_primary_credential_generate_totp("demo_account")
-        .await
-        .unwrap();
-
-    let r_tok: Totp = tok.into();
-    let totp = r_tok
-        .do_totp_duration_from_epoch(
-            &SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap(),
-        )
-        .expect("Failed to do totp?");
-
-    rsclient
-        .idm_account_primary_credential_verify_totp("demo_account", totp, sessionid)
-        .await
-        .unwrap(); // the result
-
-    // Generate backup codes
-    let backup_codes = rsclient
-        .idm_account_primary_credential_generate_backup_code("demo_account")
-        .await
-        .expect("Failed to generate backup codes?");
-
-    // Check a good auth using a backup code
-    let rsclient_good = rsclient.new_session().unwrap();
-    assert!(rsclient_good
-        .auth_password_backup_code(
-            "demo_account",
-            "sohdi3iuHo6mai7noh0a",
-            backup_codes[0].as_str()
-        )
-        .await
-        .is_ok());
-
-    // Check a bad auth - needs to be second as we are going to trigger the slock.
-    // Get a new connection
-    let rsclient_bad = rsclient.new_session().unwrap();
-    assert!(rsclient_bad
-        .auth_password_backup_code("demo_account", "sohdi3iuHo6mai7noh0a", "wrong-backup-code")
-        .await
-        .is_err());
-    // Delay by one second to allow the account to recover from the softlock.
-    std::thread::sleep(std::time::Duration::from_millis(1100));
-
-    // Remove TOTP and backup codes on the account.
-    rsclient
-        .idm_account_primary_credential_remove_totp("demo_account")
-        .await
-        .unwrap();
-    // Check password auth.
-    let rsclient_good = rsclient.new_session().unwrap();
-    assert!(rsclient_good
-        .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
-        .await
-        .is_ok());
 }
 
 #[tokio::test]
@@ -1257,15 +972,10 @@ async fn test_server_credential_update_session_totp_pw() {
         .await
         .unwrap();
 
-    // Create an account
+    // Create a person
+    // - person so they can self-modify credentials later in the test
     rsclient
         .idm_person_account_create("demo_account", "Demo Account")
-        .await
-        .unwrap();
-
-    // Make them a person so they can self-modify credentials later in the test
-    rsclient
-        .idm_account_person_extend("demo_account", None, None)
         .await
         .unwrap();
 

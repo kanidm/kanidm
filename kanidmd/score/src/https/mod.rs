@@ -708,11 +708,18 @@ pub fn create_https_server(
 
     // TODO: Apis for token management
 
-    // Shared account features only - atm only for unix auth.
+    // Shared account features only - mainly this is for unix-like
+    // features.
     let mut account_route = appserver.at("/v1/account");
     account_route
         .at("/:id/_unix/_auth")
         .mapped_post(&mut routemap, account_post_id_unix_auth);
+    account_route
+        .at("/:id/_ssh_pubkeys")
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkeys);
+    account_route
+        .at("/:id/_ssh_pubkeys/:tag")
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag);
 
     // Credential updates, don't require the account id.
     let mut cred_route = appserver.at("/v1/credential");

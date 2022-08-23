@@ -81,7 +81,7 @@ async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Opti
         ),
         "primary_credential" => Some(
             rsclient
-                .idm_account_primary_credential_set_password(id, "dsadjasiodqwjk12asdl")
+                .idm_person_account_primary_credential_set_password(id, "dsadjasiodqwjk12asdl")
                 .await
                 .is_ok(),
         ),
@@ -130,7 +130,12 @@ async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Opti
     }
 }
 
-async fn add_all_attrs(rsclient: &KanidmClient, id: &str, group_name: &str) {
+async fn add_all_attrs(
+    rsclient: &KanidmClient,
+    id: &str,
+    group_name: &str,
+    legalname: Option<&str>,
+) {
     // Extend with posix attrs to test read attr: gidnumber and loginshell
     rsclient
         .idm_person_account_unix_extend(id, None, Some(&"/bin/sh"))
@@ -141,8 +146,14 @@ async fn add_all_attrs(rsclient: &KanidmClient, id: &str, group_name: &str) {
         .await
         .unwrap();
 
-    for attr in ["ssh_publickey", "legalname", "mail"].iter() {
+    for attr in ["ssh_publickey", "mail"].iter() {
         assert!(is_attr_writable(&rsclient, id, attr).await.unwrap());
+    }
+
+    if let Some(legalname) = legalname {
+        assert!(is_attr_writable(&rsclient, legalname, "legalname")
+            .await
+            .unwrap());
     }
 
     // Write radius credentials
@@ -168,7 +179,7 @@ async fn create_user_with_all_attrs(
     let group_name = optional_group.unwrap_or(&group_format);
 
     create_user(&rsclient, id, group_name).await;
-    add_all_attrs(&rsclient, id, group_name).await;
+    add_all_attrs(&rsclient, id, group_name, Some(id)).await;
 }
 
 async fn login_account(rsclient: &KanidmClient, id: &str) -> () {
@@ -623,7 +634,7 @@ async fn test_default_entries_rbac_admins_recycle_accounts() {
     rsclient.idm_person_account_delete("test").await.unwrap();
     rsclient.recycle_bin_revive("test").await.unwrap();
 
-    let acc = rsclient.idm_account_get("test").await.unwrap();
+    let acc = rsclient.idm_person_account_get("test").await.unwrap();
     assert!(acc.is_some());
 }
 
@@ -690,7 +701,7 @@ async fn test_default_entries_rbac_anonymous_entry() {
         .idm_group_add_members("test_group", &["anonymous"])
         .await
         .unwrap();
-    add_all_attrs(&rsclient, "anonymous", "test_group").await;
+    add_all_attrs(&rsclient, "anonymous", "test_group", None).await;
 
     let _ = rsclient.logout();
     rsclient.auth_anonymous().await.unwrap();
@@ -747,7 +758,7 @@ async fn test_self_write_mail_priv_people() {
         .await
         .unwrap();
     // a non-person, they can't write to themselves even with the priv
-    create_user(&rsclient, "nonperson", "idm_people_self_write_mail_priv").await;
+    create_user(&rsclient, "nonperson", "nonperson_group").await;
 
     login_account(&rsclient, "test").await;
     // can write to own mail

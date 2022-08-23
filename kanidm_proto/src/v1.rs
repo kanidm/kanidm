@@ -454,12 +454,6 @@ pub struct AccountUnixExtend {
     pub shell: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AccountPersonSet {
-    pub mail: Option<Vec<String>>,
-    pub legalname: Option<String>,
-}
-
 /*
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccountOrgPersonExtend {

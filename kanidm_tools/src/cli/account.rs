@@ -1,14 +1,13 @@
 use crate::password_prompt;
 use crate::{
-    AccountCredential, AccountOpt, AccountPerson, AccountPosix, AccountRadius, AccountSsh,
-    AccountValidity,
+    AccountCredential, AccountOpt, AccountPosix, AccountRadius, AccountSsh, AccountValidity,
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use dialoguer::{Confirm, Input, Password};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
-use kanidm_proto::v1::OperationError::{InvalidAttribute, PasswordQuality};
+use kanidm_proto::v1::OperationError::PasswordQuality;
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
 use qrcode::{render::unicode, QrCode};
 use std::fmt::{self, Debug};
@@ -32,10 +31,6 @@ impl AccountOpt {
                 AccountPosix::Show(apo) => apo.copt.debug,
                 AccountPosix::Set(apo) => apo.copt.debug,
                 AccountPosix::SetPassword(apo) => apo.copt.debug,
-            },
-            AccountOpt::Person { commands } => match commands {
-                AccountPerson::Extend(apo) => apo.copt.debug,
-                AccountPerson::Set(apo) => apo.copt.debug,
             },
             AccountOpt::Ssh { commands } => match commands {
                 AccountSsh::List(ano) => ano.copt.debug,
@@ -167,116 +162,6 @@ impl AccountOpt {
                     }
                 }
             }, // end AccountOpt::Posix
-
-            AccountOpt::Person { commands } => match commands {
-                AccountPerson::Extend(aopt) => {
-                    let client = aopt.copt.to_client().await;
-                    let mut result_output = kanidm_proto::messages::AccountChangeMessage {
-                        output_mode: ConsoleOutputMode::Text,
-                        action: String::from("account_person_extend"),
-                        result: String::from("This is a filler message"),
-                        src_user: aopt
-                            .copt
-                            .username
-                            .to_owned()
-                            .unwrap_or(format!("{:?}", client.whoami().await)),
-                        dest_user: aopt.aopts.account_id.to_string(),
-                        status: kanidm_proto::messages::MessageStatus::Failure,
-                    };
-                    match client
-                        .idm_account_person_extend(
-                            aopt.aopts.account_id.as_str(),
-                            aopt.mail.as_deref(),
-                            aopt.legalname.as_deref(),
-                        )
-                        .await
-                    {
-                        // TODO: JSON output for account person extend.
-                        Ok(_) => {
-                            result_output.status = kanidm_proto::messages::MessageStatus::Success;
-                            result_output.result = format!(
-                                "Successfully extended the user {}.",
-                                aopt.aopts.account_id
-                            );
-                            match &aopt.legalname {
-                                Some(legalname) => {
-                                    result_output.result +=
-                                        format!(" Set legalname to {}.", legalname).as_str()
-                                }
-                                _ => debug!("Didn't change legalname field."),
-                            };
-                            match &aopt.mail {
-                                Some(mail) => {
-                                    result_output.result +=
-                                        format!(" Set mail to {:?}.", mail.join(", ")).as_str()
-                                }
-                                _ => debug!("Didn't change mail field."),
-                            };
-                            println!("{}", result_output);
-                        }
-                        // TODO: consider a macro to unpack the KanidmClient result object
-                        Err(e) => {
-                            match e {
-                                ClientErrorHttp(_, result, _) => {
-                                    if let Some(ia_error) = result {
-                                        match ia_error {
-                                            InvalidAttribute(msg) => {
-                                                result_output.result =
-                                                    format!("Failed to set value: {}", msg)
-                                            }
-                                            _ => {
-                                                result_output.result =
-                                                    format!("Operation Error - {:?}", ia_error)
-                                            }
-                                        };
-                                    } else {
-                                        result_output.result =
-                                            format!("ClientError - {:?}", result);
-                                    }
-                                }
-                                _ => result_output.result = format!("Error -> {:?}", e),
-                            };
-                            eprintln!("{:?}", result_output);
-                        }
-                    }
-                }
-
-                // TODO: there should probably be an 'unset' variant of this
-                AccountPerson::Set(aopt) => {
-                    let client = aopt.copt.to_client().await;
-                    let mut result_output = AccountChangeMessage {
-                        output_mode: ConsoleOutputMode::Text,
-                        action: String::from("account_person set"),
-                        result: String::from(""),
-                        src_user: aopt
-                            .copt
-                            .username
-                            .to_owned()
-                            .unwrap_or(format!("{:?}", client.whoami().await)),
-                        dest_user: aopt.aopts.account_id.to_string(),
-                        status: MessageStatus::Failure,
-                    };
-                    match client
-                        .idm_account_person_set(
-                            aopt.aopts.account_id.as_str(),
-                            aopt.mail.as_deref(),
-                            aopt.legalname.as_deref(),
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            result_output.status = kanidm_proto::messages::MessageStatus::Success;
-                            result_output.result = "set 'person' status on user".to_string();
-                            println!("{}", result_output)
-                        }
-                        // TODO: ponder macro'ing handling ClientError
-                        Err(e) => {
-                            result_output.result = format!("Error -> {:?}", e);
-                            eprintln!("{}", result_output)
-                        }
-                    }
-                }
-            }, // end AccountOpt::Person
             AccountOpt::Ssh { commands } => match commands {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client().await;
@@ -307,7 +192,7 @@ impl AccountOpt {
                 AccountSsh::Delete(aopt) => {
                     let client = aopt.copt.to_client().await;
                     if let Err(e) = client
-                        .idm_account_delete_ssh_pubkey(
+                        .idm_person_account_delete_ssh_pubkey(
                             aopt.aopts.account_id.as_str(),
                             aopt.tag.as_str(),
                         )
@@ -326,7 +211,10 @@ impl AccountOpt {
             }
             AccountOpt::Get(aopt) => {
                 let client = aopt.copt.to_client().await;
-                match client.idm_account_get(aopt.aopts.account_id.as_str()).await {
+                match client
+                    .idm_person_account_get(aopt.aopts.account_id.as_str())
+                    .await
+                {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
                     Err(e) => error!("Error -> {:?}", e),
