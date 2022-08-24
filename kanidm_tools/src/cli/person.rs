@@ -1,6 +1,6 @@
 use crate::password_prompt;
 use crate::{
-    AccountCredential, AccountOpt, AccountPosix, AccountRadius, AccountSsh, AccountValidity,
+    AccountCredential, PersonOpt, PersonPosix, AccountRadius, AccountSsh, AccountValidity,
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use dialoguer::{Confirm, Input, Password};
@@ -18,30 +18,30 @@ use uuid::Uuid;
 
 use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
 
-impl AccountOpt {
+impl PersonOpt {
     pub fn debug(&self) -> bool {
         match self {
-            AccountOpt::Credential { commands } => commands.debug(),
-            AccountOpt::Radius { commands } => match commands {
+            PersonOpt::Credential { commands } => commands.debug(),
+            PersonOpt::Radius { commands } => match commands {
                 AccountRadius::Show(aro) => aro.copt.debug,
                 AccountRadius::Generate(aro) => aro.copt.debug,
                 AccountRadius::DeleteSecret(aro) => aro.copt.debug,
             },
-            AccountOpt::Posix { commands } => match commands {
-                AccountPosix::Show(apo) => apo.copt.debug,
-                AccountPosix::Set(apo) => apo.copt.debug,
-                AccountPosix::SetPassword(apo) => apo.copt.debug,
+            PersonOpt::Posix { commands } => match commands {
+                PersonPosix::Show(apo) => apo.copt.debug,
+                PersonPosix::Set(apo) => apo.copt.debug,
+                PersonPosix::SetPassword(apo) => apo.copt.debug,
             },
-            AccountOpt::Ssh { commands } => match commands {
+            PersonOpt::Ssh { commands } => match commands {
                 AccountSsh::List(ano) => ano.copt.debug,
                 AccountSsh::Add(ano) => ano.copt.debug,
                 AccountSsh::Delete(ano) => ano.copt.debug,
             },
-            AccountOpt::List(copt) => copt.debug,
-            AccountOpt::Get(aopt) => aopt.copt.debug,
-            AccountOpt::Delete(aopt) => aopt.copt.debug,
-            AccountOpt::Create(aopt) => aopt.copt.debug,
-            AccountOpt::Validity { commands } => match commands {
+            PersonOpt::List(copt) => copt.debug,
+            PersonOpt::Get(aopt) => aopt.copt.debug,
+            PersonOpt::Delete(aopt) => aopt.copt.debug,
+            PersonOpt::Create(aopt) => aopt.copt.debug,
+            PersonOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => ano.copt.debug,
                 AccountValidity::ExpireAt(ano) => ano.copt.debug,
                 AccountValidity::BeginFrom(ano) => ano.copt.debug,
@@ -52,8 +52,8 @@ impl AccountOpt {
     pub async fn exec(&self) {
         match self {
             // id/cred/primary/set
-            AccountOpt::Credential { commands } => commands.exec().await,
-            AccountOpt::Radius { commands } => match commands {
+            PersonOpt::Credential { commands } => commands.exec().await,
+            PersonOpt::Radius { commands } => match commands {
                 AccountRadius::Show(aopt) => {
                     let client = aopt.copt.to_client().await;
 
@@ -114,9 +114,9 @@ impl AccountOpt {
                         }
                     };
                 }
-            }, // end AccountOpt::Radius
-            AccountOpt::Posix { commands } => match commands {
-                AccountPosix::Show(aopt) => {
+            }, // end PersonOpt::Radius
+            PersonOpt::Posix { commands } => match commands {
+                PersonPosix::Show(aopt) => {
                     let client = aopt.copt.to_client().await;
                     match client
                         .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
@@ -128,7 +128,7 @@ impl AccountOpt {
                         }
                     }
                 }
-                AccountPosix::Set(aopt) => {
+                PersonPosix::Set(aopt) => {
                     let client = aopt.copt.to_client().await;
                     if let Err(e) = client
                         .idm_person_account_unix_extend(
@@ -141,7 +141,7 @@ impl AccountOpt {
                         error!("Error -> {:?}", e);
                     }
                 }
-                AccountPosix::SetPassword(aopt) => {
+                PersonPosix::SetPassword(aopt) => {
                     let client = aopt.copt.to_client().await;
                     let password = match password_prompt("Enter new posix (sudo) password: ") {
                         Some(v) => v,
@@ -161,8 +161,8 @@ impl AccountOpt {
                         error!("Error -> {:?}", e);
                     }
                 }
-            }, // end AccountOpt::Posix
-            AccountOpt::Ssh { commands } => match commands {
+            }, // end PersonOpt::Posix
+            PersonOpt::Ssh { commands } => match commands {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client().await;
 
@@ -201,15 +201,15 @@ impl AccountOpt {
                         error!("Error -> {:?}", e);
                     }
                 }
-            }, // end AccountOpt::Ssh
-            AccountOpt::List(copt) => {
+            }, // end PersonOpt::Ssh
+            PersonOpt::List(copt) => {
                 let client = copt.to_client().await;
-                match client.idm_account_list().await {
+                match client.idm_person_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
-            AccountOpt::Get(aopt) => {
+            PersonOpt::Get(aopt) => {
                 let client = aopt.copt.to_client().await;
                 match client
                     .idm_person_account_get(aopt.aopts.account_id.as_str())
@@ -220,7 +220,7 @@ impl AccountOpt {
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
-            AccountOpt::Delete(aopt) => {
+            PersonOpt::Delete(aopt) => {
                 let client = aopt.copt.to_client().await;
                 let mut modmessage = AccountChangeMessage {
                     output_mode: ConsoleOutputMode::Text,
@@ -249,7 +249,7 @@ impl AccountOpt {
                     }
                 };
             }
-            AccountOpt::Create(acopt) => {
+            PersonOpt::Create(acopt) => {
                 let client = acopt.copt.to_client().await;
                 if let Err(e) = client
                     .idm_person_account_create(
@@ -261,13 +261,16 @@ impl AccountOpt {
                     error!("Error -> {:?}", e)
                 }
             }
-            AccountOpt::Validity { commands } => match commands {
+            PersonOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => {
                     let client = ano.copt.to_client().await;
 
                     println!("user: {}", ano.aopts.account_id.as_str());
                     let ex = match client
-                        .idm_account_get_attr(ano.aopts.account_id.as_str(), "account_expire")
+                        .idm_person_account_get_attr(
+                            ano.aopts.account_id.as_str(),
+                            "account_expire",
+                        )
                         .await
                     {
                         Ok(v) => v,
@@ -278,7 +281,10 @@ impl AccountOpt {
                     };
 
                     let vf = match client
-                        .idm_account_get_attr(ano.aopts.account_id.as_str(), "account_valid_from")
+                        .idm_person_account_get_attr(
+                            ano.aopts.account_id.as_str(),
+                            "account_valid_from",
+                        )
                         .await
                     {
                         Ok(v) => v,
@@ -325,7 +331,10 @@ impl AccountOpt {
                     if matches!(ano.datetime.as_str(), "never" | "clear") {
                         // Unset the value
                         match client
-                            .idm_account_purge_attr(ano.aopts.account_id.as_str(), "account_expire")
+                            .idm_person_account_purge_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_expire",
+                            )
                             .await
                         {
                             Err(e) => error!("Error -> {:?}", e),
@@ -340,7 +349,7 @@ impl AccountOpt {
                         }
 
                         match client
-                            .idm_account_set_attr(
+                            .idm_person_account_set_attr(
                                 ano.aopts.account_id.as_str(),
                                 "account_expire",
                                 &[ano.datetime.as_str()],
@@ -357,7 +366,7 @@ impl AccountOpt {
                     if matches!(ano.datetime.as_str(), "any" | "clear" | "whenever") {
                         // Unset the value
                         match client
-                            .idm_account_purge_attr(
+                            .idm_person_account_purge_attr(
                                 ano.aopts.account_id.as_str(),
                                 "account_valid_from",
                             )
@@ -376,7 +385,7 @@ impl AccountOpt {
                         }
 
                         match client
-                            .idm_account_set_attr(
+                            .idm_person_account_set_attr(
                                 ano.aopts.account_id.as_str(),
                                 "account_valid_from",
                                 &[ano.datetime.as_str()],
@@ -388,7 +397,7 @@ impl AccountOpt {
                         }
                     }
                 }
-            }, // end AccountOpt::Validity
+            }, // end PersonOpt::Validity
         }
     }
 }
@@ -451,7 +460,7 @@ impl AccountCredential {
 
                 // What's the client url?
                 match client
-                    .idm_account_credential_update_intent(aopt.aopts.account_id.as_str())
+                    .idm_person_account_credential_update_intent(aopt.aopts.account_id.as_str())
                     .await
                 {
                     Ok(cuintent_token) => {

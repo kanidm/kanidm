@@ -200,13 +200,21 @@ pub struct AccountPosixOpt {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum AccountPosix {
+pub enum PersonPosix {
     #[clap(name = "show")]
     Show(AccountNamedOpt),
     #[clap(name = "set")]
     Set(AccountPosixOpt),
     #[clap(name = "set_password")]
     SetPassword(AccountNamedOpt),
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ServiceAccountPosix {
+    #[clap(name = "show")]
+    Show(AccountNamedOpt),
+    #[clap(name = "set")]
+    Set(AccountPosixOpt),
 }
 
 #[derive(Debug, Args)]
@@ -242,7 +250,7 @@ pub enum AccountValidity {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum AccountOpt {
+pub enum PersonOpt {
     #[clap(name = "credential")]
     Credential {
         #[clap(subcommand)]
@@ -256,7 +264,34 @@ pub enum AccountOpt {
     #[clap(name = "posix")]
     Posix {
         #[clap(subcommand)]
-        commands: AccountPosix,
+        commands: PersonPosix,
+    },
+    #[clap(name = "ssh")]
+    Ssh {
+        #[clap(subcommand)]
+        commands: AccountSsh,
+    },
+    #[clap(name = "list")]
+    List(CommonOpt),
+    #[clap(name = "get")]
+    Get(AccountNamedOpt),
+    #[clap(name = "create")]
+    Create(AccountCreateOpt),
+    #[clap(name = "delete")]
+    Delete(AccountNamedOpt),
+    #[clap(name = "validity")]
+    Validity {
+        #[clap(subcommand)]
+        commands: AccountValidity,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ServiceAccountOpt {
+    #[clap(name = "posix")]
+    Posix {
+        #[clap(subcommand)]
+        commands: ServiceAccountPosix,
     },
     #[clap(name = "ssh")]
     Ssh {
@@ -363,9 +398,6 @@ pub enum RawOpt {
 pub enum SelfOpt {
     /// Show the current authenticated user's identity
     Whoami(CommonOpt),
-    #[clap(name = "set_password")]
-    /// Set the current user's password
-    SetPassword(CommonOpt),
 }
 
 #[derive(Debug, Args)]
@@ -517,22 +549,27 @@ pub enum KanidmClientOpt {
         #[clap(subcommand)]
         commands: SelfOpt,
     },
-    /// Account operations
-    Account {
+    /// Actions to modify and view person (user) accounts
+    Person {
         #[clap(subcommand)]
-        commands: AccountOpt,
+        commands: PersonOpt
     },
     /// Group operations
     Group {
         #[clap(subcommand)]
         commands: GroupOpt,
     },
+    #[clap(name = "service-account")]
+    ServiceAccount {
+        #[clap(subcommand)]
+        commands: ServiceAccountOpt,
+    },
     /// System configuration operations
     System {
         #[clap(subcommand)]
         commands: SystemOpt,
     },
-    #[clap(name = "recycle_bin")]
+    #[clap(name = "recycle-bin")]
     /// Recycle Bin operations
     Recycle {
         #[clap(subcommand)]

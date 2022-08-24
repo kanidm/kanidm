@@ -12,6 +12,10 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_person_account_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/person").await
+    }
+
     pub async fn idm_person_account_create(
         &self,
         name: &str,
@@ -171,6 +175,27 @@ impl KanidmClient {
 
     pub async fn idm_person_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/person/", id, "/_unix/_credential"].concat().as_str())
+            .await
+    }
+
+    pub async fn idm_account_radius_credential_get(
+        &self,
+        id: &str,
+    ) -> Result<Option<String>, ClientError> {
+        self.perform_get_request(format!("/v1/person/{}/_radius", id).as_str())
+            .await
+    }
+
+    pub async fn idm_account_radius_credential_regenerate(
+        &self,
+        id: &str,
+    ) -> Result<String, ClientError> {
+        self.perform_post_request(format!("/v1/person/{}/_radius", id).as_str(), ())
+            .await
+    }
+
+    pub async fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/person/{}/_radius", id).as_str())
             .await
     }
 }

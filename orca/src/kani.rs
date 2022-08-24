@@ -125,7 +125,7 @@ impl KaniHttpServer {
 
                     // Now set the account password
                     self.client
-                        .idm_account_primary_credential_set_password(&a.name, &a.password)
+                        .idm_person_account_primary_credential_set_password(&a.name, &a.password)
                         .await
                         .map(|_| ())
                         .map_err(|e| {

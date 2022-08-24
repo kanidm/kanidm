@@ -17,20 +17,20 @@ use std::path::PathBuf;
 
 include!("../opt/kanidm.rs");
 
-pub mod account;
 pub mod common;
 pub mod domain;
 pub mod group;
+pub mod person;
 pub mod oauth2;
 pub mod raw;
 pub mod recycle;
+pub mod serviceaccount;
 pub mod session;
 
 impl SelfOpt {
     pub fn debug(&self) -> bool {
         match self {
             SelfOpt::Whoami(copt) => copt.debug,
-            SelfOpt::SetPassword(copt) => copt.debug,
         }
     }
 
@@ -53,22 +53,6 @@ impl SelfOpt {
                         }
                     }
                     Err(e) => println!("Error: {:?}", e),
-                }
-            }
-
-            SelfOpt::SetPassword(copt) => {
-                let client = copt.to_client().await;
-
-                let password = match rpassword::prompt_password("Enter new password: ") {
-                    Ok(p) => p,
-                    Err(e) => {
-                        error!("Error -> {:?}", e);
-                        return;
-                    }
-                };
-
-                if let Err(e) = client.idm_account_set_password(password).await {
-                    error!("Error -> {:?}", e);
                 }
             }
         }
@@ -99,8 +83,9 @@ impl KanidmClientOpt {
             KanidmClientOpt::Logout(lopt) => lopt.debug(),
             KanidmClientOpt::Session { commands } => commands.debug(),
             KanidmClientOpt::CSelf { commands } => commands.debug(),
-            KanidmClientOpt::Account { commands } => commands.debug(),
             KanidmClientOpt::Group { commands } => commands.debug(),
+            KanidmClientOpt::Person { commands } => commands.debug(),
+            KanidmClientOpt::ServiceAccount { commands } => commands.debug(),
             KanidmClientOpt::System { commands } => commands.debug(),
             KanidmClientOpt::Recycle { commands } => commands.debug(),
             KanidmClientOpt::Version {} => {
@@ -117,7 +102,8 @@ impl KanidmClientOpt {
             KanidmClientOpt::Logout(lopt) => lopt.exec().await,
             KanidmClientOpt::Session { commands } => commands.exec().await,
             KanidmClientOpt::CSelf { commands } => commands.exec().await,
-            KanidmClientOpt::Account { commands } => commands.exec().await,
+            KanidmClientOpt::Person { commands } => commands.exec().await,
+            KanidmClientOpt::ServiceAccount { commands } => commands.exec().await,
             KanidmClientOpt::Group { commands } => commands.exec().await,
             KanidmClientOpt::System { commands } => commands.exec().await,
             KanidmClientOpt::Recycle { commands } => commands.exec().await,

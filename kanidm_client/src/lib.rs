@@ -1303,8 +1303,6 @@ impl KanidmClient {
     }
 
     pub async fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
-        // Format doesn't work in async
-        // format!("/v1/account/{}/_unix/_token", id).as_str()
         self.perform_get_request(["/v1/group/", id, "/_unix/_token"].concat().as_str())
             .await
     }
@@ -1315,38 +1313,6 @@ impl KanidmClient {
     }
 
     // ==== ACCOUNTS
-    pub async fn idm_account_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/account").await
-    }
-
-    pub async fn idm_service_account_create(
-        &self,
-        name: &str,
-        displayname: &str,
-    ) -> Result<(), ClientError> {
-        let mut new_acct = Entry {
-            attrs: BTreeMap::new(),
-        };
-        new_acct
-            .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
-        new_acct
-            .attrs
-            .insert("displayname".to_string(), vec![displayname.to_string()]);
-        self.perform_post_request("/v1/service_account", new_acct)
-            .await
-    }
-
-    pub async fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
-        let s = SingleStringRequest { value: cleartext };
-
-        self.perform_post_request("/v1/self/_credential/primary/set_password", s)
-            .await
-    }
-
-    pub async fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {
-        self.idm_account_set_attr(id, "displayname", &[dn]).await
-    }
 
     pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
         // Format doesn't work in async
@@ -1355,207 +1321,8 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn idm_account_add_attr(
-        &self,
-        id: &str,
-        attr: &str,
-        values: &[&str],
-    ) -> Result<(), ClientError> {
-        let msg: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_post_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), msg)
-            .await
-    }
-
-    pub async fn idm_account_set_attr(
-        &self,
-        id: &str,
-        attr: &str,
-        values: &[&str],
-    ) -> Result<(), ClientError> {
-        let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), m)
-            .await
-    }
-
-    pub async fn idm_account_get_attr(
-        &self,
-        id: &str,
-        attr: &str,
-    ) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
-            .await
-    }
-
-    pub async fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
-            .await
-    }
-
-    pub async fn idm_account_primary_credential_set_password(
-        &self,
-        id: &str,
-        pw: &str,
-    ) -> Result<SetCredentialResponse, ClientError> {
-        let r = SetCredentialRequest::Password(pw.to_string());
-        self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        )
-        .await
-    }
-
-    pub async fn idm_account_primary_credential_set_generated(
-        &self,
-        id: &str,
-    ) -> Result<String, ClientError> {
-        let r = SetCredentialRequest::GeneratePassword;
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::Token(p)) => Ok(p),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    // Reg intent for totp
-    pub async fn idm_account_primary_credential_generate_totp(
-        &self,
-        id: &str,
-    ) -> Result<(Uuid, TotpSecret), ClientError> {
-        let r = SetCredentialRequest::TotpGenerate;
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::TotpCheck(u, s)) => Ok((u, s)),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    // Verify the totp
-    pub async fn idm_account_primary_credential_verify_totp(
-        &self,
-        id: &str,
-        otp: u32,
-        session: Uuid,
-    ) -> Result<(), ClientError> {
-        let r = SetCredentialRequest::TotpVerify(session, otp);
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
-            Ok(SetCredentialResponse::TotpCheck(u, s)) => Err(ClientError::TotpVerifyFailed(u, s)),
-            Ok(SetCredentialResponse::TotpInvalidSha1(u)) => Err(ClientError::TotpInvalidSha1(u)),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    // Accept a sha1 totp
-    pub async fn idm_account_primary_credential_accept_sha1_totp(
-        &self,
-        id: &str,
-        session: Uuid,
-    ) -> Result<(), ClientError> {
-        let r = SetCredentialRequest::TotpAcceptSha1(session);
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub async fn idm_account_primary_credential_remove_totp(
-        &self,
-        id: &str,
-    ) -> Result<(), ClientError> {
-        let r = SetCredentialRequest::TotpRemove;
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub async fn idm_account_primary_credential_generate_backup_code(
-        &self,
-        id: &str,
-    ) -> Result<Vec<String>, ClientError> {
-        let r = SetCredentialRequest::BackupCodeGenerate;
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::BackupCodes(s)) => Ok(s),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub async fn idm_account_primary_credential_remove_backup_code(
-        &self,
-        id: &str,
-    ) -> Result<(), ClientError> {
-        let r = SetCredentialRequest::BackupCodeRemove;
-        let res: Result<SetCredentialResponse, ClientError> = self
-            .perform_put_request(
-                format!("/v1/account/{}/_credential/primary", id).as_str(),
-                r,
-            )
-            .await;
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub async fn idm_account_get_credential_status(
-        &self,
-        id: &str,
-    ) -> Result<CredentialStatus, ClientError> {
-        let res: Result<CredentialStatus, ClientError> = self
-            .perform_get_request(format!("/v1/account/{}/_credential/_status", id).as_str())
-            .await;
-        res.and_then(|cs| {
-            if cs.creds.is_empty() {
-                Err(ClientError::EmptyResponse)
-            } else {
-                Ok(cs)
-            }
-        })
-    }
-
     // == new credential update session code.
-    pub async fn idm_account_credential_update_intent(
+    pub async fn idm_person_account_credential_update_intent(
         &self,
         id: &str,
     ) -> Result<CUIntentToken, ClientError> {
@@ -1701,32 +1468,12 @@ impl KanidmClient {
     }
 
     // == radius
-    pub async fn idm_account_radius_credential_get(
-        &self,
-        id: &str,
-    ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_radius", id).as_str())
-            .await
-    }
-
-    pub async fn idm_account_radius_credential_regenerate(
-        &self,
-        id: &str,
-    ) -> Result<String, ClientError> {
-        self.perform_post_request(format!("/v1/person/{}/_radius", id).as_str(), ())
-            .await
-    }
-
-    pub async fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_delete_request(format!("/v1/person/{}/_radius", id).as_str())
-            .await
-    }
 
     pub async fn idm_account_radius_token_get(
         &self,
         id: &str,
     ) -> Result<RadiusAuthToken, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_radius/_token", id).as_str())
+        self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
             .await
     }
 

@@ -921,7 +921,7 @@ async fn test_server_credential_update_session_pw() {
 
     // Create an intent token for them
     let intent_token = rsclient
-        .idm_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account")
         .await
         .unwrap();
 
@@ -980,7 +980,7 @@ async fn test_server_credential_update_session_totp_pw() {
         .unwrap();
 
     let intent_token = rsclient
-        .idm_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account")
         .await
         .unwrap();
 
@@ -1098,7 +1098,7 @@ async fn test_server_credential_update_session_passkey() {
 
     // Create an intent token for them
     let intent_token = rsclient
-        .idm_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account")
         .await
         .unwrap();
 

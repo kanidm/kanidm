@@ -440,17 +440,15 @@ pub fn create_https_server(
     let mut tserver_cacheable = tserver.at("");
     tserver_cacheable.with(CacheableMiddleware::default());
 
-    // We allow caching of the radius token.
-    let mut account_route_cacheable = tserver_cacheable.at("/v1/person");
-    account_route_cacheable
-        .at("/:id/_radius/_token")
-        .mapped_get(&mut routemap, account_get_id_radius_token);
-
     // We allow clients to cache the unix token for accounts and groups.
     let mut account_route_cacheable = tserver_cacheable.at("/v1/account");
     account_route_cacheable
         .at("/:id/_unix/_token")
         .mapped_get(&mut routemap, account_get_id_unix_token);
+    // We allow caching of the radius token.
+    account_route_cacheable
+        .at("/:id/_radius/_token")
+        .mapped_get(&mut routemap, account_get_id_radius_token);
 
     let mut group_route_cacheable = tserver_cacheable.at("/v1/group");
     group_route_cacheable
