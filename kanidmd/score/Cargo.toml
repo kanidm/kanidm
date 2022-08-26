@@ -48,7 +48,7 @@ tracing-subscriber = "^0.3.14"
 futures = "^0.3.21"
 # async-std = { version = "1.6", features = ["tokio1"] }
 
-webauthn-authenticator-rs = "0.4.2-beta.3"
+webauthn-authenticator-rs = "0.4.5"
 oauth2_ext = { package = "oauth2", version = "^4.1.0", default-features = false }
 base64 = "^0.13.0"
 

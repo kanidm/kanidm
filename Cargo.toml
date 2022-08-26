@@ -32,15 +32,10 @@ exclude = [
 
 # ldap3_server = { path = "../ldap3_server" }
 
-base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7a8e6c6b351ab7544f08cf8ba48424baacee1360" }
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
-webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7a8e6c6b351ab7544f08cf8ba48424baacee1360" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
-webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7a8e6c6b351ab7544f08cf8ba48424baacee1360" }
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
-webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7a8e6c6b351ab7544f08cf8ba48424baacee1360" }
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
-webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7a8e6c6b351ab7544f08cf8ba48424baacee1360" }
 
 # compact_jwt = { path = "../compact_jwt" }
 # compact_jwt = { git = "https://github.com/kanidm/compact-jwt.git" }
