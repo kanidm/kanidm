@@ -55,24 +55,35 @@ pub enum GroupPosix {
 
 #[derive(Debug, Subcommand)]
 pub enum GroupOpt {
+    /// List all groups
     #[clap(name = "list")]
     List(CommonOpt),
+    /// View a specific group
     #[clap(name = "get")]
     Get(Named),
+    /// Create a new group
     #[clap(name = "create")]
     Create(Named),
+    /// Delete a group
     #[clap(name = "delete")]
     Delete(Named),
+    /// List the members of a group
     #[clap(name = "list_members")]
     ListMembers(Named),
+    /// Set the exact list of members that this group should contain, removing any not listed in the
+    /// set operation.
     #[clap(name = "set_members")]
     SetMembers(GroupNamedMembers),
+    /// Delete all members of a group.
     #[clap(name = "purge_members")]
     PurgeMembers(Named),
+    /// Add new members to a group
     #[clap(name = "add_members")]
     AddMembers(GroupNamedMembers),
+    /// Remove the named members from this group
     #[clap(name = "remove_members")]
     RemoveMembers(GroupNamedMembers),
+    /// Manage posix extensions for this group allowing groups to be used on unix/linux systems
     #[clap(name = "posix")]
     Posix {
         #[clap(subcommand)]
@@ -251,34 +262,43 @@ pub enum AccountValidity {
 
 #[derive(Debug, Subcommand)]
 pub enum PersonOpt {
+    /// Manage the credentials this person uses for authentication
     #[clap(name = "credential")]
     Credential {
         #[clap(subcommand)]
         commands: AccountCredential,
     },
+    /// Manage radius access for this person
     #[clap(name = "radius")]
     Radius {
         #[clap(subcommand)]
         commands: AccountRadius,
     },
+    /// Manage posix extensions for this person allowing access to unix/linux systems
     #[clap(name = "posix")]
     Posix {
         #[clap(subcommand)]
         commands: PersonPosix,
     },
+    /// Manage ssh public key's associated to this person
     #[clap(name = "ssh")]
     Ssh {
         #[clap(subcommand)]
         commands: AccountSsh,
     },
+    /// List all persons
     #[clap(name = "list")]
     List(CommonOpt),
+    /// View a specific person
     #[clap(name = "get")]
     Get(AccountNamedOpt),
+    /// Create a new person's account
     #[clap(name = "create")]
     Create(AccountCreateOpt),
+    /// Delete a person's account
     #[clap(name = "delete")]
     Delete(AccountNamedOpt),
+    /// Manage a person's account validity, such as expiry time (account lock/unlock)
     #[clap(name = "validity")]
     Validity {
         #[clap(subcommand)]
@@ -288,24 +308,31 @@ pub enum PersonOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum ServiceAccountOpt {
+    /// Manage posix extensions for this service account allowing access to unix/linux systems
     #[clap(name = "posix")]
     Posix {
         #[clap(subcommand)]
         commands: ServiceAccountPosix,
     },
+    /// Manage ssh public key's associated to this person
     #[clap(name = "ssh")]
     Ssh {
         #[clap(subcommand)]
         commands: AccountSsh,
     },
+    /// List all service accounts
     #[clap(name = "list")]
     List(CommonOpt),
+    /// View a specific service account
     #[clap(name = "get")]
     Get(AccountNamedOpt),
+    /// Create a new service account
     #[clap(name = "create")]
     Create(AccountCreateOpt),
+    /// Delete a service account
     #[clap(name = "delete")]
     Delete(AccountNamedOpt),
+    /// Manage a service account validity, such as expiry time (account lock/unlock)
     #[clap(name = "validity")]
     Validity {
         #[clap(subcommand)]
@@ -549,16 +576,17 @@ pub enum KanidmClientOpt {
         #[clap(subcommand)]
         commands: SelfOpt,
     },
-    /// Actions to modify and view person (user) accounts
+    /// Actions to manage and view person (user) accounts
     Person {
         #[clap(subcommand)]
         commands: PersonOpt
     },
-    /// Group operations
+    /// Actions to manage groups
     Group {
         #[clap(subcommand)]
         commands: GroupOpt,
     },
+    /// Actions to manage and view service accounts
     #[clap(name = "service-account")]
     ServiceAccount {
         #[clap(subcommand)]
@@ -575,7 +603,7 @@ pub enum KanidmClientOpt {
         #[clap(subcommand)]
         commands: RecycleOpt,
     },
-    /// Unsafe - low level, raw database operations.
+    /// Unsafe - low level, raw database queries and operations.
     Raw {
         #[clap(subcommand)]
         commands: RawOpt,

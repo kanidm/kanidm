@@ -7,13 +7,13 @@ use kanidm_proto::v1::SingleStringRequest;
 use std::collections::BTreeMap;
 
 impl KanidmClient {
+    pub async fn idm_person_account_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/person").await
+    }
+
     pub async fn idm_person_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/person/{}", id).as_str())
             .await
-    }
-
-    pub async fn idm_person_account_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/person").await
     }
 
     pub async fn idm_person_account_create(
