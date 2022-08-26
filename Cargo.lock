@@ -399,9 +399,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "authenticator"
-version = "0.3.2"
-source = "git+https://github.com/Firstyear/authenticator-rs.git?branch=webauthn-authenticator-rs#19eab7b05c6d8362c33247bcb58dec242ecdde49"
+name = "authenticator-ctap2-2021"
+version = "0.3.2-dev.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d06c690e5e2800f70c0cf8773a9fe7680d66e719dae9b4cabedd13ef4885d056"
 dependencies = [
  "base64 0.13.0",
  "bitflags",
@@ -458,7 +459,8 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 [[package]]
 name = "base64urlsafedata"
 version = "0.1.1"
-source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d02340c3f25c8422ba85d481123406dd7506505485bac1c694b26eb538da8daf"
 dependencies = [
  "base64 0.13.0",
  "serde",
@@ -4623,14 +4625,16 @@ dependencies = [
 
 [[package]]
 name = "webauthn-authenticator-rs"
-version = "0.4.2-beta.3"
-source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f0a0f2b3f25205903b27ecea9012dcff4ad272ee792a41ab46dae6bbabefd4d"
 dependencies = [
- "authenticator",
+ "authenticator-ctap2-2021",
  "base64urlsafedata",
  "nom 7.1.1",
  "openssl",
  "rpassword 5.0.1",
+ "serde",
  "serde_cbor",
  "serde_json",
  "tracing",
@@ -4640,8 +4644,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs"
-version = "0.4.2-beta.3"
-source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b813b9663ddc0b5594b5c54dec399eba428c199a8bb75ed6fde757ec2deca82"
 dependencies = [
  "base64urlsafedata",
  "serde",
@@ -4653,8 +4658,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-core"
-version = "0.4.2-beta.3"
-source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b68452d453abbd5bb7101fa5c97698940dbdea5cdc7f49a4bea1d546f3dc0f46"
 dependencies = [
  "base64 0.13.0",
  "base64urlsafedata",
@@ -4676,8 +4682,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-proto"
-version = "0.4.2-beta.3"
-source = "git+https://github.com/kanidm/webauthn-rs.git?rev=7a8e6c6b351ab7544f08cf8ba48424baacee1360#7a8e6c6b351ab7544f08cf8ba48424baacee1360"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00f44e65fa62541ef22540ab8050866604b1a6a9e73a80c8e85adc1036afb7a2"
 dependencies = [
  "base64urlsafedata",
  "js-sys",
