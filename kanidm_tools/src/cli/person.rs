@@ -1,6 +1,6 @@
 use crate::password_prompt;
 use crate::{
-    AccountCredential, PersonOpt, PersonPosix, AccountRadius, AccountSsh, AccountValidity,
+    AccountCredential, AccountRadius, AccountSsh, AccountValidity, PersonOpt, PersonPosix,
 };
 use dialoguer::{theme::ColorfulTheme, Select};
 use dialoguer::{Confirm, Input, Password};

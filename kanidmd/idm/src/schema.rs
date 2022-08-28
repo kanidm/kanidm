@@ -23,6 +23,7 @@ use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 use tracing::trace;
 
 use hashbrown::{HashMap, HashSet};
+use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use concread::cowcell::*;
@@ -394,6 +395,16 @@ impl SchemaClass {
             excludes,
         })
     }
+
+    /// An iterator over the full set of attrs that may or must exist
+    /// on this class.
+    pub fn may_iter(&self) -> impl Iterator<Item = &AttrString> {
+        self.systemmay
+            .iter()
+            .chain(self.may.iter())
+            .chain(self.systemmust.iter())
+            .chain(self.must.iter())
+    }
 }
 
 pub trait SchemaTransaction {
@@ -478,6 +489,59 @@ pub trait SchemaTransaction {
         } else {
             None
         }
+    }
+
+    fn query_attrs_difference(
+        &self,
+        prev_class: &BTreeSet<&str>,
+        new_class: &BTreeSet<&str>,
+    ) -> Result<(BTreeSet<&str>, BTreeSet<&str>), SchemaError> {
+        let schema_classes = self.get_classes();
+
+        let mut invalid_classes = Vec::with_capacity(0);
+
+        let prev_attrs: BTreeSet<&str> = prev_class
+            .iter()
+            .filter_map(|cls| match schema_classes.get(*cls) {
+                Some(x) => Some(x.may_iter()),
+                None => {
+                    admin_debug!("invalid class: {:?}", cls);
+                    invalid_classes.push(cls.to_string());
+                    None
+                }
+            })
+            // flatten all the inner iters.
+            .flatten()
+            .map(|s| s.as_str())
+            .collect();
+
+        if !invalid_classes.is_empty() {
+            return Err(SchemaError::InvalidClass(invalid_classes));
+        };
+
+        let new_attrs: BTreeSet<&str> = new_class
+            .iter()
+            .filter_map(|cls| match schema_classes.get(*cls) {
+                Some(x) => Some(x.may_iter()),
+                None => {
+                    admin_debug!("invalid class: {:?}", cls);
+                    invalid_classes.push(cls.to_string());
+                    None
+                }
+            })
+            // flatten all the inner iters.
+            .flatten()
+            .map(|s| s.as_str())
+            .collect();
+
+        if !invalid_classes.is_empty() {
+            return Err(SchemaError::InvalidClass(invalid_classes));
+        };
+
+        let removed = prev_attrs.difference(&new_attrs).copied().collect();
+        let added = new_attrs.difference(&prev_attrs).copied().collect();
+
+        Ok((added, removed))
     }
 }
 

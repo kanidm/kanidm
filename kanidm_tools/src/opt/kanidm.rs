@@ -9,15 +9,17 @@ pub struct Named {
 
 #[derive(Debug, Args)]
 pub struct DebugOpt {
+    /// Enable debbuging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
 }
 
 #[derive(Debug, Args)]
 pub struct CommonOpt {
-    // TODO: this should probably be a flag, or renamed to log level if it's a level
+    /// Enable debbuging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
+    /// The URL of the kanidm instance
     #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
     /// User which will initiate requests
@@ -47,8 +49,10 @@ pub struct GroupPosixOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum GroupPosix {
+    /// Show details of a specific posix group
     #[clap(name = "show")]
     Show(Named),
+    /// Setup posix group properties, or alter them
     #[clap(name = "set")]
     Set(GroupPosixOpt),
 }
@@ -252,10 +256,13 @@ pub enum AccountSsh {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountValidity {
+    /// Show an accounts validity window
     #[clap(name = "show")]
     Show(AccountNamedOpt),
+    /// Set an accounts expiry time
     #[clap(name = "expire_at")]
     ExpireAt(AccountNamedExpireDateTimeOpt),
+    /// Set an account valid from time
     #[clap(name = "begin_from")]
     BeginFrom(AccountNamedValidDateTimeOpt),
 }
@@ -338,6 +345,11 @@ pub enum ServiceAccountOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
+    /// Convert a service account into a person. This is used during the alpha.9
+    /// to alpha.10 migration to "fix up" accounts that were not previously marked
+    /// as persons.
+    #[clap(name = "into-person")]
+    IntoPerson(AccountNamedOpt),
 }
 
 #[derive(Debug, Subcommand)]

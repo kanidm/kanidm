@@ -605,7 +605,7 @@ pub fn create_https_server(
     person_route
         .at("/:id")
         .mapped_get(&mut routemap, person_id_get)
-        .mapped_delete(&mut routemap, account_id_delete);
+        .mapped_delete(&mut routemap, person_account_id_delete);
     person_route
         .at("/:id/_attr/:attr")
         .mapped_get(&mut routemap, account_id_get_attr)
@@ -663,12 +663,12 @@ pub fn create_https_server(
     let mut service_account_route = appserver.at("/v1/service_account");
     service_account_route
         .at("/")
-        .mapped_get(&mut routemap, account_get)
-        .mapped_post(&mut routemap, account_post);
+        .mapped_get(&mut routemap, service_account_get)
+        .mapped_post(&mut routemap, service_account_post);
     service_account_route
         .at("/:id")
-        .mapped_get(&mut routemap, account_id_get)
-        .mapped_delete(&mut routemap, account_id_delete);
+        .mapped_get(&mut routemap, service_account_id_get)
+        .mapped_delete(&mut routemap, service_account_id_delete);
     service_account_route
         .at("/:id/_attr/:attr")
         .mapped_get(&mut routemap, account_id_get_attr)
@@ -679,6 +679,11 @@ pub fn create_https_server(
     service_account_route
         .at("/:id/_lock")
         .mapped_get(&mut routemap, do_nothing);
+
+    service_account_route
+        .at("/:id/_into_person")
+        .mapped_post(&mut routemap, service_account_into_person);
+
     /*
     service_account_route
         .at("/:id/_credential")

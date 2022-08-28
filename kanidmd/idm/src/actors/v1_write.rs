@@ -921,6 +921,43 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
+        name = "handle_service_account_into_person",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_service_account_into_person(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let res = spanned!("actors::v1_write::handle<IdmServiceAccountIntoPerson>", {
+            let ident = idms_prox_write
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving id to target");
+                    e
+                })?;
+
+            idms_prox_write
+                .service_account_into_person(&ident, target_uuid)
+                .and_then(|_| idms_prox_write.commit())
+        });
+        res
+    }
+
+    #[instrument(
+        level = "info",
         name = "regenerate_radius_secret",
         skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
@@ -989,9 +1026,9 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<PurgeAttributeMessage>", {
-            let ct = duration_from_epoch_now();
             let ident = idms_prox_write
                 .validate_and_parse_uat(uat.as_deref(), ct)
                 .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))

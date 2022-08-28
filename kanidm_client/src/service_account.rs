@@ -44,8 +44,11 @@ impl KanidmClient {
         values: &[&str],
     ) -> Result<(), ClientError> {
         let msg: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_post_request(format!("/v1/service_account/{}/_attr/{}", id, attr).as_str(), msg)
-            .await
+        self.perform_post_request(
+            format!("/v1/service_account/{}/_attr/{}", id, attr).as_str(),
+            msg,
+        )
+        .await
     }
 
     pub async fn idm_service_account_set_attr(
@@ -55,8 +58,11 @@ impl KanidmClient {
         values: &[&str],
     ) -> Result<(), ClientError> {
         let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(format!("/v1/service_account/{}/_attr/{}", id, attr).as_str(), m)
-            .await
+        self.perform_put_request(
+            format!("/v1/service_account/{}/_attr/{}", id, attr).as_str(),
+            m,
+        )
+        .await
     }
 
     pub async fn idm_service_account_get_attr(
@@ -114,5 +120,13 @@ impl KanidmClient {
         };
         self.perform_post_request(format!("/v1/service_account/{}/_unix", id).as_str(), ux)
             .await
+    }
+
+    pub async fn idm_service_account_into_person(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_post_request(
+            format!("/v1/service_account/{}/_into_person", id).as_str(),
+            (),
+        )
+        .await
     }
 }

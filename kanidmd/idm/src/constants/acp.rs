@@ -1224,3 +1224,33 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
         "acp_create_class": ["oauth2_resource_server", "oauth2_resource_server_basic", "object"]
     }
 }"#;
+
+pub const JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_search",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_hp_acp_service_account_into_person_migrate"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000042"],
+        "description": ["Builtin IDM Control allowing service accounts to be migrated into persons"],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000034\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "uuid"
+        ],
+        "acp_modify_removedattr": [
+            "class"
+        ],
+        "acp_modify_presentattr": [
+            "class"
+        ],
+        "acp_modify_class": ["service_account", "person"]
+    }
+}"#;

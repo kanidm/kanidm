@@ -356,14 +356,19 @@ pub async fn person_id_get(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_get_id(req, filter, None).await
 }
 
+pub async fn person_account_id_delete(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    json_rest_event_delete_id(req, filter).await
+}
+
 // == account ==
 
-pub async fn account_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+pub async fn service_account_get(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn account_post(req: tide::Request<AppState>) -> tide::Result {
+pub async fn service_account_post(req: tide::Request<AppState>) -> tide::Result {
     let classes = vec![
         "service_account".to_string(),
         "account".to_string(),
@@ -372,9 +377,33 @@ pub async fn account_post(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_post(req, classes).await
 }
 
-pub async fn account_id_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+pub async fn service_account_id_get(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
     json_rest_event_get_id(req, filter, None).await
+}
+
+pub async fn service_account_id_delete(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
+    json_rest_event_delete_id(req, filter).await
+}
+
+// Due to how the migrations work in 6 -> 7, we can accidentally
+// mark "accounts" as service accounts when they are persons. This
+// allows migrating them to the person type due to it's similarities.
+//
+// In the future this will be REMOVED!
+pub async fn service_account_into_person(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_service_account_into_person(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
 pub async fn account_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
@@ -396,11 +425,6 @@ pub async fn account_id_delete_attr(req: tide::Request<AppState>) -> tide::Resul
 pub async fn account_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_put_id_attr(req, filter).await
-}
-
-pub async fn account_id_delete(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id(req, filter).await
 }
 
 pub async fn account_get_id_credential_update(req: tide::Request<AppState>) -> tide::Result {

@@ -70,15 +70,20 @@ IP.1 = 127.0.0.1
 
 DEVEOF
 
-# Make the ca
-openssl req -x509 -new -newkey rsa:4096 -sha256 \
-    -keyout "${CAKEY}" \
+
+
+# Make the ca key
+openssl ecparam -genkey -name prime256v1 -noout -out "${CAKEY}"
+
+# Self sign the CA.
+openssl req -x509 -new -sha256 \
+    -key "${CAKEY}" \
     -out "${CACERT}" \
     -days +31 \
     -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
 
-# generate the ca private key
-openssl genrsa -out "${KEYFILE}" 4096
+# generate the server private key
+openssl ecparam -genkey -name prime256v1 -noout -out "${KEYFILE}"
 
 # generate the certficate signing request
 openssl req -sha256 \

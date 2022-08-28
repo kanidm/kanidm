@@ -1839,6 +1839,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
+    pub fn get_ava_as_iutf8_iter(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_iutf8_iter())
+    }
+
+    #[inline(always)]
     pub fn get_ava_as_oauthscopes(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.attrs.get(attr).and_then(|vs| vs.as_oauthscope_iter())
     }

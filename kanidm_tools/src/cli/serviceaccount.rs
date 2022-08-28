@@ -1,6 +1,4 @@
-use crate::{
-    ServiceAccountOpt, ServiceAccountPosix, AccountSsh, AccountValidity
-};
+use crate::{AccountSsh, AccountValidity, ServiceAccountOpt, ServiceAccountPosix};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
 
@@ -25,6 +23,7 @@ impl ServiceAccountOpt {
                 AccountValidity::ExpireAt(ano) => ano.copt.debug,
                 AccountValidity::BeginFrom(ano) => ano.copt.debug,
             },
+            ServiceAccountOpt::IntoPerson(aopt) => aopt.copt.debug,
         }
     }
 
@@ -293,8 +292,16 @@ impl ServiceAccountOpt {
                     }
                 }
             }, // end ServiceAccountOpt::Validity
+            ServiceAccountOpt::IntoPerson(aopt) => {
+                let client = aopt.copt.to_client().await;
+                match client
+                    .idm_service_account_into_person(aopt.aopts.account_id.as_str())
+                    .await
+                {
+                    Ok(()) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
         }
     }
 }
-
-

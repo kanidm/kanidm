@@ -3980,4 +3980,39 @@ mod tests {
             }
         )
     }
+
+    #[test]
+    fn test_idm_service_account_to_person() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let idms_prox_write = idms.proxy_write(ct.clone());
+
+            let ident = Identity::from_internal();
+            let target_uuid = Uuid::new_v4();
+
+            // Create a service account
+            let e = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("account")),
+                ("class", Value::new_class("service_account")),
+                ("name", Value::new_iname("testaccount")),
+                ("uuid", Value::new_uuid(target_uuid)),
+                ("description", Value::new_utf8s("testaccount")),
+                ("displayname", Value::new_utf8s("Test Account"))
+            );
+
+            let ce = CreateEvent::new_internal(vec![e]);
+            let cr = idms_prox_write.qs_write.create(&ce);
+            assert!(cr.is_ok());
+
+            // Do the migrate.
+            assert!(idms_prox_write
+                .service_account_into_person(&ident, target_uuid)
+                .is_ok());
+
+            // Any checks?
+        })
+    }
 }
