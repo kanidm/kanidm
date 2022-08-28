@@ -39,7 +39,7 @@ pydantic = "^1.9.2"
 aiohttp = "^3.8.1"
 
 [tool.poetry.dev-dependencies]
-pylint = "^2.14.5"
+pylint = "^2.15.0"
 mypy = "^0.971"
 pytest = "^7.1.2"
 types-toml = "^0.10.8"
