@@ -1035,8 +1035,9 @@ async fn credential_update_exec(
                 {
                     match e {
                         ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
+                            eprintln!("Password was not secure enough, please consider the following suggestions:");
                             for fb_item in feedback.iter() {
-                                eprintln!("{:?}", fb_item)
+                                eprintln!(" - {}", fb_item)
                             }
                         }
                         _ => eprintln!("An error occured -> {:?}", e),
