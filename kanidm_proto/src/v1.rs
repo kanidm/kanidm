@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::cmp::Ordering;
 use std::fmt;
-use std::{cmp::Ordering, fmt::Display};
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -997,7 +997,7 @@ mod tests {
 }
 
 /// human-readable PasswordFeedback result.
-impl Display for PasswordFeedback {
+impl fmt::Display for PasswordFeedback {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PasswordFeedback::AddAnotherWordOrTwo => write!(f, "Add another word or two."),
