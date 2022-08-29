@@ -254,6 +254,7 @@ impl EntryChangelog {
             self.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
+        #[allow(clippy::expect_used)]
         let change = self
             .changes
             .get_mut(cid)
@@ -273,6 +274,7 @@ impl EntryChangelog {
             self.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
+        #[allow(clippy::expect_used)]
         let change = self
             .changes
             .get_mut(cid)
@@ -289,6 +291,7 @@ impl EntryChangelog {
             self.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
+        #[allow(clippy::expect_used)]
         let change = self
             .changes
             .get_mut(cid)
@@ -303,6 +306,7 @@ impl EntryChangelog {
             self.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
+        #[allow(clippy::expect_used)]
         let change = self
             .changes
             .get_mut(cid)
@@ -315,6 +319,7 @@ impl EntryChangelog {
             self.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
+        #[allow(clippy::expect_used)]
         let change = self
             .changes
             .get_mut(cid)
@@ -327,6 +332,7 @@ impl EntryChangelog {
             self.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
+        #[allow(clippy::expect_used)]
         let change = self
             .changes
             .get_mut(cid)
