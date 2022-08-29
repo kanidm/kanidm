@@ -1231,7 +1231,7 @@ pub trait AccessControlsTransaction<'a> {
                             // if it applies
                             if e.entry_match_no_index(f_res) {
                                 // security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                                Some(acs.attrs.iter().cloned())
+                                Some(acs.attrs.iter().map(|s| s.clone()))
                             } else {
                                 trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
                                 None
@@ -1267,12 +1267,12 @@ pub trait AccessControlsTransaction<'a> {
 
                     let modify_pres: BTreeSet<AttrString> = modify_scoped_acp
                         .iter()
-                        .flat_map(|acp| acp.presattrs.iter().cloned())
+                        .flat_map(|acp| acp.presattrs.iter().map(|v| v.clone()))
                         .collect();
 
                     let modify_rem: BTreeSet<AttrString> = modify_scoped_acp
                         .iter()
-                        .flat_map(|acp| acp.remattrs.iter().cloned())
+                        .flat_map(|acp| acp.remattrs.iter().map(|v| v.clone()))
                         .collect();
 
                     let modify_class: BTreeSet<AttrString> = modify_scoped_acp
