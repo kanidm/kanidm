@@ -66,10 +66,6 @@ pub struct KanidmClientConfig {
     verify_ca: Option<bool>,
     verify_hostnames: Option<bool>,
     ca_path: Option<String>,
-    #[allow(dead_code)]
-    username: Option<String>,
-    #[allow(dead_code)]
-    password: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
