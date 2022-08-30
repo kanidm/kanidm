@@ -113,7 +113,7 @@ impl fmt::Display for PasswordFeedback {
             ),
             PasswordFeedback::AvoidRecentYears => write!(f, "Avoid recent years."),
             PasswordFeedback::AvoidRepeatedWordsAndCharacters => {
-                write!(f, "Avoid repeated aords and characters.")
+                write!(f, "Avoid repeated words and characters.")
             }
             PasswordFeedback::AvoidSequences => write!(f, "Avoid sequences of characters."),
             PasswordFeedback::AvoidYearsThatAreAssociatedWithYou => {
