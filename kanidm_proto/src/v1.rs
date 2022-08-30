@@ -98,6 +98,98 @@ pub enum PasswordFeedback {
     BadListed,
 }
 
+/// Human-readable PasswordFeedback result.
+impl fmt::Display for PasswordFeedback {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PasswordFeedback::AddAnotherWordOrTwo => write!(f, "Add another word or two."),
+            PasswordFeedback::AllUppercaseIsAlmostAsEasyToGuessAsAllLowercase => write!(
+                f,
+                "All uppercase is almost as easy to guess as all lowercase."
+            ),
+            PasswordFeedback::AvoidDatesAndYearsThatAreAssociatedWithYou => write!(
+                f,
+                "Avoid dates and years that are associated with you or your account."
+            ),
+            PasswordFeedback::AvoidRecentYears => write!(f, "Avoid recent years."),
+            PasswordFeedback::AvoidRepeatedWordsAndCharacters => {
+                write!(f, "Avoid repeated words and characters.")
+            }
+            PasswordFeedback::AvoidSequences => write!(f, "Avoid sequences of characters."),
+            PasswordFeedback::AvoidYearsThatAreAssociatedWithYou => {
+                write!(f, "Avoid years that are associated with you.")
+            }
+            PasswordFeedback::AWordByItselfIsEasyToGuess => {
+                write!(f, "A word by itself is easy to guess.")
+            }
+            PasswordFeedback::BadListed => write!(
+                f,
+                "This password has been compromised or otherwise blocked and can not be used."
+            ),
+            PasswordFeedback::CapitalizationDoesntHelpVeryMuch => {
+                write!(f, "Capitalization doesn't help very much.")
+            }
+            PasswordFeedback::CommonNamesAndSurnamesAreEasyToGuess => {
+                write!(f, "Common names and surnames are easy to guess.")
+            }
+            PasswordFeedback::DatesAreOftenEasyToGuess => {
+                write!(f, "Dates are often easy to guess.")
+            }
+            PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess => {
+                write!(f, "Names and surnames by themselves are easy to guess.")
+            }
+            PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters => {
+                write!(f, "No need for symbols, digits or upper-case letters.")
+            }
+            PasswordFeedback::PredictableSubstitutionsDontHelpVeryMuch => {
+                write!(f, "Predictable substitutions don't help very much.")
+            }
+            PasswordFeedback::RecentYearsAreEasyToGuess => {
+                write!(f, "Recent years are easy to guess.")
+            }
+            PasswordFeedback::RepeatsLikeAaaAreEasyToGuess => {
+                write!(f, "Repeats like 'aaa' are easy to guess.")
+            }
+            PasswordFeedback::RepeatsLikeAbcAbcAreOnlySlightlyHarderToGuess => write!(
+                f,
+                "Repeats like abcabcabc are only slightly harder to guess."
+            ),
+            PasswordFeedback::ReversedWordsArentMuchHarderToGuess => {
+                write!(f, "Reversed words aren't much harder to guess.")
+            }
+            PasswordFeedback::SequencesLikeAbcAreEasyToGuess => {
+                write!(f, "Sequences like 'abc' are easy to guess.")
+            }
+            PasswordFeedback::ShortKeyboardPatternsAreEasyToGuess => {
+                write!(f, "Short keyboard patterns are easy to guess.")
+            }
+            PasswordFeedback::StraightRowsOfKeysAreEasyToGuess => {
+                write!(f, "Straight rows of keys are easy to guess.")
+            }
+            PasswordFeedback::ThisIsACommonPassword => write!(f, "This is a common password."),
+            PasswordFeedback::ThisIsATop100Password => write!(f, "This is a top 100 password."),
+            PasswordFeedback::ThisIsATop10Password => write!(f, "This is a top 10 password."),
+            PasswordFeedback::ThisIsSimilarToACommonlyUsedPassword => {
+                write!(f, "This is similar to a commonly used password.")
+            }
+            PasswordFeedback::TooShort(minlength) => write!(
+                f,
+                "Password too was short, needs to be at least {} characters long.",
+                minlength
+            ),
+            PasswordFeedback::UseAFewWordsAvoidCommonPhrases => {
+                write!(f, "Use a few words and avoid common phrases.")
+            }
+            PasswordFeedback::UseALongerKeyboardPatternWithMoreTurns => {
+                write!(
+                    f,
+                    "The password included keyboard patterns across too much of a single row."
+                )
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
