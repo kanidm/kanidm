@@ -981,6 +981,8 @@ impl QueryServer {
         }));
 
         // log_event!(log, "Starting query worker ...");
+
+        #[allow(clippy::expect_used)]
         QueryServer {
             s_uuid,
             d_info,
@@ -2615,7 +2617,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("initialise_idm p1 -> result {:?}", res);
         }
         debug_assert!(res.is_ok());
-        let _ = res?;
+        res?;
 
         // The domain info now exists, we should be able to do these migrations as they will
         // cause SPN regenerations to occur
@@ -2637,7 +2639,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("initialise_idm p2 -> result {:?}", res);
         }
         debug_assert!(res.is_ok());
-        let _ = res?;
+        res?;
 
         // Create any system default schema entries.
 
@@ -2727,7 +2729,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!(?res, "initialise_idm p3 -> result");
         }
         debug_assert!(res.is_ok());
-        let _ = res?;
+        res?;
 
         self.changed_schema.set(true);
         self.changed_acp.set(true);

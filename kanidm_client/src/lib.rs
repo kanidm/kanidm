@@ -61,13 +61,11 @@ pub enum ClientError {
 }
 
 #[derive(Debug, Deserialize)]
-struct KanidmClientConfig {
+pub struct KanidmClientConfig {
     uri: Option<String>,
     verify_ca: Option<bool>,
     verify_hostnames: Option<bool>,
     ca_path: Option<String>,
-    // Should we add username/pw later? They could be part of the builder
-    // process ...
 }
 
 #[derive(Debug, Clone, Default)]
