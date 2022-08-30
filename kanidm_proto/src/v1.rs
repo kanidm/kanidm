@@ -178,7 +178,7 @@ impl fmt::Display for PasswordFeedback {
                 write!(f, "Use a few words and avoid common phrases.")
             }
             PasswordFeedback::UseALongerKeyboardPatternWithMoreTurns => {
-                write!(f, "Use a longer keyboard pattern with more turns.")
+                write!(f, "The password included keyboard patterns across too much of a single row.")
             }
         }
     }
