@@ -122,7 +122,10 @@ impl fmt::Display for PasswordFeedback {
             PasswordFeedback::AWordByItselfIsEasyToGuess => {
                 write!(f, "A word by itself is easy to guess.")
             }
-            PasswordFeedback::BadListed => write!(f, "This password has been 'Bad Listed'."),
+            PasswordFeedback::BadListed => write!(
+                f,
+                "This password has been compromised or otherwise blocked and can not be used."
+            ),
             PasswordFeedback::CapitalizationDoesntHelpVeryMuch => {
                 write!(f, "Capitalization doesn't help very much.")
             }
@@ -178,7 +181,10 @@ impl fmt::Display for PasswordFeedback {
                 write!(f, "Use a few words and avoid common phrases.")
             }
             PasswordFeedback::UseALongerKeyboardPatternWithMoreTurns => {
-                write!(f, "The password included keyboard patterns across too much of a single row.")
+                write!(
+                    f,
+                    "The password included keyboard patterns across too much of a single row."
+                )
             }
         }
     }
