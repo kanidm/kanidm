@@ -176,6 +176,9 @@ pub struct AccountCreateOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountCredential {
+    /// Show the status of this accounts credentials.
+    #[clap(name = "status")]
+    Status(AccountNamedOpt),
     /// Interactively update/change the credentials for an account
     #[clap(name = "update")]
     Update(AccountNamedOpt),
@@ -314,7 +317,25 @@ pub enum PersonOpt {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum ServiceAccountCredential {
+    /// Show the status of this accounts credentials.
+    #[clap(name = "status")]
+    Status(AccountNamedOpt),
+    /// Reset and generate a new service account password. This password can NOT
+    /// be used with the LDAP interface.
+    #[clap(name = "generate-pw")]
+    GeneratePw(AccountNamedOpt),
+    // Future - add a token creator / remover.
+}
+
+#[derive(Debug, Subcommand)]
 pub enum ServiceAccountOpt {
+    /// Manage generated passwords or access tokens for this service account.
+    #[clap(name = "credential")]
+    Credential {
+        #[clap(subcommand)]
+        commands: ServiceAccountCredential,
+    },
     /// Manage posix extensions for this service account allowing access to unix/linux systems
     #[clap(name = "posix")]
     Posix {

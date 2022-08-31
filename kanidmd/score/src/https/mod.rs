@@ -684,17 +684,18 @@ pub fn create_https_server(
         .at("/:id/_into_person")
         .mapped_post(&mut routemap, service_account_into_person);
 
-    /*
     service_account_route
         .at("/:id/_credential")
         .mapped_get(&mut routemap, do_nothing);
     service_account_route
+        .at("/:id/_credential/_generate")
+        .mapped_get(&mut routemap, service_account_credential_generate);
+    service_account_route
         .at("/:id/_credential/_status")
-        .mapped_get(&mut routemap, do_nothing);
+        .mapped_get(&mut routemap, account_get_id_credential_status);
     service_account_route
         .at("/:id/_credential/:cid/_lock")
         .mapped_get(&mut routemap, do_nothing);
-    */
 
     service_account_route
         .at("/:id/_ssh_pubkeys")

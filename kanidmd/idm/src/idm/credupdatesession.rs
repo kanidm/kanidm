@@ -2244,6 +2244,7 @@ mod tests {
 
                 // There now should be a backup code invalidation present
                 let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::BackupCodeRemoval(_)));
                 let r = task::block_on(idms.delayed_action(ct, da));
                 assert!(r.is_ok());
 

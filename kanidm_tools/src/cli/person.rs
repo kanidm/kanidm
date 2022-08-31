@@ -405,6 +405,7 @@ impl PersonOpt {
 impl AccountCredential {
     pub fn debug(&self) -> bool {
         match self {
+            AccountCredential::Status(aopt) => aopt.copt.debug,
             AccountCredential::CreateResetToken(aopt) => aopt.copt.debug,
             AccountCredential::UseResetToken(aopt) => aopt.copt.debug,
             AccountCredential::Update(aopt) => aopt.copt.debug,
@@ -413,6 +414,20 @@ impl AccountCredential {
 
     pub async fn exec(&self) {
         match self {
+            AccountCredential::Status(aopt) => {
+                let client = aopt.copt.to_client().await;
+                match client
+                    .idm_person_account_get_credential_status(aopt.aopts.account_id.as_str())
+                    .await
+                {
+                    Ok(cstatus) => {
+                        println!("{}", cstatus);
+                    }
+                    Err(e) => {
+                        error!("Error getting credential status -> {:?}", e);
+                    }
+                }
+            }
             AccountCredential::Update(aopt) => {
                 let client = aopt.copt.to_client().await;
                 match client

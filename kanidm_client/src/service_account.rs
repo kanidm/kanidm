@@ -1,6 +1,7 @@
 use crate::ClientError;
 use crate::KanidmClient;
 use kanidm_proto::v1::AccountUnixExtend;
+use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::Entry;
 use std::collections::BTreeMap;
 
@@ -128,5 +129,39 @@ impl KanidmClient {
             (),
         )
         .await
+    }
+
+    pub async fn idm_service_account_get_credential_status(
+        &self,
+        id: &str,
+    ) -> Result<CredentialStatus, ClientError> {
+        let res: Result<CredentialStatus, ClientError> = self
+            .perform_get_request(format!("/v1/service_account/{}/_credential/_status", id).as_str())
+            .await;
+        res.and_then(|cs| {
+            if cs.creds.is_empty() {
+                Err(ClientError::EmptyResponse)
+            } else {
+                Ok(cs)
+            }
+        })
+    }
+
+    pub async fn idm_service_account_generate_password(
+        &self,
+        id: &str,
+    ) -> Result<String, ClientError> {
+        let res: Result<String, ClientError> = self
+            .perform_get_request(
+                format!("/v1/service_account/{}/_credential/_generate", id).as_str(),
+            )
+            .await;
+        res.and_then(|pw| {
+            if pw.is_empty() {
+                Err(ClientError::EmptyResponse)
+            } else {
+                Ok(pw)
+            }
+        })
     }
 }

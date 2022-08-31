@@ -1,10 +1,16 @@
-use crate::{AccountSsh, AccountValidity, ServiceAccountOpt, ServiceAccountPosix};
+use crate::{
+    AccountSsh, AccountValidity, ServiceAccountCredential, ServiceAccountOpt, ServiceAccountPosix,
+};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
 
 impl ServiceAccountOpt {
     pub fn debug(&self) -> bool {
         match self {
+            ServiceAccountOpt::Credential { commands } => match commands {
+                ServiceAccountCredential::Status(apo) => apo.copt.debug,
+                ServiceAccountCredential::GeneratePw(apo) => apo.copt.debug,
+            },
             ServiceAccountOpt::Posix { commands } => match commands {
                 ServiceAccountPosix::Show(apo) => apo.copt.debug,
                 ServiceAccountPosix::Set(apo) => apo.copt.debug,
@@ -29,6 +35,36 @@ impl ServiceAccountOpt {
 
     pub async fn exec(&self) {
         match self {
+            ServiceAccountOpt::Credential { commands } => match commands {
+                ServiceAccountCredential::Status(apo) => {
+                    let client = apo.copt.to_client().await;
+                    match client
+                        .idm_service_account_get_credential_status(apo.aopts.account_id.as_str())
+                        .await
+                    {
+                        Ok(cstatus) => {
+                            println!("{}", cstatus);
+                        }
+                        Err(e) => {
+                            error!("Error getting credential status -> {:?}", e);
+                        }
+                    }
+                }
+                ServiceAccountCredential::GeneratePw(apo) => {
+                    let client = apo.copt.to_client().await;
+                    match client
+                        .idm_service_account_generate_password(apo.aopts.account_id.as_str())
+                        .await
+                    {
+                        Ok(new_pw) => {
+                            println!("Success: {}", new_pw);
+                        }
+                        Err(e) => {
+                            error!("Error generating service account credential-> {:?}", e);
+                        }
+                    }
+                }
+            },
             ServiceAccountOpt::Posix { commands } => match commands {
                 ServiceAccountPosix::Show(aopt) => {
                     let client = aopt.copt.to_client().await;

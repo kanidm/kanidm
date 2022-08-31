@@ -1,12 +1,14 @@
 use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 
-pub struct PasswordChangeEvent {
+#[cfg(test)]
+pub(crate) struct PasswordChangeEvent {
     pub ident: Identity,
     pub target: Uuid,
     pub cleartext: String,
 }
 
+#[cfg(test)]
 impl PasswordChangeEvent {
     pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
         PasswordChangeEvent {
@@ -14,33 +16,6 @@ impl PasswordChangeEvent {
             target: *target,
             cleartext: cleartext.to_string(),
         }
-    }
-
-    pub fn from_idm_account_set_password(
-        ident: Identity,
-        cleartext: String,
-        // qs: &QueryServerWriteTransaction,
-    ) -> Result<Self, OperationError> {
-        let target = ident.get_uuid().ok_or(OperationError::InvalidState)?;
-
-        Ok(PasswordChangeEvent {
-            ident,
-            target,
-            cleartext,
-        })
-    }
-
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-        cleartext: String,
-    ) -> Result<Self, OperationError> {
-        Ok(PasswordChangeEvent {
-            ident,
-            target,
-            cleartext,
-        })
     }
 }
 
@@ -87,51 +62,6 @@ impl GeneratePasswordEvent {
         target: Uuid,
     ) -> Result<Self, OperationError> {
         Ok(GeneratePasswordEvent { ident, target })
-    }
-}
-
-#[derive(Debug)]
-pub struct GenerateBackupCodeEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-}
-
-impl GenerateBackupCodeEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-    ) -> Result<Self, OperationError> {
-        Ok(GenerateBackupCodeEvent { ident, target })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
-
-        GenerateBackupCodeEvent { ident, target }
-    }
-}
-
-pub struct RemoveBackupCodeEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-}
-
-impl RemoveBackupCodeEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-    ) -> Result<Self, OperationError> {
-        Ok(RemoveBackupCodeEvent { ident, target })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
-
-        RemoveBackupCodeEvent { ident, target }
     }
 }
 
@@ -262,122 +192,6 @@ impl UnixUserAuthEvent {
             target,
             cleartext,
         })
-    }
-}
-
-#[derive(Debug)]
-pub struct GenerateTotpEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-}
-
-impl GenerateTotpEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-    ) -> Result<Self, OperationError> {
-        Ok(GenerateTotpEvent { ident, target })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
-
-        GenerateTotpEvent { ident, target }
-    }
-}
-
-#[derive(Debug)]
-pub struct VerifyTotpEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-    pub session: Uuid,
-    pub chal: u32,
-}
-
-impl VerifyTotpEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-        session: Uuid,
-        chal: u32,
-    ) -> Result<Self, OperationError> {
-        Ok(VerifyTotpEvent {
-            ident,
-            target,
-            session,
-            chal,
-        })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid, session: Uuid, chal: u32) -> Self {
-        let ident = Identity::from_internal();
-
-        VerifyTotpEvent {
-            ident,
-            target,
-            session,
-            chal,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct AcceptSha1TotpEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-    pub session: Uuid,
-}
-
-impl AcceptSha1TotpEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-        session: Uuid,
-    ) -> Result<Self, OperationError> {
-        Ok(AcceptSha1TotpEvent {
-            ident,
-            target,
-            session,
-        })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid, session: Uuid) -> Self {
-        let ident = Identity::from_internal();
-
-        AcceptSha1TotpEvent {
-            ident,
-            target,
-            session,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct RemoveTotpEvent {
-    pub ident: Identity,
-    pub target: Uuid,
-}
-
-impl RemoveTotpEvent {
-    pub fn from_parts(
-        // qs: &QueryServerWriteTransaction,
-        ident: Identity,
-        target: Uuid,
-    ) -> Result<Self, OperationError> {
-        Ok(RemoveTotpEvent { ident, target })
-    }
-
-    #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
-
-        RemoveTotpEvent { ident, target }
     }
 }
 

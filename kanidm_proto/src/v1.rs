@@ -548,7 +548,6 @@ impl fmt::Display for CredentialStatus {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BackupCodesView {
-    // Or use SetCredentialResponse::BackupCodes?
     pub backup_codes: Vec<String>,
 }
 
@@ -837,6 +836,7 @@ pub struct AuthResponse {
 }
 
 // Types needed for setting credentials
+/*
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SetCredentialRequest {
@@ -849,6 +849,7 @@ pub enum SetCredentialRequest {
     BackupCodeGenerate,
     BackupCodeRemove,
 }
+*/
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -899,6 +900,7 @@ impl TotpSecret {
     }
 }
 
+/*
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SetCredentialResponse {
@@ -909,6 +911,7 @@ pub enum SetCredentialResponse {
     SecurityKeyCreateChallenge(Uuid, CreationChallengeResponse),
     BackupCodes(Vec<String>),
 }
+*/
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUIntentToken {

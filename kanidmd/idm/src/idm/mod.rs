@@ -9,7 +9,6 @@ pub(crate) mod credupdatesession;
 pub(crate) mod delayed;
 pub(crate) mod event;
 pub(crate) mod group;
-pub(crate) mod mfareg;
 pub mod oauth2;
 pub(crate) mod radius;
 pub mod server;

@@ -387,6 +387,20 @@ pub async fn service_account_id_delete(req: tide::Request<AppState>) -> tide::Re
     json_rest_event_delete_id(req, filter).await
 }
 
+pub async fn service_account_credential_generate(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_service_account_credential_generate(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
 // Due to how the migrations work in 6 -> 7, we can accidentally
 // mark "accounts" as service accounts when they are persons. This
 // allows migrating them to the person type due to it's similarities.

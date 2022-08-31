@@ -14,5 +14,5 @@ tracing = { version = "^0.1.35", features = ["attributes", "max_level_trace", "r
 tracing-subscriber = { version = "^0.3.14", features = ["env-filter"] }
 
 # tracing-forest = { version = "0.1.4", features = ["uuid", "smallvec", "tokio", "env-filter"] }
-tracing-forest = { git = "https://github.com/Firstyear/tracing-forest.git", rev = "18d242a4dde060c4946ade0a2c4d5be1df048aea", features = ["uuid", "smallvec", "tokio", "env-filter"] }
+tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "48d78f7294ceee47a22eee5c80964143c4fb3fe1", features = ["uuid", "smallvec", "tokio", "env-filter"] }
 

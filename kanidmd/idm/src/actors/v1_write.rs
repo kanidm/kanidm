@@ -3,8 +3,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{info, instrument, span, trace, Level};
 
-use crate::idm::event::GenerateBackupCodeEvent;
-use crate::idm::event::RemoveBackupCodeEvent;
 use crate::prelude::*;
 
 use crate::idm::credupdatesession::{
@@ -17,8 +15,7 @@ use crate::event::{
     ReviveRecycledEvent,
 };
 use crate::idm::event::{
-    AcceptSha1TotpEvent, GeneratePasswordEvent, GenerateTotpEvent, PasswordChangeEvent,
-    RegenerateRadiusSecretEvent, RemoveTotpEvent, UnixPasswordChangeEvent, VerifyTotpEvent,
+    GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -34,7 +31,7 @@ use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
-    GroupUnixExtend, ModifyRequest, SetCredentialRequest, SetCredentialResponse,
+    GroupUnixExtend, ModifyRequest,
 };
 
 use uuid::Uuid;
@@ -424,28 +421,21 @@ impl QueryServerWriteV1 {
         res
     }
 
-    // === IDM native types for modifications
     #[instrument(
         level = "info",
-        name = "credential_set",
-        skip(self, uat, uuid_or_name, sac, eventid)
+        name = "service_account_credential_generate",
+        skip(self, uat, uuid_or_name, eventid)
         fields(uuid = ?eventid)
     )]
-    pub async fn handle_credentialset(
+    pub async fn handle_service_account_credential_generate(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
-        sac: SetCredentialRequest,
         eventid: Uuid,
-    ) -> Result<SetCredentialResponse, OperationError> {
+    ) -> Result<String, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<InternalCredentialSetMessage>", {
-            // Trigger a session clean *before* we take any auth steps.
-            // It's important to do this before to ensure that timeouts on
-            // the session are enforced.
-            idms_prox_write.expire_mfareg_sessions(ct);
-
             let ident = idms_prox_write
                 .validate_and_parse_uat(uat.as_deref(), ct)
                 .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
@@ -467,204 +457,16 @@ impl QueryServerWriteV1 {
                     e
                 })?;
 
-            // What type of auth set did we recieve?
-            match sac {
-                SetCredentialRequest::Password(cleartext) => {
-                    let pce = PasswordChangeEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                        cleartext,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .set_account_password(&pce)
-                        .and_then(|_| idms_prox_write.commit())
-                        .map(|_| SetCredentialResponse::Success)
-                }
-                SetCredentialRequest::GeneratePassword => {
-                    let gpe = GeneratePasswordEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .generate_account_password(&gpe)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                        .map(SetCredentialResponse::Token)
-                }
-                SetCredentialRequest::TotpGenerate => {
-                    let gte = GenerateTotpEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .generate_account_totp(&gte, ct)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-                SetCredentialRequest::TotpVerify(uuid, chal) => {
-                    let vte = VerifyTotpEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                        uuid,
-                        chal,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .verify_account_totp(&vte, ct)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-                SetCredentialRequest::TotpAcceptSha1(uuid) => {
-                    let aste =
-                        AcceptSha1TotpEvent::from_parts(ident, target_uuid, uuid).map_err(|e| {
-                            admin_error!(
-                                err = ?e,
-                                "Failed to begin internal_credential_set_message",
-                            );
-                            e
-                        })?;
-                    idms_prox_write
-                        .accept_account_sha1_totp(&aste)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-                SetCredentialRequest::TotpRemove => {
-                    let rte = RemoveTotpEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .remove_account_totp(&rte)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-                /*
-                SetCredentialRequest::SecurityKeyBegin(label) => {
-                    let wre = WebauthnInitRegisterEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                        label,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .reg_account_webauthn_init(&wre, ct)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-                SetCredentialRequest::SecurityKeyRegister(uuid, rpkc) => {
-                    let wre = WebauthnDoRegisterEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                        uuid,
-                        rpkc,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .reg_account_webauthn_complete(&wre)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-                SetCredentialRequest::SecurityKeyRemove(label) => {
-                    let rwe = RemoveWebauthnEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                        label,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .remove_account_webauthn(&rwe)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-                */
-                SetCredentialRequest::BackupCodeGenerate => {
-                    let gbe = GenerateBackupCodeEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .generate_backup_code(&gbe)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                        .map(SetCredentialResponse::BackupCodes)
-                }
-                SetCredentialRequest::BackupCodeRemove => {
-                    let rbe = RemoveBackupCodeEvent::from_parts(
-                        // &idms_prox_write.qs_write,
-                        ident,
-                        target_uuid,
-                    )
-                    .map_err(|e| {
-                        admin_error!(
-                            err = ?e,
-                            "Failed to begin internal_credential_set_message",
-                        );
-                        e
-                    })?;
-                    idms_prox_write
-                        .remove_backup_code(&rbe)
-                        .and_then(|r| idms_prox_write.commit().map(|_| r))
-                }
-            }
+            let gpe = GeneratePasswordEvent::from_parts(ident, target_uuid).map_err(|e| {
+                admin_error!(
+                    err = ?e,
+                    "Failed to begin handle_service_account_credential_generate",
+                );
+                e
+            })?;
+            idms_prox_write
+                .generate_account_password(&gpe)
+                .and_then(|r| idms_prox_write.commit().map(|_| r))
         });
         res
     }
@@ -878,6 +680,7 @@ impl QueryServerWriteV1 {
         res
     }
 
+    /*
     #[instrument(
         level = "info",
         name = "idm_account_set_password",
@@ -918,6 +721,7 @@ impl QueryServerWriteV1 {
         });
         res
     }
+    */
 
     #[instrument(
         level = "info",
@@ -973,8 +777,6 @@ impl QueryServerWriteV1 {
         let res = spanned!(
             "actors::v1_write::handle<InternalRegenerateRadiusMessage>",
             {
-                idms_prox_write.expire_mfareg_sessions(ct);
-
                 let ident = idms_prox_write
                     .validate_and_parse_uat(uat.as_deref(), ct)
                     .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
@@ -1316,8 +1118,6 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmAccountUnixSetCredMessage>", {
-            idms_prox_write.expire_mfareg_sessions(ct);
-
             let ident = idms_prox_write
                 .validate_and_parse_uat(uat.as_deref(), ct)
                 .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
