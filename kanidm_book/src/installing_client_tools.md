@@ -66,8 +66,8 @@ Now you can check your instance is working. You may need to provide a CA certifi
 with the -C parameter:
 
     kanidm login --name anonymous
-    kanidm self whoami -C ../path/to/ca.pem -H https://localhost:8443 --name anonymous
     kanidm self whoami -H https://localhost:8443 --name anonymous
+    kanidm self whoami -C ../path/to/ca.pem -H https://localhost:8443 --name anonymous
 
-Now you can take some time to look at what commands are available - please 
+Now you can take some time to look at what commands are available - please
 [ask for help at any time](https://github.com/kanidm/kanidm#getting-in-contact--questions).

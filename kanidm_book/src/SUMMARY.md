@@ -15,16 +15,6 @@
   - [The Recycle Bin](recycle_bin.md)
   - [Why TLS?](why_tls.md)
 
-# For Developers
-
-- [Developer Guide](DEVELOPER_README.md)
-- [Design Documents]()
-  - [Access Profiles](developers/designs/access_profiles_and_security.md)
-  - [REST Interface](developers/designs/rest_interface.md)
-- [Python Module](developers/python.md)
-- [RADIUS Integration](developers/radius.md)
-
-
 # Integrations
 
 - [Oauth2](integrations/oauth2.md)
@@ -36,7 +26,17 @@
 
 - [Kubernetes Ingress](examples/k8s_ingress_example.md)
 
-# Packaging
+# For Developers
+
+- [Developer Guide](DEVELOPER_README.md)
+- [Design Documents]()
+  - [Access Profiles](developers/designs/access_profiles_and_security.md)
+  - [REST Interface](developers/designs/rest_interface.md)
+- [Python Module](developers/python.md)
+- [RADIUS Integration](developers/radius.md)
+
+## Packaging
 
 - [Packaging](packaging.md)
 - [Debian/Ubuntu](packaging_debs.md)
+

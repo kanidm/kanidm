@@ -236,7 +236,7 @@ pub enum ServiceAccountPosix {
 }
 
 #[derive(Debug, Args)]
-pub struct AccountPersonOpt {
+pub struct PersonUpdateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
     #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses.")]
@@ -302,6 +302,9 @@ pub enum PersonOpt {
     /// View a specific person
     #[clap(name = "get")]
     Get(AccountNamedOpt),
+    /// Update a specific person's attributes
+    #[clap(name = "get")]
+    Update(PersonUpdateOpt),
     /// Create a new person's account
     #[clap(name = "create")]
     Create(AccountCreateOpt),

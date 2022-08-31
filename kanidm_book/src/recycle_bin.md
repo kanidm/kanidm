@@ -33,11 +33,11 @@ You can display all items in the Recycle Bin with:
 
 You can show a single items with:
 
-    kanidm recycle-bin get --name admin <id>
+    kanidm recycle-bin get --name admin <uuid>
 
 An entry can be revived with:
 
-    kanidm recycle-bin revive --name admin <id>
+    kanidm recycle-bin revive --name admin <uuid>
 
 ## Edge Cases
 

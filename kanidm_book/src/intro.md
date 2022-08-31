@@ -10,8 +10,8 @@ The intent of the Kanidm project is to:
 * Make system, network, application and web authentication easy and accessible.
 
 
- {{#template  
-    templates/kani-warning.md      
+ {{#template
+    templates/kani-warning.md
     imagepath=images
     title=NOTICE
     text=This is a pre-release project. While all effort has been made to ensure no data loss or security flaws, you should still be careful when using this in your environment.
@@ -23,8 +23,8 @@ Looking for the `rustdoc` documentation for the libraries themselves? [Click her
 
 ## Why do I want Kanidm?
 
-Whether you work in a business, a volunteer organisation, or are an enthusiast who manages 
-their personal services, you need methods of authenticating and identifying 
+Whether you work in a business, a volunteer organisation, or are an enthusiast who manages
+their personal services, you need methods of authenticating and identifying
 to your systems, and subsequently, ways to determine what authorisation and privileges you have
 while accessing these systems.
 

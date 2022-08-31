@@ -1,7 +1,8 @@
 # POSIX Accounts and Groups
 
 Kanidm has features that enable its accounts and groups to be consumed on
-POSIX-like machines, such as Linux, FreeBSD, or others.
+POSIX-like machines, such as Linux, FreeBSD, or others. Both service accounts
+and person accounts can be used on POSIX systems.
 
 ## Notes on POSIX Features
 
@@ -38,8 +39,9 @@ two independent items. For example in /etc/passwd and /etc/group:
     # group
     william:x:654401105:
 
-Other systems like FreeIPA use a plugin that generates a UPG as a database record on
-creation of the account.
+Other systems like FreeIPA use a plugin that generates a UPG as a seperate group entry on
+creation of the account. This means there are two entries for an account, and they must
+be kept in lock-step.
 
 Kanidm does neither of these. As the GID number of the user must be unique, and a user
 implies the UPG must exist, we can generate UPG's on-demand from the account.
@@ -48,19 +50,18 @@ UPG - given the nature of a user private group, this is the point.
 
 ### GID Number Generation
 
-In the future, Kanidm plans to have asynchronous replication as a feature between writable
+Kanidm will have asynchronous replication as a feature between writable
 database servers. In this case, we need to be able to allocate stable and reliable
 GID numbers to accounts on replicas that may not be in continual communication.
 
-To do this, we use the last 32 bits of the account or group's UUID to 
-generate the GID number.
+To do this, we use the last 32 bits of the account or group's UUID to generate the GID number.
 
 A valid concern is the possibility of duplication in the lower 32 bits. Given the
 birthday problem, if you have 77,000 groups and accounts, you have a 50% chance
 of duplication. With 50,000 you have a 20% chance, 9,300 you have a 1% chance and
 with 2900 you have a 0.1% chance.
 
-We advise that if you have a site with >10,000 users you should use an external system 
+We advise that if you have a site with >10,000 users you should use an external system
 to allocate GID numbers serially or consistently to avoid potential duplication events.
 
 This design decision is made as most small sites will benefit greatly from the
@@ -72,19 +73,19 @@ capable of supplying this kind of data in batch jobs.
 
 ### Enabling POSIX Attributes on Accounts
 
-To enable POSIX account features and IDs on an account, you require the permission 
+To enable POSIX account features and IDs on an account, you require the permission
 `idm_account_unix_extend_priv`. This is provided to `idm_admins` in the default database.
 
 You can then use the following command to enable POSIX extensions.
 
-    kanidm account posix set --name idm_admin <account_id> [--shell SHELL --gidnumber GID]
-    kanidm account posix set --name idm_admin demo_user
-    kanidm account posix set --name idm_admin demo_user --shell /bin/zsh
-    kanidm account posix set --name idm_admin demo_user --gidnumber 2001
+    kanidm person|service-account posix set --name idm_admin <account_id> [--shell SHELL --gidnumber GID]
+    kanidm person|service-account posix set --name idm_admin demo_user
+    kanidm person|service-account posix set --name idm_admin demo_user --shell /bin/zsh
+    kanidm person|service-account posix set --name idm_admin demo_user --gidnumber 2001
 
 You can view the accounts POSIX token details with:
 
-    kanidm account posix show --name anonymous demo_user
+    kanidm person|service-account posix show --name anonymous demo_user
 
 ### Enabling POSIX Attributes on Groups
 
