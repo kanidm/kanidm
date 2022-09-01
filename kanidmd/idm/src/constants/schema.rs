@@ -1135,6 +1135,7 @@ pub const JSON_SCHEMA_CLASS_SERVICE_ACCOUNT: &str = r#"
         "service_account"
       ],
       "systemmay": [
+        "mail",
         "primary_credential"
       ],
       "uuid": [

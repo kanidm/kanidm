@@ -605,6 +605,7 @@ pub fn create_https_server(
     person_route
         .at("/:id")
         .mapped_get(&mut routemap, person_id_get)
+        .mapped_patch(&mut routemap, account_id_patch)
         .mapped_delete(&mut routemap, person_account_id_delete);
     person_route
         .at("/:id/_attr/:attr")
@@ -668,6 +669,7 @@ pub fn create_https_server(
     service_account_route
         .at("/:id")
         .mapped_get(&mut routemap, service_account_id_get)
+        .mapped_patch(&mut routemap, account_id_patch)
         .mapped_delete(&mut routemap, service_account_id_delete);
     service_account_route
         .at("/:id/_attr/:attr")

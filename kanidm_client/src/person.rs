@@ -33,6 +33,41 @@ impl KanidmClient {
         self.perform_post_request("/v1/person", new_acct).await
     }
 
+    pub async fn idm_person_account_update(
+        &self,
+        id: &str,
+        newname: Option<&str>,
+        displayname: Option<&str>,
+        legalname: Option<&str>,
+        mail: Option<&[String]>,
+    ) -> Result<(), ClientError> {
+        let mut update_entry = Entry {
+            attrs: BTreeMap::new(),
+        };
+
+        if let Some(newname) = newname {
+            update_entry
+                .attrs
+                .insert("name".to_string(), vec![newname.to_string()]);
+        }
+        if let Some(newdisplayname) = displayname {
+            update_entry
+                .attrs
+                .insert("displayname".to_string(), vec![newdisplayname.to_string()]);
+        }
+        if let Some(newlegalname) = legalname {
+            update_entry
+                .attrs
+                .insert("legalname".to_string(), vec![newlegalname.to_string()]);
+        }
+        if let Some(mail) = mail {
+            update_entry.attrs.insert("mail".to_string(), mail.to_vec());
+        }
+
+        self.perform_patch_request(format!("/v1/person/{}", id).as_str(), update_entry)
+            .await
+    }
+
     pub async fn idm_person_account_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/person/", id].concat().as_str())
             .await

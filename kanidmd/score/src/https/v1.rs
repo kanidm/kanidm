@@ -441,6 +441,26 @@ pub async fn account_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_put_id_attr(req, filter).await
 }
 
+pub async fn account_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
+    // Update a value / attrs
+    let uat = req.get_current_uat();
+    let id = req.get_url_param("id")?;
+
+    let obj: ProtoEntry = req.body_json().await?;
+
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_internalpatch(uat, filter, obj, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
 pub async fn account_get_id_credential_update(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;

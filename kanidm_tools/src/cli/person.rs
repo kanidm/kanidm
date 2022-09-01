@@ -39,6 +39,7 @@ impl PersonOpt {
             },
             PersonOpt::List(copt) => copt.debug,
             PersonOpt::Get(aopt) => aopt.copt.debug,
+            PersonOpt::Update(aopt) => aopt.copt.debug,
             PersonOpt::Delete(aopt) => aopt.copt.debug,
             PersonOpt::Create(aopt) => aopt.copt.debug,
             PersonOpt::Validity { commands } => match commands {
@@ -206,6 +207,22 @@ impl PersonOpt {
                 let client = copt.to_client().await;
                 match client.idm_person_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            PersonOpt::Update(aopt) => {
+                let client = aopt.copt.to_client().await;
+                match client
+                    .idm_person_account_update(
+                        aopt.aopts.account_id.as_str(),
+                        aopt.newname.as_deref(),
+                        aopt.displayname.as_deref(),
+                        aopt.legalname.as_deref(),
+                        aopt.mail.as_deref(),
+                    )
+                    .await
+                {
+                    Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }

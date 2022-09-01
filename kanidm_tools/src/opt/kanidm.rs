@@ -239,10 +239,14 @@ pub enum ServiceAccountPosix {
 pub struct PersonUpdateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses.")]
-    mail: Option<Vec<String>>,
     #[clap(long, short, help="Set the legal name for the person.")]
     legalname: Option<String>,
+    #[clap(long, short, help="Set the account name for the person.")]
+    newname: Option<String>,
+    #[clap(long, short='i', help="Set the display name for the person.")]
+    displayname: Option<String>,
+    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'")]
+    mail: Option<Vec<String>>,
     #[clap(flatten)]
     copt: CommonOpt,
 }
@@ -303,7 +307,7 @@ pub enum PersonOpt {
     #[clap(name = "get")]
     Get(AccountNamedOpt),
     /// Update a specific person's attributes
-    #[clap(name = "get")]
+    #[clap(name = "update")]
     Update(PersonUpdateOpt),
     /// Create a new person's account
     #[clap(name = "create")]
@@ -329,6 +333,20 @@ pub enum ServiceAccountCredential {
     #[clap(name = "generate-pw")]
     GeneratePw(AccountNamedOpt),
     // Future - add a token creator / remover.
+}
+
+#[derive(Debug, Args)]
+pub struct ServiceAccountUpdateOpt {
+    #[clap(flatten)]
+    aopts: AccountCommonOpt,
+    #[clap(long, short, help="Set the account name for the service account.")]
+    newname: Option<String>,
+    #[clap(long, short='i', help="Set the display name for the service account.")]
+    displayname: Option<String>,
+    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'")]
+    mail: Option<Vec<String>>,
+    #[clap(flatten)]
+    copt: CommonOpt,
 }
 
 #[derive(Debug, Subcommand)]
@@ -360,6 +378,9 @@ pub enum ServiceAccountOpt {
     /// Create a new service account
     #[clap(name = "create")]
     Create(AccountCreateOpt),
+    /// Update a specific service account's attributes
+    #[clap(name = "update")]
+    Update(ServiceAccountUpdateOpt),
     /// Delete a service account
     #[clap(name = "delete")]
     Delete(AccountNamedOpt),

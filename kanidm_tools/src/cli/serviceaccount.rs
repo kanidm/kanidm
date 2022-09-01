@@ -22,6 +22,7 @@ impl ServiceAccountOpt {
             },
             ServiceAccountOpt::List(copt) => copt.debug,
             ServiceAccountOpt::Get(aopt) => aopt.copt.debug,
+            ServiceAccountOpt::Update(aopt) => aopt.copt.debug,
             ServiceAccountOpt::Delete(aopt) => aopt.copt.debug,
             ServiceAccountOpt::Create(aopt) => aopt.copt.debug,
             ServiceAccountOpt::Validity { commands } => match commands {
@@ -136,6 +137,21 @@ impl ServiceAccountOpt {
                 let client = copt.to_client().await;
                 match client.idm_service_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            ServiceAccountOpt::Update(aopt) => {
+                let client = aopt.copt.to_client().await;
+                match client
+                    .idm_service_account_update(
+                        aopt.aopts.account_id.as_str(),
+                        aopt.newname.as_deref(),
+                        aopt.displayname.as_deref(),
+                        aopt.mail.as_deref(),
+                    )
+                    .await
+                {
+                    Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
