@@ -12,7 +12,7 @@ use webauthn_rs_proto::{
 
 /* ===== errors ===== */
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SchemaError {
     NotImplemented,
@@ -29,7 +29,7 @@ pub enum SchemaError {
     PhantomAttribute(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum PluginError {
     AttrUnique(String),
@@ -39,7 +39,7 @@ pub enum PluginError {
     Oauth2Secrets,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ConsistencyError {
     Unknown,
@@ -461,7 +461,7 @@ pub struct AccountOrgPersonExtend {
 }
 */
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum CredentialDetailType {
     Password,
     GeneratedPassword,
@@ -558,7 +558,7 @@ pub struct BackupCodesView {
 // the in memory server core entry type, without affecting the protoEntry type
 //
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
 }
@@ -918,7 +918,7 @@ pub struct CUIntentToken {
     pub token: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CUSessionToken {
     pub token: String,
 }

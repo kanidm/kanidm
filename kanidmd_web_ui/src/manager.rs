@@ -17,7 +17,7 @@ use crate::views::{ViewRoute, ViewsApp};
 use serde::{Deserialize, Serialize};
 
 // router to decide on state.
-#[derive(Routable, PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum Route {
     #[at("/")]
     Landing,

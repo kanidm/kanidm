@@ -70,8 +70,8 @@ impl fmt::Display for State {
 enum Transition {
     Create(Eattrs),
     ModifyPurge(AttrString),
-    ModifyPresent(AttrString, Value),
-    ModifyRemoved(AttrString, PartialValue),
+    ModifyPresent(AttrString, Box<Value>),
+    ModifyRemoved(AttrString, Box<PartialValue>),
     Recycle,
     Revive,
     Tombstone(Eattrs),
@@ -107,11 +107,11 @@ impl State {
                 (State::Live(ref mut attrs), Transition::ModifyPresent(attr, value)) => {
                     trace!("Live + ModifyPresent({}) -> Live", attr);
                     if let Some(vs) = attrs.get_mut(attr) {
-                        let r = vs.insert_checked(value.clone());
+                        let r = vs.insert_checked(value.as_ref().clone());
                         assert!(r.is_ok());
                         // Reject if it fails?
                     } else {
-                        let vs = valueset::from_value_iter(std::iter::once(value.clone()))
+                        let vs = valueset::from_value_iter(std::iter::once(value.as_ref().clone()))
                             .expect("Unable to fail - not empty, and only one type!");
                         attrs.insert(attr.clone(), vs);
                     }
@@ -218,19 +218,13 @@ impl EntryChangelog {
             .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
             .unwrap_or(false)
         {
-            (
-                btreemap![(cid.clone(), State::Tombstone(attrs))],
-                BTreeMap::new(),
-            )
+            (btreemap![(cid, State::Tombstone(attrs))], BTreeMap::new())
         } else if class
             .as_ref()
             .map(|c| c.contains(&PVCLASS_RECYCLED as &PartialValue))
             .unwrap_or(false)
         {
-            (
-                btreemap![(cid.clone(), State::Recycled(attrs))],
-                BTreeMap::new(),
-            )
+            (btreemap![(cid, State::Recycled(attrs))], BTreeMap::new())
         } else {
             (
                 btreemap![(cid.clone(), State::NonExistent)],
@@ -262,7 +256,7 @@ impl EntryChangelog {
 
         viter
             .into_iter()
-            .map(|v| Transition::ModifyPresent(AttrString::from(attr), v))
+            .map(|v| Transition::ModifyPresent(AttrString::from(attr), Box::new(v)))
             .for_each(|t| change.s.push(t));
     }
 
@@ -282,7 +276,7 @@ impl EntryChangelog {
 
         viter
             .into_iter()
-            .map(|v| Transition::ModifyRemoved(AttrString::from(attr), v))
+            .map(|v| Transition::ModifyRemoved(AttrString::from(attr), Box::new(v)))
             .for_each(|t| change.s.push(t));
     }
 
@@ -510,7 +504,7 @@ impl EntryChangelog {
 
         // insert_anchor will remove anything to the right, we also need to
         // remove everything to the left, so just clear.
-        let _ = self.anchors.clear();
+        self.anchors.clear();
         self.anchors.insert(cid.clone(), entry_state);
 
         // And now split the CL.

@@ -37,7 +37,7 @@ impl<'a> IdxKeyRef<'a> {
     pub fn as_key(&self) -> IdxKey {
         IdxKey {
             attr: self.attr.into(),
-            itype: self.itype.clone(),
+            itype: *self.itype,
         }
     }
 }
@@ -94,7 +94,7 @@ pub struct IdlCacheKey {
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct IdlCacheKeyRef<'a> {
     pub a: &'a str,
-    pub i: &'a IndexType,
+    pub i: IndexType,
     pub k: &'a str,
 }
 
@@ -121,7 +121,7 @@ impl IdlCacheKeyToRef for IdlCacheKey {
     fn keyref(&self) -> IdlCacheKeyRef<'_> {
         IdlCacheKeyRef {
             a: self.a.as_str(),
-            i: &self.i,
+            i: self.i,
             k: self.k.as_str(),
         }
     }

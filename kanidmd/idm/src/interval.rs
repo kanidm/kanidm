@@ -97,13 +97,16 @@ impl IntervalActor {
                 );
 
                 sleep(Duration::from_secs(wait_seconds)).await;
-                server
+                if let Err(e) = server
                     .handle_online_backup(
                         OnlineBackupEvent::new(),
                         outpath.clone().as_str(),
                         versions,
                     )
-                    .await;
+                    .await
+                {
+                    error!(?e, "An online backup error occured.");
+                }
             }
         });
 

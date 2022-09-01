@@ -1244,7 +1244,7 @@ pub const JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
   }
 "#;
 
-pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = &r#"
+pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
   {
     "attrs": {
       "class": [

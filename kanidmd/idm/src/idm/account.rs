@@ -487,7 +487,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid))),
                 &modlist,
                 // Provide the entry to impersonate
-                &ident,
+                ident,
             )
             .map_err(|e| {
                 admin_error!("Failed to migrate service account to person - {:?}", e);

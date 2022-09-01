@@ -102,16 +102,11 @@ impl ValueSetT for ValueSetUint32 {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(
-            self.set
-                .iter()
-                .copied()
-                .map(|b| PartialValue::new_uint32(b)),
-        )
+        Box::new(self.set.iter().copied().map(PartialValue::new_uint32))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(|b| Value::new_uint32(b)))
+        Box::new(self.set.iter().copied().map(Value::new_uint32))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

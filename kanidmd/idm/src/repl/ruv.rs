@@ -3,6 +3,7 @@ use crate::repl::cid::Cid;
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::ConsistencyError;
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::ops::Bound::*;
 use std::sync::Arc;
@@ -60,7 +61,7 @@ pub trait ReplicationUpdateVectorTransaction {
             // We don't need the details of the change - only the cid of the
             // change that this entry was involved in.
             for cid in eclog.cid_iter() {
-                if let Some(idl) = check_ruv.get_mut(&cid) {
+                if let Some(idl) = check_ruv.get_mut(cid) {
                     // We can't guarantee id order, so we have to do this properly.
                     idl.insert_id(eid);
                 } else {
@@ -86,26 +87,30 @@ pub trait ReplicationUpdateVectorTransaction {
         let mut snap_next = snap_iter.next();
 
         while let (Some((ck, cv)), Some((sk, sv))) = (&check_next, &snap_next) {
-            if ck == sk {
-                if cv == sv {
-                    trace!("{:?} is consistent!", ck);
-                } else {
-                    admin_warn!("{:?} is NOT consistent! IDL's differ", ck);
+            match ck.cmp(sk) {
+                Ordering::Equal => {
+                    if cv == sv {
+                        trace!("{:?} is consistent!", ck);
+                    } else {
+                        admin_warn!("{:?} is NOT consistent! IDL's differ", ck);
+                        debug_assert!(false);
+                        results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
+                    }
+                    check_next = check_iter.next();
+                    snap_next = snap_iter.next();
+                }
+                Ordering::Less => {
+                    admin_warn!("{:?} is NOT consistent! CID missing from RUV", ck);
                     debug_assert!(false);
                     results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
+                    check_next = check_iter.next();
                 }
-                check_next = check_iter.next();
-                snap_next = snap_iter.next();
-            } else if ck < sk {
-                admin_warn!("{:?} is NOT consistent! CID missing from RUV", ck);
-                debug_assert!(false);
-                results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
-                check_next = check_iter.next();
-            } else {
-                admin_warn!("{:?} is NOT consistent! CID should not exist in RUV", sk);
-                debug_assert!(false);
-                results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
-                snap_next = snap_iter.next();
+                Ordering::Greater => {
+                    admin_warn!("{:?} is NOT consistent! CID should not exist in RUV", sk);
+                    debug_assert!(false);
+                    results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
+                    snap_next = snap_iter.next();
+                }
             }
         }
 
@@ -159,7 +164,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             // We don't need the details of the change - only the cid of the
             // change that this entry was involved in.
             for cid in eclog.cid_iter() {
-                if let Some(idl) = rebuild_ruv.get_mut(&cid) {
+                if let Some(idl) = rebuild_ruv.get_mut(cid) {
                     // We can't guarantee id order, so we have to do this properly.
                     idl.insert_id(eid);
                 } else {
@@ -181,9 +186,9 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn insert_change(&mut self, cid: Cid, idl: IDLBitRange) -> Result<(), OperationError> {
+    pub fn insert_change(&mut self, cid: &Cid, idl: IDLBitRange) -> Result<(), OperationError> {
         // Remember, in a transaction the changes can be updated multiple times.
-        if let Some(ex_idl) = self.data.get_mut(&cid) {
+        if let Some(ex_idl) = self.data.get_mut(cid) {
             // This ensures both sets have all the available ids.
             let idl = ex_idl as &_ | &idl;
             *ex_idl = idl;

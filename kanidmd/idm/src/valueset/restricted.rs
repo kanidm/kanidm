@@ -25,7 +25,7 @@ impl ValueSetRestricted {
         Ok(Box::new(ValueSetRestricted { set }))
     }
 
-    pub fn from_iter<'a, T>(iter: T) -> Option<Box<Self>>
+    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = String>,
     {

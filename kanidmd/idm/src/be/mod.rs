@@ -98,6 +98,7 @@ impl BackendConfig {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn new_test() -> Self {
         BackendConfig {
             pool_size: 1,
@@ -188,7 +189,7 @@ pub trait BackendTransaction {
                     // Get the idl for this
                     match self
                         .get_idlayer()
-                        .get_idl(attr, &IndexType::Equality, &idx_key)?
+                        .get_idl(attr, IndexType::Equality, &idx_key)?
                     {
                         Some(idl) => (
                             IdList::Indexed(idl),
@@ -208,7 +209,7 @@ pub trait BackendTransaction {
                     // Get the idl for this
                     match self
                         .get_idlayer()
-                        .get_idl(attr, &IndexType::SubString, &idx_key)?
+                        .get_idl(attr, IndexType::SubString, &idx_key)?
                     {
                         Some(idl) => (
                             IdList::Indexed(idl),
@@ -224,11 +225,7 @@ pub trait BackendTransaction {
             FilterResolved::Pres(attr, idx) => {
                 if idx.is_some() {
                     // Get the idl for this
-                    match self.get_idlayer().get_idl(
-                        attr,
-                        &IndexType::Presence,
-                        &"_".to_string(),
-                    )? {
+                    match self.get_idlayer().get_idl(attr, IndexType::Presence, "_")? {
                         Some(idl) => (IdList::Indexed(idl), FilterPlan::PresIndexed(attr.clone())),
                         None => (IdList::AllIds, FilterPlan::PresCorrupt(attr.clone())),
                     }
@@ -993,7 +990,7 @@ impl<'a> BackendWriteTransaction<'a> {
             // This auto compresses.
             let ruv_idl = IDLBitRange::from_iter(c_entries.iter().map(|e| e.get_id()));
 
-            self.get_ruv().insert_change(cid.clone(), ruv_idl)?;
+            self.get_ruv().insert_change(cid, ruv_idl)?;
 
             idlayer.write_identries(c_entries.iter())?;
 
@@ -1036,7 +1033,7 @@ impl<'a> BackendWriteTransaction<'a> {
             // All good, lets update the RUV.
             // This auto compresses.
             let ruv_idl = IDLBitRange::from_iter(post_entries.iter().map(|e| e.get_id()));
-            self.get_ruv().insert_change(cid.clone(), ruv_idl)?;
+            self.get_ruv().insert_change(cid, ruv_idl)?;
 
             // Now, given the list of id's, update them
             self.get_idlayer().write_identries(post_entries.iter())?;
@@ -1277,17 +1274,17 @@ impl<'a> BackendWriteTransaction<'a> {
 
         let idxmeta = unsafe { &(*(&self.idxmeta.idxkeys as *const _)) };
 
-        let idx_diff = Entry::idx_diff(&(*idxmeta), pre, post);
+        let idx_diff = Entry::idx_diff(idxmeta, pre, post);
 
-        idx_diff.iter()
+        idx_diff.into_iter()
             .try_for_each(|act| {
                 match act {
                     Ok((attr, itype, idx_key)) => {
                         trace!("Adding {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
-                        match idlayer.get_idl(attr, itype, idx_key)? {
+                        match idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
-                                idlayer.write_idl(attr, itype, idx_key, &idl)
+                                idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
                             None => {
                                 admin_error!(
@@ -1300,10 +1297,10 @@ impl<'a> BackendWriteTransaction<'a> {
                     }
                     Err((attr, itype, idx_key)) => {
                         trace!("Removing {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
-                        match idlayer.get_idl(attr, itype, idx_key)? {
+                        match idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
-                                idlayer.write_idl(attr, itype, idx_key, &idl)
+                                idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
                             None => {
                                 admin_error!(
@@ -1338,7 +1335,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 if idx_table_set.contains(&tname) {
                     None
                 } else {
-                    Some((ikey.attr.clone(), ikey.itype.clone()))
+                    Some((ikey.attr.clone(), ikey.itype))
                 }
             })
             .collect();
@@ -1360,7 +1357,7 @@ impl<'a> BackendWriteTransaction<'a> {
         self.idxmeta
             .idxkeys
             .keys()
-            .try_for_each(|ikey| idlayer.create_idx(&ikey.attr, &ikey.itype))
+            .try_for_each(|ikey| idlayer.create_idx(&ikey.attr, ikey.itype))
     }
 
     pub fn upgrade_reindex(&self, v: i64) -> Result<(), OperationError> {
@@ -1434,7 +1431,7 @@ impl<'a> BackendWriteTransaction<'a> {
     pub fn load_test_idl(
         &self,
         attr: &String,
-        itype: &IndexType,
+        itype: IndexType,
         idx_key: &String,
     ) -> Result<Option<IDLBitRange>, OperationError> {
         self.get_idlayer().get_idl(attr, itype, idx_key)
@@ -1872,7 +1869,7 @@ mod tests {
     macro_rules! idl_state {
         ($be:expr, $attr:expr, $itype:expr, $idx_key:expr, $expect:expr) => {{
             let t_idl = $be
-                .load_test_idl(&$attr.to_string(), &$itype, &$idx_key.to_string())
+                .load_test_idl(&$attr.to_string(), $itype, &$idx_key.to_string())
                 .expect("IdList Load failed");
             let t = $expect.map(|v: Vec<u64>| IDLBitRange::from_iter(v));
             assert_eq!(t_idl, t);
@@ -2335,7 +2332,7 @@ mod tests {
             let uuid_p_idl = be
                 .load_test_idl(
                     &"not_indexed".to_string(),
-                    &IndexType::Presence,
+                    IndexType::Presence,
                     &"_".to_string(),
                 )
                 .unwrap(); // unwrap the result

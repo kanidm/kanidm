@@ -625,7 +625,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             .flat_map(|a| {
                 a.index.iter().map(move |itype: &IndexType| IdxKey {
                     attr: a.name.clone(),
-                    itype: (*itype).clone(),
+                    itype: *itype,
                 })
             })
             .collect()
@@ -1590,6 +1590,7 @@ impl Schema {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn write_blocking(&self) -> SchemaWriteTransaction<'_> {
         self.write()
     }

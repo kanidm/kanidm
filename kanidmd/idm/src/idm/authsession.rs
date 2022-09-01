@@ -763,7 +763,7 @@ impl AuthSession {
                             // Do we want to embed this? Or just give the URL? I think we embed
                             // as we only need the client to be able to check it's not tampered, but
                             // this isn't a root of trust.
-                            .sign_embed_public_jwk(&uat_jwt_signer)
+                            .sign_embed_public_jwk(uat_jwt_signer)
                             .map(|jwts| jwts.to_string())
                             .map_err(|e| {
                                 admin_error!(?e, "Failed to sign UserAuthToken to Jwt");

@@ -233,11 +233,10 @@ impl ValueSetEmailAddress {
         if let Some(primary) = primary {
             Some(Box::new(ValueSetEmailAddress { primary, set }))
         } else {
-            if let Some(primary) = set.iter().cloned().take(1).next() {
-                Some(Box::new(ValueSetEmailAddress { primary, set }))
-            } else {
-                None
-            }
+            set.iter()
+                .next()
+                .cloned()
+                .map(|primary| Box::new(ValueSetEmailAddress { primary, set }))
         }
     }
 }
@@ -269,7 +268,7 @@ impl ValueSetT for ValueSetEmailAddress {
                 let r = self.set.remove(a);
                 if &self.primary == a {
                     // if we can, inject another former address into primary.
-                    if let Some(n) = self.set.iter().take(1).cloned().next() {
+                    if let Some(n) = self.set.iter().next().cloned() {
                         self.primary = n
                     }
                 }

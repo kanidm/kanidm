@@ -125,7 +125,7 @@ impl Oauth2Opt {
                     .idm_oauth2_rs_update(
                         cbopt.nopt.name.as_str(),
                         None,
-                        Some(&cbopt.displayname.as_str()),
+                        Some(cbopt.displayname.as_str()),
                         None,
                         None,
                         false,

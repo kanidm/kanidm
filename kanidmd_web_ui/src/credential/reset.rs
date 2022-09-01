@@ -24,12 +24,12 @@ use super::totpmodal::TotpModalApp;
 
 use uuid::Uuid;
 
-#[derive(PartialEq, Properties)]
+#[derive(PartialEq, Eq, Properties)]
 pub struct ModalProps {
     pub token: CUSessionToken,
 }
 
-#[derive(PartialEq, Properties)]
+#[derive(PartialEq, Eq, Properties)]
 pub struct PasskeyRemoveModalProps {
     pub token: CUSessionToken,
     pub tag: String,

@@ -1052,7 +1052,7 @@ impl Entry<EntrySealed, EntryNew> {
 }
 
 type IdxDiff<'a> =
-    Vec<Result<(&'a AttrString, &'a IndexType, String), (&'a AttrString, &'a IndexType, String)>>;
+    Vec<Result<(&'a AttrString, IndexType, String), (&'a AttrString, IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
     /// If this entry has ever been commited to disk, retrieve it's database id number.
@@ -1292,11 +1292,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         // We generate these keys out of the valueset now.
                                         vs.generate_idx_eq_keys()
                                             .into_iter()
-                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
-                                        vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1318,10 +1318,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Equality => vs
                                         .generate_idx_eq_keys()
                                         .into_iter()
-                                        .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                        .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                         .collect(),
                                     IndexType::Presence => {
-                                        vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1355,11 +1355,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         pre_vs
                                             .generate_idx_eq_keys()
                                             .into_iter()
-                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
-                                        vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1374,11 +1374,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         post_vs
                                             .generate_idx_eq_keys()
                                             .into_iter()
-                                            .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
-                                        vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1448,11 +1448,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Equality => {
                                         removed_vs
                                             .into_iter()
-                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                             .for_each(|v| diff.push(v));
                                         added_vs
                                             .into_iter()
-                                            .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                             .for_each(|v| diff.push(v));
                                     }
                                     IndexType::Presence => {
@@ -1510,7 +1510,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         let cid = attrs
             .get("last_modified_cid")
             .and_then(|vs| vs.as_cid_set())
-            .and_then(|set| set.iter().cloned().next())?;
+            .and_then(|set| set.iter().next().cloned())?;
 
         let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
 
@@ -2670,7 +2670,7 @@ mod tests {
             del_r[0]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2678,7 +2678,7 @@ mod tests {
             del_r[1]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::Presence,
+                    IndexType::Presence,
                     "_".to_string()
                 ))
         );
@@ -2691,7 +2691,7 @@ mod tests {
             add_r[0]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2699,7 +2699,7 @@ mod tests {
             add_r[1]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::Presence,
+                    IndexType::Presence,
                     "_".to_string()
                 ))
         );
@@ -2716,7 +2716,7 @@ mod tests {
             add_a_r[0]
                 == Ok((
                     &AttrString::from("extra"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "test".to_string()
                 ))
         );
@@ -2727,7 +2727,7 @@ mod tests {
             del_a_r[0]
                 == Err((
                     &AttrString::from("extra"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "test".to_string()
                 ))
         );
@@ -2740,7 +2740,7 @@ mod tests {
             chg_r[1]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2749,7 +2749,7 @@ mod tests {
             chg_r[0]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "claire".to_string()
                 ))
         );

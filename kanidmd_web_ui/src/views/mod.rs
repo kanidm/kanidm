@@ -23,7 +23,7 @@ use apps::AppsApp;
 use profile::ProfileApp;
 use security::SecurityApp;
 
-#[derive(Routable, PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
     #[at("/ui/view/apps")]
     Apps,
@@ -46,7 +46,7 @@ enum State {
     Error { emsg: String, kopid: Option<String> },
 }
 
-#[derive(PartialEq, Properties)]
+#[derive(PartialEq, Eq, Properties)]
 pub struct ViewProps {
     pub token: String,
 }

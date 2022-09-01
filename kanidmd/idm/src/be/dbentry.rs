@@ -83,7 +83,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Iutf8(vs))
+            vs.map(DbValueSetV2::Iutf8)
         }
         Some(DbValueV1::Iname(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -95,7 +95,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Iname(vs))
+            vs.map(DbValueSetV2::Iname)
         }
         Some(DbValueV1::Uuid(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -107,7 +107,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Uuid(vs))
+            vs.map(DbValueSetV2::Uuid)
         }
         Some(DbValueV1::Bool(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -119,7 +119,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Bool(vs))
+            vs.map(DbValueSetV2::Bool)
         }
         Some(DbValueV1::SyntaxType(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -131,7 +131,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::SyntaxType(vs))
+            vs.map(DbValueSetV2::SyntaxType)
         }
         Some(DbValueV1::IndexType(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -143,7 +143,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::IndexType(vs))
+            vs.map(DbValueSetV2::IndexType)
         }
         Some(DbValueV1::Reference(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -155,7 +155,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Reference(vs))
+            vs.map(DbValueSetV2::Reference)
         }
         Some(DbValueV1::JsonFilter(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -167,7 +167,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::JsonFilter(vs))
+            vs.map(DbValueSetV2::JsonFilter)
         }
         Some(DbValueV1::Credential(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -179,7 +179,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Credential(vs))
+            vs.map(DbValueSetV2::Credential)
         }
         Some(DbValueV1::SecretValue(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -191,7 +191,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::SecretValue(vs))
+            vs.map(DbValueSetV2::SecretValue)
         }
         Some(DbValueV1::SshKey(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -203,7 +203,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::SshKey(vs))
+            vs.map(DbValueSetV2::SshKey)
         }
         Some(DbValueV1::Spn(_, _)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -215,7 +215,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Spn(vs))
+            vs.map(DbValueSetV2::Spn)
         }
         Some(DbValueV1::Uint32(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -227,7 +227,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Uint32(vs))
+            vs.map(DbValueSetV2::Uint32)
         }
         Some(DbValueV1::Cid(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -239,7 +239,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Cid(vs))
+            vs.map(DbValueSetV2::Cid)
         }
         Some(DbValueV1::NsUniqueId(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -251,7 +251,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::NsUniqueId(vs))
+            vs.map(DbValueSetV2::NsUniqueId)
         }
         Some(DbValueV1::DateTime(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -263,7 +263,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::DateTime(vs))
+            vs.map(DbValueSetV2::DateTime)
         }
         Some(DbValueV1::EmailAddress(_)) => {
             let mut primary = None;
@@ -309,7 +309,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Address(vs))
+            vs.map(DbValueSetV2::Address)
         }
         Some(DbValueV1::Url(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -321,7 +321,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::Url(vs))
+            vs.map(DbValueSetV2::Url)
         }
         Some(DbValueV1::OauthScope(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -333,7 +333,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::OauthScope(vs))
+            vs.map(DbValueSetV2::OauthScope)
         }
         Some(DbValueV1::OauthScopeMap(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -345,7 +345,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::OauthScopeMap(vs))
+            vs.map(DbValueSetV2::OauthScopeMap)
         }
         Some(DbValueV1::PrivateBinary(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -357,7 +357,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::PrivateBinary(vs))
+            vs.map(DbValueSetV2::PrivateBinary)
         }
         Some(DbValueV1::PublicBinary(_, _)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -369,7 +369,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::PublicBinary(vs))
+            vs.map(DbValueSetV2::PublicBinary)
         }
         Some(DbValueV1::RestrictedString(_)) => {
             let vs: Result<Vec<_>, _> = viter
@@ -381,7 +381,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::RestrictedString(vs))
+            vs.map(DbValueSetV2::RestrictedString)
         }
         Some(DbValueV1::IntentToken { u: _, s: _ }) => {
             let vs: Result<Vec<_>, _> = viter
@@ -393,14 +393,14 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
                     }
                 })
                 .collect();
-            vs.map(|vs| DbValueSetV2::IntentToken(vs))
+            vs.map(DbValueSetV2::IntentToken)
         }
         // Neither of these should exist yet.
         Some(DbValueV1::TrustedDeviceEnrollment { u: _ })
         | Some(DbValueV1::AuthSession { u: _ })
         | None => {
             // Shiiiiii
-            assert!(false);
+            debug_assert!(false);
             Err(OperationError::InvalidState)
         }
     }

@@ -635,7 +635,7 @@ impl QueryServerWriteV1 {
             };
 
             idms_prox_write
-                .commit_credential_update(session_token, ct)
+                .commit_credential_update(&session_token, ct)
                 .and_then(|tok| idms_prox_write.commit().map(|_| tok))
                 .map_err(|e| {
                     admin_error!(
@@ -667,7 +667,7 @@ impl QueryServerWriteV1 {
             };
 
             idms_prox_write
-                .cancel_credential_update(session_token, ct)
+                .cancel_credential_update(&session_token, ct)
                 .and_then(|tok| idms_prox_write.commit().map(|_| tok))
                 .map_err(|e| {
                     admin_error!(
@@ -830,7 +830,7 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let idms_prox_write = self.idms.proxy_write_async(ct).await;
-        let res = spanned!("actors::v1_write::handle<PurgeAttributeMessage>", {
+        spanned!("actors::v1_write::handle<PurgeAttributeMessage>", {
             let ident = idms_prox_write
                 .validate_and_parse_uat(uat.as_deref(), ct)
                 .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
@@ -866,8 +866,7 @@ impl QueryServerWriteV1 {
                 .qs_write
                 .modify(&mdf)
                 .and_then(|_| idms_prox_write.commit().map(|_| ()))
-        });
-        res
+        })
     }
 
     #[instrument(
@@ -886,7 +885,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = spanned!("actors::v1_write::handle<RemoveAttributeValuesMessage>", {
+        spanned!("actors::v1_write::handle<RemoveAttributeValuesMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
                 .validate_and_parse_uat(uat.as_deref(), ct)
@@ -930,8 +929,7 @@ impl QueryServerWriteV1 {
                 .qs_write
                 .modify(&mdf)
                 .and_then(|_| idms_prox_write.commit().map(|_| ()))
-        });
-        res
+        })
     }
 
     #[instrument(
@@ -957,10 +955,8 @@ impl QueryServerWriteV1 {
                 .map(|v| ProtoModify::Present(attr.clone(), v))
                 .collect(),
         );
-        let res = self
-            .modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
-            .await;
-        res
+        self.modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
+            .await
     }
 
     #[instrument(
@@ -989,10 +985,8 @@ impl QueryServerWriteV1 {
                 )
                 .collect(),
         );
-        let res = self
-            .modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
-            .await;
-        res
+        self.modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
+            .await
     }
 
     #[instrument(
@@ -1014,10 +1008,8 @@ impl QueryServerWriteV1 {
         // than relying on the proto ones.
         let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
 
-        let res = self
-            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
-            .await;
-        res
+        self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
+            .await
     }
 
     #[instrument(
@@ -1061,10 +1053,8 @@ impl QueryServerWriteV1 {
 
         let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-        let res = self
-            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
-            .await;
-        res
+        self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
+            .await
     }
 
     #[instrument(
@@ -1096,10 +1086,8 @@ impl QueryServerWriteV1 {
 
         let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
 
-        let res = self
-            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
-            .await;
-        res
+        self.modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
+            .await
     }
 
     #[instrument(

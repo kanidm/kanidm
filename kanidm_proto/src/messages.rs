@@ -84,7 +84,7 @@ impl From<String> for ConsoleOutputMode {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum MessageStatus {
     Failure,

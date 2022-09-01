@@ -47,7 +47,9 @@ use tokio::sync::Semaphore;
 
 use async_std::task;
 
+#[cfg(test)]
 use core::task::{Context, Poll};
+#[cfg(test)]
 use futures::task as futures_task;
 
 use concread::{
@@ -360,6 +362,7 @@ impl IdmServer {
 }
 
 impl IdmServerDelayed {
+    #[cfg(test)]
     pub(crate) fn check_is_empty_or_panic(&mut self) {
         let waker = futures_task::noop_waker();
         let mut cx = Context::from_waker(&waker);
@@ -707,7 +710,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 let auth_session_ref = session_read
                     // Why is the session missing?
                     .get(&mech.sessionid)
-                    .map(|auth_session_ref| auth_session_ref.clone())
+                    .cloned()
                     .ok_or_else(|| {
                         admin_error!("Invalid Session State (no present session uuid)");
                         OperationError::InvalidSessionState
@@ -736,7 +739,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     None => true,
                 };
 
-                let auth_result = if is_valid {
+                if is_valid {
                     auth_result
                 } else {
                     // Fail the session
@@ -749,9 +752,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         state: aus,
                         delay,
                     }
-                });
-
-                auth_result
+                })
             } // End AuthEventStep::Mech
             AuthEventStep::Cred(creds) => {
                 // lperf_segment!("idm::server::auth<Creds>", || {
@@ -762,7 +763,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 let auth_session_ref = session_read
                     // Why is the session missing?
                     .get(&creds.sessionid)
-                    .map(|auth_session_ref| auth_session_ref.clone())
+                    .cloned()
                     .ok_or_else(|| {
                         admin_error!("Invalid Session State (no present session uuid)");
                         OperationError::InvalidSessionState
@@ -773,7 +774,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 let maybe_slock_ref = match auth_session.get_credential_uuid()? {
                     Some(cred_uuid) => {
                         let softlock_read = self.softlocks.read();
-                        softlock_read.get(&cred_uuid).map(|s| s.clone())
+                        softlock_read.get(&cred_uuid).cloned()
                     }
                     None => None,
                 };
@@ -796,7 +797,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     true
                 };
 
-                let r = if is_valid {
+                if is_valid {
                     // Process the credentials here as required.
                     // Basically throw them at the auth_session and see what
                     // falls out.
@@ -835,10 +836,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         state: aus,
                         delay,
                     }
-                });
-                // softlock_write.commit();
-                // session_write.commit();
-                r
+                })
             } // End AuthEventStep::Cred
         }
     }
@@ -1012,7 +1010,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 None
             };
 
-            let res = if let Some(mut slock) = maybe_valid {
+            if let Some(mut slock) = maybe_valid {
                 if account
                     .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
                     .is_some()
@@ -1059,8 +1057,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // Account is slocked!
                 security_info!("Account is softlocked.");
                 Ok(None)
-            };
-            res
+            }
         }
     }
 

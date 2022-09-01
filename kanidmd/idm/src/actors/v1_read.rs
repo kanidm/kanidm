@@ -181,7 +181,7 @@ impl QueryServerReadV1 {
         msg: OnlineBackupEvent,
         outpath: &str,
         versions: usize,
-    ) {
+    ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
         let now: DateTime<Utc> = Utc::now();
@@ -194,46 +194,50 @@ impl QueryServerReadV1 {
                     "Online backup file {} already exists, will not owerwrite it.",
                     dest_file
                 );
+                return Err(OperationError::InvalidState);
             }
             false => {
                 let idms_prox_read = self.idms.proxy_read_async().await;
                 spanned!("actors::v1_read::handle<OnlineBackupEvent>", {
-                    let res = idms_prox_read.qs_read.get_be_txn().backup(&dest_file);
-
-                    match &res {
-                        Ok(()) => {
+                    idms_prox_read
+                        .qs_read
+                        .get_be_txn()
+                        .backup(&dest_file)
+                        .map(|()| {
                             info!("Online backup created {} successfully", dest_file);
-                        }
-                        Err(e) => {
+                        })
+                        .map_err(|e| {
                             error!("Online backup failed to create {}: {:?}", dest_file, e);
-                        }
-                    }
-
-                    admin_info!(?res, "online backup result");
+                            OperationError::InvalidState
+                        })?;
                 });
             }
         }
 
-        // cleanup of maximum backup versions to keep
-        let mut backup_file_list: Vec<PathBuf> = Vec::new();
         // pattern to find automatically generated backup files
-        let re = match Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$") {
-            Ok(value) => value,
-            Err(error) => {
-                eprintln!(
+        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$").map_err(
+            |error| {
+                error!(
                     "Failed to parse regexp for online backup files: {:?}",
                     error
                 );
-                return;
-            }
-        };
+                OperationError::InvalidState
+            },
+        )?;
 
+        // cleanup of maximum backup versions to keep
+        let mut backup_file_list: Vec<PathBuf> = Vec::new();
         // get a list of backup files
         match fs::read_dir(outpath) {
             Ok(rd) => {
                 for entry in rd {
                     // get PathBuf
-                    let pb = entry.unwrap().path();
+                    let pb = entry
+                        .map_err(|e| {
+                            error!(?e, "Pathbuf access");
+                            OperationError::InvalidState
+                        })?
+                        .path();
 
                     // skip everything that is not a file
                     if !pb.is_file() {
@@ -241,7 +245,10 @@ impl QueryServerReadV1 {
                     }
 
                     // get the /some/dir/<file_name> of the file
-                    let file_name = pb.file_name().unwrap().to_str().unwrap();
+                    let file_name = pb.file_name().and_then(|f| f.to_str()).ok_or_else(|| {
+                        error!("filename is invalid");
+                        OperationError::InvalidState
+                    })?;
                     // check for a online backup file
                     if re.is_match(file_name) {
                         backup_file_list.push(pb.clone());
@@ -250,6 +257,7 @@ impl QueryServerReadV1 {
             }
             Err(e) => {
                 error!("Online backup cleanup error read dir {}: {}", outpath, e);
+                return Err(OperationError::InvalidState);
             }
         }
 
@@ -287,6 +295,8 @@ impl QueryServerReadV1 {
         } else {
             debug!("Online backup cleanup had no files to remove");
         };
+
+        Ok(())
     }
 
     #[instrument(
@@ -1113,7 +1123,7 @@ impl QueryServerReadV1 {
                         e
                     }),
                 CURequest::PasskeyFinish(label, rpkc) => idms_cred_update
-                    .credential_passkey_finish(&session_token, ct, label, rpkc)
+                    .credential_passkey_finish(&session_token, ct, label, &rpkc)
                     .map_err(|e| {
                         admin_error!(
                             err = ?e,

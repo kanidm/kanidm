@@ -322,7 +322,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     let scope_maps = ent
                         .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
                         .cloned()
-                        .unwrap_or_else(BTreeMap::new);
+                        .unwrap_or_default();
 
                     trace!("implicit_scopes");
                     let implicit_scopes = ent
@@ -385,7 +385,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     let scopes_supported: BTreeSet<String> = implicit_scopes
                         .iter()
                         .cloned()
-                        .chain(scope_maps.values().map(|bts| bts.iter()).flatten().cloned())
+                        .chain(scope_maps.values().flat_map(|bts| bts.iter()).cloned())
                         .collect();
                     let scopes_supported: Vec<_> = scopes_supported.into_iter().collect();
 
@@ -589,7 +589,7 @@ impl Oauth2ResourceServersReadTransaction {
                 uat: uat.clone(),
                 code_challenge,
                 redirect_uri: auth_req.redirect_uri.clone(),
-                scopes: avail_scopes.clone(),
+                scopes: avail_scopes,
                 nonce: auth_req.nonce.clone(),
             };
 
@@ -730,11 +730,14 @@ impl Oauth2ResourceServersReadTransaction {
         // Everything is DONE! Now submit that it's all happy and the user consented correctly.
         // this will let them bypass consent steps in the future.
         // Submit that we consented to the delayed action queue
-        if let Err(_) = async_tx.send(DelayedAction::Oauth2ConsentGrant(Oauth2ConsentGrant {
-            target_uuid: uat.uuid,
-            oauth2_rs_uuid: o2rs.uuid,
-            scopes: consent_req.scopes,
-        })) {
+        if async_tx
+            .send(DelayedAction::Oauth2ConsentGrant(Oauth2ConsentGrant {
+                target_uuid: uat.uuid,
+                oauth2_rs_uuid: o2rs.uuid,
+                scopes: consent_req.scopes,
+            }))
+            .is_err()
+        {
             admin_warn!("unable to queue delayed oauth2 consent grant, continuing ... ");
         }
 
@@ -862,7 +865,7 @@ impl Oauth2ResourceServersReadTransaction {
                     })?;
             let mut hasher = sha::Sha256::new();
             hasher.update(code_verifier.as_bytes());
-            let code_verifier_hash: Vec<u8> = hasher.finish().iter().copied().collect();
+            let code_verifier_hash: Vec<u8> = hasher.finish().to_vec();
 
             if code_challenge.0 != code_verifier_hash {
                 security_info!(
