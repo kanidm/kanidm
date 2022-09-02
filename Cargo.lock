@@ -762,16 +762,18 @@ dependencies = [
 
 [[package]]
 name = "concread"
-version = "0.3.7"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91896ebca83fd5ac051ee12ab048a4bcfd8c887397127c8f883b77b05288e935"
+checksum = "6acd004617e219ee07c26b7f6f5f6b4d489c5595e432b87d0bbd8d88db1eebd3"
 dependencies = [
  "ahash",
  "crossbeam",
  "crossbeam-epoch",
  "lru",
  "smallvec",
+ "sptr",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3801,6 +3803,12 @@ dependencies = [
  "libc",
  "winapi",
 ]
+
+[[package]]
+name = "sptr"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
 
 [[package]]
 name = "sshkeys"
