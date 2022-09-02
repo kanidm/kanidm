@@ -99,11 +99,11 @@ impl ValueSetT for ValueSetBool {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.set.iter().copied().map(|b| PartialValue::new_bool(b)))
+        Box::new(self.set.iter().copied().map(PartialValue::new_bool))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(|b| Value::new_bool(b)))
+        Box::new(self.set.iter().copied().map(Value::new_bool))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

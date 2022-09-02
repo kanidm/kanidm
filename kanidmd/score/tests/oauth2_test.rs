@@ -57,18 +57,24 @@ async fn test_oauth2_openid_basic_flow() {
 
     // Extend the admin account with extended details for openid claims.
     rsclient
-        .idm_group_add_members("idm_hp_people_extend_priv", &["admin"])
+        .idm_group_add_members("idm_admins", &["admin"])
         .await
         .unwrap();
 
     rsclient
-        .idm_account_person_extend(
-            "admin",
-            Some(&["admin@localhost".to_string()]),
-            Some("Admin Istrator"),
-        )
+        .idm_person_account_create("oauth_test", "oauth_test")
         .await
-        .expect("Failed to extend account details");
+        .expect("Failed to create account details");
+
+    rsclient
+        .idm_person_account_set_attr("oauth_test", "mail", &["oauth_test@localhost"])
+        .await
+        .expect("Failed to create account mail");
+
+    rsclient
+        .idm_person_account_primary_credential_set_password("oauth_test", ADMIN_TEST_PASSWORD)
+        .await
+        .expect("Failed to configure account password");
 
     rsclient
         .idm_oauth2_rs_update(
@@ -100,10 +106,10 @@ async fn test_oauth2_openid_basic_flow() {
     // Get our admin's auth token for our new client.
     // We have to re-auth to update the mail field.
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password("oauth_test", ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
-    let admin_uat = rsclient
+    let oauth_test_uat = rsclient
         .get_token()
         .await
         .expect("No user auth token found");
@@ -198,7 +204,7 @@ async fn test_oauth2_openid_basic_flow() {
 
     let response = client
         .get(format!("{}/oauth2/authorise", url))
-        .bearer_auth(admin_uat.clone())
+        .bearer_auth(oauth_test_uat.clone())
         .query(&[
             ("response_type", "code"),
             ("client_id", "test_integration"),
@@ -232,7 +238,7 @@ async fn test_oauth2_openid_basic_flow() {
 
     let response = client
         .get(format!("{}/oauth2/authorise/permit", url))
-        .bearer_auth(admin_uat)
+        .bearer_auth(oauth_test_uat)
         .query(&[("token", consent_token.as_str())])
         .send()
         .await
@@ -317,7 +323,7 @@ async fn test_oauth2_openid_basic_flow() {
     assert!(tir.active);
     assert!(tir.scope.is_some());
     assert!(tir.client_id.as_deref() == Some("test_integration"));
-    assert!(tir.username.as_deref() == Some("admin@localhost"));
+    assert!(tir.username.as_deref() == Some("oauth_test@localhost"));
     assert!(tir.token_type.as_deref() == Some("access_token"));
     assert!(tir.exp.is_some());
     assert!(tir.iat.is_some());
@@ -338,7 +344,8 @@ async fn test_oauth2_openid_basic_flow() {
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.
     assert!(oidc.iss == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap());
-    assert!(oidc.s_claims.email.as_deref() == Some("admin@localhost"));
+    eprintln!("{:?}", oidc.s_claims.email);
+    assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
     assert!(oidc.s_claims.email_verified == Some(true));
 
     let response = client

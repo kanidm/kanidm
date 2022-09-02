@@ -23,6 +23,7 @@ use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 use tracing::trace;
 
 use hashbrown::{HashMap, HashSet};
+use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use concread::cowcell::*;
@@ -292,18 +293,27 @@ impl SchemaAttribute {
 ///
 /// [`Entry`]: ../entry/index.html
 /// [`access`]: ../access/index.html
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SchemaClass {
     // Is this used?
     // class: Vec<String>,
     pub name: AttrString,
     pub uuid: Uuid,
     pub description: String,
-    // This allows modification of system types to be extended in custom ways
+    /// This allows modification of system types to be extended in custom ways
     pub systemmay: Vec<AttrString>,
     pub may: Vec<AttrString>,
     pub systemmust: Vec<AttrString>,
     pub must: Vec<AttrString>,
+    /// A list of classes that this extends. These are an "or", as at least one
+    /// of the supplementing classes must also be present. Think of this as
+    /// "inherits toward" or "provides". This is just as "strict" as requires but
+    /// operates in the opposite direction allowing a tree structure.
+    pub systemsupplements: Vec<AttrString>,
+    pub supplements: Vec<AttrString>,
+    /// A list of classes that can not co-exist with this item at the same time.
+    pub systemexcludes: Vec<AttrString>,
+    pub excludes: Vec<AttrString>,
 }
 
 impl SchemaClass {
@@ -354,6 +364,23 @@ impl SchemaClass {
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
+        let systemsupplements = value
+            .get_ava_iter_iutf8("systemsupplements")
+            .map(|i| i.map(AttrString::from).collect())
+            .unwrap_or_else(Vec::new);
+        let supplements = value
+            .get_ava_iter_iutf8("supplements")
+            .map(|i| i.map(AttrString::from).collect())
+            .unwrap_or_else(Vec::new);
+        let systemexcludes = value
+            .get_ava_iter_iutf8("systemexcludes")
+            .map(|i| i.map(AttrString::from).collect())
+            .unwrap_or_else(Vec::new);
+        let excludes = value
+            .get_ava_iter_iutf8("excludes")
+            .map(|i| i.map(AttrString::from).collect())
+            .unwrap_or_else(Vec::new);
+
         Ok(SchemaClass {
             name,
             uuid,
@@ -362,7 +389,21 @@ impl SchemaClass {
             may,
             systemmust,
             must,
+            systemsupplements,
+            supplements,
+            systemexcludes,
+            excludes,
         })
+    }
+
+    /// An iterator over the full set of attrs that may or must exist
+    /// on this class.
+    pub fn may_iter(&self) -> impl Iterator<Item = &AttrString> {
+        self.systemmay
+            .iter()
+            .chain(self.may.iter())
+            .chain(self.systemmust.iter())
+            .chain(self.must.iter())
     }
 }
 
@@ -449,6 +490,59 @@ pub trait SchemaTransaction {
             None
         }
     }
+
+    fn query_attrs_difference(
+        &self,
+        prev_class: &BTreeSet<&str>,
+        new_class: &BTreeSet<&str>,
+    ) -> Result<(BTreeSet<&str>, BTreeSet<&str>), SchemaError> {
+        let schema_classes = self.get_classes();
+
+        let mut invalid_classes = Vec::with_capacity(0);
+
+        let prev_attrs: BTreeSet<&str> = prev_class
+            .iter()
+            .filter_map(|cls| match schema_classes.get(*cls) {
+                Some(x) => Some(x.may_iter()),
+                None => {
+                    admin_debug!("invalid class: {:?}", cls);
+                    invalid_classes.push(cls.to_string());
+                    None
+                }
+            })
+            // flatten all the inner iters.
+            .flatten()
+            .map(|s| s.as_str())
+            .collect();
+
+        if !invalid_classes.is_empty() {
+            return Err(SchemaError::InvalidClass(invalid_classes));
+        };
+
+        let new_attrs: BTreeSet<&str> = new_class
+            .iter()
+            .filter_map(|cls| match schema_classes.get(*cls) {
+                Some(x) => Some(x.may_iter()),
+                None => {
+                    admin_debug!("invalid class: {:?}", cls);
+                    invalid_classes.push(cls.to_string());
+                    None
+                }
+            })
+            // flatten all the inner iters.
+            .flatten()
+            .map(|s| s.as_str())
+            .collect();
+
+        if !invalid_classes.is_empty() {
+            return Err(SchemaError::InvalidClass(invalid_classes));
+        };
+
+        let removed = prev_attrs.difference(&new_attrs).copied().collect();
+        let added = new_attrs.difference(&prev_attrs).copied().collect();
+
+        Ok((added, removed))
+    }
 }
 
 impl<'a> SchemaWriteTransaction<'a> {
@@ -531,7 +625,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             .flat_map(|a| {
                 a.index.iter().map(move |itype: &IndexType| IdxKey {
                     attr: a.name.clone(),
-                    itype: (*itype).clone(),
+                    itype: *itype,
                 })
             })
             .collect()
@@ -774,6 +868,67 @@ impl<'a> SchemaWriteTransaction<'a> {
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
+            self.attributes.insert(
+                AttrString::from("systemsupplements"),
+                SchemaAttribute {
+                    name: AttrString::from("systemsupplements"),
+                    uuid: UUID_SCHEMA_ATTR_SYSTEMSUPPLEMENTS,
+                    description: String::from(
+                        "A set of classes that this type supplements too, where this class can't exist without their presence.",
+                    ),
+                    multivalue: true,
+                    unique: false,
+                    phantom: false,
+                    index: vec![],
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("supplements"),
+                SchemaAttribute {
+                    name: AttrString::from("supplements"),
+                    uuid: UUID_SCHEMA_ATTR_SUPPLEMENTS,
+                    description: String::from(
+                        "A set of user modifiable classes, where this determines that at least one other type must supplement this type",
+                    ),
+                    multivalue: true,
+                    unique: false,
+                    phantom: false,
+                    index: vec![],
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("systemexcludes"),
+                SchemaAttribute {
+                    name: AttrString::from("systemexcludes"),
+                    uuid: UUID_SCHEMA_ATTR_SYSTEMEXCLUDES,
+                    description: String::from(
+                        "A set of classes that are denied presence in connection to this class",
+                    ),
+                    multivalue: true,
+                    unique: false,
+                    phantom: false,
+                    index: vec![],
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("excludes"),
+                SchemaAttribute {
+                    name: AttrString::from("excludes"),
+                    uuid: UUID_SCHEMA_ATTR_EXCLUDES,
+                    description: String::from(
+                        "A set of user modifiable classes that are denied presence in connection to this class",
+                    ),
+                    multivalue: true,
+                    unique: false,
+                    phantom: false,
+                    index: vec![],
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+
             // SYSINFO attrs
             // ACP attributes.
             self.attributes.insert(
@@ -989,6 +1144,22 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
             self.attributes.insert(
+                AttrString::from("scope"),
+                SchemaAttribute {
+                    name: AttrString::from("scope"),
+                    uuid: UUID_SCHEMA_ATTR_SCOPE,
+                    description: String::from(
+                        "The string identifier of a permission scope in a session",
+                    ),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+
+            self.attributes.insert(
                 AttrString::from("password_import"),
                 SchemaAttribute {
                     name: AttrString::from("password_import"),
@@ -1142,7 +1313,6 @@ impl<'a> SchemaWriteTransaction<'a> {
                     uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
                     description: String::from("Definition of a schema attribute"),
                     systemmay: vec![AttrString::from("phantom"), AttrString::from("index")],
-                    may: vec![],
                     systemmust: vec![
                         AttrString::from("class"),
                         AttrString::from("attributename"),
@@ -1151,7 +1321,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("syntax"),
                         AttrString::from("description"),
                     ],
-                    must: vec![],
+                    systemexcludes: vec![AttrString::from("classtype")],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1165,14 +1336,18 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("may"),
                         AttrString::from("systemmust"),
                         AttrString::from("must"),
+                        AttrString::from("systemsupplements"),
+                        AttrString::from("supplements"),
+                        AttrString::from("systemexcludes"),
+                        AttrString::from("excludes"),
                     ],
-                    may: vec![],
                     systemmust: vec![
                         AttrString::from("class"),
                         AttrString::from("classname"),
                         AttrString::from("description"),
                     ],
-                    must: vec![],
+                    systemexcludes: vec![AttrString::from("attributetype")],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1184,13 +1359,12 @@ impl<'a> SchemaWriteTransaction<'a> {
                         "A system created class that all objects must contain",
                     ),
                     systemmay: vec![AttrString::from("description")],
-                    may: vec![],
                     systemmust: vec![
                         AttrString::from("class"),
                         AttrString::from("uuid"),
                         AttrString::from("last_modified_cid"),
                     ],
-                    must: vec![],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1203,9 +1377,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("memberof"),
                         AttrString::from("directmemberof")
                     ],
-                    may: vec![],
-                    systemmust: vec![],
-                    must: vec![],
+                    .. Default::default()
                 },
             );
             self.classes.insert(
@@ -1216,10 +1388,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from(
                         "A class type that has green hair and turns off all rules ...",
                     ),
-                    systemmay: vec![],
-                    may: vec![],
-                    systemmust: vec![],
-                    must: vec![],
+                    ..Default::default()
                 },
             );
             /* These two classes are core to the entry lifecycle for recycling and tombstoning */
@@ -1229,10 +1398,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("recycled"),
                     uuid: UUID_SCHEMA_CLASS_RECYCLED,
                     description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
-                    systemmay: vec![],
-                    may: vec![],
-                    systemmust: vec![],
-                    must: vec![],
+                    .. Default::default()
                 },
             );
             self.classes.insert(
@@ -1241,13 +1407,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("tombstone"),
                     uuid: UUID_SCHEMA_CLASS_TOMBSTONE,
                     description: String::from("An object that is purged from the recycle bin. This is a system internal state. Tombstones have no attributes beside UUID."),
-                    systemmay: vec![],
-                    may: vec![],
                     systemmust: vec![
                         AttrString::from("class"),
                         AttrString::from("uuid"),
                     ],
-                    must: vec![],
+                    .. Default::default()
                 },
             );
             // sysinfo
@@ -1257,10 +1421,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("system_info"),
                     uuid: UUID_SCHEMA_CLASS_SYSTEM_INFO,
                     description: String::from("System metadata object class"),
-                    systemmay: vec![],
-                    may: vec![],
                     systemmust: vec![AttrString::from("version")],
-                    must: vec![],
+                    ..Default::default()
                 },
             );
             // ACP
@@ -1274,13 +1436,18 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("acp_enable"),
                         AttrString::from("description"),
                     ],
-                    may: vec![],
                     systemmust: vec![
                         AttrString::from("acp_receiver"),
                         AttrString::from("acp_targetscope"),
                         AttrString::from("name"),
                     ],
-                    must: vec![],
+                    systemsupplements: vec![
+                        AttrString::from("access_control_search"),
+                        AttrString::from("access_control_delete"),
+                        AttrString::from("access_control_modify"),
+                        AttrString::from("access_control_create"),
+                    ],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1289,10 +1456,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("access_control_search"),
                     uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
                     description: String::from("System Access Control Search Class"),
-                    systemmay: vec![],
-                    may: vec![],
                     systemmust: vec![AttrString::from("acp_search_attr")],
-                    must: vec![],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1301,10 +1466,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("access_control_delete"),
                     uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE,
                     description: String::from("System Access Control DELETE Class"),
-                    systemmay: vec![],
-                    may: vec![],
-                    systemmust: vec![],
-                    must: vec![],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1318,9 +1480,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("acp_modify_presentattr"),
                         AttrString::from("acp_modify_class"),
                     ],
-                    may: vec![],
-                    systemmust: vec![],
-                    must: vec![],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1333,9 +1493,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                         AttrString::from("acp_create_class"),
                         AttrString::from("acp_create_attr"),
                     ],
-                    may: vec![],
-                    systemmust: vec![],
-                    must: vec![],
+                    ..Default::default()
                 },
             );
             self.classes.insert(
@@ -1344,10 +1502,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("system"),
                     uuid: UUID_SCHEMA_CLASS_SYSTEM,
                     description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
-                    systemmay: vec![],
-                    may: vec![],
-                    systemmust: vec![],
-                    must: vec![],
+                    .. Default::default()
                 },
             );
 
@@ -1435,6 +1590,7 @@ impl Schema {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn write_blocking(&self) -> SchemaWriteTransaction<'_> {
         self.write()
     }
@@ -2183,13 +2339,146 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from("test object"),
             systemmay: vec![AttrString::from("claim")],
-            may: vec![],
-            systemmust: vec![],
-            must: vec![],
+            ..Default::default()
         };
 
         assert!(schema.update_classes(vec![class]).is_ok());
 
         assert!(schema.validate().len() == 1);
+    }
+
+    #[test]
+    fn test_schema_class_exclusion_requires() {
+        let _ = sketching::test_init();
+
+        let schema_outer = Schema::new().expect("failed to create schema");
+        let mut schema = schema_outer.write_blocking();
+
+        assert!(schema.validate().len() == 0);
+
+        // We setup some classes that have requires and excludes and check that they
+        // are enforced correctly.
+        let class_account = SchemaClass {
+            name: AttrString::from("account"),
+            uuid: Uuid::new_v4(),
+            description: String::from("account object"),
+            systemmust: vec![
+                AttrString::from("class"),
+                AttrString::from("uuid"),
+                AttrString::from("last_modified_cid"),
+            ],
+            systemsupplements: vec![AttrString::from("service"), AttrString::from("person")],
+            ..Default::default()
+        };
+
+        let class_person = SchemaClass {
+            name: AttrString::from("person"),
+            uuid: Uuid::new_v4(),
+            description: String::from("person object"),
+            systemmust: vec![
+                AttrString::from("class"),
+                AttrString::from("uuid"),
+                AttrString::from("last_modified_cid"),
+            ],
+            ..Default::default()
+        };
+
+        let class_service = SchemaClass {
+            name: AttrString::from("service"),
+            uuid: Uuid::new_v4(),
+            description: String::from("service object"),
+            systemmust: vec![
+                AttrString::from("class"),
+                AttrString::from("uuid"),
+                AttrString::from("last_modified_cid"),
+            ],
+            excludes: vec![AttrString::from("person")],
+            ..Default::default()
+        };
+
+        assert!(schema
+            .update_classes(vec![class_account, class_person, class_service])
+            .is_ok());
+
+        // Missing person or service account.
+        let e_account = unsafe {
+            entry_init!(
+                ("class", Value::new_class("account")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
+
+        assert_eq!(
+            e_account.validate(&schema),
+            Err(SchemaError::SupplementsNotSatisfied(vec![
+                "service".to_string(),
+                "person".to_string(),
+            ]))
+        );
+
+        // Service account missing account
+        /*
+        let e_service = unsafe { entry_init!(
+            ("class", Value::new_class("service")),
+            ("uuid", Value::new_uuid(Uuid::new_v4()))
+        ).into_invalid_new() };
+
+        assert_eq!(
+            e_service.validate(&schema),
+            Err(SchemaError::RequiresNotSatisfied(vec!["account".to_string()]))
+        );
+        */
+
+        // Service can't have person
+        let e_service_person = unsafe {
+            entry_init!(
+                ("class", Value::new_class("service")),
+                ("class", Value::new_class("account")),
+                ("class", Value::new_class("person")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
+
+        assert_eq!(
+            e_service_person.validate(&schema),
+            Err(SchemaError::ExcludesNotSatisfied(
+                vec!["person".to_string()]
+            ))
+        );
+
+        // These are valid configurations.
+        let e_service_valid = unsafe {
+            entry_init!(
+                ("class", Value::new_class("service")),
+                ("class", Value::new_class("account")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
+
+        assert!(e_service_valid.validate(&schema).is_ok());
+
+        let e_person_valid = unsafe {
+            entry_init!(
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
+
+        assert!(e_person_valid.validate(&schema).is_ok());
+
+        let e_person_valid = unsafe {
+            entry_init!(
+                ("class", Value::new_class("person")),
+                ("uuid", Value::new_uuid(Uuid::new_v4()))
+            )
+            .into_invalid_new()
+        };
+
+        assert!(e_person_valid.validate(&schema).is_ok());
     }
 }

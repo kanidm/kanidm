@@ -125,11 +125,11 @@ impl ValueSetT for ValueSetCid {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.set.iter().cloned().map(|u| PartialValue::new_cid(u)))
+        Box::new(self.set.iter().cloned().map(PartialValue::new_cid))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().cloned().map(|u| Value::new_cid(u)))
+        Box::new(self.set.iter().cloned().map(Value::new_cid))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

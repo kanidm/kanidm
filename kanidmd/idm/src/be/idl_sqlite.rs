@@ -209,7 +209,7 @@ pub trait IdlSqliteTransaction {
         }
     }
 
-    fn exists_idx(&self, attr: &str, itype: &IndexType) -> Result<bool, OperationError> {
+    fn exists_idx(&self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
         let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
         self.exists_table(&tname)
     }
@@ -217,7 +217,7 @@ pub trait IdlSqliteTransaction {
     fn get_idl(
         &self,
         attr: &str,
-        itype: &IndexType,
+        itype: IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
         spanned!("be::idl_sqlite::get_idl", {
@@ -766,7 +766,7 @@ impl IdlSqliteWriteTransaction {
     pub fn write_idl(
         &self,
         attr: &str,
-        itype: &IndexType,
+        itype: IndexType,
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
@@ -934,7 +934,7 @@ impl IdlSqliteWriteTransaction {
         }
     }
 
-    pub fn create_idx(&self, attr: &str, itype: &IndexType) -> Result<(), OperationError> {
+    pub fn create_idx(&self, attr: &str, itype: IndexType) -> Result<(), OperationError> {
         // Is there a better way than formatting this? I can't seem
         // to template into the str.
         //

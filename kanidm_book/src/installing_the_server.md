@@ -121,7 +121,6 @@ OR for a shell into the volume:
     docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
 
 
-
 # Continue on to [Configuring the Server](server_configuration.md)
 
 

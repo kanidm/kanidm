@@ -367,7 +367,7 @@ impl AccessControlProfile {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
     // I don't think we need this? The ident is implied by the requestor.
     // ident: Uuid,
@@ -804,7 +804,7 @@ pub trait AccessControlsTransaction<'a> {
             // Find the acps that relate to the caller, and compile their related
             // target filters.
             let related_acp: Vec<(&AccessControlModify, _)> =
-                self.modify_related_acp(&rec_entry, &me.ident);
+                self.modify_related_acp(rec_entry, &me.ident);
 
             related_acp.iter().for_each(|racp| {
                 trace!("Related acs -> {:?}", racp.0.acp.name);
@@ -1277,7 +1277,7 @@ pub trait AccessControlsTransaction<'a> {
 
                     let modify_class: BTreeSet<AttrString> = modify_scoped_acp
                         .iter()
-                        .flat_map(|acp| acp.classes.iter().map(|v| v.clone()))
+                        .flat_map(|acp| acp.classes.iter().cloned())
                         .collect();
 
                     AccessEffectivePermission {

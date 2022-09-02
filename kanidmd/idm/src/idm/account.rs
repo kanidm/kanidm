@@ -1,6 +1,6 @@
-use crate::credential::BackupCodes;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
+use crate::schema::SchemaTransaction;
 
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthType, UserAuthToken};
@@ -12,13 +12,13 @@ use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
-use crate::credential::totp::Totp;
 use crate::credential::{softlock::CredSoftLockPolicy, Credential};
 use crate::idm::group::Group;
+use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::value::{IntentTokenState, PartialValue, Value};
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -318,39 +318,6 @@ impl Account {
         }
     }
 
-    pub(crate) fn gen_totp_mod(
-        &self,
-        token: Totp,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        match &self.primary {
-            // Change the cred
-            Some(primary) => {
-                let ncred = primary.update_totp(token);
-                let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-            }
-            None => {
-                // No credential exists, we can't supplementy it.
-                Err(OperationError::InvalidState)
-            }
-        }
-    }
-
-    pub(crate) fn gen_totp_remove_mod(&self) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        match &self.primary {
-            // Change the cred
-            Some(primary) => {
-                let ncred = primary.remove_totp();
-                let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-            }
-            None => {
-                // No credential exists, we can't remove what is not real.
-                Err(OperationError::InvalidState)
-            }
-        }
-    }
-
     pub(crate) fn gen_webauthn_counter_mod(
         &mut self,
         auth_result: &AuthenticationResult,
@@ -390,29 +357,6 @@ impl Account {
         }
     }
 
-    pub(crate) fn gen_backup_code_mod(
-        &self,
-        backup_codes: BackupCodes,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        match &self.primary {
-            // Change the cred
-            Some(primary) => {
-                let r_ncred = primary.update_backup_code(backup_codes);
-                match r_ncred {
-                    Ok(ncred) => {
-                        let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-                    }
-                    Err(e) => Err(e),
-                }
-            }
-            None => {
-                // No credential exists, we can't supplementy it.
-                Err(OperationError::InvalidState)
-            }
-        }
-    }
-
     pub(crate) fn invalidate_backup_code_mod(
         self,
         code_to_remove: &str,
@@ -431,28 +375,6 @@ impl Account {
             }
             None => {
                 // No credential exists, we can't supplementy it.
-                Err(OperationError::InvalidState)
-            }
-        }
-    }
-
-    pub(crate) fn gen_backup_code_remove_mod(
-        &self,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        match &self.primary {
-            // Change the cred
-            Some(primary) => {
-                let r_ncred = primary.remove_backup_code();
-                match r_ncred {
-                    Ok(ncred) => {
-                        let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-                    }
-                    Err(e) => Err(e),
-                }
-            }
-            None => {
-                // No credential exists, we can't remove what is not real.
                 Err(OperationError::InvalidState)
             }
         }
@@ -493,6 +415,7 @@ impl Account {
 
     pub(crate) fn existing_credential_id_list(&self) -> Option<Vec<CredentialID>> {
         // TODO!!!
+        // Used in registrations only for disallowing exsiting credentials.
         None
     }
 }
@@ -500,6 +423,78 @@ impl Account {
 // Need to also add a "to UserAuthToken" ...
 
 // Need tests for conversion and the cred validations
+
+impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn service_account_into_person(
+        &self,
+        ident: &Identity,
+        target_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        let schema_ref = self.qs_write.get_schema();
+
+        // Get the entry.
+        let account_entry = self
+            .qs_write
+            .internal_search_uuid(&target_uuid)
+            .map_err(|e| {
+                admin_error!("Failed to start service account into person -> {:?}", e);
+                e
+            })?;
+
+        // Copy the current classes
+        let prev_classes: BTreeSet<_> = account_entry
+            .get_ava_as_iutf8_iter("class")
+            .ok_or_else(|| {
+                admin_error!("Invalid entry, class attribute is not present or not iutf8");
+                OperationError::InvalidAccountState("Missing attribute: class".to_string())
+            })?
+            .collect();
+
+        // Remove the service account class.
+        // Add the person class.
+        let mut new_classes = prev_classes.clone();
+        new_classes.remove("service_account");
+        new_classes.insert("person");
+
+        // diff the schema attrs, and remove the ones that are service_account only.
+        let (_added, removed) = schema_ref
+            .query_attrs_difference(&prev_classes, &new_classes)
+            .map_err(|se| {
+                admin_error!("While querying the schema, it reported that requested classes may not be present indicating a possible corruption");
+                OperationError::SchemaViolation(
+                    se
+                )
+            })?;
+
+        // Now construct the modlist which:
+        // removes service_account
+        let mut modlist =
+            ModifyList::new_remove("class", PartialValue::new_class("service_account"));
+        // add person
+        modlist.push_mod(Modify::Present("class".into(), Value::new_class("person")));
+        // purge the other attrs that are SA only.
+        removed
+            .into_iter()
+            .for_each(|attr| modlist.push_mod(Modify::Purged(attr.into())));
+        // purge existing sessions
+
+        // Modify
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid))),
+                &modlist,
+                // Provide the entry to impersonate
+                ident,
+            )
+            .map_err(|e| {
+                admin_error!("Failed to migrate service account to person - {:?}", e);
+                e
+            })
+    }
+}
 
 #[cfg(test)]
 mod tests {

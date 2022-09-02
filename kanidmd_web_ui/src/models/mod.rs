@@ -31,7 +31,7 @@ pub fn clear_bearer_token() {
     PersistentStorage::delete("kanidm_bearer_token");
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum Location {
     Manager(Route),
     Views(ViewRoute),

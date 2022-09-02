@@ -12,7 +12,7 @@ use webauthn_rs_proto::{
 
 /* ===== errors ===== */
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SchemaError {
     NotImplemented,
@@ -22,12 +22,14 @@ pub enum SchemaError {
     InvalidAttribute(String),
     InvalidAttributeSyntax(String),
     AttributeNotValidForClass(String),
+    SupplementsNotSatisfied(Vec<String>),
+    ExcludesNotSatisfied(Vec<String>),
     EmptyFilter,
     Corrupted,
     PhantomAttribute(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum PluginError {
     AttrUnique(String),
@@ -37,7 +39,7 @@ pub enum PluginError {
     Oauth2Secrets,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ConsistencyError {
     Unknown,
@@ -452,12 +454,6 @@ pub struct AccountUnixExtend {
     pub shell: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AccountPersonSet {
-    pub mail: Option<Vec<String>>,
-    pub legalname: Option<String>,
-}
-
 /*
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccountOrgPersonExtend {
@@ -465,7 +461,7 @@ pub struct AccountOrgPersonExtend {
 }
 */
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum CredentialDetailType {
     Password,
     GeneratedPassword,
@@ -552,7 +548,6 @@ impl fmt::Display for CredentialStatus {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BackupCodesView {
-    // Or use SetCredentialResponse::BackupCodes?
     pub backup_codes: Vec<String>,
 }
 
@@ -563,7 +558,7 @@ pub struct BackupCodesView {
 // the in memory server core entry type, without affecting the protoEntry type
 //
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
 }
@@ -841,6 +836,7 @@ pub struct AuthResponse {
 }
 
 // Types needed for setting credentials
+/*
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SetCredentialRequest {
@@ -853,6 +849,7 @@ pub enum SetCredentialRequest {
     BackupCodeGenerate,
     BackupCodeRemove,
 }
+*/
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -903,6 +900,7 @@ impl TotpSecret {
     }
 }
 
+/*
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SetCredentialResponse {
@@ -913,13 +911,14 @@ pub enum SetCredentialResponse {
     SecurityKeyCreateChallenge(Uuid, CreationChallengeResponse),
     BackupCodes(Vec<String>),
 }
+*/
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUIntentToken {
     pub token: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CUSessionToken {
     pub token: String,
 }

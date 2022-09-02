@@ -67,7 +67,7 @@ enum MfaRegState {
     TotpInit(Totp),
     TotpTryAgain(Totp),
     TotpInvalidSha1(Totp, Totp),
-    Passkey(CreationChallengeResponse, PasskeyRegistration),
+    Passkey(Box<CreationChallengeResponse>, PasskeyRegistration),
 }
 
 impl fmt::Debug for MfaRegState {
@@ -208,7 +208,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                 ),
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
                 MfaRegState::TotpInvalidSha1(_, _) => MfaRegStateStatus::TotpInvalidSha1,
-                MfaRegState::Passkey(r, _) => MfaRegStateStatus::Passkey(r.clone()),
+                MfaRegState::Passkey(r, _) => MfaRegStateStatus::Passkey(r.as_ref().clone()),
             },
         }
     }
@@ -291,7 +291,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .get_accesscontrols()
             .effective_permission_check(
-                &ident,
+                ident,
                 Some(btreeset![
                     AttrString::from("primary_credential"),
                     AttrString::from("passkeys"),
@@ -669,7 +669,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     // This shares some common paths between commit and cancel.
     fn credential_update_commit_common(
         &mut self,
-        cust: CredentialUpdateSessionToken,
+        cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<
         (
@@ -722,7 +722,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     pub fn commit_credential_update(
         &mut self,
-        cust: CredentialUpdateSessionToken,
+        cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<(), OperationError> {
         let (mut modlist, session, session_token) =
@@ -818,7 +818,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     pub fn cancel_credential_update(
         &mut self,
-        cust: CredentialUpdateSessionToken,
+        cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<(), OperationError> {
         let (mut modlist, session, session_token) =
@@ -1376,7 +1376,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                 OperationError::Webauthn
             })?;
 
-        session.mfaregstate = MfaRegState::Passkey(ccr, pk_reg);
+        session.mfaregstate = MfaRegState::Passkey(Box::new(ccr), pk_reg);
         // Now that it's in the state, it'll be in the status when returned.
         Ok(session.deref().into())
     }
@@ -1386,7 +1386,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
         label: String,
-        reg: RegisterPublicKeyCredential,
+        reg: &RegisterPublicKeyCredential,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
         let mut session = session_handle.try_lock().map_err(|_| {
@@ -1399,7 +1399,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             MfaRegState::Passkey(_ccr, pk_reg) => {
                 let passkey = self
                     .webauthn
-                    .finish_passkey_registration(&reg, pk_reg)
+                    .finish_passkey_registration(reg, pk_reg)
                     .map_err(|e| {
                         error!(?e, "Unable to start passkey registration");
                         OperationError::Webauthn
@@ -1506,6 +1506,7 @@ mod tests {
             let e1 = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("account")),
+                ("class", Value::new_class("service_account")),
                 ("name", Value::new_iname("user_account_only")),
                 ("uuid", Value::new_uuid(testaccount_uuid)),
                 ("description", Value::new_utf8s("testaccount")),
@@ -1661,7 +1662,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct);
 
         idms_prox_write
-            .commit_credential_update(cust, ct)
+            .commit_credential_update(&cust, ct)
             .expect("Failed to commit credential update.");
 
         idms_prox_write.commit().expect("Failed to commit txn");
@@ -2243,6 +2244,7 @@ mod tests {
 
                 // There now should be a backup code invalidation present
                 let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::BackupCodeRemoval(_)));
                 let r = task::block_on(idms.delayed_action(ct, da));
                 assert!(r.is_ok());
 
@@ -2387,7 +2389,7 @@ mod tests {
                 // Finish the registration
                 let label = "softtoken".to_string();
                 let c_status = cutxn
-                    .credential_passkey_finish(&cust, ct, label, passkey_resp)
+                    .credential_passkey_finish(&cust, ct, label, &passkey_resp)
                     .expect("Failed to initiate passkey registration");
 
                 assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));

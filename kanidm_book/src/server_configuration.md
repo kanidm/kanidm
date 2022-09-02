@@ -104,7 +104,7 @@ You need a configuration file in the volume named `server.toml`. (Within the con
 
 An example is located in [examples/server.toml](https://github.com/kanidm/kanidm/blob/master/examples/server.toml).
 
-{{#template  
+{{#template
     templates/kani-warning.md
     imagepath=images
     title=Warning!

@@ -6,9 +6,9 @@ use kanidm::status::StatusRequestEvent;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AccountPersonSet, AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
-    CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, OperationError, SearchRequest, SetCredentialRequest, SingleStringRequest,
+    AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState, CUIntentToken,
+    CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest,
+    OperationError, SearchRequest, SingleStringRequest,
 };
 
 use super::{to_tide_response, AppState, RequestExtensions, RouteMap};
@@ -260,20 +260,6 @@ pub async fn json_rest_event_delete_attr(
     }
 }
 
-pub async fn json_rest_event_credential_put(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let sac: SetCredentialRequest = req.body_json().await?;
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_credentialset(uat, uuid_or_name, sac, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
 // Okay, so a put normally needs
 //  * filter of what we are working on (id + class)
 //  * a Map<String, Vec<String>> that we turn into a modlist.
@@ -357,7 +343,11 @@ pub async fn person_get(req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn person_post(req: tide::Request<AppState>) -> tide::Result {
-    let classes = vec!["person".to_string(), "object".to_string()];
+    let classes = vec![
+        "person".to_string(),
+        "account".to_string(),
+        "object".to_string(),
+    ];
     json_rest_event_post(req, classes).await
 }
 
@@ -366,21 +356,68 @@ pub async fn person_id_get(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_get_id(req, filter, None).await
 }
 
+pub async fn person_account_id_delete(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    json_rest_event_delete_id(req, filter).await
+}
+
 // == account ==
 
-pub async fn account_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+pub async fn service_account_get(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn account_post(req: tide::Request<AppState>) -> tide::Result {
-    let classes = vec!["account".to_string(), "object".to_string()];
+pub async fn service_account_post(req: tide::Request<AppState>) -> tide::Result {
+    let classes = vec![
+        "service_account".to_string(),
+        "account".to_string(),
+        "object".to_string(),
+    ];
     json_rest_event_post(req, classes).await
 }
 
-pub async fn account_id_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+pub async fn service_account_id_get(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
     json_rest_event_get_id(req, filter, None).await
+}
+
+pub async fn service_account_id_delete(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
+    json_rest_event_delete_id(req, filter).await
+}
+
+pub async fn service_account_credential_generate(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_service_account_credential_generate(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+// Due to how the migrations work in 6 -> 7, we can accidentally
+// mark "accounts" as service accounts when they are persons. This
+// allows migrating them to the person type due to it's similarities.
+//
+// In the future this will be REMOVED!
+pub async fn service_account_into_person(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_service_account_into_person(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
 pub async fn account_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
@@ -404,13 +441,24 @@ pub async fn account_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_put_id_attr(req, filter).await
 }
 
-pub async fn account_id_delete(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id(req, filter).await
-}
+pub async fn account_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
+    // Update a value / attrs
+    let uat = req.get_current_uat();
+    let id = req.get_url_param("id")?;
 
-pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> tide::Result {
-    json_rest_event_credential_put(req).await
+    let obj: ProtoEntry = req.body_json().await?;
+
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_internalpatch(uat, filter, obj, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
 pub async fn account_get_id_credential_update(req: tide::Request<AppState>) -> tide::Result {
@@ -526,20 +574,6 @@ pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> t
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_get_backup_code(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_idmbackupcodeview(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
 // Return a vec of str
 pub async fn account_get_id_ssh_pubkeys(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
@@ -650,32 +684,6 @@ pub async fn account_get_id_radius_token(req: tide::Request<AppState>) -> tide::
         .state()
         .qe_r_ref
         .handle_internalradiustokenread(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_post_id_person_extend(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let obj: AccountPersonSet = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmaccountpersonextend(uat, uuid_or_name, obj, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_post_id_person_set(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let obj: AccountPersonSet = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmaccountpersonset(uat, uuid_or_name, obj, eventid)
         .await;
     to_tide_response(res, hvalue)
 }
@@ -1034,19 +1042,6 @@ pub async fn auth_valid(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
     let res = req.state().qe_r_ref.handle_auth_valid(uat, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let obj: SingleStringRequest = req.body_json().await?;
-    let cleartext = obj.value;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmaccountsetpassword(uat, cleartext, eventid)
-        .await;
     to_tide_response(res, hvalue)
 }
 

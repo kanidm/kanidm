@@ -27,7 +27,7 @@ impl CommonOpt {
             None => client_builder,
         };
 
-        let ca_path: Option<&str> = self.ca_path.as_ref().map(|p| p.to_str()).flatten();
+        let ca_path: Option<&str> = self.ca_path.as_ref().and_then(|p| p.to_str());
         let client_builder = match ca_path {
             Some(p) => {
                 debug!("Adding trusted CA cert {:?}", p);

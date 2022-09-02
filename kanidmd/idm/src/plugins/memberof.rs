@@ -78,7 +78,7 @@ fn do_memberof(
         } else {
             // Means MO is empty, so we need to duplicate dmo to allow things to
             // proceed.
-            mo = Some(dmo.clone());
+            mo = Some(dmo);
         };
     };
 

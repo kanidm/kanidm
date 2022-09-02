@@ -3,7 +3,7 @@
 /// Builtin System Admin account.
 pub const JSON_ADMIN_V1: &str = r#"{
     "attrs": {
-        "class": ["account", "memberof", "object"],
+        "class": ["account", "service_account", "memberof", "object"],
         "name": ["admin"],
         "uuid": ["00000000-0000-0000-0000-000000000000"],
         "description": ["Builtin System Admin account."],
@@ -14,7 +14,7 @@ pub const JSON_ADMIN_V1: &str = r#"{
 /// Builtin IDM Admin account.
 pub const JSON_IDM_ADMIN_V1: &str = r#"{
     "attrs": {
-        "class": ["account", "memberof", "object"],
+        "class": ["account", "service_account", "memberof", "object"],
         "name": ["idm_admin"],
         "uuid": ["00000000-0000-0000-0000-000000000018"],
         "description": ["Builtin IDM Admin account."],
@@ -403,6 +403,18 @@ pub const JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
     }
 }"#;
 
+pub const JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_service_account_into_person_migrate_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000034"],
+        "description": ["Builtin IDM Group for allowing migrations of service accounts into persons"],
+        "member": [
+            "00000000-0000-0000-0000-000000000019"
+        ]
+    }
+}"#;
+
 /// This must be the last group to init to include the UUID of the other high priv groups.
 pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     "attrs": {
@@ -437,6 +449,7 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
             "00000000-0000-0000-0000-000000000027",
             "00000000-0000-0000-0000-000000000031",
             "00000000-0000-0000-0000-000000000032",
+            "00000000-0000-0000-0000-000000000034",
             "00000000-0000-0000-0000-000000001000"
         ]
     }
@@ -447,7 +460,7 @@ pub const JSON_SYSTEM_INFO_V1: &str = r#"{
         "class": ["object", "system_info", "system"],
         "uuid": ["00000000-0000-0000-0000-ffffff000001"],
         "description": ["System (local) info and metadata object."],
-        "version": ["6"]
+        "version": ["7"]
     }
 }"#;
 
@@ -464,7 +477,7 @@ pub const JSON_DOMAIN_INFO_V1: &str = r#"{
 // Anonymous should be the last object in the range here.
 pub const JSON_ANONYMOUS_V1: &str = r#"{
     "attrs": {
-        "class": ["account", "object"],
+        "class": ["account", "service_account", "object"],
         "name": ["anonymous"],
         "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
         "description": ["Anonymous access account."],

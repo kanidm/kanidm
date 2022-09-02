@@ -32,7 +32,7 @@ impl ValueSetOauthScope {
         Ok(Box::new(ValueSetOauthScope { set }))
     }
 
-    pub fn from_iter<'a, T>(iter: T) -> Option<Box<Self>>
+    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = String>,
     {
@@ -246,8 +246,7 @@ impl ValueSetT for ValueSetOauthScopeMap {
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
         self.map
             .values()
-            .map(|set| set.iter())
-            .flatten()
+            .flat_map(|set| set.iter())
             .all(|s| OAUTHSCOPE_RE.is_match(s))
     }
 

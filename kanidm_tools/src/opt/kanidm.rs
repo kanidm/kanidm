@@ -9,15 +9,17 @@ pub struct Named {
 
 #[derive(Debug, Args)]
 pub struct DebugOpt {
+    /// Enable debbuging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
 }
 
 #[derive(Debug, Args)]
 pub struct CommonOpt {
-    // TODO: this should probably be a flag, or renamed to log level if it's a level
+    /// Enable debbuging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
+    /// The URL of the kanidm instance
     #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
     /// User which will initiate requests
@@ -47,32 +49,45 @@ pub struct GroupPosixOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum GroupPosix {
+    /// Show details of a specific posix group
     #[clap(name = "show")]
     Show(Named),
+    /// Setup posix group properties, or alter them
     #[clap(name = "set")]
     Set(GroupPosixOpt),
 }
 
 #[derive(Debug, Subcommand)]
 pub enum GroupOpt {
+    /// List all groups
     #[clap(name = "list")]
     List(CommonOpt),
+    /// View a specific group
     #[clap(name = "get")]
     Get(Named),
+    /// Create a new group
     #[clap(name = "create")]
     Create(Named),
+    /// Delete a group
     #[clap(name = "delete")]
     Delete(Named),
+    /// List the members of a group
     #[clap(name = "list_members")]
     ListMembers(Named),
+    /// Set the exact list of members that this group should contain, removing any not listed in the
+    /// set operation.
     #[clap(name = "set_members")]
     SetMembers(GroupNamedMembers),
+    /// Delete all members of a group.
     #[clap(name = "purge_members")]
     PurgeMembers(Named),
+    /// Add new members to a group
     #[clap(name = "add_members")]
     AddMembers(GroupNamedMembers),
+    /// Remove the named members from this group
     #[clap(name = "remove_members")]
     RemoveMembers(GroupNamedMembers),
+    /// Manage posix extensions for this group allowing groups to be used on unix/linux systems
     #[clap(name = "posix")]
     Posix {
         #[clap(subcommand)]
@@ -161,6 +176,9 @@ pub struct AccountCreateOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountCredential {
+    /// Show the status of this accounts credentials.
+    #[clap(name = "status")]
+    Status(AccountNamedOpt),
     /// Interactively update/change the credentials for an account
     #[clap(name = "update")]
     Update(AccountNamedOpt),
@@ -200,7 +218,7 @@ pub struct AccountPosixOpt {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum AccountPosix {
+pub enum PersonPosix {
     #[clap(name = "show")]
     Show(AccountNamedOpt),
     #[clap(name = "set")]
@@ -209,24 +227,28 @@ pub enum AccountPosix {
     SetPassword(AccountNamedOpt),
 }
 
-#[derive(Debug, Args)]
-pub struct AccountPersonOpt {
-    #[clap(flatten)]
-    aopts: AccountCommonOpt,
-    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses.")]
-    mail: Option<Vec<String>>,
-    #[clap(long, short, help="Set the legal name for the person.")]
-    legalname: Option<String>,
-    #[clap(flatten)]
-    copt: CommonOpt,
+#[derive(Debug, Subcommand)]
+pub enum ServiceAccountPosix {
+    #[clap(name = "show")]
+    Show(AccountNamedOpt),
+    #[clap(name = "set")]
+    Set(AccountPosixOpt),
 }
 
-#[derive(Debug, Subcommand)]
-pub enum AccountPerson {
-    #[clap(name = "extend")]
-    Extend(AccountPersonOpt),
-    #[clap(name = "set")]
-    Set(AccountPersonOpt),
+#[derive(Debug, Args)]
+pub struct PersonUpdateOpt {
+    #[clap(flatten)]
+    aopts: AccountCommonOpt,
+    #[clap(long, short, help="Set the legal name for the person.")]
+    legalname: Option<String>,
+    #[clap(long, short, help="Set the account name for the person.")]
+    newname: Option<String>,
+    #[clap(long, short='i', help="Set the display name for the person.")]
+    displayname: Option<String>,
+    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'")]
+    mail: Option<Vec<String>>,
+    #[clap(flatten)]
+    copt: CommonOpt,
 }
 
 #[derive(Debug, Subcommand)]
@@ -241,54 +263,138 @@ pub enum AccountSsh {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountValidity {
+    /// Show an accounts validity window
     #[clap(name = "show")]
     Show(AccountNamedOpt),
+    /// Set an accounts expiry time
     #[clap(name = "expire_at")]
     ExpireAt(AccountNamedExpireDateTimeOpt),
+    /// Set an account valid from time
     #[clap(name = "begin_from")]
     BeginFrom(AccountNamedValidDateTimeOpt),
 }
 
 #[derive(Debug, Subcommand)]
-pub enum AccountOpt {
+pub enum PersonOpt {
+    /// Manage the credentials this person uses for authentication
     #[clap(name = "credential")]
     Credential {
         #[clap(subcommand)]
         commands: AccountCredential,
     },
+    /// Manage radius access for this person
     #[clap(name = "radius")]
     Radius {
         #[clap(subcommand)]
         commands: AccountRadius,
     },
+    /// Manage posix extensions for this person allowing access to unix/linux systems
     #[clap(name = "posix")]
     Posix {
         #[clap(subcommand)]
-        commands: AccountPosix,
+        commands: PersonPosix,
     },
-    #[clap(name = "person")]
-    Person {
-        #[clap(subcommand)]
-        commands: AccountPerson,
-    },
+    /// Manage ssh public key's associated to this person
     #[clap(name = "ssh")]
     Ssh {
         #[clap(subcommand)]
         commands: AccountSsh,
     },
+    /// List all persons
     #[clap(name = "list")]
     List(CommonOpt),
+    /// View a specific person
     #[clap(name = "get")]
     Get(AccountNamedOpt),
+    /// Update a specific person's attributes
+    #[clap(name = "update")]
+    Update(PersonUpdateOpt),
+    /// Create a new person's account
     #[clap(name = "create")]
     Create(AccountCreateOpt),
+    /// Delete a person's account
     #[clap(name = "delete")]
     Delete(AccountNamedOpt),
+    /// Manage a person's account validity, such as expiry time (account lock/unlock)
     #[clap(name = "validity")]
     Validity {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ServiceAccountCredential {
+    /// Show the status of this accounts credentials.
+    #[clap(name = "status")]
+    Status(AccountNamedOpt),
+    /// Reset and generate a new service account password. This password can NOT
+    /// be used with the LDAP interface.
+    #[clap(name = "generate-pw")]
+    GeneratePw(AccountNamedOpt),
+    // Future - add a token creator / remover.
+}
+
+#[derive(Debug, Args)]
+pub struct ServiceAccountUpdateOpt {
+    #[clap(flatten)]
+    aopts: AccountCommonOpt,
+    #[clap(long, short, help="Set the account name for the service account.")]
+    newname: Option<String>,
+    #[clap(long, short='i', help="Set the display name for the service account.")]
+    displayname: Option<String>,
+    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'")]
+    mail: Option<Vec<String>>,
+    #[clap(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ServiceAccountOpt {
+    /// Manage generated passwords or access tokens for this service account.
+    #[clap(name = "credential")]
+    Credential {
+        #[clap(subcommand)]
+        commands: ServiceAccountCredential,
+    },
+    /// Manage posix extensions for this service account allowing access to unix/linux systems
+    #[clap(name = "posix")]
+    Posix {
+        #[clap(subcommand)]
+        commands: ServiceAccountPosix,
+    },
+    /// Manage ssh public key's associated to this person
+    #[clap(name = "ssh")]
+    Ssh {
+        #[clap(subcommand)]
+        commands: AccountSsh,
+    },
+    /// List all service accounts
+    #[clap(name = "list")]
+    List(CommonOpt),
+    /// View a specific service account
+    #[clap(name = "get")]
+    Get(AccountNamedOpt),
+    /// Create a new service account
+    #[clap(name = "create")]
+    Create(AccountCreateOpt),
+    /// Update a specific service account's attributes
+    #[clap(name = "update")]
+    Update(ServiceAccountUpdateOpt),
+    /// Delete a service account
+    #[clap(name = "delete")]
+    Delete(AccountNamedOpt),
+    /// Manage a service account validity, such as expiry time (account lock/unlock)
+    #[clap(name = "validity")]
+    Validity {
+        #[clap(subcommand)]
+        commands: AccountValidity,
+    },
+    /// Convert a service account into a person. This is used during the alpha.9
+    /// to alpha.10 migration to "fix up" accounts that were not previously marked
+    /// as persons.
+    #[clap(name = "into-person")]
+    IntoPerson(AccountNamedOpt),
 }
 
 #[derive(Debug, Subcommand)]
@@ -376,9 +482,6 @@ pub enum RawOpt {
 pub enum SelfOpt {
     /// Show the current authenticated user's identity
     Whoami(CommonOpt),
-    #[clap(name = "set_password")]
-    /// Set the current user's password
-    SetPassword(CommonOpt),
 }
 
 #[derive(Debug, Args)]
@@ -530,28 +633,34 @@ pub enum KanidmClientOpt {
         #[clap(subcommand)]
         commands: SelfOpt,
     },
-    /// Account operations
-    Account {
+    /// Actions to manage and view person (user) accounts
+    Person {
         #[clap(subcommand)]
-        commands: AccountOpt,
+        commands: PersonOpt
     },
-    /// Group operations
+    /// Actions to manage groups
     Group {
         #[clap(subcommand)]
         commands: GroupOpt,
+    },
+    /// Actions to manage and view service accounts
+    #[clap(name = "service-account")]
+    ServiceAccount {
+        #[clap(subcommand)]
+        commands: ServiceAccountOpt,
     },
     /// System configuration operations
     System {
         #[clap(subcommand)]
         commands: SystemOpt,
     },
-    #[clap(name = "recycle_bin")]
+    #[clap(name = "recycle-bin")]
     /// Recycle Bin operations
     Recycle {
         #[clap(subcommand)]
         commands: RecycleOpt,
     },
-    /// Unsafe - low level, raw database operations.
+    /// Unsafe - low level, raw database queries and operations.
     Raw {
         #[clap(subcommand)]
         commands: RawOpt,

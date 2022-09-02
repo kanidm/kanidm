@@ -162,7 +162,7 @@ pub enum FilterResolved {
     AndNot(Box<FilterResolved>, Option<NonZeroU8>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilterInvalid {
     inner: FilterComp,
 }
@@ -172,7 +172,7 @@ pub struct FilterValid {
     inner: FilterComp,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilterValidResolved {
     inner: FilterResolved,
 }

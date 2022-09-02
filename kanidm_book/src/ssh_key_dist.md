@@ -1,33 +1,33 @@
 # SSH Key Distribution
 
-To support SSH authentication securely to a large set of hosts running SSH, we support 
-distribution of SSH public keys via the Kanidm server.
+To support SSH authentication securely to a large set of hosts running SSH, we support
+distribution of SSH public keys via the Kanidm server. Both persons and service accounts
+support SSH public keys on their accounts.
 
 ## Configuring Accounts
 
 To view the current SSH public keys on accounts, you can use:
 
-    kanidm account ssh list_publickeys --name <login user> <account to view>
-    kanidm account ssh list_publickeys --name idm_admin william
+    kanidm person|service-account ssh list_publickeys --name <login user> <account to view>
+    kanidm person|service-account ssh list_publickeys --name idm_admin william
 
 All users by default can self-manage their SSH public keys. To upload a key, a command like this
 is the best way to do so:
 
-    kanidm account ssh add_publickey --name william william 'test-key' "`cat ~/.ssh/id_rsa.pub`"
+    kanidm person|service-account ssh add_publickey --name william william 'test-key' "`cat ~/.ssh/id_rsa.pub`"
 
 To remove (revoke) an SSH public key, delete them by the tag name:
 
-    kanidm account ssh delete_publickey --name william william 'test-key'
+    kanidm person|service-account ssh delete_publickey --name william william 'test-key'
 
 ## Security Notes
 
 As a security feature, Kanidm validates *all* public keys to ensure they are valid SSH public keys.
 Uploading a private key or other data will be rejected. For example:
 
-    kanidm account ssh add_publickey --name william william 'test-key' "invalid"
+    kanidm person|service-account ssh add_publickey --name william william 'test-key' "invalid"
     Enter password:
-    thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: 
-      Http(400, Some(SchemaViolation(InvalidAttributeSyntax)))', src/libcore/result.rs:1084:5
+      ... Some(SchemaViolation(InvalidAttributeSyntax)))' ...
 
 ## Server Configuration
 

@@ -105,7 +105,7 @@ impl LdapClient {
                 error!("Failed to initialise TLS -> {:?}", e);
             })?;
 
-        let _ = SslStream::connect(Pin::new(&mut tlsstream))
+        SslStream::connect(Pin::new(&mut tlsstream))
             .await
             .map_err(|e| {
                 error!("Failed to initialise TLS -> {:?}", e);
@@ -113,7 +113,7 @@ impl LdapClient {
 
         let mut framed = Framed::new(tlsstream, LdapCodec);
 
-        let _ = framed.send(msg).await.map_err(|e| {
+        framed.send(msg).await.map_err(|e| {
             error!("Unable to bind -> {:?}", e);
         })?;
 
@@ -223,7 +223,7 @@ impl LdapClient {
         };
 
         // Send it
-        let _ = inner.framed.send(msg).await.map_err(|e| {
+        inner.framed.send(msg).await.map_err(|e| {
             error!("Unable to search -> {:?}", e);
         })?;
 
@@ -269,7 +269,7 @@ impl LdapClient {
         };
 
         // Send it
-        let _ = inner.framed.send(msg).await.map_err(|e| {
+        inner.framed.send(msg).await.map_err(|e| {
             error!("Unable to delete -> {:?}", e);
         })?;
         if let Some(Ok(msg)) = inner.framed.next().await {
@@ -306,7 +306,7 @@ impl LdapClient {
         };
 
         // Send it
-        let _ = inner.framed.send(msg).await.map_err(|e| {
+        inner.framed.send(msg).await.map_err(|e| {
             error!("Unable to add -> {:?}", e);
         })?;
         if let Some(Ok(msg)) = inner.framed.next().await {
@@ -343,7 +343,7 @@ impl LdapClient {
         };
 
         // Send it
-        let _ = inner.framed.send(msg).await.map_err(|e| {
+        inner.framed.send(msg).await.map_err(|e| {
             error!("Unable to modify -> {:?}", e);
         })?;
         if let Some(Ok(msg)) = inner.framed.next().await {

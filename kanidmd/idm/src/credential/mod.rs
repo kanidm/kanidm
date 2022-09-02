@@ -133,7 +133,7 @@ impl Password {
         let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
 
         let start = Instant::now();
-        let _ = pbkdf2_hmac(
+        pbkdf2_hmac(
             input.as_slice(),
             salt.as_slice(),
             pbkdf2_cost,
@@ -215,7 +215,7 @@ impl Password {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BackupCodes {
     code_set: HashSet<String>,
 }

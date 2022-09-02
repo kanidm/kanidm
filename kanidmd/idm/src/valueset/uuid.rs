@@ -105,11 +105,11 @@ impl ValueSetT for ValueSetUuid {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.set.iter().copied().map(|u| PartialValue::new_uuid(u)))
+        Box::new(self.set.iter().copied().map(PartialValue::new_uuid))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(|u| Value::new_uuid(u)))
+        Box::new(self.set.iter().copied().map(Value::new_uuid))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
@@ -251,11 +251,11 @@ impl ValueSetT for ValueSetRefer {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.set.iter().copied().map(|u| PartialValue::new_refer(u)))
+        Box::new(self.set.iter().copied().map(PartialValue::new_refer))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(|u| Value::new_refer(u)))
+        Box::new(self.set.iter().copied().map(Value::new_refer))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

@@ -293,8 +293,7 @@ oauth:
   user_info_url: https://idm.wherekanidmruns.com/oauth2/openid/<oauth2_rs_name>/userinfo
 ```
 
-The `email` scope needs to be passed and thus the attribute needs to exist in
-the account:
+The `email` scope needs to be passed and thus the mail attribute needs to exist on the account:
 
-    kanidm login --name idm_admin
-    kanidm account person extend YYYY --mail "YYYY@somedomain.com" --name idm_admin
+    kanidm person update <ID> --mail "YYYY@somedomain.com" --name idm_admin
+

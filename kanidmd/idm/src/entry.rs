@@ -663,29 +663,83 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             // Do we have extensible?
             let extensible = ne.attribute_equality("class", &CLASS_EXTENSIBLE);
 
-            let entry_classes = ne.get_ava_set("class").ok_or(SchemaError::NoClassFound)?;
+            let entry_classes = ne.get_ava_set("class").ok_or_else(|| {
+                admin_debug!("Attribute 'class' missing from entry");
+                SchemaError::NoClassFound
+            })?;
             let mut invalid_classes = Vec::with_capacity(0);
 
             let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
 
-            match entry_classes.as_iutf8_iter() {
-                Some(cls_iter) => cls_iter.for_each(|s| match schema_classes.get(s) {
-                    Some(x) => classes.push(x),
-                    None => {
-                        admin_debug!("invalid class: {:?}", s);
-                        invalid_classes.push(s.to_string())
-                    }
-                }),
-                None => {
-                    admin_debug!("corrupt class attribute in: {:?}", entry_classes);
-                    invalid_classes.push("corrupt class attribute".to_string())
-                }
+            // We need to keep the btreeset of entry classes here so we can check the
+            // requires and excludes.
+            let entry_classes = if let Some(ec) = entry_classes.as_iutf8_set() {
+                ec.iter()
+                    .for_each(|s| match schema_classes.get(s.as_str()) {
+                        Some(x) => classes.push(x),
+                        None => {
+                            admin_debug!("invalid class: {:?}", s);
+                            invalid_classes.push(s.to_string())
+                        }
+                    });
+                ec
+            } else {
+                admin_debug!("corrupt class attribute");
+                return Err(SchemaError::NoClassFound);
             };
 
             if !invalid_classes.is_empty() {
-                // lrequest_error!("Class on entry not found in schema?");
                 return Err(SchemaError::InvalidClass(invalid_classes));
             };
+
+            // Now determine the set of excludes and requires we have, and then
+            // assert we don't violate them.
+
+            let supplements_classes: Vec<_> = classes
+                .iter()
+                .flat_map(|cls| cls.systemsupplements.iter().chain(cls.supplements.iter()))
+                .collect();
+
+            // So long as one supplement is present we can continue.
+            let valid_supplements = if supplements_classes.is_empty() {
+                // No need to check.
+                true
+            } else {
+                supplements_classes
+                    .iter()
+                    .any(|class| entry_classes.contains(class.as_str()))
+            };
+
+            if !valid_supplements {
+                admin_warn!(
+                    "Validation error, the following possible supplement classes are missing - {:?}",
+                    supplements_classes
+                );
+                let supplements_classes =
+                    supplements_classes.iter().map(|s| s.to_string()).collect();
+                return Err(SchemaError::SupplementsNotSatisfied(supplements_classes));
+            }
+
+            let excludes_classes: Vec<_> = classes
+                .iter()
+                .flat_map(|cls| cls.systemexcludes.iter().chain(cls.excludes.iter()))
+                .collect();
+
+            let mut invalid_excludes = Vec::with_capacity(0);
+
+            excludes_classes.iter().for_each(|class| {
+                if entry_classes.contains(class.as_str()) {
+                    invalid_excludes.push(class.to_string())
+                }
+            });
+
+            if !invalid_excludes.is_empty() {
+                admin_warn!(
+                    "Validation error, the following excluded classes are present - {:?}",
+                    invalid_excludes
+                );
+                return Err(SchemaError::ExcludesNotSatisfied(invalid_excludes));
+            }
 
             // What this is really doing is taking a set of classes, and building an
             // "overall" class that describes this exact object for checking. IE we
@@ -998,7 +1052,7 @@ impl Entry<EntrySealed, EntryNew> {
 }
 
 type IdxDiff<'a> =
-    Vec<Result<(&'a AttrString, &'a IndexType, String), (&'a AttrString, &'a IndexType, String)>>;
+    Vec<Result<(&'a AttrString, IndexType, String), (&'a AttrString, IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
     /// If this entry has ever been commited to disk, retrieve it's database id number.
@@ -1238,11 +1292,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         // We generate these keys out of the valueset now.
                                         vs.generate_idx_eq_keys()
                                             .into_iter()
-                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
-                                        vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1264,10 +1318,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Equality => vs
                                         .generate_idx_eq_keys()
                                         .into_iter()
-                                        .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                        .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                         .collect(),
                                     IndexType::Presence => {
-                                        vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1301,11 +1355,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         pre_vs
                                             .generate_idx_eq_keys()
                                             .into_iter()
-                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
-                                        vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1320,11 +1374,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         post_vs
                                             .generate_idx_eq_keys()
                                             .into_iter()
-                                            .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
-                                        vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                        vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SubString => Vec::new(),
                                 };
@@ -1394,11 +1448,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Equality => {
                                         removed_vs
                                             .into_iter()
-                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
                                             .for_each(|v| diff.push(v));
                                         added_vs
                                             .into_iter()
-                                            .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                            .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
                                             .for_each(|v| diff.push(v));
                                     }
                                     IndexType::Presence => {
@@ -1456,7 +1510,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         let cid = attrs
             .get("last_modified_cid")
             .and_then(|vs| vs.as_cid_set())
-            .and_then(|set| set.iter().cloned().next())?;
+            .and_then(|set| set.iter().next().cloned())?;
 
         let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
 
@@ -1782,6 +1836,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Return a reference to the current set of values that are associated to this attribute.
     pub fn get_ava_set(&self, attr: &str) -> Option<&ValueSet> {
         self.attrs.get(attr)
+    }
+
+    #[inline(always)]
+    pub fn get_ava_as_iutf8_iter(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_iutf8_iter())
     }
 
     #[inline(always)]
@@ -2611,7 +2670,7 @@ mod tests {
             del_r[0]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2619,7 +2678,7 @@ mod tests {
             del_r[1]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::Presence,
+                    IndexType::Presence,
                     "_".to_string()
                 ))
         );
@@ -2632,7 +2691,7 @@ mod tests {
             add_r[0]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2640,7 +2699,7 @@ mod tests {
             add_r[1]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::Presence,
+                    IndexType::Presence,
                     "_".to_string()
                 ))
         );
@@ -2657,7 +2716,7 @@ mod tests {
             add_a_r[0]
                 == Ok((
                     &AttrString::from("extra"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "test".to_string()
                 ))
         );
@@ -2668,7 +2727,7 @@ mod tests {
             del_a_r[0]
                 == Err((
                     &AttrString::from("extra"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "test".to_string()
                 ))
         );
@@ -2681,7 +2740,7 @@ mod tests {
             chg_r[1]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2690,7 +2749,7 @@ mod tests {
             chg_r[0]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::Equality,
+                    IndexType::Equality,
                     "claire".to_string()
                 ))
         );

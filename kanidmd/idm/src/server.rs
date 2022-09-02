@@ -50,6 +50,8 @@ lazy_static! {
     static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
+    static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
+    static ref PVCLASS_PERSON: PartialValue = PartialValue::new_class("person");
     static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
@@ -1169,6 +1171,10 @@ impl QueryServer {
             migrate_txn.migrate_5_to_6()?;
         }
 
+        if system_info_version < 7 {
+            migrate_txn.migrate_6_to_7()?;
+        }
+
         migrate_txn.commit()?;
         // Migrations complete. Init idm will now set the version as needed.
 
@@ -2275,6 +2281,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    /// Migrate 6 to 7
+    ///
+    /// Modify accounts that are not persons, to be service accounts so that the extension
+    /// rules remain valid.
+    pub fn migrate_6_to_7(&self) -> Result<(), OperationError> {
+        spanned!("server::migrate_5_to_6", {
+            admin_warn!("starting 6 to 7 migration.");
+            let filter = filter!(f_and!([
+                f_eq("class", (*PVCLASS_ACCOUNT).clone()),
+                f_andnot(f_eq("class", (*PVCLASS_PERSON).clone())),
+            ]));
+            let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
+            self.internal_modify(&filter, &modlist)
+            // Complete
+        })
+    }
+
     // These are where searches and other actions are actually implemented. This
     // is the "internal" version, where we define the event as being internal
     // only, allowing certain plugin by passes etc.
@@ -2580,6 +2603,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
+            JSON_SCHEMA_CLASS_SERVICE_ACCOUNT,
             JSON_SCHEMA_CLASS_DOMAIN_INFO,
             JSON_SCHEMA_CLASS_POSIXACCOUNT,
             JSON_SCHEMA_CLASS_POSIXGROUP,
@@ -2677,6 +2701,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_MANAGE_PRIV_V1,
             JSON_DOMAIN_ADMINS,
             JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1,
+            JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
             // All members must exist before we write HP
             JSON_IDM_HIGH_PRIVILEGE_V1,
             // Built in access controls.
@@ -2718,6 +2743,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1,
             JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
             JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
+            JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
         ];
 
         let res: Result<(), _> = idm_entries

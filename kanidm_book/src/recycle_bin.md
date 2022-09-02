@@ -29,15 +29,15 @@ Currently they stay up to 1 week before they are removed.
 
 You can display all items in the Recycle Bin with:
 
-    kanidm recycle_bin list --name admin
+    kanidm recycle-bin list --name admin
 
-You can show a single items with:
+You can show a single item with:
 
-    kanidm recycle_bin get --name admin <id>
+    kanidm recycle-bin get --name admin <uuid>
 
 An entry can be revived with:
 
-    kanidm recycle_bin revive --name admin <id>
+    kanidm recycle-bin revive --name admin <uuid>
 
 ## Edge Cases
 

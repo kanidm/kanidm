@@ -440,16 +440,20 @@ pub fn create_https_server(
     let mut tserver_cacheable = tserver.at("");
     tserver_cacheable.with(CacheableMiddleware::default());
 
+    // We allow clients to cache the unix token for accounts and groups.
     let mut account_route_cacheable = tserver_cacheable.at("/v1/account");
-
+    account_route_cacheable
+        .at("/:id/_unix/_token")
+        .mapped_get(&mut routemap, account_get_id_unix_token);
     // We allow caching of the radius token.
     account_route_cacheable
         .at("/:id/_radius/_token")
         .mapped_get(&mut routemap, account_get_id_radius_token);
-    // We allow clients to cache the unix token.
-    account_route_cacheable
+
+    let mut group_route_cacheable = tserver_cacheable.at("/v1/group");
+    group_route_cacheable
         .at("/:id/_unix/_token")
-        .mapped_get(&mut routemap, account_get_id_unix_token);
+        .mapped_get(&mut routemap, group_get_id_unix_token);
 
     // ==== These routes can not be cached
     let mut appserver = tserver.at("");
@@ -574,9 +578,6 @@ pub fn create_https_server(
         .mapped_get(&mut routemap, do_nothing);
 
     self_route
-        .at("/_credential/primary/set_password")
-        .mapped_post(&mut routemap, idm_account_set_password);
-    self_route
         .at("/_credential/:cid/_lock")
         .mapped_get(&mut routemap, do_nothing);
 
@@ -603,87 +604,130 @@ pub fn create_https_server(
         .mapped_post(&mut routemap, person_post);
     person_route
         .at("/:id")
-        .mapped_get(&mut routemap, person_id_get);
-
-    let mut account_route = appserver.at("/v1/account");
-    account_route
-        .at("/")
-        .mapped_get(&mut routemap, account_get)
-        .mapped_post(&mut routemap, account_post);
-    account_route
-        .at("/:id")
-        .mapped_get(&mut routemap, account_id_get)
-        .mapped_delete(&mut routemap, account_id_delete);
-    account_route
+        .mapped_get(&mut routemap, person_id_get)
+        .mapped_patch(&mut routemap, account_id_patch)
+        .mapped_delete(&mut routemap, person_account_id_delete);
+    person_route
         .at("/:id/_attr/:attr")
         .mapped_get(&mut routemap, account_id_get_attr)
         .mapped_put(&mut routemap, account_id_put_attr)
         .mapped_post(&mut routemap, account_id_post_attr)
         .mapped_delete(&mut routemap, account_id_delete_attr);
-    account_route
-        .at("/:id/_person/_extend")
-        .mapped_post(&mut routemap, account_post_id_person_extend);
-    account_route
-        .at("/:id/_person/_set")
-        .mapped_post(&mut routemap, account_post_id_person_set);
-    account_route
+
+    person_route
         .at("/:id/_lock")
         .mapped_get(&mut routemap, do_nothing);
-
-    account_route
+    person_route
         .at("/:id/_credential")
         .mapped_get(&mut routemap, do_nothing);
-    account_route
+    person_route
         .at("/:id/_credential/_status")
         .mapped_get(&mut routemap, account_get_id_credential_status);
-    account_route
-        .at("/:id/_credential/primary")
-        .mapped_put(&mut routemap, account_put_id_credential_primary);
-    account_route
+    person_route
         .at("/:id/_credential/:cid/_lock")
         .mapped_get(&mut routemap, do_nothing);
-    account_route
-        .at("/:id/_credential/:cid/backup_code")
-        .mapped_get(&mut routemap, account_get_backup_code);
-    // .mapped_post(&mut routemap, account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
-    // .mapped_delete(&mut routemap, account_delete_backup_code); // same as above
-    account_route
+    person_route
         .at("/:id/_credential/_update")
         .mapped_get(&mut routemap, account_get_id_credential_update);
-    account_route
+    person_route
         .at("/:id/_credential/_update_intent")
         .mapped_get(&mut routemap, account_get_id_credential_update_intent);
-    account_route
+    person_route
         .at("/:id/_credential/_update_intent/:ttl")
         .mapped_get(&mut routemap, account_get_id_credential_update_intent);
 
-    account_route
+    person_route
         .at("/:id/_ssh_pubkeys")
         .mapped_get(&mut routemap, account_get_id_ssh_pubkeys)
         .mapped_post(&mut routemap, account_post_id_ssh_pubkey);
-
-    account_route
+    person_route
         .at("/:id/_ssh_pubkeys/:tag")
         .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag)
         .mapped_delete(&mut routemap, account_delete_id_ssh_pubkey_tag);
 
-    account_route
+    person_route
         .at("/:id/_radius")
         .mapped_get(&mut routemap, account_get_id_radius)
         .mapped_post(&mut routemap, account_post_id_radius_regenerate)
         .mapped_delete(&mut routemap, account_delete_id_radius);
 
-    account_route
+    person_route
         .at("/:id/_unix")
         .mapped_post(&mut routemap, account_post_id_unix);
-    account_route
-        .at("/:id/_unix/_auth")
-        .mapped_post(&mut routemap, account_post_id_unix_auth);
-    account_route
+    person_route
         .at("/:id/_unix/_credential")
         .mapped_put(&mut routemap, account_put_id_unix_credential)
         .mapped_delete(&mut routemap, account_delete_id_unix_credential);
 
+    // Service accounts
+
+    let mut service_account_route = appserver.at("/v1/service_account");
+    service_account_route
+        .at("/")
+        .mapped_get(&mut routemap, service_account_get)
+        .mapped_post(&mut routemap, service_account_post);
+    service_account_route
+        .at("/:id")
+        .mapped_get(&mut routemap, service_account_id_get)
+        .mapped_patch(&mut routemap, account_id_patch)
+        .mapped_delete(&mut routemap, service_account_id_delete);
+    service_account_route
+        .at("/:id/_attr/:attr")
+        .mapped_get(&mut routemap, account_id_get_attr)
+        .mapped_put(&mut routemap, account_id_put_attr)
+        .mapped_post(&mut routemap, account_id_post_attr)
+        .mapped_delete(&mut routemap, account_id_delete_attr);
+
+    service_account_route
+        .at("/:id/_lock")
+        .mapped_get(&mut routemap, do_nothing);
+
+    service_account_route
+        .at("/:id/_into_person")
+        .mapped_post(&mut routemap, service_account_into_person);
+
+    service_account_route
+        .at("/:id/_credential")
+        .mapped_get(&mut routemap, do_nothing);
+    service_account_route
+        .at("/:id/_credential/_generate")
+        .mapped_get(&mut routemap, service_account_credential_generate);
+    service_account_route
+        .at("/:id/_credential/_status")
+        .mapped_get(&mut routemap, account_get_id_credential_status);
+    service_account_route
+        .at("/:id/_credential/:cid/_lock")
+        .mapped_get(&mut routemap, do_nothing);
+
+    service_account_route
+        .at("/:id/_ssh_pubkeys")
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkeys)
+        .mapped_post(&mut routemap, account_post_id_ssh_pubkey);
+    service_account_route
+        .at("/:id/_ssh_pubkeys/:tag")
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag)
+        .mapped_delete(&mut routemap, account_delete_id_ssh_pubkey_tag);
+
+    service_account_route
+        .at("/:id/_unix")
+        .mapped_post(&mut routemap, account_post_id_unix);
+
+    // TODO: Apis for token management
+
+    // Shared account features only - mainly this is for unix-like
+    // features.
+    let mut account_route = appserver.at("/v1/account");
+    account_route
+        .at("/:id/_unix/_auth")
+        .mapped_post(&mut routemap, account_post_id_unix_auth);
+    account_route
+        .at("/:id/_ssh_pubkeys")
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkeys);
+    account_route
+        .at("/:id/_ssh_pubkeys/:tag")
+        .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag);
+
+    // Credential updates, don't require the account id.
     let mut cred_route = appserver.at("/v1/credential");
     cred_route
         .at("/_exchange_intent")
@@ -723,9 +767,6 @@ pub fn create_https_server(
     group_route
         .at("/:id/_unix")
         .mapped_post(&mut routemap, group_post_id_unix);
-    group_route
-        .at("/:id/_unix/_token")
-        .mapped_get(&mut routemap, group_get_id_unix_token);
 
     let mut domain_route = appserver.at("/v1/domain");
     domain_route.at("/").mapped_get(&mut routemap, domain_get);

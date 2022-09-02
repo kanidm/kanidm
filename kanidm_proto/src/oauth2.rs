@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use url::Url;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CodeChallengeMethod {
     // default to plain if not requested as S256. Reject the auth?
     // plain
@@ -173,7 +173,7 @@ impl AccessTokenIntrospectResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseType {
     Code,
@@ -181,7 +181,7 @@ pub enum ResponseType {
     IdToken,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseMode {
     Query,
@@ -192,7 +192,7 @@ fn response_modes_supported_default() -> Vec<ResponseMode> {
     vec![ResponseMode::Query, ResponseMode::Fragment]
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantType {
     #[serde(rename = "authorization_code")]
@@ -204,14 +204,14 @@ fn grant_types_supported_default() -> Vec<GrantType> {
     vec![GrantType::AuthorisationCode, GrantType::Implicit]
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum SubjectType {
     Pairwise,
     Public,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
 // WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WONT HAPPEN.
 pub enum IdTokenSignAlg {
@@ -219,7 +219,7 @@ pub enum IdTokenSignAlg {
     RS256,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenEndpointAuthMethod {
     ClientSecretPost,
@@ -232,7 +232,7 @@ fn token_endpoint_auth_methods_supported_default() -> Vec<TokenEndpointAuthMetho
     vec![TokenEndpointAuthMethod::ClientSecretBasic]
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum DisplayValue {
     Page,
@@ -241,7 +241,7 @@ pub enum DisplayValue {
     Wap,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 // https://openid.net/specs/openid-connect-core-1_0.html#ClaimTypes
 pub enum ClaimType {

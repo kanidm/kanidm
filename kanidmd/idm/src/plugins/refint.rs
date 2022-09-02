@@ -91,14 +91,11 @@ impl Plugin for ReferentialIntegrity {
         let ref_types = schema.get_reference_types();
 
         // Fast Path
-        let mut vsiter = cand
-            .iter()
-            .map(|c| {
-                ref_types
-                    .values()
-                    .filter_map(move |rtype| c.get_ava_set(&rtype.name))
-            })
-            .flatten();
+        let mut vsiter = cand.iter().flat_map(|c| {
+            ref_types
+                .values()
+                .filter_map(move |rtype| c.get_ava_set(&rtype.name))
+        });
 
         // Could check len first?
         let mut i = Vec::new();
@@ -183,11 +180,10 @@ impl Plugin for ReferentialIntegrity {
             // .iter()
             cand.iter()
                 .map(|e| e.get_uuid())
-                .map(|u| ref_types.values().map(move |r_type| {
+                .flat_map(|u| ref_types.values().map(move |r_type| {
                     // For everything that references the uuid's in the deleted set.
                     f_eq(r_type.name.as_str(), PartialValue::new_refer(u))
                 }))
-                .flatten()
                 .collect(),
         ));
 

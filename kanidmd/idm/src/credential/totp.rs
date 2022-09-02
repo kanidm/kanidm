@@ -14,14 +14,14 @@ use kanidm_proto::v1::TotpSecret as ProtoTotp;
 const SECRET_SIZE_BYTES: usize = 8;
 pub const TOTP_DEFAULT_STEP: u64 = 30;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TotpError {
     OpenSSLError,
     HmacError,
     TimeError,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TotpAlgo {
     Sha1,
     Sha256,
@@ -58,7 +58,7 @@ impl TotpAlgo {
 }
 
 /// <https://tools.ietf.org/html/rfc6238> which relies on <https://tools.ietf.org/html/rfc4226>
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Totp {
     secret: Vec<u8>,
     pub(crate) step: u64,
