@@ -31,7 +31,7 @@ You can display all items in the Recycle Bin with:
 
     kanidm recycle-bin list --name admin
 
-You can show a single items with:
+You can show a single item with:
 
     kanidm recycle-bin get --name admin <uuid>
 

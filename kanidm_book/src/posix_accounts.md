@@ -76,16 +76,22 @@ capable of supplying this kind of data in batch jobs.
 To enable POSIX account features and IDs on an account, you require the permission
 `idm_account_unix_extend_priv`. This is provided to `idm_admins` in the default database.
 
-You can then use the following command to enable POSIX extensions.
+You can then use the following command to enable POSIX extensions on a person or service account.
 
-    kanidm person|service-account posix set --name idm_admin <account_id> [--shell SHELL --gidnumber GID]
-    kanidm person|service-account posix set --name idm_admin demo_user
-    kanidm person|service-account posix set --name idm_admin demo_user --shell /bin/zsh
-    kanidm person|service-account posix set --name idm_admin demo_user --gidnumber 2001
+    kanidm [person OR service-account] posix set --name idm_admin <account_id> [--shell SHELL --gidnumber GID]
+
+    kanidm person posix set --name idm_admin demo_user
+    kanidm person posix set --name idm_admin demo_user --shell /bin/zsh
+    kanidm person posix set --name idm_admin demo_user --gidnumber 2001
+
+    kanidm service-account posix set --name idm_admin demo_account
+    kanidm service-account posix set --name idm_admin demo_account --shell /bin/zsh
+    kanidm service-account posix set --name idm_admin demo_account --gidnumber 2001
 
 You can view the accounts POSIX token details with:
 
-    kanidm person|service-account posix show --name anonymous demo_user
+    kanidm person posix show --name anonymous demo_user
+    kanidm service-account posix show --name anonymous demo_account
 
 ### Enabling POSIX Attributes on Groups
 

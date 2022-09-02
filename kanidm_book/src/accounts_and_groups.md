@@ -6,7 +6,7 @@ for these data. As a result, there are many concepts and important details to un
 ## Service Accounts vs Person Accounts
 
 Kanidm seperates accounts into two types. Person accounts (or persons) are intended for use by humans
-that will access the system in an interactive way. Service accounts are intentded for use by computers
+that will access the system in an interactive way. Service accounts are intended for use by computers
 or services that need to identify themself to Kanidm. Generally a person or group of persons will
 be responsible for and will manage service accounts. Because of this distinction these classes of
 accounts have different properties and methods of authentication and management.
@@ -102,6 +102,7 @@ kanidm group get <name>
 By default `idm_admin` has the privileges to create new persons in the system.
 
 ```shell
+kanidm login --name idm_admin
 kanidm account create demo_user "Demonstration User" --name idm_admin
 kanidm account get demo_user --name idm_admin
 
@@ -130,7 +131,7 @@ kanidm account person update demo_user --legalname "initial name" --mail "initia
 {{#template
     templates/kani-warning.md
     imagepath=images
-    text=Warning: Persons may change their own displayname, name, and legal name at any time. You MUST not use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
+    text=Warning: Persons may change their own displayname, name, and legal name at any time. You MUST NOT use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
 }}
 
 ## Resetting Person Account Credentials
@@ -205,10 +206,8 @@ kanidm account get nest_example --name anonymous
 
 ## Account Validity
 
-Kanidm supports accounts that are only able to be authenticated to between specific date and time
-date where authentication can succeed, and an expiry date where the account will no longer
-be valid. This takes the form of a "valid from" attribute that defines the earliest start
-allow authentication, and an "expire"s at which defines the end of the validity period.
+Kanidm supports accounts that are only able authenticate between a pair of dates and times; the "valid
+from" and "expires" timestamps define these points in time.
 
 This can be displayed with:
 
