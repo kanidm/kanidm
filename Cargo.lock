@@ -685,9 +685,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.18"
+version = "3.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b15f2ea93df33549dbe2e8eecd1ca55269d63ae0b3ba1f55db030817d1c2867f"
+checksum = "23b71c3ce99b7611011217b366d923f1d0a7e07a92bb2dbf1e84508c673ca3bd"
 dependencies = [
  "atty",
  "bitflags",
@@ -706,7 +706,7 @@ version = "3.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4179da71abd56c26b54dd0c248cc081c1f43b0a1a7e8448e28e57a29baa993d"
 dependencies = [
- "clap 3.2.18",
+ "clap 3.2.20",
 ]
 
 [[package]]
@@ -1083,7 +1083,7 @@ dependencies = [
 name = "daemon"
 version = "1.1.0-alpha.9"
 dependencies = [
- "clap 3.2.18",
+ "clap 3.2.20",
  "clap_complete",
  "kanidm",
  "kanidm_proto",
@@ -2209,7 +2209,7 @@ dependencies = [
 name = "kanidm_tools"
 version = "1.1.0-alpha.9"
 dependencies = [
- "clap 3.2.18",
+ "clap 3.2.20",
  "clap_complete",
  "compact_jwt",
  "dialoguer",
@@ -2237,7 +2237,7 @@ name = "kanidm_unix_int"
 version = "1.1.0-alpha.9"
 dependencies = [
  "bytes",
- "clap 3.2.18",
+ "clap 3.2.20",
  "clap_complete",
  "futures",
  "kanidm",
@@ -2788,7 +2788,7 @@ dependencies = [
 name = "orca"
 version = "1.1.0-alpha.9"
 dependencies = [
- "clap 3.2.18",
+ "clap 3.2.20",
  "crossbeam",
  "csv",
  "dialoguer",
