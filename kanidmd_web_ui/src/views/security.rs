@@ -121,10 +121,12 @@ impl Component for SecurityApp {
             }
             Msg::Error { emsg, kopid } => {
                 self.state = State::Error { emsg, kopid };
+                self.unix_input_value = "".to_string();
                 true
             }
             Msg::Success(msg) => {
                 self.state = State::Success { msg };
+                self.unix_input_value = "".to_string();
                 true
             }
             Msg::ChangeUnixPassword => {
@@ -174,7 +176,7 @@ impl Component for SecurityApp {
                 html! {
                   <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     { message }
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn btn-close" data-dismiss="alert" aria-label="Close"></button>
                   </div>
                 }
             }
@@ -182,12 +184,14 @@ impl Component for SecurityApp {
                 html! {
                   <div class="alert alert-success alert-dismissible fade show" role="alert">
                     { msg }
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn btn-close" data-dismiss="alert" aria-label="Close"></button>
                   </div>
                 }
             }
             _ => html! { <></> },
         };
+
+        let unix_input_value = self.unix_input_value.clone();
 
         html! {
             <>
@@ -242,6 +246,7 @@ impl Component for SecurityApp {
                               name="password"
                               oninput={ ctx.link().callback(|e: InputEvent| Msg::UnixPasswordInput(utils::get_value_from_input_event(e))) }
                               type="password"
+                              value={ unix_input_value }
                           />
                       </div>
                       <div class="modal-footer">
