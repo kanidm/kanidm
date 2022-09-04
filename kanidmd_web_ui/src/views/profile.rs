@@ -40,10 +40,6 @@ impl Component for ProfileApp {
 
     /// UI view for the user profile
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::debug!(format!(
-            "views::profile::starting current_user: {:?}",
-            ctx.props().current_user,
-        ));
         let pagecontent = match &ctx.props().current_user {
             None => {
                 html! {
