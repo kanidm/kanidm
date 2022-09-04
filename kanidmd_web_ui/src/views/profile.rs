@@ -1,130 +1,35 @@
-use crate::error::FetchError;
-// use crate::error::*;
-// use crate::models;
-use crate::utils;
 use crate::views::ViewProps;
 
-// use compact_jwt::{Jws, JwsUnverified};
 use gloo::console;
-use kanidm_proto::v1::WhoamiResponse;
-// use kanidm_proto::v1::{UserAuthToken,WhoamiResponse};
-use std::fmt::Debug;
-// use std::str::FromStr;
-use wasm_bindgen::JsCast;
-// use wasm_bindgen::JsValue;
-use wasm_bindgen::UnwrapThrowExt;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-// use web_sys::{Request, RequestInit, RequestMode, Response};
-
-pub enum Msg {
-    TokenValid(String),
-    TokenInvalid,
-    Error { emsg: String, kopid: Option<String> },
-    ProfileInfoRecieved(WhoamiResponse),
-}
-
-#[derive(Debug)]
-enum ProfileAppState {
-    Loading,
-    Loaded,
-}
-
-impl From<FetchError> for Msg {
-    fn from(fe: FetchError) -> Self {
-        Msg::Error {
-            emsg: fe.as_string(),
-            kopid: None,
-        }
-    }
-}
 
 // User Profile UI
-pub struct ProfileApp {
-    state: ProfileAppState,
-    token: Option<String>,
-    user: Option<WhoamiResponse>,
-}
+pub struct ProfileApp {}
 
 impl Component for ProfileApp {
-    type Message = Msg;
+    type Message = ();
     type Properties = ViewProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         #[cfg(debug)]
         console::debug!("views::profile::create");
 
-        // Submit a req to init the session.
-        // The uuid we want to submit against - hint, it's us.
-        let token = ctx.props().token.clone();
-        #[cfg(debug)]
-        console::debug!("token: ", &token);
-
-        ctx.link().send_future(async {
-            match Self::fetch_token_valid(token).await {
-                Ok(v) => v,
-                Err(v) => v.into(),
-            }
-        });
-
-        ProfileApp {
-            state: ProfileAppState::Loading,
-            token: None,
-            user: None,
-        }
+        ProfileApp {}
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
-        console::debug!("views::profile::changed");
-        false
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+        console::debug!(format!(
+            "views::profile::changed current_user: {:?}",
+            ctx.props().current_user,
+        ));
+        true
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
-        console::debug!("views::profile::update");
-        match msg {
-            Msg::Error { emsg, kopid } => {
-                console::error!(format!(
-                    "Failed to do something {:?} - kopid {:?}",
-                    emsg, kopid
-                ));
-            }
-            Msg::TokenInvalid => {
-                // TODO redirect off to login
-                let location = utils::window().location();
-
-                match location.replace("/") {
-                    // No need to redraw, we are leaving.
-                    Ok(_) => return false,
-                    Err(e) => {
-                        // Something went bang, opps.
-                        console::error!(format!("{:?}", e).as_str());
-                        // self.state = State::ErrInvalidRequest;
-                    }
-                }
-            }
-            Msg::TokenValid(token) => {
-                // nothin' much
-                self.token = Some(token.clone());
-                #[cfg(debug)]
-                console::debug!(format!("Token is valid! ({})", token));
-
-                ctx.link().send_future(async {
-                    match Self::fetch_user_data(token).await {
-                        Ok(v) => v,
-                        Err(v) => v.into(),
-                    }
-                });
-            }
-            Msg::ProfileInfoRecieved(data) => {
-                #[cfg(debug)]
-                console::debug!(format!("ProfileInfoRecieved({:?})", data));
-                self.state = ProfileAppState::Loaded;
-                self.user = Some(data);
-            }
-        }
+    fn update(&mut self, ctx: &Context<Self>, _msg: Self::Message) -> bool {
+        console::debug!(format!(
+            "views::profile::update current_user: {:?}",
+            ctx.props().current_user,
+        ));
         true
     }
 
@@ -134,25 +39,21 @@ impl Component for ProfileApp {
     }
 
     /// UI view for the user profile
-    fn view(&self, _ctx: &Context<Self>) -> Html {
-        #[cfg(debug)]
+    fn view(&self, ctx: &Context<Self>) -> Html {
         console::debug!(format!(
-            "views::profile::starting view state: {:?}",
-            &self.state
+            "views::profile::starting current_user: {:?}",
+            ctx.props().current_user,
         ));
-
-        let pagecontent = match self.state {
-            ProfileAppState::Loading => {
+        let pagecontent = match &ctx.props().current_user {
+            None => {
                 html! {
                     <h2>
                         {"Loading user info..."}
                     </h2>
                 }
             }
-            ProfileAppState::Loaded => {
+            Some(userinfo) => {
                 #[allow(clippy::unwrap_used)]
-                let userinfo = self.user.as_ref().unwrap();
-
                 let mail_primary = match userinfo.uat.mail_primary.as_ref() {
                     Some(email_address) => {
                         html! {
@@ -235,80 +136,6 @@ impl Component for ProfileApp {
 
             { pagecontent }
             </>
-        }
-    }
-}
-
-impl ProfileApp {
-    async fn fetch_token_valid(token: String) -> Result<Msg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
-            .expect_throw("failed to set header");
-
-        let window = crate::utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-
-        if status == 200 {
-            Ok(Msg::TokenValid(token))
-        } else if status == 401 {
-            Ok(Msg::TokenInvalid)
-        } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
-            Ok(Msg::Error { emsg, kopid })
-        }
-    }
-
-    async fn fetch_user_data(token: String) -> Result<Msg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/self", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
-        let kopid = headers.get("x-kanidm-opid").ok().flatten();
-
-        if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let whoamiresponse: WhoamiResponse = jsval
-                .into_serde()
-                .map_err(|e| {
-                    let e_msg = format!("serde error getting user data -> {:?}", e);
-                    console::error!(e_msg.as_str());
-                })
-                .expect_throw("Invalid response type");
-            Ok(Msg::ProfileInfoRecieved(whoamiresponse))
-        } else {
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
-            Ok(Msg::Error { emsg, kopid })
         }
     }
 }
