@@ -44,7 +44,7 @@ shellexpand = "^2.1.2"
 time = { version = "=0.2.27", features = ["serde", "std"] }
 tracing = "^0.1.35"
 tracing-subscriber = { version = "^0.3.14", features = ["env-filter", "fmt"] }
-tokio = { version = "^1.20.0", features = ["rt", "macros"] }
+tokio = { version = "^1.21.0", features = ["rt", "macros"] }
 url = { version = "^2.2.2", features = ["serde"] }
 uuid = "^1.1.2"
 webauthn-authenticator-rs = { version = "0.4.5", features = ["u2fhid"] }

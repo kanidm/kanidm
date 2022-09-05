@@ -22,7 +22,7 @@ serde_json = "^1.0.83"
 # Can not upgrade due to breaking timezone apis.
 time = { version = "=0.2.27", features = ["serde", "std"] }
 url = { version = "^2.2.2", features = ["serde"] }
-urlencoding = "2.1.0"
+urlencoding = "2.1.2"
 uuid = { version = "^1.1.2", features = ["serde"] }
 webauthn-rs-proto = "0.4.2-beta.3"
 
