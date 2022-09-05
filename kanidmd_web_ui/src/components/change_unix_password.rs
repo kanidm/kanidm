@@ -11,8 +11,18 @@ use yew::prelude::*;
 use crate::error::*;
 use crate::utils;
 
+#[derive(PartialEq)]
+enum PwCheck {
+    Init,
+    Valid,
+    Invalid,
+}
+
 pub struct ChangeUnixPassword {
     state: State,
+    pw_check: PwCheck,
+    pw_val: String,
+    pw_check_val: String,
 }
 
 #[derive(Debug, Default)]
@@ -34,6 +44,7 @@ pub enum Msg {
     Submit(FormData),
     Error { emsg: String, kopid: Option<String> },
     Success,
+    PasswordCheck,
 }
 
 impl From<FetchError> for Msg {
@@ -60,7 +71,12 @@ impl Component for ChangeUnixPassword {
     type Properties = ChangeUnixPasswordProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        Self { state: State::Init }
+        Self {
+            state: State::Init,
+            pw_check: PwCheck::Init,
+            pw_val: "".to_string(),
+            pw_check_val: "".to_string(),
+        }
     }
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
@@ -85,12 +101,30 @@ impl Component for ChangeUnixPassword {
                 false
             }
             Msg::Error { emsg, kopid } => {
+                self.reset();
                 self.state = State::Error { emsg, kopid };
+                self.pw_check = PwCheck::Init;
                 true
             }
             Msg::Success => {
+                self.reset();
                 utils::modal_hide_by_id(crate::constants::ID_UNIX_PASSWORDCHANGE);
                 self.state = State::Init;
+                true
+            }
+            Msg::PasswordCheck => {
+                let pw = utils::get_value_from_element_id("password_input")
+                    .unwrap_or_else(|| "".to_string());
+                let check = utils::get_value_from_element_id("password_repeat_input")
+                    .unwrap_or_else(|| "".to_string());
+
+                if pw == check {
+                    self.pw_check = PwCheck::Valid
+                } else {
+                    self.pw_check = PwCheck::Invalid
+                }
+                self.pw_val = pw;
+                self.pw_check_val = check;
                 true
             }
         }
@@ -112,6 +146,16 @@ impl Component for ChangeUnixPassword {
             }
             _ => html! { <></> },
         };
+
+        let submit_enabled = self.pw_check == PwCheck::Valid;
+
+        let pw_val = self.pw_val.clone();
+        let pw_check_val = self.pw_check_val.clone();
+        let pw_check_class = match &self.pw_check {
+            PwCheck::Init | PwCheck::Valid => classes!("form-control"),
+            PwCheck::Invalid => classes!("form-control", "is-invalid"),
+        };
+
         html! {
           <>
             <button type="button" class="btn btn-primary"
@@ -147,22 +191,37 @@ impl Component for ChangeUnixPassword {
                               name="password_input"
                               id="password_input"
                               type="password"
-                              value=""
+                              value={ pw_val }
+                              oninput={
+                                  ctx.link()
+                                  .callback(move |_| {
+                                      Msg::PasswordCheck
+                                  })
+                              }
                           />
                         </div>
                         <div class="form-group">
                           <label for="password_repeat_input"> {"Repeat Password" }</label>
                           <input
-                              class="autofocus form-control"
+                              class={ pw_check_class }
                               name="password_repeat_input"
                               id="password_repeat_input"
                               type="password"
-                              value=""
+                              value={ pw_check_val }
+                              oninput={
+                                  ctx.link()
+                                  .callback(move |_| {
+                                      Msg::PasswordCheck
+                                  })
+                              }
                           />
+                              <div class="invalid-feedback">
+                                  { "Passwords do not match." }
+                              </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-success">{ "Update Password" }</button>
+                        <button type="submit" class="btn btn-success" disabled={ !submit_enabled }>{ "Update Password" }</button>
                         <button type="button" class="btn btn-secondary"
                         onclick={
                           ctx.link().callback(|_e| {
@@ -234,5 +293,10 @@ impl ChangeUnixPassword {
             let emsg = text.as_string().unwrap_or_else(|| "".to_string());
             Ok(Msg::Error { emsg, kopid })
         }
+    }
+    fn reset(&mut self) {
+        self.pw_val = "".to_string();
+        self.pw_check_val = "".to_string();
+        self.pw_check = PwCheck::Init;
     }
 }
