@@ -33,6 +33,9 @@ impl IntervalActor {
         });
     }
 
+    // Allow this because result is the only way to map and ? to bubble up, but we aren't
+    // returning an op-error here because this is in early start up.
+    #[allow(clippy::result_unit_err)]
     pub fn start_online_backup(
         server: &'static QueryServerReadV1,
         cfg: &OnlineBackup,

@@ -47,7 +47,7 @@ async fn main() {
         None => client_builder,
     };
 
-    let ca_path = opt.ca_path.as_ref().map(|p| p.to_str()).flatten();
+    let ca_path = opt.ca_path.as_ref().and_then(|p| p.to_str());
     let client_builder = match ca_path {
         Some(p) => client_builder
             .add_root_certificate_filepath(p)

@@ -28,7 +28,10 @@ impl ValueSetPrivateBinary {
         Ok(Box::new(ValueSetPrivateBinary { set }))
     }
 
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and vec is foreign
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetPrivateBinary>>
     where
         T: IntoIterator<Item = Vec<u8>>,
     {
@@ -157,7 +160,10 @@ impl ValueSetPublicBinary {
         Ok(Box::new(ValueSetPublicBinary { map }))
     }
 
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetPublicBinary>>
     where
         T: IntoIterator<Item = (String, Vec<u8>)>,
     {

@@ -1475,6 +1475,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
 // =========================================================================
 
 impl AccessControls {
+    #![allow(clippy::expect_used)]
     pub fn new() -> Self {
         AccessControls {
             inner: CowCell::new(AccessControlsInner {
@@ -1483,12 +1484,8 @@ impl AccessControls {
                 acps_modify: Vec::new(),
                 acps_delete: Vec::new(),
             }),
-            /*
-            acp_related_search_cache: ARCache::new_size(
-                ACP_RELATED_SEARCH_CACHE_MAX,
-                ACP_RELATED_SEARCH_CACHE_LOCAL,
-            ),
-            */
+            // Allow the expect, if this fails it reperesents a programming/development
+            // failure.
             acp_resolve_filter_cache: ARCacheBuilder::new()
                 .set_size(ACP_RESOLVE_FILTER_CACHE_MAX, ACP_RESOLVE_FILTER_CACHE_LOCAL)
                 .set_reader_quiesce(true)

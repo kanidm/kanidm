@@ -407,7 +407,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
 }
 
 impl DbEntry {
-    pub(crate) fn to_v2(self) -> Result<Self, OperationError> {
+    pub(crate) fn convert_to_v2(self) -> Result<Self, OperationError> {
         if let DbEntryVers::V1(dbe) = self.ent {
             dbe.attrs
                 .into_iter()

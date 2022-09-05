@@ -43,6 +43,9 @@ impl ValueSetCredential {
         Ok(Box::new(ValueSetCredential { map }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = (String, Credential)>,
@@ -214,6 +217,9 @@ impl ValueSetIntentToken {
         Ok(Box::new(ValueSetIntentToken { map }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = (String, IntentTokenState)>,
@@ -375,6 +381,9 @@ impl ValueSetPasskey {
         Ok(Box::new(ValueSetPasskey { map }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = (Uuid, String, PasskeyV4)>,
@@ -531,6 +540,9 @@ impl ValueSetDeviceKey {
         Ok(Box::new(ValueSetDeviceKey { map }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = (Uuid, String, DeviceKeyV4)>,

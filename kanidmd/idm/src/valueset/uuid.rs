@@ -28,6 +28,9 @@ impl ValueSetUuid {
         Ok(Box::new(ValueSetUuid { set }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and uuid is foreign.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = Uuid>,
@@ -170,6 +173,9 @@ impl ValueSetRefer {
         Ok(Box::new(ValueSetRefer { set }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and uuid is foreign.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = Uuid>,

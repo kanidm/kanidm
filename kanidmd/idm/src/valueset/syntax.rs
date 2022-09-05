@@ -25,8 +25,10 @@ impl ValueSetSyntax {
         let set = set.map_err(|()| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetSyntax { set }))
     }
+}
 
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+impl FromIterator<SyntaxType> for Option<Box<ValueSetSyntax>> {
+    fn from_iter<T>(iter: T) -> Option<Box<ValueSetSyntax>>
     where
         T: IntoIterator<Item = SyntaxType>,
     {

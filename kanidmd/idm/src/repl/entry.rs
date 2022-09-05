@@ -111,8 +111,9 @@ impl State {
                         assert!(r.is_ok());
                         // Reject if it fails?
                     } else {
+                        #[allow(clippy::expect_used)]
                         let vs = valueset::from_value_iter(std::iter::once(value.as_ref().clone()))
-                            .expect("Unable to fail - not empty, and only one type!");
+                            .expect("Unable to fail - always single value, and only one type!");
                         attrs.insert(attr.clone(), vs);
                     }
                 }

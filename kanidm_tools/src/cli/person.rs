@@ -478,8 +478,7 @@ impl AccountCredential {
                             ClientErrorHttp(status_code, error, _kopid) => {
                                 eprintln!(
                                     "Error completing command: HTTP{} - {:?}",
-                                    status_code,
-                                    error.unwrap()
+                                    status_code, error
                                 );
                             }
                             _ => error!("Error starting use_reset_token -> {:?}", e),
@@ -496,7 +495,13 @@ impl AccountCredential {
                     .await
                 {
                     Ok(cuintent_token) => {
-                        let mut url = Url::parse(client.get_url()).expect("Invalid server url.");
+                        let mut url = match Url::parse(client.get_url()) {
+                            Ok(u) => u,
+                            Err(e) => {
+                                error!("Unable to parse url - {:?}", e);
+                                return;
+                            }
+                        };
                         url.set_path("/ui/reset");
                         url.query_pairs_mut()
                             .append_pair("token", cuintent_token.token.as_str());
@@ -666,7 +671,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
                 }
             })
             .interact_text()
-            .unwrap();
+            .expect("Failed to interact with interactive session");
 
         // cancel, submit the reg cancel.
         let totp_chal = match input.trim().parse::<u32>() {
@@ -722,7 +727,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
                     .items(&items)
                     .default(0)
                     .interact()
-                    .unwrap();
+                    .expect("Failed to interact with interactive session");
 
                 match selection {
                     1 => {
@@ -801,7 +806,7 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
         .with_prompt("\nEnter a label for this Passkey # ")
         .allow_empty(false)
         .interact_text()
-        .unwrap();
+        .expect("Failed to interact with interactive session");
 
     match client
         .idm_account_credential_update_passkey_finish(session_token, label, rego)
@@ -813,56 +818,6 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
         }
     };
 }
-
-// For webauthn later
-
-/*
-    AccountCredential::RegisterWebauthn(acsopt) => {
-        let client = acsopt.copt.to_client().await;
-
-        let (session, chal) = match client
-            .idm_account_primary_credential_register_webauthn(
-                acsopt.aopts.account_id.as_str(),
-                acsopt.tag.as_str(),
-            )
-            .await
-        {
-            Ok(v) => v,
-            Err(e) => {
-                error!("Error Starting Registration -> {:?}", e);
-                return;
-            }
-        };
-
-        let mut wa = WebauthnAuthenticator::new(U2FHid::new());
-
-        eprintln!("Your authenticator will now flash for you to interact with.");
-
-        let rego = match wa.do_registration(client.get_origin(), chal) {
-            Ok(rego) => rego,
-            Err(e) => {
-                error!("Error Signing -> {:?}", e);
-                return;
-            }
-        };
-
-        match client
-            .idm_account_primary_credential_complete_webuthn_registration(
-                acsopt.aopts.account_id.as_str(),
-                rego,
-                session,
-            )
-            .await
-        {
-            Ok(()) => {
-                println!("Webauthn token registration success.");
-            }
-            Err(e) => {
-                error!("Error Completing -> {:?}", e);
-            }
-        }
-    }
-*/
 
 fn display_status(status: CUStatus) {
     let CUStatus {
@@ -921,7 +876,7 @@ async fn credential_update_exec(
                 }
             })
             .interact_text()
-            .unwrap();
+            .expect("Failed to interact with interactive session");
 
         // Get action
         let action = match CUAction::from_str(&input) {
@@ -950,11 +905,11 @@ async fn credential_update_exec(
                 let password_a = Password::new()
                     .with_prompt("New password")
                     .interact()
-                    .unwrap();
+                    .expect("Failed to interact with interactive session");
                 let password_b = Password::new()
                     .with_prompt("Confirm password")
                     .interact()
-                    .unwrap();
+                    .expect("Failed to interact with interactive session");
 
                 if password_a != password_b {
                     eprintln!("Passwords do not match");
@@ -980,7 +935,7 @@ async fn credential_update_exec(
                 if Confirm::new()
                     .with_prompt("Do you want to remove your totp?")
                     .interact()
-                    .unwrap()
+                    .expect("Failed to interact with interactive session")
                 {
                     if let Err(e) = client
                         .idm_account_credential_update_remove_totp(&session_token)
@@ -1022,7 +977,7 @@ async fn credential_update_exec(
                 if Confirm::new()
                     .with_prompt("Do you want to remove your primary credential?")
                     .interact()
-                    .unwrap()
+                    .expect("Failed to interact with interactive session")
                 {
                     if let Err(e) = client
                         .idm_account_credential_update_primary_remove(&session_token)
@@ -1068,7 +1023,7 @@ async fn credential_update_exec(
                     })
                     .allow_empty(true)
                     .interact_text()
-                    .unwrap();
+                    .expect("Failed to interact with interactive session");
 
                 // Remeber, if it's NOT a valid uuid, it must have been empty as a termination.
                 if let Ok(uuid) = Uuid::parse_str(&uuid_s) {
@@ -1092,7 +1047,7 @@ async fn credential_update_exec(
                 if Confirm::new()
                     .with_prompt("Do you want to commit your changes?")
                     .interact()
-                    .unwrap()
+                    .expect("Failed to interact with interactive session")
                 {
                     if let Err(e) = client
                         .idm_account_credential_update_commit(&session_token)

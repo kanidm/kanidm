@@ -1494,7 +1494,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Migrate any v1 entries to v2 if needed.
         let dbentries = dbentries
             .into_iter()
-            .map(|dbe| dbe.to_v2())
+            .map(|dbe| dbe.convert_to_v2())
             .collect::<Result<Vec<_>, _>>()?;
 
         // Now, we setup all the entries with new ids.

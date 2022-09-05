@@ -1782,8 +1782,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             let r = vs.insert_checked(value);
             debug_assert!(r.is_ok());
         } else {
+            #[allow(clippy::expect_used)]
             let vs = valueset::from_value_iter(std::iter::once(value))
-                .expect("Unable to fail - not empty, and only one type!");
+                .expect("Unable to fail - non-zero iter, and single value type!");
             self.attrs.insert(AttrString::from(attr), vs);
         }
         // Doesn't matter if it already exists, equality will replace.

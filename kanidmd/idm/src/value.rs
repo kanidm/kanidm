@@ -1366,12 +1366,6 @@ impl Value {
         }
     }
 
-    pub fn to_partialvalue(&self) -> PartialValue {
-        // Match on self to become a partialvalue.
-        // self.pv.clone()
-        unimplemented!();
-    }
-
     pub fn to_utf8(self) -> Option<String> {
         match self {
             Value::Utf8(s) => Some(s),

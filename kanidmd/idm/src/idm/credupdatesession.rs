@@ -163,6 +163,9 @@ pub struct CredentialUpdateSessionStatus {
     mfaregstate: MfaRegStateStatus,
 }
 
+// We allow Into here because CUStatus is foreign so it's impossible for us to implement From
+// in a valid manner
+#[allow(clippy::from_over_into)]
 impl Into<CUStatus> for CredentialUpdateSessionStatus {
     fn into(self) -> CUStatus {
         CUStatus {
