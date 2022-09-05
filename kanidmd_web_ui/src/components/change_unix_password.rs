@@ -133,10 +133,11 @@ impl Component for ChangeUnixPassword {
                   >
                     <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">{"Update your password"}</h5>
+                        <h5 class="modal-title">{"Update your unix password"}</h5>
                     </div>
 
                     <div class="modal-body">
+                        <p> { "This password is used when logging into a unix-like system as well as applications utilizing LDAP" } </p>
                         { flash }
                         <div class="form-group">
                           <label for="password_input"> {"New Password" }</label>
