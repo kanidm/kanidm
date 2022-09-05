@@ -26,7 +26,9 @@ impl ValueSetIndex {
         Ok(Box::new(ValueSetIndex { set }))
     }
 
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    // We need to allow this, because there seems to be a bug using it fromiterator in entry.rs
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetIndex>>
     where
         T: IntoIterator<Item = IndexType>,
     {

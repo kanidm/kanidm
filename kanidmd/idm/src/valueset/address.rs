@@ -49,8 +49,10 @@ impl ValueSetAddress {
             .collect();
         Ok(Box::new(ValueSetAddress { set }))
     }
+}
 
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+impl FromIterator<Address> for Option<Box<ValueSetAddress>> {
+    fn from_iter<T>(iter: T) -> Option<Box<ValueSetAddress>>
     where
         T: IntoIterator<Item = Address>,
     {
@@ -215,7 +217,10 @@ impl ValueSetEmailAddress {
         }
     }
 
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    #[allow(clippy::should_implement_trait)]
+    pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetEmailAddress>>
     where
         T: IntoIterator<Item = (String, bool)>,
     {

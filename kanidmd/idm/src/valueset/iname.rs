@@ -27,6 +27,9 @@ impl ValueSetIname {
         Ok(Box::new(ValueSetIname { set }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and str is foreign
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<'a, T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = &'a str>,

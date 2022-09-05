@@ -865,7 +865,7 @@ impl IdlSqliteWriteTransaction {
                         admin_error!(?e, "Serde CBOR Error");
                         OperationError::SerdeCborError
                     })
-                    .and_then(|dbe: DbEntry| dbe.to_v2())
+                    .and_then(|dbe: DbEntry| dbe.convert_to_v2())
                     .and_then(|dbe| {
                         serde_json::to_vec(&dbe)
                             .map(|data| IdRawEntry { id: raw.id, data })

@@ -33,6 +33,9 @@ impl ValueSetDateTime {
         Ok(Box::new(ValueSetDateTime { set }))
     }
 
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and offset date time is foreign
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = OffsetDateTime>,

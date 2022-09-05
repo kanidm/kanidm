@@ -34,8 +34,10 @@ impl ValueSetCid {
             .collect();
         Ok(Box::new(ValueSetCid { set }))
     }
+}
 
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
+impl FromIterator<Cid> for Option<Box<ValueSetCid>> {
+    fn from_iter<T>(iter: T) -> Option<Box<ValueSetCid>>
     where
         T: IntoIterator<Item = Cid>,
     {
