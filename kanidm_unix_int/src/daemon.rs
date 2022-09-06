@@ -10,13 +10,14 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+use clap::{Arg, ArgAction, Command};
 
 use std::fs::metadata;
 use std::io::Error as IoError;
 use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
@@ -124,6 +125,7 @@ impl TaskCodec {
     }
 }
 
+/// Pass this a file path and it'll look for the file and remove it if it's there.
 fn rm_if_exist(p: &str) {
     if Path::new(p).exists() {
         debug!("Removing requested file {:?}", p);
@@ -305,8 +307,7 @@ async fn handle_client(
                             .await
                         {
                             Ok(()) => {
-                                // Now wait for the other end OR
-                                // timeout.
+                                // Now wait for the other end OR timeout.
                                 match time::timeout_at(
                                     time::Instant::now() + Duration::from_millis(1000),
                                     rx,
@@ -374,9 +375,44 @@ async fn main() {
     let cgid = get_current_gid();
     let cegid = get_effective_gid();
 
-    if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-        eprintln!("Refusing to run - this process must not operate as root.");
-        std::process::exit(1);
+    let clap_args = Command::new("kanidm_unixd")
+        .version(env!("CARGO_PKG_VERSION"))
+        // .author("Kevin K. <kbknapp@gmail.com>")
+        .about("Kanidm UNIX daemon")
+        .arg(
+            Arg::new("force")
+                .short('f')
+                .long("force")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("debug")
+                .short('d')
+                .long("debug")
+                .action(ArgAction::SetTrue),
+        )
+        // TODO: handle the configtest bit?
+        .arg(
+            Arg::new("configtest")
+                .short('t')
+                .long("configtest")
+                .action(ArgAction::SetTrue),
+        )
+        .get_matches();
+
+    eprintln!("{:?}", clap_args);
+
+    if clap_args.get_flag("force") {
+        eprintln!("Skipping root user check, if you're running this as a different uid for testing, ensure you clean up temporary files.")
+        // TODO: this wording is bad m'kay.
+    } else {
+        if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+            eprintln!("Refusing to run - this process must not operate as root.");
+            return;
+        }
+    };
+    if clap_args.get_flag("debug") {
+        std::env::set_var("RUST_LOG", "DEBUG");
     }
 
     tracing_forest::worker_task()
@@ -393,29 +429,33 @@ async fn main() {
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-            let cfg_path = Path::new("/etc/kanidm/config");
+            let cfg_path: PathBuf =  match std::env::var("KANIDM_CONFIG") {
+                Ok(value) => value.into(),
+                Err(_) => PathBuf::from("/etc/kanidm/config"),
+            };
+
             let cfg_path_str = match cfg_path.to_str() {
                 Some(cps) => cps,
                 None => {
-                    error!("Unable to turn cfg_path to str");
-                    std::process::exit(1);
+                    eprintln!("Unable to turn cfg_path to str");
+                    return
                 }
             };
             if !cfg_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
-                error!(
+                eprintln!(
                     "Client config missing from {} - cannot start up. Quitting.",
                     cfg_path_str
                 );
-                std::process::exit(1);
+                return
             }
 
             if cfg_path.exists() {
                 let cfg_meta = match metadata(&cfg_path) {
                     Ok(v) => v,
                     Err(e) => {
-                        error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                        std::process::exit(1);
+                        eprintln!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+                        return
                     }
                 };
                 if !file_permissions_readonly(&cfg_meta) {
@@ -431,27 +471,32 @@ async fn main() {
                 }
             }
 
-            let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
+            let unixd_path: PathBuf =  match std::env::var("KANIDM_UNIXD_CONFIG") {
+                Ok(value) => value.into(),
+                Err(_) => PathBuf::from(DEFAULT_CONFIG_PATH),
+            };
+
+            // let unixd_path = Path::new(env!("KANIDM_UNIXD_CONFIG", "/etc/kanidm/unixd"));
             let unixd_path_str = match unixd_path.to_str() {
                 Some(cps) => cps,
                 None => {
                     error!("Unable to turn unixd_path to str");
-                    std::process::exit(1);
+                    return
                 }
             };
             if !unixd_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
-                error!(
+                eprintln!(
                     "unixd config missing from {} - cannot start up. Quitting.",
                     unixd_path_str
                 );
-                std::process::exit(1);
+                return
             } else {
                 let unixd_meta = match metadata(&unixd_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                        std::process::exit(1);
+                        return
                     }
                 };
                 if !file_permissions_readonly(&unixd_meta) {
@@ -467,37 +512,36 @@ async fn main() {
             }
 
             // setup
-            let cb = match KanidmClientBuilder::new().read_options_from_optional_config(cfg_path) {
+            let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", cfg_path_str);
-                    std::process::exit(1);
+                    return
                 }
             };
 
-            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
+            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(&unixd_path) {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", unixd_path_str);
-                    std::process::exit(1);
+                    return
                 }
             };
+
+            if clap_args.get_flag("configtest") {
+                debug!("Dumping configs:");
+                debug!("{:?}", cfg);
+                debug!("{:?}", cb);
+                return;
+            }
 
             debug!("🧹 Cleaning up sockets from previous invocations");
             rm_if_exist(cfg.sock_path.as_str());
             rm_if_exist(cfg.task_sock_path.as_str());
 
-            let cb = cb.connect_timeout(cfg.conn_timeout);
 
-            let rsclient = match cb.build() {
-                Ok(rsc) => rsc,
-                Err(_e) => {
-                    error!("Failed to build async client");
-                    std::process::exit(1);
-                }
-            };
 
-            // Check the pb path will be okay.
+            // Check the db path will be okay.
             if cfg.db_path != "" {
                 let db_path = PathBuf::from(cfg.db_path.as_str());
                 // We only need to check the parent folder path permissions as the db itself may not exist yet.
@@ -509,7 +553,7 @@ async fn main() {
                                 .to_str()
                                 .unwrap_or_else(|| "<db_parent_path invalid>")
                         );
-                        std::process::exit(1);
+                        return
                     }
 
                     let db_par_path_buf = db_parent_path.to_path_buf();
@@ -524,7 +568,7 @@ async fn main() {
                                     .unwrap_or_else(|| "<db_par_path_buf invalid>"),
                                 e
                             );
-                            std::process::exit(1);
+                            return
                         }
                     };
 
@@ -535,7 +579,7 @@ async fn main() {
                                 .to_str()
                                 .unwrap_or_else(|| "<db_par_path_buf invalid>")
                         );
-                        std::process::exit(1);
+                        return
                     }
                     if !file_permissions_readonly(&i_meta) {
                         warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
@@ -557,7 +601,7 @@ async fn main() {
                             "Refusing to run - DB path {} already exists and is not a file.",
                             db_path.to_str().unwrap_or_else(|| "<db_path invalid>")
                         );
-                        std::process::exit(1);
+                        return
                     };
 
                     match metadata(&db_path) {
@@ -568,12 +612,23 @@ async fn main() {
                                 db_path.to_str().unwrap_or_else(|| "<db_path invalid>"),
                                 e
                             );
-                            std::process::exit(1);
+                            return
                         }
                     };
                     // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
                 };
             }
+
+            let cb = cb.connect_timeout(cfg.conn_timeout);
+
+            let rsclient = match cb.build() {
+                Ok(rsc) => rsc,
+                Err(_e) => {
+                    error!("Failed to build async client");
+                    return
+                }
+            };
+
 
             let cl_inner = match CacheLayer::new(
                 cfg.db_path.as_str(), // The sqlite db path
@@ -592,7 +647,7 @@ async fn main() {
                 Ok(c) => c,
                 Err(_e) => {
                     error!("Failed to build cache layer.");
-                    std::process::exit(1);
+                    return
                 }
             };
 
@@ -603,8 +658,8 @@ async fn main() {
             let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind unix socket.");
-                    std::process::exit(1);
+                    error!("Failed to bind UNIX socket.");
+                    return
                 }
             };
             // Setup the root-only socket. Take away all others.
@@ -612,8 +667,8 @@ async fn main() {
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind unix socket.");
-                    std::process::exit(1);
+                    error!("Failed to bind UNIX socket.");
+                    return
                 }
             };
 
@@ -677,7 +732,7 @@ async fn main() {
                             });
                         }
                         Err(err) => {
-                            error!("Accept error -> {:?}", err);
+                            error!("Error while handling connection -> {:?}", err);
                         }
                     }
                 }
@@ -688,4 +743,5 @@ async fn main() {
             server.await;
     })
     .await;
+    // TODO: can we catch kill-signals to clean up sockets and stuff?
 }

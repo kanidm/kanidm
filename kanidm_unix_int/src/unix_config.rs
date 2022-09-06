@@ -4,6 +4,7 @@ use crate::constants::{
     DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
 };
 use serde::Deserialize;
+use std::env;
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;
@@ -61,8 +62,12 @@ impl Default for KanidmUnixdConfig {
 
 impl KanidmUnixdConfig {
     pub fn new() -> Self {
+        let db_path = match env::var("KANIDM_DB_PATH") {
+            Ok(val) => val,
+            Err(_) => DEFAULT_DB_PATH.into(),
+        };
         KanidmUnixdConfig {
-            db_path: DEFAULT_DB_PATH.to_string(),
+            db_path,
             sock_path: DEFAULT_SOCK_PATH.to_string(),
             task_sock_path: DEFAULT_TASK_SOCK_PATH.to_string(),
             conn_timeout: DEFAULT_CONN_TIMEOUT,

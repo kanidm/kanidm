@@ -43,6 +43,7 @@ name = "kanidm_test_auth"
 path =  "src/test_auth.rs"
 
 [dependencies]
+itertools = "0.10.3"
 kanidm_client = { path = "../kanidm_client" }
 kanidm_proto = { path = "../kanidm_proto" }
 kanidm = { path = "../kanidmd/idm" }
