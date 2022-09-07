@@ -10,40 +10,35 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use clap::{Arg, ArgAction, Command};
-
-use std::fs::metadata;
-use std::io::Error as IoError;
-use std::io::ErrorKind;
-use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
-
 use bytes::{BufMut, BytesMut};
+use clap::{Arg, ArgAction, Command};
 use futures::SinkExt;
 use futures::StreamExt;
-use libc::umask;
-use sketching::tracing_forest::{self, traits::*, util::*};
-use std::error::Error;
-use std::io;
-use std::sync::Arc;
-use std::time::Duration;
-
-use tokio::net::{UnixListener, UnixStream};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::oneshot;
-use tokio::time;
-use tokio_util::codec::Framed;
-use tokio_util::codec::{Decoder, Encoder};
-
 use kanidm_client::KanidmClientBuilder;
-
+use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::cache::CacheLayer;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
-
 use kanidm::utils::file_permissions_readonly;
+use libc::umask;
+use sketching::tracing_forest::{self, traits::*, util::*};
+use std::error::Error;
+use std::fs::metadata;
+use std::io;
+use std::io::Error as IoError;
+use std::io::ErrorKind;
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
+use tokio_util::codec::{Decoder, Encoder};
+use tokio_util::codec::Framed;
+use tokio::net::{UnixListener, UnixStream};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::oneshot;
+use tokio::time;
+use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 //=== the codec
 
@@ -377,7 +372,6 @@ async fn main() {
 
     let clap_args = Command::new("kanidm_unixd")
         .version(env!("CARGO_PKG_VERSION"))
-        // .author("Kevin K. <kbknapp@gmail.com>")
         .about("Kanidm Unix daemon")
         .arg(
             Arg::new("skip-root-check")
@@ -393,7 +387,6 @@ async fn main() {
                 .long("debug")
                 .action(ArgAction::SetTrue),
         )
-        // TODO: handle the configtest bit?
         .arg(
             Arg::new("configtest")
                 .help("Display the configuration and exit")
@@ -401,11 +394,31 @@ async fn main() {
                 .long("configtest")
                 .action(ArgAction::SetTrue),
         )
+        .arg(
+            Arg::new("unixd-config")
+                .takes_value(true)
+                .help("Set the unixd config file path")
+                .short('u')
+                .long("unixd-config")
+                .default_value(DEFAULT_CONFIG_PATH)
+                .env("KANIDM_UNIX_CONFIG")
+                .action(ArgAction::StoreValue),
+        )
+        .arg(
+            Arg::new("client-config")
+                .takes_value(true)
+                .help("Set the client config file path")
+                .short('c')
+                .long("client-config")
+                .default_value(DEFAULT_CLIENT_CONFIG_PATH)
+                .env("KANIDM_CLIENT_CONFIG")
+                .action(ArgAction::StoreValue),
+        )
         .get_matches();
 
     if clap_args.get_flag("skip-root-check") {
-        eprintln!("Skipping root user check, if you're running this as a different uid for testing, ensure you clean up temporary files.")
-        // TODO: this wording is bad m'kay.
+        eprintln!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
+        // TODO: this wording is not great m'kay.
     } else {
         if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
             eprintln!("Refusing to run - this process must not operate as root.");
@@ -430,18 +443,10 @@ async fn main() {
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-            let cfg_path: PathBuf =  match std::env::var("KANIDM_CONFIG") {
-                Ok(value) => value.into(),
-                Err(_) => PathBuf::from("/etc/kanidm/config"),
-            };
+            // we can do a blind unwrap because there's a default in clap
+            let cfg_path_str = clap_args.get_one::<String>("client-config").unwrap();
+            let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
-            let cfg_path_str = match cfg_path.to_str() {
-                Some(cps) => cps,
-                None => {
-                    eprintln!("Unable to turn cfg_path to str");
-                    return
-                }
-            };
             if !cfg_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
                 eprintln!(
@@ -449,9 +454,7 @@ async fn main() {
                     cfg_path_str
                 );
                 return
-            }
-
-            if cfg_path.exists() {
+            } else {
                 let cfg_meta = match metadata(&cfg_path) {
                     Ok(v) => v,
                     Err(e) => {
@@ -472,19 +475,10 @@ async fn main() {
                 }
             }
 
-            let unixd_path: PathBuf =  match std::env::var("KANIDM_UNIXD_CONFIG") {
-                Ok(value) => value.into(),
-                Err(_) => PathBuf::from(DEFAULT_CONFIG_PATH),
-            };
+            // we can do a blind unwrap because there's a default in clap
+            let unixd_path_str = clap_args.get_one::<String>("unixd-config").unwrap();
+            let unixd_path = PathBuf::from(unixd_path_str);
 
-            // let unixd_path = Path::new(env!("KANIDM_UNIXD_CONFIG", "/etc/kanidm/unixd"));
-            let unixd_path_str = match unixd_path.to_str() {
-                Some(cps) => cps,
-                None => {
-                    error!("Unable to turn unixd_path to str");
-                    return
-                }
-            };
             if !unixd_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
                 eprintln!(
@@ -748,5 +742,5 @@ async fn main() {
             server.await;
     })
     .await;
-    // TODO: can we catch kill-signals to clean up sockets and stuff?
+    // TODO: can we catch signals to clean up sockets etc, especially handy when running as root
 }

@@ -27,13 +27,13 @@ async fn main() {
     }
     sketching::tracing_subscriber::fmt::init();
 
-    debug!("Starting pam auth tester tool ...");
+    debug!("Starting PAM auth tester tool ...");
 
     let cfg = KanidmUnixdConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-        .expect("Failed to parse /etc/kanidm/unixd");
+        .expect(&format!("Failed to parse {}", DEFAULT_CONFIG_PATH));
 
-    let password = rpassword::prompt_password("Enter unix password: ").unwrap();
+    let password = rpassword::prompt_password("Enter Unix password: ").unwrap();
 
     let req = ClientRequest::PamAuthenticate(opt.account_id.clone(), password);
     let sereq = ClientRequest::PamAccountAllowed(opt.account_id);

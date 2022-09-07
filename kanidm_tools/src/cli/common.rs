@@ -3,23 +3,24 @@ use crate::CommonOpt;
 use compact_jwt::{Jws, JwsUnverified};
 use dialoguer::{theme::ColorfulTheme, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH_HOME, DEFAULT_CLIENT_CONFIG_PATH};
 use kanidm_proto::v1::UserAuthToken;
 use std::str::FromStr;
 
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
-        let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
+        let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
 
         let client_builder = KanidmClientBuilder::new()
-            .read_options_from_optional_config("/etc/kanidm/config")
+            .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
             .and_then(|cb| cb.read_options_from_optional_config(&config_path))
             .unwrap_or_else(|e| {
                 error!("Failed to parse config (if present) -- {:?}", e);
                 std::process::exit(1);
             });
         debug!(
-            "Successfully loaded configuration, looked in /etc/kanidm/config and {} - client builder state: {:?}",
-            &config_path, &client_builder
+            "Successfully loaded configuration, looked in {} and {} - client builder state: {:?}",
+            DEFAULT_CLIENT_CONFIG_PATH_HOME, DEFAULT_CLIENT_CONFIG_PATH, &client_builder
         );
 
         let client_builder = match &self.addr {
