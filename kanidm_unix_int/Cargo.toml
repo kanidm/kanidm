@@ -43,7 +43,6 @@ name = "kanidm_test_auth"
 path =  "src/test_auth.rs"
 
 [dependencies]
-itertools = "0.10.3"
 kanidm_client = { path = "../kanidm_client" }
 kanidm_proto = { path = "../kanidm_proto" }
 kanidm = { path = "../kanidmd/idm" }
@@ -62,7 +61,7 @@ bytes = "^1.1.0"
 libc = "^0.2.127"
 serde = { version = "^1.0.142", features = ["derive"] }
 serde_json = "^1.0.83"
-clap = { version = "^3.2", features = ["derive"] }
+clap = { version = "^3.2", features = ["derive", "env"] }
 
 libsqlite3-sys = "0.25.0"
 rusqlite = "^0.28.0"

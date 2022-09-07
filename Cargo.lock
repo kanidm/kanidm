@@ -2240,7 +2240,6 @@ dependencies = [
  "clap 3.2.20",
  "clap_complete",
  "futures",
- "itertools 0.10.3",
  "kanidm",
  "kanidm_client",
  "kanidm_proto",
