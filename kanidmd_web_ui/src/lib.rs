@@ -29,6 +29,8 @@ mod oauth2;
 mod utils;
 mod views;
 
+mod components;
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn run_app() -> Result<(), JsValue> {
     yew::start_app::<manager::ManagerApp>();

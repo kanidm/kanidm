@@ -324,7 +324,7 @@ impl fmt::Display for AuthType {
 ///
 /// It's likely that this must have a relationship to the server's user structure
 /// and to the Entry so that filters or access controls can be applied.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
@@ -1023,7 +1023,7 @@ impl WhoamiRequest {
 }
 */
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?
     pub youare: Entry,

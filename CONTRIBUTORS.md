@@ -18,6 +18,7 @@
 * Kellin (kellinm)
 * Carla Schroder (cjschroder)
 * Thomas Sanchez (daedric)
+* Dominik Süß (theSuess)
 
 ## Acknowledgements
 

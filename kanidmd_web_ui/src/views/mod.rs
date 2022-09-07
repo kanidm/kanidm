@@ -1,12 +1,13 @@
 use crate::error::*;
 use crate::models;
 use crate::utils;
-#[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
 
 use crate::manager::Route;
 use yew_router::prelude::*;
+
+use kanidm_proto::v1::WhoamiResponse;
 
 use serde::{Deserialize, Serialize};
 
@@ -49,15 +50,18 @@ enum State {
 #[derive(PartialEq, Eq, Properties)]
 pub struct ViewProps {
     pub token: String,
+    pub current_user: Option<WhoamiResponse>,
 }
 
 pub struct ViewsApp {
     state: State,
+    current_user: Option<WhoamiResponse>,
 }
 
 pub enum ViewsMsg {
     Verified(String),
     Logout,
+    ProfileInfoRecieved(WhoamiResponse),
     Error { emsg: String, kopid: Option<String> },
 }
 
@@ -67,24 +71,6 @@ impl From<FetchError> for ViewsMsg {
             emsg: fe.as_string(),
             kopid: None,
         }
-    }
-}
-
-fn switch(route: &ViewRoute) -> Html {
-    #[cfg(debug)]
-    console::debug!("views::switch");
-
-    // safety - can't panic because to get to this location we MUST be authenticated!
-    let token =
-        models::get_bearer_token().expect_throw("Invalid state, bearer token must be present!");
-
-    match route {
-        ViewRoute::Apps => html! { <AppsApp /> },
-        ViewRoute::Profile => html! { <ProfileApp token={ token } /> },
-        ViewRoute::Security => html! { <SecurityApp token={ token } /> },
-        ViewRoute::NotFound => html! {
-            <Redirect<Route> to={Route::NotFound}/>
-        },
     }
 }
 
@@ -114,7 +100,10 @@ impl Component for ViewsApp {
             None => State::LoginRequired,
         };
 
-        ViewsApp { state }
+        ViewsApp {
+            state,
+            current_user: None,
+        }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -123,17 +112,29 @@ impl Component for ViewsApp {
         false
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug)]
         console::debug!("views::update");
         match msg {
             ViewsMsg::Verified(token) => {
+                let tk = token.clone();
                 self.state = State::Authenticated(token);
+                // Populate the user profile
+                ctx.link().send_future(async {
+                    match Self::fetch_user_data(tk).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
                 true
             }
             ViewsMsg::Logout => {
                 models::clear_bearer_token();
                 self.state = State::LoginRequired;
+                true
+            }
+            ViewsMsg::ProfileInfoRecieved(profile) => {
+                self.current_user = Some(profile);
                 true
             }
             ViewsMsg::Error { emsg, kopid } => {
@@ -207,6 +208,8 @@ impl Component for ViewsApp {
 impl ViewsApp {
     /// The base page for the user dashboard
     fn view_authenticated(&self, ctx: &Context<Self>) -> Html {
+        let current_user = self.current_user.clone();
+
         // WARN set dash-body against body here?
         html! {
           <>
@@ -278,12 +281,24 @@ impl ViewsApp {
           </div>
         </div>
         <main class="p-3 x-auto">
-              <Switch<ViewRoute> render={ Switch::render(switch) } />
+              <Switch<ViewRoute> render={ Switch::render(move |route: &ViewRoute| {
+                    // safety - can't panic because to get to this location we MUST be authenticated!
+                    let token =
+                        models::get_bearer_token().expect_throw("Invalid state, bearer token must be present!");
+
+                    match route {
+                        ViewRoute::Apps => html! { <AppsApp /> },
+                        ViewRoute::Profile => html! { <ProfileApp token={ token } current_user={ current_user.clone() } /> },
+                        ViewRoute::Security => html! { <SecurityApp token={ token } current_user={ current_user.clone() } /> },
+                        ViewRoute::NotFound => html! {
+                            <Redirect<Route> to={Route::NotFound}/>
+                        },
+                    }
+              })} />
         </main>
         </>
           }
     }
-
     async fn check_token_valid(token: String) -> Result<ViewsMsg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
@@ -313,6 +328,44 @@ impl ViewsApp {
         } else {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
+            let text = JsFuture::from(resp.text()?).await?;
+            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            Ok(ViewsMsg::Error { emsg, kopid })
+        }
+    }
+    async fn fetch_user_data(token: String) -> Result<ViewsMsg, FetchError> {
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+        opts.mode(RequestMode::SameOrigin);
+
+        let request = Request::new_with_str_and_init("/v1/self", &opts)?;
+        request
+            .headers()
+            .set("content-type", "application/json")
+            .expect_throw("failed to set header");
+        request
+            .headers()
+            .set("authorization", format!("Bearer {}", token).as_str())
+            .expect_throw("failed to set header");
+
+        let window = utils::window();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+        let status = resp.status();
+        let headers = resp.headers();
+        let kopid = headers.get("x-kanidm-opid").ok().flatten();
+
+        if status == 200 {
+            let jsval = JsFuture::from(resp.json()?).await?;
+            let whoamiresponse: WhoamiResponse = jsval
+                .into_serde()
+                .map_err(|e| {
+                    let e_msg = format!("serde error getting user data -> {:?}", e);
+                    console::error!(e_msg.as_str());
+                })
+                .expect_throw("Invalid response type");
+            Ok(ViewsMsg::ProfileInfoRecieved(whoamiresponse))
+        } else {
             let text = JsFuture::from(resp.text()?).await?;
             let emsg = text.as_string().unwrap_or_else(|| "".to_string());
             Ok(ViewsMsg::Error { emsg, kopid })

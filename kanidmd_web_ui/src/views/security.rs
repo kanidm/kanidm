@@ -2,6 +2,7 @@ use crate::error::*;
 use crate::models;
 use crate::utils;
 
+use crate::components::change_unix_password::ChangeUnixPassword;
 use crate::manager::Route;
 use crate::views::{ViewProps, ViewRoute};
 
@@ -65,7 +66,7 @@ impl Component for SecurityApp {
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
         #[cfg(debug)]
         console::debug!("views::security::changed");
-        false
+        true
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -127,7 +128,7 @@ impl Component for SecurityApp {
             State::Waiting => false,
         };
 
-        let error = match &self.state {
+        let flash = match &self.state {
             State::Error { emsg, kopid } => {
                 let message = match kopid {
                     Some(k) => format!("An error occured - {} - {}", emsg, k),
@@ -136,19 +137,21 @@ impl Component for SecurityApp {
                 html! {
                   <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     { message }
-                    <button type="button" class="btn btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn btn-close" data-dismiss="alert" aria-label="Close"></button>
                   </div>
                 }
             }
             _ => html! { <></> },
         };
 
+        let current_user = ctx.props().current_user.clone();
+
         html! {
             <>
               <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>{ "Security" }</h2>
               </div>
-              { error }
+              { flash }
               <div>
                 <p>
                    <button type="button" class="btn btn-primary"
@@ -164,6 +167,16 @@ impl Component for SecurityApp {
                    </button>
                 </p>
               </div>
+              <hr/>
+              if let Some(user) = current_user {
+                if user.youare.attrs.get("class").map(|x| x.contains(&String::from("posixaccount"))).unwrap_or(true) {
+                  <div>
+                      <p>
+                        <ChangeUnixPassword token={ctx.props().token.clone()}></ChangeUnixPassword>
+                      </p>
+                  </div>
+                }
+              }
             </>
         }
     }
@@ -175,7 +188,7 @@ impl SecurityApp {
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
 
-        let uri = format!("/v1/account/{}/_credential/_update", id);
+        let uri = format!("/v1/person/{}/_credential/_update", id);
 
         let request = Request::new_with_str_and_init(uri.as_str(), &opts)?;
 

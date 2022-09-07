@@ -301,6 +301,11 @@ impl Component for PwModalApp {
                         type="password"
                         value={ pw_check_val }
                       />
+                      if !submit_enabled {
+                        <div class="invalid-feedback">
+                            { "Passwords do not match." }
+                        </div>
+                      }
                     </form>
                   </div>
                   <div class="modal-footer">
