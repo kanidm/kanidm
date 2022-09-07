@@ -417,11 +417,11 @@ async fn main() {
         .get_matches();
 
     if clap_args.get_flag("skip-root-check") {
-        eprintln!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
+        warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
         // TODO: this wording is not great m'kay.
     } else {
         if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-            eprintln!("Refusing to run - this process must not operate as root.");
+            error!("Refusing to run - this process must not operate as root.");
             return;
         }
     };
@@ -449,7 +449,7 @@ async fn main() {
 
             if !cfg_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
-                eprintln!(
+                error!(
                     "Client config missing from {} - cannot start up. Quitting.",
                     cfg_path_str
                 );
@@ -458,7 +458,7 @@ async fn main() {
                 let cfg_meta = match metadata(&cfg_path) {
                     Ok(v) => v,
                     Err(e) => {
-                        eprintln!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+                        error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
                         return
                     }
                 };
@@ -481,7 +481,7 @@ async fn main() {
 
             if !unixd_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
-                eprintln!(
+                error!(
                     "unixd config missing from {} - cannot start up. Quitting.",
                     unixd_path_str
                 );
