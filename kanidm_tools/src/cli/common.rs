@@ -3,7 +3,7 @@ use crate::CommonOpt;
 use compact_jwt::{Jws, JwsUnverified};
 use dialoguer::{theme::ColorfulTheme, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH_HOME, DEFAULT_CLIENT_CONFIG_PATH};
+use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::v1::UserAuthToken;
 use std::str::FromStr;
 
