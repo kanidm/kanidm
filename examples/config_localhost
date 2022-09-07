@@ -2,4 +2,4 @@
 # to point at the local dev server and ignore TLS security.
 uri = "https://localhost:8443"
 verify_ca = false
-verify_hostnames =false
+verify_hostnames = false
