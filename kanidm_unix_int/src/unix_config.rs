@@ -5,7 +5,7 @@ use crate::constants::{
 };
 use serde::Deserialize;
 use std::env;
-use std::fmt::{Display,Formatter};
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;
@@ -35,11 +35,15 @@ pub enum HomeAttr {
 
 impl Display for HomeAttr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            HomeAttr::Uuid => "UUID",
-            HomeAttr::Spn => "SPN",
-            HomeAttr::Name => "Name",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                HomeAttr::Uuid => "UUID",
+                HomeAttr::Spn => "SPN",
+                HomeAttr::Name => "Name",
+            }
+        )
     }
 }
 
@@ -51,10 +55,14 @@ pub enum UidAttr {
 
 impl Display for UidAttr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            UidAttr::Name => "Name",
-            UidAttr::Spn => "SPN",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                UidAttr::Name => "Name",
+                UidAttr::Spn => "SPN",
+            }
+        )
     }
 }
 
@@ -87,7 +95,11 @@ impl Display for KanidmUnixdConfig {
         writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
         writeln!(f, "conn_timeout: {}", self.conn_timeout)?;
         writeln!(f, "cache_timeout: {}", self.cache_timeout)?;
-        writeln!(f, "pam_allowed_login_groups: {:#?}", self.pam_allowed_login_groups)?;
+        writeln!(
+            f,
+            "pam_allowed_login_groups: {:#?}",
+            self.pam_allowed_login_groups
+        )?;
         writeln!(f, "default_shell: {}", self.default_shell)?;
         writeln!(f, "home_prefix: {}", self.home_prefix)?;
         writeln!(f, "home_attr: {}", self.home_attr)?;

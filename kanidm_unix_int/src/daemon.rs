@@ -378,7 +378,7 @@ async fn main() {
     let clap_args = Command::new("kanidm_unixd")
         .version(env!("CARGO_PKG_VERSION"))
         // .author("Kevin K. <kbknapp@gmail.com>")
-        .about("Kanidm UNIX daemon")
+        .about("Kanidm Unix daemon")
         .arg(
             Arg::new("skip-root-check")
                 .help("Allow running as root")
@@ -388,6 +388,7 @@ async fn main() {
         )
         .arg(
             Arg::new("debug")
+                .help("Show extra debug information")
                 .short('d')
                 .long("debug")
                 .action(ArgAction::SetTrue),
@@ -395,6 +396,7 @@ async fn main() {
         // TODO: handle the configtest bit?
         .arg(
             Arg::new("configtest")
+                .help("Display the configuration and exit")
                 .short('t')
                 .long("configtest")
                 .action(ArgAction::SetTrue),
