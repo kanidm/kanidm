@@ -380,9 +380,10 @@ async fn main() {
         // .author("Kevin K. <kbknapp@gmail.com>")
         .about("Kanidm UNIX daemon")
         .arg(
-            Arg::new("force")
-                .short('f')
-                .long("force")
+            Arg::new("skip-root-check")
+                .help("Allow running as root")
+                .short('r')
+                .long("skip-root-check")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -400,9 +401,7 @@ async fn main() {
         )
         .get_matches();
 
-    eprintln!("{:?}", clap_args);
-
-    if clap_args.get_flag("force") {
+    if clap_args.get_flag("skip-root-check") {
         eprintln!("Skipping root user check, if you're running this as a different uid for testing, ensure you clean up temporary files.")
         // TODO: this wording is bad m'kay.
     } else {
@@ -658,7 +657,7 @@ async fn main() {
             let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind UNIX socket.");
+                    error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
                     return
                 }
             };
@@ -667,7 +666,7 @@ async fn main() {
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind UNIX socket.");
+                    error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
                     return
                 }
             };
