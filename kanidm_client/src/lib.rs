@@ -18,6 +18,7 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::error::Error as SerdeJsonError;
+use std::fmt::{Display,Formatter};
 use std::fs::File;
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::fs::{metadata, Metadata};
@@ -79,6 +80,26 @@ pub struct KanidmClientBuilder {
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
     use_system_proxies: bool,
+}
+
+impl Display for KanidmClientBuilder {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.address {
+            Some(value) => writeln!(f, "address: {}", value)?,
+            None => writeln!(f, "address: unset")?
+        }
+        writeln!(f, "verify_ca: {}", self.verify_ca)?;
+        writeln!(f, "verify_hostnames: {}", self.verify_hostnames)?;
+        match &self.ca {
+            Some(value) => writeln!(f, "ca: {:#?}", value)?,
+            None => writeln!(f, "ca: unset")?
+        }
+        match self.connect_timeout {
+            Some(value) => writeln!(f, "connect_timeout: {}", value)?,
+            None => writeln!(f, "connect_timeout: unset")?
+        }
+        writeln!(f, "use_system_proxies: {}", self.use_system_proxies)
+    }
 }
 
 #[derive(Debug)]

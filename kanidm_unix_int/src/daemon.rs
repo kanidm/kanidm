@@ -528,9 +528,13 @@ async fn main() {
             };
 
             if clap_args.get_flag("configtest") {
-                debug!("Dumping configs:");
-                debug!("{:?}", cfg);
-                debug!("{:?}", cb);
+                eprintln!("###################################");
+                eprintln!("Dumping configs:\n###################################");
+                eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
+                eprintln!("{}", cfg);
+                eprintln!("###################################");
+                eprintln!("Client config (from {:#?})", &cfg_path);
+                eprintln!("{}", cb);
                 return;
             }
 

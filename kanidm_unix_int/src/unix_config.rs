@@ -5,6 +5,7 @@ use crate::constants::{
 };
 use serde::Deserialize;
 use std::env;
+use std::fmt::{Display,Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;
@@ -32,10 +33,29 @@ pub enum HomeAttr {
     Name,
 }
 
+impl Display for HomeAttr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            HomeAttr::Uuid => "UUID",
+            HomeAttr::Spn => "SPN",
+            HomeAttr::Name => "Name",
+        })
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum UidAttr {
     Name,
     Spn,
+}
+
+impl Display for UidAttr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            UidAttr::Name => "Name",
+            UidAttr::Spn => "SPN",
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -57,6 +77,27 @@ pub struct KanidmUnixdConfig {
 impl Default for KanidmUnixdConfig {
     fn default() -> Self {
         KanidmUnixdConfig::new()
+    }
+}
+
+impl Display for KanidmUnixdConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "db_path: {}", &self.db_path)?;
+        writeln!(f, "sock_path: {}", self.sock_path)?;
+        writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
+        writeln!(f, "conn_timeout: {}", self.conn_timeout)?;
+        writeln!(f, "cache_timeout: {}", self.cache_timeout)?;
+        writeln!(f, "pam_allowed_login_groups: {:#?}", self.pam_allowed_login_groups)?;
+        writeln!(f, "default_shell: {}", self.default_shell)?;
+        writeln!(f, "home_prefix: {}", self.home_prefix)?;
+        writeln!(f, "home_attr: {}", self.home_attr)?;
+        match self.home_alias {
+            Some(val) => writeln!(f, "home_alias: {}", val)?,
+            None => writeln!(f, "home_alias: unset")?,
+        }
+
+        writeln!(f, "uid_attr_map: {}", self.uid_attr_map)?;
+        writeln!(f, "gid_attr_map: {}", self.gid_attr_map)
     }
 }
 
