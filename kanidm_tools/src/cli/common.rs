@@ -20,7 +20,7 @@ impl CommonOpt {
             });
         debug!(
             "Successfully loaded configuration, looked in {} and {} - client builder state: {:?}",
-            DEFAULT_CLIENT_CONFIG_PATH_HOME, DEFAULT_CLIENT_CONFIG_PATH, &client_builder
+            DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME, &client_builder
         );
 
         let client_builder = match &self.addr {
