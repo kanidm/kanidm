@@ -4,6 +4,8 @@ use crate::constants::{
     DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
 };
 use serde::Deserialize;
+use std::env;
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;
@@ -31,10 +33,37 @@ pub enum HomeAttr {
     Name,
 }
 
+impl Display for HomeAttr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                HomeAttr::Uuid => "UUID",
+                HomeAttr::Spn => "SPN",
+                HomeAttr::Name => "Name",
+            }
+        )
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum UidAttr {
     Name,
     Spn,
+}
+
+impl Display for UidAttr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                UidAttr::Name => "Name",
+                UidAttr::Spn => "SPN",
+            }
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -59,10 +88,39 @@ impl Default for KanidmUnixdConfig {
     }
 }
 
+impl Display for KanidmUnixdConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "db_path: {}", &self.db_path)?;
+        writeln!(f, "sock_path: {}", self.sock_path)?;
+        writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
+        writeln!(f, "conn_timeout: {}", self.conn_timeout)?;
+        writeln!(f, "cache_timeout: {}", self.cache_timeout)?;
+        writeln!(
+            f,
+            "pam_allowed_login_groups: {:#?}",
+            self.pam_allowed_login_groups
+        )?;
+        writeln!(f, "default_shell: {}", self.default_shell)?;
+        writeln!(f, "home_prefix: {}", self.home_prefix)?;
+        writeln!(f, "home_attr: {}", self.home_attr)?;
+        match self.home_alias {
+            Some(val) => writeln!(f, "home_alias: {}", val)?,
+            None => writeln!(f, "home_alias: unset")?,
+        }
+
+        writeln!(f, "uid_attr_map: {}", self.uid_attr_map)?;
+        writeln!(f, "gid_attr_map: {}", self.gid_attr_map)
+    }
+}
+
 impl KanidmUnixdConfig {
     pub fn new() -> Self {
+        let db_path = match env::var("KANIDM_DB_PATH") {
+            Ok(val) => val,
+            Err(_) => DEFAULT_DB_PATH.into(),
+        };
         KanidmUnixdConfig {
-            db_path: DEFAULT_DB_PATH.to_string(),
+            db_path,
             sock_path: DEFAULT_SOCK_PATH.to_string(),
             task_sock_path: DEFAULT_TASK_SOCK_PATH.to_string(),
             conn_timeout: DEFAULT_CONN_TIMEOUT,

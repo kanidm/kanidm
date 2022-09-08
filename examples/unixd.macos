@@ -1,0 +1,12 @@
+# this  example configures kanidm-unixd for testing on macos
+db_path = "/tmp/kanidm-unixd"
+sock_path = "/tmp/kanimd_unixd.sock"
+task_sock_path = "/tmp/kanimd_unidx_task.sock"
+# some documentation is here: https://github.com/kanidm/kanidm/blob/master/kanidm_book/src/pam_and_nsswitch.md
+pam_allowed_login_groups = ["posix_group"]
+# default_shell = "/bin/sh"
+# home_prefix = "/home/"
+# home_attr = "uuid"
+# home_alias = "spn"
+# uid_attr_map = "spn"
+# gid_attr_map = "spn"

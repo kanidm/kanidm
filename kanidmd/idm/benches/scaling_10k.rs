@@ -6,6 +6,7 @@ use kanidm;
 use kanidm::entry::{Entry, EntryInit, EntryNew};
 use kanidm::entry_init;
 use kanidm::idm::server::{IdmServer, IdmServerDelayed};
+use kanidm::macros::run_idm_test_no_logging;
 use kanidm::server::QueryServer;
 use kanidm::utils::duration_from_epoch_now;
 use kanidm::value::Value;
@@ -28,7 +29,7 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                 println!("iters, size -> {:?}, {:?}", iters, size);
 
                 for _i in 0..iters {
-                    kanidm::macros::run_idm_test_no_logging(
+                    run_idm_test_no_logging(
                         |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                             let ct = duration_from_epoch_now();
 

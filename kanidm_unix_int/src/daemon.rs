@@ -10,39 +10,35 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
-
+use bytes::{BufMut, BytesMut};
+use clap::{Arg, ArgAction, Command};
+use futures::SinkExt;
+use futures::StreamExt;
+use kanidm::utils::file_permissions_readonly;
+use kanidm_client::KanidmClientBuilder;
+use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
+use kanidm_unix_common::cache::CacheLayer;
+use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
+use libc::umask;
+use sketching::tracing_forest::{self, traits::*, util::*};
+use std::error::Error;
 use std::fs::metadata;
+use std::io;
 use std::io::Error as IoError;
 use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
-
-use bytes::{BufMut, BytesMut};
-use futures::SinkExt;
-use futures::StreamExt;
-use libc::umask;
-use sketching::tracing_forest::{self, traits::*, util::*};
-use std::error::Error;
-use std::io;
 use std::sync::Arc;
 use std::time::Duration;
-
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::time;
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
-
-use kanidm_client::KanidmClientBuilder;
-
-use kanidm_unix_common::cache::CacheLayer;
-use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
-
-use kanidm::utils::file_permissions_readonly;
+use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 //=== the codec
 
@@ -124,6 +120,7 @@ impl TaskCodec {
     }
 }
 
+/// Pass this a file path and it'll look for the file and remove it if it's there.
 fn rm_if_exist(p: &str) {
     if Path::new(p).exists() {
         debug!("Removing requested file {:?}", p);
@@ -305,8 +302,7 @@ async fn handle_client(
                             .await
                         {
                             Ok(()) => {
-                                // Now wait for the other end OR
-                                // timeout.
+                                // Now wait for the other end OR timeout.
                                 match time::timeout_at(
                                     time::Instant::now() + Duration::from_millis(1000),
                                     rx,
@@ -374,9 +370,63 @@ async fn main() {
     let cgid = get_current_gid();
     let cegid = get_effective_gid();
 
-    if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-        eprintln!("Refusing to run - this process must not operate as root.");
-        std::process::exit(1);
+    let clap_args = Command::new("kanidm_unixd")
+        .version(env!("CARGO_PKG_VERSION"))
+        .about("Kanidm Unix daemon")
+        .arg(
+            Arg::new("skip-root-check")
+                .help("Allow running as root. Don't use this in production as it is risky!")
+                .short('r')
+                .long("skip-root-check")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("debug")
+                .help("Show extra debug information")
+                .short('d')
+                .long("debug")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("configtest")
+                .help("Display the configuration and exit")
+                .short('t')
+                .long("configtest")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("unixd-config")
+                .takes_value(true)
+                .help("Set the unixd config file path")
+                .short('u')
+                .long("unixd-config")
+                .default_value(DEFAULT_CONFIG_PATH)
+                .env("KANIDM_UNIX_CONFIG")
+                .action(ArgAction::StoreValue),
+        )
+        .arg(
+            Arg::new("client-config")
+                .takes_value(true)
+                .help("Set the client config file path")
+                .short('c')
+                .long("client-config")
+                .default_value(DEFAULT_CLIENT_CONFIG_PATH)
+                .env("KANIDM_CLIENT_CONFIG")
+                .action(ArgAction::StoreValue),
+        )
+        .get_matches();
+
+    if clap_args.get_flag("skip-root-check") {
+        warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
+        // TODO: this wording is not great m'kay.
+    } else {
+        if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+            error!("Refusing to run - this process must not operate as root.");
+            return;
+        }
+    };
+    if clap_args.get_flag("debug") {
+        std::env::set_var("RUST_LOG", "debug");
     }
 
     tracing_forest::worker_task()
@@ -393,29 +443,24 @@ async fn main() {
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-            let cfg_path = Path::new("/etc/kanidm/config");
-            let cfg_path_str = match cfg_path.to_str() {
-                Some(cps) => cps,
-                None => {
-                    error!("Unable to turn cfg_path to str");
-                    std::process::exit(1);
-                }
-            };
+
+            #[allow(clippy::expect_used)]
+            let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
+            let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
+
             if !cfg_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
                 error!(
                     "Client config missing from {} - cannot start up. Quitting.",
                     cfg_path_str
                 );
-                std::process::exit(1);
-            }
-
-            if cfg_path.exists() {
+                return
+            } else {
                 let cfg_meta = match metadata(&cfg_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                        std::process::exit(1);
+                        return
                     }
                 };
                 if !file_permissions_readonly(&cfg_meta) {
@@ -431,27 +476,23 @@ async fn main() {
                 }
             }
 
-            let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
-            let unixd_path_str = match unixd_path.to_str() {
-                Some(cps) => cps,
-                None => {
-                    error!("Unable to turn unixd_path to str");
-                    std::process::exit(1);
-                }
-            };
+            #[allow(clippy::expect_used)]
+            let unixd_path_str = clap_args.get_one::<String>("unixd-config").expect("Failed to pull the unixd config path");
+            let unixd_path = PathBuf::from(unixd_path_str);
+
             if !unixd_path.exists() {
                 // there's no point trying to start up if we can't read a usable config!
                 error!(
                     "unixd config missing from {} - cannot start up. Quitting.",
                     unixd_path_str
                 );
-                std::process::exit(1);
+                return
             } else {
                 let unixd_meta = match metadata(&unixd_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                        std::process::exit(1);
+                        return
                     }
                 };
                 if !file_permissions_readonly(&unixd_meta) {
@@ -467,37 +508,40 @@ async fn main() {
             }
 
             // setup
-            let cb = match KanidmClientBuilder::new().read_options_from_optional_config(cfg_path) {
+            let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", cfg_path_str);
-                    std::process::exit(1);
+                    return
                 }
             };
 
-            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
+            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(&unixd_path) {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", unixd_path_str);
-                    std::process::exit(1);
+                    return
                 }
             };
+
+            if clap_args.get_flag("configtest") {
+                eprintln!("###################################");
+                eprintln!("Dumping configs:\n###################################");
+                eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
+                eprintln!("{}", cfg);
+                eprintln!("###################################");
+                eprintln!("Client config (from {:#?})", &cfg_path);
+                eprintln!("{}", cb);
+                return;
+            }
 
             debug!("🧹 Cleaning up sockets from previous invocations");
             rm_if_exist(cfg.sock_path.as_str());
             rm_if_exist(cfg.task_sock_path.as_str());
 
-            let cb = cb.connect_timeout(cfg.conn_timeout);
 
-            let rsclient = match cb.build() {
-                Ok(rsc) => rsc,
-                Err(_e) => {
-                    error!("Failed to build async client");
-                    std::process::exit(1);
-                }
-            };
 
-            // Check the pb path will be okay.
+            // Check the db path will be okay.
             if cfg.db_path != "" {
                 let db_path = PathBuf::from(cfg.db_path.as_str());
                 // We only need to check the parent folder path permissions as the db itself may not exist yet.
@@ -509,7 +553,7 @@ async fn main() {
                                 .to_str()
                                 .unwrap_or_else(|| "<db_parent_path invalid>")
                         );
-                        std::process::exit(1);
+                        return
                     }
 
                     let db_par_path_buf = db_parent_path.to_path_buf();
@@ -524,7 +568,7 @@ async fn main() {
                                     .unwrap_or_else(|| "<db_par_path_buf invalid>"),
                                 e
                             );
-                            std::process::exit(1);
+                            return
                         }
                     };
 
@@ -535,7 +579,7 @@ async fn main() {
                                 .to_str()
                                 .unwrap_or_else(|| "<db_par_path_buf invalid>")
                         );
-                        std::process::exit(1);
+                        return
                     }
                     if !file_permissions_readonly(&i_meta) {
                         warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
@@ -557,7 +601,7 @@ async fn main() {
                             "Refusing to run - DB path {} already exists and is not a file.",
                             db_path.to_str().unwrap_or_else(|| "<db_path invalid>")
                         );
-                        std::process::exit(1);
+                        return
                     };
 
                     match metadata(&db_path) {
@@ -568,12 +612,23 @@ async fn main() {
                                 db_path.to_str().unwrap_or_else(|| "<db_path invalid>"),
                                 e
                             );
-                            std::process::exit(1);
+                            return
                         }
                     };
                     // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
                 };
             }
+
+            let cb = cb.connect_timeout(cfg.conn_timeout);
+
+            let rsclient = match cb.build() {
+                Ok(rsc) => rsc,
+                Err(_e) => {
+                    error!("Failed to build async client");
+                    return
+                }
+            };
+
 
             let cl_inner = match CacheLayer::new(
                 cfg.db_path.as_str(), // The sqlite db path
@@ -592,7 +647,7 @@ async fn main() {
                 Ok(c) => c,
                 Err(_e) => {
                     error!("Failed to build cache layer.");
-                    std::process::exit(1);
+                    return
                 }
             };
 
@@ -603,8 +658,8 @@ async fn main() {
             let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind unix socket.");
-                    std::process::exit(1);
+                    error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
+                    return
                 }
             };
             // Setup the root-only socket. Take away all others.
@@ -612,8 +667,8 @@ async fn main() {
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind unix socket.");
-                    std::process::exit(1);
+                    error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
+                    return
                 }
             };
 
@@ -677,7 +732,7 @@ async fn main() {
                             });
                         }
                         Err(err) => {
-                            error!("Accept error -> {:?}", err);
+                            error!("Error while handling connection -> {:?}", err);
                         }
                     }
                 }
@@ -688,4 +743,5 @@ async fn main() {
             server.await;
     })
     .await;
+    // TODO: can we catch signals to clean up sockets etc, especially handy when running as root
 }

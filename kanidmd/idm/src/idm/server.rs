@@ -47,9 +47,9 @@ use tokio::sync::Semaphore;
 
 use async_std::task;
 
-#[cfg(test)]
+// #[cfg(any(test,bench))]
 use core::task::{Context, Poll};
-#[cfg(test)]
+// #[cfg(any(test,bench))]
 use futures::task as futures_task;
 
 use concread::{
@@ -362,7 +362,7 @@ impl IdmServer {
 }
 
 impl IdmServerDelayed {
-    #[cfg(test)]
+    // #[cfg(any(test,bench))]
     pub(crate) fn check_is_empty_or_panic(&mut self) {
         let waker = futures_task::noop_waker();
         let mut cx = Context::from_waker(&waker);
