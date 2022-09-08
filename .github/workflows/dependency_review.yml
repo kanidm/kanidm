@@ -1,5 +1,7 @@
+---
 name: 'Dependency Review'
-on: [pull_request]
+"on":
+  pull_request:
 
 # https://github.com/actions/dependency-review-action
 

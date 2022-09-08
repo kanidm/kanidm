@@ -21,9 +21,9 @@ jobs:
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: stable
-            default: true
-            components: cargo
+          toolchain: stable
+          default: true
+          components: cargo
       - name: build
         uses: actions-rs/cargo@v1
         with:
@@ -40,9 +40,9 @@ jobs:
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: stable
-            default: true
-            components: cargo
+          toolchain: stable
+          default: true
+          components: cargo
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:

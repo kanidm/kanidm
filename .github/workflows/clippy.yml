@@ -1,3 +1,4 @@
+---
 name: Clippy
 
 # Trigger the workflow on push or pull request
@@ -7,25 +8,25 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Update package manager
-      run: sudo apt-get update
+      - name: Update package manager
+        run: sudo apt-get update
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get install -y \
-          libpam0g-dev \
-          libudev-dev \
-          libssl-dev \
-          libsqlite3-dev \
-          pkg-config
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-    - name: "Run clippy (ignores errors, this is just a check)"
-      run: cargo clippy --no-deps
-      continue-on-error: true
+      - name: "Run clippy (ignores errors, this is just a check)"
+        run: cargo clippy --no-deps
+        continue-on-error: true
