@@ -423,7 +423,7 @@ async fn main() {
     } else {
         if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
             error!("Refusing to run - this process must not operate as root.");
-            return ExitCode::from(1);
+            return
         }
     };
     if clap_args.get_flag("debug") {
@@ -461,7 +461,7 @@ async fn main() {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                        return ExitCode::from(1)
+                        return
                     }
                 };
                 if !file_permissions_readonly(&cfg_meta) {
