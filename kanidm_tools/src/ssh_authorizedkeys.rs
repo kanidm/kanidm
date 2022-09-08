@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use kanidm_client::{ClientError, KanidmClientBuilder};
 
+use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use tracing::{debug, error};
 
 include!("opt/ssh_authorizedkeys.rs");
@@ -29,10 +30,10 @@ async fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
-    debug!("Attempting to use config {}", "/etc/kanidm/config");
+    let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
+    debug!("Attempting to use config {}", DEFAULT_CLIENT_CONFIG_PATH);
     let client_builder = KanidmClientBuilder::new()
-        .read_options_from_optional_config("/etc/kanidm/config")
+        .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
         .and_then(|cb| {
             debug!("Attempting to use config {}", config_path);
             cb.read_options_from_optional_config(config_path)

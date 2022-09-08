@@ -39,7 +39,7 @@ async fn main() {
     {
         Ok(c) => c,
         Err(e) => {
-            error!("Failed to parse /etc/kanidm/unixd: {:?}", e);
+            error!("Failed to parse {}: {:?}", DEFAULT_CONFIG_PATH, e);
             std::process::exit(1);
         }
     };

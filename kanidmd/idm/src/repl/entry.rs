@@ -205,8 +205,8 @@ impl EntryChangelog {
         EntryChangelog { anchors, changes }
     }
 
+    // TODO: work out if the below comment about uncommenting is still valid
     // Uncomment this once we have a real on-disk storage of the changelog
-    // #[cfg(test)]
     pub fn new_without_schema(cid: Cid, attrs: Eattrs) -> Self {
         // I think we need to reduce the attrs based on what is / is not replicated.?
 
