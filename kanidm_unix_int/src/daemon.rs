@@ -30,6 +30,7 @@ use std::io::Error as IoError;
 use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{UnixListener, UnixStream};
@@ -375,7 +376,7 @@ async fn main() {
         .about("Kanidm Unix daemon")
         .arg(
             Arg::new("skip-root-check")
-                .help("Allow running as root")
+                .help("Allow running as root. Don't use this in production as it is risky!")
                 .short('r')
                 .long("skip-root-check")
                 .action(ArgAction::SetTrue),
@@ -422,11 +423,11 @@ async fn main() {
     } else {
         if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
             error!("Refusing to run - this process must not operate as root.");
-            return;
+            return ExitCode::from(1);
         }
     };
     if clap_args.get_flag("debug") {
-        std::env::set_var("RUST_LOG", "DEBUG");
+        std::env::set_var("RUST_LOG", "debug");
     }
 
     tracing_forest::worker_task()
@@ -443,8 +444,9 @@ async fn main() {
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-            // we can do a blind unwrap because there's a default in clap
-            let cfg_path_str = clap_args.get_one::<String>("client-config").unwrap();
+
+            #[allow(clippy::expect_used)]
+            let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
             let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
             if !cfg_path.exists() {
@@ -459,7 +461,7 @@ async fn main() {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                        return
+                        return ExitCode::from(1)
                     }
                 };
                 if !file_permissions_readonly(&cfg_meta) {
@@ -475,8 +477,8 @@ async fn main() {
                 }
             }
 
-            // we can do a blind unwrap because there's a default in clap
-            let unixd_path_str = clap_args.get_one::<String>("unixd-config").unwrap();
+            #[allow(clippy::expect_used)]
+            let unixd_path_str = clap_args.get_one::<String>("unixd-config").expect("Failed to pull the unixd config path");
             let unixd_path = PathBuf::from(unixd_path_str);
 
             if !unixd_path.exists() {

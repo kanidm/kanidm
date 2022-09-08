@@ -98,7 +98,6 @@ impl BackendConfig {
         }
     }
 
-    // #[cfg(test)]
     pub(crate) fn new_test() -> Self {
         BackendConfig {
             pool_size: 1,
