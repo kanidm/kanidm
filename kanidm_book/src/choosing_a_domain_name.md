@@ -17,7 +17,7 @@ is not simple as there are a number of considerations you need to be careful of.
 
 * domain - This is the domain you "own". It is the highest level entity. An example would be `example.com` (since you do not own `.com`).
 * subdomain - A subdomain is a domain name space under the domain. A subdomains of `example.com` are `a.example.com` and `b.example.com`. Each subdomain can have further subdomains.
-* domain name - This is any named entity within your domain or it's subdomains. This is the umbrella term, referring to all entities in the domain. `example.com`, `a.example.com`, `host.example.com` are all valid domain names with the domain `example.com`.
+* domain name - This is any named entity within your domain or its subdomains. This is the umbrella term, referring to all entities in the domain. `example.com`, `a.example.com`, `host.example.com` are all valid domain names with the domain `example.com`.
 * origin - An origin defines a URL with a protocol scheme, optional port number and domain name components. An example is `https://host.example.com`
 * effective domain - This is the extracted domain name from an origin excluding port and scheme.
 
