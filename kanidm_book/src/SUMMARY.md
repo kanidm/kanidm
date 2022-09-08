@@ -2,6 +2,7 @@
 
 - [Introduction to Kanidm](intro.md)
 - [Installing the Server](installing_the_server.md)
+  - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Server Configuration](server_configuration.md)
   - [Security Hardening](security_hardening.md)
 - [Client Tools](client_tools.md)
@@ -30,7 +31,8 @@
 
 - [Developer Guide](DEVELOPER_README.md)
 - [Design Documents]()
-  - [Access Profiles](developers/designs/access_profiles_and_security.md)
+  - [Access Profiles 2022](developers/designs/access_profiles_rework_2022.md)
+  - [Access Profiles Original](developers/designs/access_profiles_and_security.md)
   - [REST Interface](developers/designs/rest_interface.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)

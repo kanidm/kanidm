@@ -5,16 +5,40 @@ a Kanidm server, such as making backups and restoring from backups, testing
 server configuration, reindexing, verifying data consistency, and renaming
 your domain.
 
+# Configuration Test
+
+{{#template
+    templates/kani-warning.md
+    imagepath=images
+    title=Take note!
+    text=While this is a configuration file test, it still needs to open the database so that it can check a number of internal values are consistent with the configuration. As a result, this requires the instance under config test to be stopped!
+}}
+
+You can test that your configuration is correct, and the server should correctly start.
+
+    docker stop <container name>
+    docker run --rm -i -t -v kanidmd:/data \
+        kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
+    docker start <container name>
+
 # Backup and Restore
 
-With any Identity Management (IDM) software, it's important you have the capability to restore in 
-case of a disaster - be that physical damage or a mistake. Kanidm supports backup 
+With any Identity Management (IDM) software, it's important you have the capability to restore in
+case of a disaster - be that physical damage or a mistake. Kanidm supports backup
 and restore of the database with three methods.
 
-## Method 1 (Preferred)
+## Method 1 - Automatic Backup
 
-Method 1 involves taking a backup of the database entry content, which is then re-indexed on restore.
-This is the preferred method.
+Automatic backups can be generated online by a `kanidmd server` instance
+by including the `[online_backup]` section in the `server.toml`.
+This allows you to run regular backups, defined by a cron schedule, and maintain
+the number of backup versions to keep. An example is located in 
+[examples/server.toml](https://github.com/kanidm/kanidm/blob/master/examples/server.toml).
+
+## Method 2 - Manual Backup
+
+This method uses the same process as the automatic process, but is manually invoked. This can
+be useful for pre-upgrade backups
 
 To take the backup (assuming our docker environment) you first need to stop the instance:
 
@@ -35,9 +59,7 @@ To restore from the backup:
         /backup/kanidm.backup.json
     docker start <container name>
 
-That's it!
-
-## Method 2
+## Method 3 - Manual Database Copy
 
 This is a simple backup of the data volume.
 
@@ -45,39 +67,48 @@ This is a simple backup of the data volume.
     # Backup your docker's volume folder
     docker start <container name>
 
-## Method 3
+# Rename the domain
 
-Automatic backups can be generated online by a `kanidmd server` instance
-by including the `[online_backup]` section in the `server.toml`.
-This allows you to run regular backups, defined by a cron schedule, and maintain
-the number of backup versions to keep. An example is located in 
-[examples/server.toml](https://github.com/kanidm/kanidm/blob/master/examples/server.toml).
+There are some cases where you may need to rename the domain. You should have configured
+this initially in the setup, however you may have a situation where a business is changing
+name, merging, or other needs which may prompt this needing to be changed.
 
-# Configuration Test
+> **WARNING:** This WILL break ALL u2f/webauthn tokens that have been enrolled, which MAY cause
+> accounts to be locked out and unrecoverable until further action is taken. DO NOT CHANGE
+> the domain name unless REQUIRED and have a plan on how to manage these issues.
 
-{{#template  
-    templates/kani-warning.md
-    imagepath=images
-    title=Take note!
-    text=While this is a configuration file test, it still needs to open the database so that it can check a number of internal values are consistent with the configuration. As a result, this requires the instance under config test to be stopped!
-}}
+> **WARNING:** This operation can take an extensive amount of time as ALL accounts and groups
+> in the domain MUST have their Security Principal Names (SPNs) regenerated. This WILL also cause
+> a large delay in replication once the system is restarted.
 
-You can test that your configuration is correct, and the server should correctly start.
+You should make a backup before proceeding with this operation.
+
+When you have a created a migration plan and strategy on handling the invalidation of webauthn,
+you can then rename the domain.
+
+First, stop the instance.
 
     docker stop <container name>
+
+Second, change `domain` and `origin` in `server.toml`.
+
+Third, trigger the database domain rename process.
+
     docker run --rm -i -t -v kanidmd:/data \
-        kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
+        kanidm/server:latest /sbin/kanidmd domain rename -c /data/server.toml
+
+Finally, you can now start your instance again.
+
     docker start <container name>
 
-
-# Reindexing after schema extension
+# Reindexing
 
 In some (rare) cases you may need to reindex.
 Please note the server will sometimes reindex on startup as a result of the project
 changing its internal schema definitions. This is normal and expected - you may never need
 to start a reindex yourself as a result!
 
-You'll likely notice a need to reindex if you add indexes to schema and you see a message in 
+You'll likely notice a need to reindex if you add indexes to schema and you see a message in
 your logs such as:
 
     Index EQUALITY name not found
@@ -130,40 +161,6 @@ You can run a verification with:
     docker start <container name>
 
 If you have errors, please contact the project to help support you to resolve these.
-
-# Rename the domain
-
-There are some cases where you may need to rename the domain. You should have configured
-this initially in the setup, however you may have a situation where a business is changing
-name, merging, or other needs which may prompt this needing to be changed.
-
-> **WARNING:** This WILL break ALL u2f/webauthn tokens that have been enrolled, which MAY cause
-> accounts to be locked out and unrecoverable until further action is taken. DO NOT CHANGE
-> the domain name unless REQUIRED and have a plan on how to manage these issues.
-
-> **WARNING:** This operation can take an extensive amount of time as ALL accounts and groups
-> in the domain MUST have their Security Principal Names (SPNs) regenerated. This WILL also cause 
-> a large delay in replication once the system is restarted.
-
-You should make a backup before proceeding with this operation.
-
-When you have a created a migration plan and strategy on handling the invalidation of webauthn,
-you can then rename the domain.
-
-First, stop the instance.
-
-    docker stop <container name>
-
-Second, change `domain` and `origin` in `server.toml`.
-
-Third, trigger the database domain rename process.
-
-    docker run --rm -i -t -v kanidmd:/data \
-        kanidm/server:latest /sbin/kanidmd domain rename -c /data/server.toml
-
-Finally, you can now start your instance again.
-
-    docker start <container name>
 
 # Raw actions
 
