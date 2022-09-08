@@ -30,7 +30,6 @@ use std::io::Error as IoError;
 use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::{UnixListener, UnixStream};
@@ -423,7 +422,7 @@ async fn main() {
     } else {
         if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
             error!("Refusing to run - this process must not operate as root.");
-            return
+            return;
         }
     };
     if clap_args.get_flag("debug") {
