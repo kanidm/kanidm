@@ -112,7 +112,7 @@ accounts, and delegating authority for service account administration to managin
 * Delegate service account management to owners groups
 * Migrate service accounts to persons
 
-The service account admin is response to migrate service accounts to persons as it is "yielding"
+The service account admin is capable of migrating service accounts to persons as it is "yielding"
 control of the entity, rather than an idm admin "taking" the entity which may have security impacts.
 
 #### Service Desk
