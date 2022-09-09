@@ -64,7 +64,7 @@ pub mod config;
 /// help make imports cleaner.
 pub mod prelude {
     pub use crate::utils::duration_from_epoch_now;
-    pub use kanidm_proto::v1::OperationError;
+    pub use kanidm_proto::v1::{OperationError, ConsistencyError};
     pub use smartstring::alias::String as AttrString;
     pub use url::Url;
     pub use uuid::Uuid;

@@ -990,6 +990,34 @@ pub const JSON_SCHEMA_ATTR_DEVICEKEYS: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_DYNGROUP_FILTER: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A filter describing the set of entries to add to a dynamic group"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "dyngroup_filter"
+      ],
+      "syntax": [
+        "JSON_FILTER"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000108"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1073,6 +1101,33 @@ pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000045"
+      ]
+    }
+  }
+"#;
+
+pub const JSON_SCHEMA_CLASS_DYNGROUP: &str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Object representation of a dynamic group"
+      ],
+      "classname": [
+        "dyngroup"
+      ],
+      "systemmust": [
+        "dyngroup_filter"
+      ],
+      "systemsupplements": [
+        "group"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000107"
       ]
     }
   }
