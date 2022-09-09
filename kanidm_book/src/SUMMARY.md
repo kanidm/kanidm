@@ -1,6 +1,7 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
+- [Glossary of Technical Terms](glossary.md)
 - [Installing the Server](installing_the_server.md)
   - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Server Configuration](server_configuration.md)
