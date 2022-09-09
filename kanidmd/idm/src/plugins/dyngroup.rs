@@ -33,6 +33,8 @@ impl DynGroup {
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
+        let ident_internal = Identity::from_internal();
+
         let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
             .iter()
             .partition(|entry| entry.attribute_equality("class", &CLASS_DYNGROUP));
@@ -45,14 +47,49 @@ impl DynGroup {
         // so we don't need to reference them.
 
         //
+        let resolve_filter_cache = qs.get_resolve_filter_cache();
 
-        /*
+        let mut pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+        let mut candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+
+        trace!(?dyn_groups.insts);
+
         for (dg_uuid, dg_filter) in dyn_groups.insts.iter() {
+            let dg_filter_valid = dg_filter
+                .validate(qs.get_schema())
+                .map_err(OperationError::SchemaViolation)
+                .and_then(|f| {
+                    f.resolve(&ident_internal, None, Some(resolve_filter_cache))
+                })?;
 
+            let matches: Vec<_> = entries.iter()
+                .filter_map(|e| {
+                    if e.entry_match_no_index(&dg_filter_valid) {
+                        Some(e.get_uuid())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if !matches.is_empty() {
+                let filt = filter!(f_eq("uuid", PartialValue::new_uuid(*dg_uuid)));
+                let mut work_set = qs.internal_search_writeable(&filt)?;
+
+                if let Some((pre, mut d_group)) = work_set.pop() {
+
+                    matches.iter().copied().for_each(|u| {
+                        d_group.add_ava("member", Value::new_refer(u))
+                    });
+
+                    affected_uuids.extend(matches.into_iter());
+                    affected_uuids.push(*dg_uuid);
+
+                    pre_candidates.push(pre);
+                    candidates.push(d_group);
+                }
+            }
         }
-        */
-
-        // Write the changes.
 
         // If we created any dyn groups, populate them now.
         //    if the event is not internal, reject (for now)
@@ -66,9 +103,6 @@ impl DynGroup {
                 return Err(OperationError::SystemProtectedObject);
             }
 
-            let mut pre_candidates = Vec::with_capacity(n_dyn_groups.len());
-            let mut candidates = Vec::with_capacity(n_dyn_groups.len());
-
             // Search all the new groups first.
             let filt = filter!(FC::Or(
                 n_dyn_groups
@@ -76,7 +110,7 @@ impl DynGroup {
                     .map(|e| f_eq("uuid", PartialValue::new_uuid(e.get_uuid())))
                     .collect()
             ));
-            let mut work_set = qs.internal_search_writeable(&filt)?;
+            let work_set = qs.internal_search_writeable(&filt)?;
 
             // Go through them all and update the new groups.
             for (pre, mut nd_group) in work_set.into_iter() {
@@ -87,8 +121,7 @@ impl DynGroup {
                         admin_error!("Missing dyngroup_filter");
                         OperationError::InvalidEntryState
                     })?;
-                let ident = Identity::from_internal();
-                let scope_i = Filter::from_rw(&ident, &scope_f, qs).map_err(|e| {
+                let scope_i = Filter::from_rw(&ident_internal, &scope_f, qs).map_err(|e| {
                     admin_error!("dyngroup_filter validation failed {:?}", e);
                     e
                 })?;
@@ -103,7 +136,7 @@ impl DynGroup {
                     e
                 })?;
 
-                let mut members = ValueSetRefer::from_iter(entries.iter().map(|e| e.get_uuid()));
+                let members = ValueSetRefer::from_iter(entries.iter().map(|e| e.get_uuid()));
 
                 if let Some(uuid_iter) = members.as_ref().and_then(|a| a.as_ref_uuid_iter()) {
                     affected_uuids.extend(uuid_iter);
@@ -124,16 +157,17 @@ impl DynGroup {
                 }
             }
 
-            // Write back the new changes.
-            debug_assert!(pre_candidates.len() == candidates.len());
-            // Write this stripe if populated.
-            if !pre_candidates.is_empty() {
-                qs.internal_batch_modify(pre_candidates, candidates)
-                    .map_err(|e| {
-                        admin_error!("Failed to commit dyngroup set {:?}", e);
-                        e
-                    })?;
-            }
+        }
+
+        // Write back the new changes.
+        debug_assert!(pre_candidates.len() == candidates.len());
+        // Write this stripe if populated.
+        if !pre_candidates.is_empty() {
+            qs.internal_batch_modify(pre_candidates, candidates)
+                .map_err(|e| {
+                    admin_error!("Failed to commit dyngroup set {:?}", e);
+                    e
+                })?;
         }
 
         Ok(affected_uuids)
@@ -159,19 +193,7 @@ impl DynGroup {
         Ok(Vec::new())
     }
 
-    #[instrument(level = "debug", name = "memberof_post_delete", skip(_qs, _cand, _de))]
-    pub fn post_delete(
-        _qs: &QueryServerWriteTransaction,
-        _cand: &[Entry<EntrySealed, EntryCommitted>],
-        _de: &DeleteEvent,
-    ) -> Result<Vec<Uuid>, OperationError> {
-        // I don't think anything is needed on delete. If we delete a dyngroup, we've
-        // already done the clean up and memberof does the rest.
-        //    if the event is not internal, reject (for now)
-
-        // if we delete a refering entry, then refint takes care of it.
-        Ok(Vec::new())
-    }
+    // No post_delete handler is needed as refint takes care of this for us.
 
     pub fn verify(_qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         vec![]

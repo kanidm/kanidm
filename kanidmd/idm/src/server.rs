@@ -3102,6 +3102,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             d_info,
             accesscontrols,
             cid,
+            dyngroup_cache,
             ..
         } = self;
         debug_assert!(!committed);
@@ -3118,6 +3119,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             schema
                 .commit()
                 .map(|_| d_info.commit())
+                .map(|_| dyngroup_cache.into_inner().commit())
                 .and_then(|_| accesscontrols.commit())
                 .and_then(|_| be_txn.commit())
         } else {

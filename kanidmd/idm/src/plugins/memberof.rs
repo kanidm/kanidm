@@ -318,7 +318,6 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        let dyngroup_change = super::dyngroup::DynGroup::post_delete(qs, cand, de)?;
         // Similar condition to create - we only trigger updates on groups's members,
         // so that they can find they are no longer a mo of what was deleted.
         let group_affect = cand
@@ -332,7 +331,6 @@ impl Plugin for MemberOf {
                 }
             })
             .flatten()
-            .chain(dyngroup_change.into_iter())
             .collect();
 
         apply_memberof(qs, group_affect)
