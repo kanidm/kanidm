@@ -27,6 +27,7 @@ use crate::event::{
 use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
 use crate::identity::IdentityId;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
+use crate::plugins::dyngroup::DynGroupCache;
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
 use crate::schema::{
@@ -74,6 +75,7 @@ pub struct QueryServer {
     write_ticket: Arc<Semaphore>,
     resolve_filter_cache:
         Arc<ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+    dyngroup_cache: Arc<CowCell<DynGroupCache>>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -112,6 +114,7 @@ pub struct QueryServerWriteTransaction<'a> {
     _write_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
         Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+    dyngroup_cache: Cell<CowCellWriteTxn<'a, DynGroupCache>>,
 }
 
 pub(crate) struct ModifyPartial<'a> {
@@ -982,6 +985,8 @@ impl QueryServer {
             d_display: domain_name,
         }));
 
+        let dyngroup_cache = Arc::new(CowCell::new(DynGroupCache::default()));
+
         // log_event!(log, "Starting query worker ...");
 
         #[allow(clippy::expect_used)]
@@ -1000,6 +1005,7 @@ impl QueryServer {
                     .build()
                     .expect("Failed to build resolve_filter_cache"),
             ),
+            dyngroup_cache,
         }
     }
 
@@ -1085,6 +1091,7 @@ impl QueryServer {
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
             resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
+            dyngroup_cache: Cell::new(self.dyngroup_cache.write()),
         }
     }
 
@@ -2163,6 +2170,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             trace!("Modify operation success");
             Ok(())
         })
+    }
+
+    pub(crate) fn get_dyngroup_cache(&self) -> &mut DynGroupCache {
+        unsafe {
+            let mptr = self.dyngroup_cache.as_ptr();
+            (*mptr).get_mut()
+        }
     }
 
     /// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.

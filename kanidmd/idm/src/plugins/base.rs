@@ -28,14 +28,12 @@ impl Plugin for Base {
     fn id() -> &'static str {
         "plugin_base"
     }
-    // Need to be given the backend(for testing ease)
-    // audit
-    // the mut set of entries to create
-    // the create event itself (immutable, for checking originals)
-    //     contains who is creating them
-    // the schema of the running instance
 
-    // TODO: Can this be improved?
+    #[instrument(
+        level = "debug",
+        name = "base_pre_create_transform",
+        skip(qs, cand, ce)
+    )]
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
         qs: &QueryServerWriteTransaction,
@@ -169,6 +167,7 @@ impl Plugin for Base {
         Ok(())
     }
 
+    #[instrument(level = "debug", name = "base_pre_modify", skip(_qs, _cand, me))]
     fn pre_modify(
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -188,6 +187,7 @@ impl Plugin for Base {
         Ok(())
     }
 
+    #[instrument(level = "debug", name = "base_verify", skip(qs))]
     fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Search for class = *
         let entries = match qs.internal_search(filter!(f_pres("class"))) {

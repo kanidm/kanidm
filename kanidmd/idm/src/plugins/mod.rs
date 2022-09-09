@@ -13,7 +13,7 @@ use tracing::trace_span;
 mod attrunique;
 mod base;
 mod domain;
-mod dyngroup;
+pub(crate) mod dyngroup;
 mod failure;
 mod gidnumber;
 mod memberof;
@@ -152,7 +152,6 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_post_create", {
             refint::ReferentialIntegrity::post_create(qs, cand, ce)
-                .and_then(|_| dyngroup::DynGroup::post_create(qs, cand, ce))
                 .and_then(|_| memberof::MemberOf::post_create(qs, cand, ce))
         })
     }
@@ -184,7 +183,6 @@ impl Plugins {
         spanned!("plugins::run_post_modify", {
             refint::ReferentialIntegrity::post_modify(qs, pre_cand, cand, me)
                 .and_then(|_| spn::Spn::post_modify(qs, pre_cand, cand, me))
-                .and_then(|_| dyngroup::DynGroup::post_modify(qs, pre_cand, cand, me))
                 .and_then(|_| memberof::MemberOf::post_modify(qs, pre_cand, cand, me))
         })
     }
@@ -206,7 +204,6 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_post_delete", {
             refint::ReferentialIntegrity::post_delete(qs, cand, de)
-                // .and_then(|_| dyngroup::DynGroup::post_delete(qs, cand, de))
                 .and_then(|_| memberof::MemberOf::post_delete(qs, cand, de))
         })
     }

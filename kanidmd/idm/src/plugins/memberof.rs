@@ -10,10 +10,10 @@
 // As a result, we first need to run refint to clean up all dangling references, then memberof
 // fixes the graph of memberships
 
-use crate::prelude::*;
 use crate::entry::{Entry, EntryCommitted, EntrySealed, EntryTuple};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::plugins::Plugin;
+use crate::prelude::*;
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use std::collections::BTreeSet;
@@ -214,14 +214,18 @@ impl Plugin for MemberOf {
         "memberof"
     }
 
+    #[instrument(level = "debug", name = "memberof_post_create", skip(qs, cand, ce))]
     fn post_create(
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        _ce: &CreateEvent,
+        ce: &CreateEvent,
     ) -> Result<(), OperationError> {
+        let dyngroup_change = super::dyngroup::DynGroup::post_create(qs, cand, ce)?;
+
         let group_affect = cand
             .iter()
             .map(|e| e.get_uuid())
+            .chain(dyngroup_change.into_iter())
             .chain(
                 cand.iter()
                     .filter_map(|e| {
@@ -239,16 +243,24 @@ impl Plugin for MemberOf {
         apply_memberof(qs, group_affect)
     }
 
+    #[instrument(
+        level = "debug",
+        name = "memberof_post_modify",
+        skip(qs, pre_cand, cand, me)
+    )]
     fn post_modify(
         qs: &QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        _me: &ModifyEvent,
+        me: &ModifyEvent,
     ) -> Result<(), OperationError> {
+        let dyngroup_change = super::dyngroup::DynGroup::post_modify(qs, pre_cand, cand, me)?;
+
         // TODO: Limit this to when it's a class, member, mo, dmo change instead.
         let group_affect = cand
             .iter()
             .map(|post| post.get_uuid())
+            .chain(dyngroup_change.into_iter())
             .chain(
                 pre_cand
                     .iter()
@@ -300,11 +312,13 @@ impl Plugin for MemberOf {
     }
     */
 
+    #[instrument(level = "debug", name = "memberof_post_delete", skip(qs, cand, de))]
     fn post_delete(
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        _ce: &DeleteEvent,
+        de: &DeleteEvent,
     ) -> Result<(), OperationError> {
+        let dyngroup_change = super::dyngroup::DynGroup::post_delete(qs, cand, de)?;
         // Similar condition to create - we only trigger updates on groups's members,
         // so that they can find they are no longer a mo of what was deleted.
         let group_affect = cand
@@ -318,11 +332,13 @@ impl Plugin for MemberOf {
                 }
             })
             .flatten()
+            .chain(dyngroup_change.into_iter())
             .collect();
 
         apply_memberof(qs, group_affect)
     }
 
+    #[instrument(level = "debug", name = "memberof_verify", skip(qs))]
     fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 

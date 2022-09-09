@@ -36,12 +36,14 @@ lazy_static! {
     static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");
     static ref PVCLASS_SYSTEM_INFO: PartialValue = PartialValue::new_class("system_info");
     static ref PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class("system_config");
+    static ref PVCLASS_DYNGROUP: PartialValue = PartialValue::new_class("dyngroup");
     static ref VCLASS_SYSTEM: Value = Value::new_class("system");
     static ref VCLASS_TOMBSTONE: Value = Value::new_class("tombstone");
     static ref VCLASS_RECYCLED: Value = Value::new_class("recycled");
     static ref VCLASS_DOMAIN_INFO: Value = Value::new_class("domain_info");
     static ref VCLASS_SYSTEM_INFO: Value = Value::new_class("system_info");
     static ref VCLASS_SYSTEM_CONFIG: Value = Value::new_class("system_config");
+    static ref VCLASS_DYNGROUP: Value = Value::new_class("dyngroup");
 }
 
 impl Plugin for Protected {
@@ -49,6 +51,7 @@ impl Plugin for Protected {
         "plugin_protected"
     }
 
+    #[instrument(level = "debug", name = "protected_pre_create", skip(_qs, cand, ce))]
     fn pre_create(
         _qs: &QueryServerWriteTransaction,
         // List of what we will commit that is valid?
@@ -67,6 +70,7 @@ impl Plugin for Protected {
                 || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
                 || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
+                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -75,6 +79,7 @@ impl Plugin for Protected {
         })
     }
 
+    #[instrument(level = "debug", name = "protected_pre_modify", skip(_qs, cand, me))]
     fn pre_modify(
         _qs: &QueryServerWriteTransaction,
         // Should these be EntrySealed?
@@ -94,6 +99,7 @@ impl Plugin for Protected {
                         || v == &(*VCLASS_DOMAIN_INFO)
                         || v == &(*VCLASS_SYSTEM_INFO)
                         || v == &(*VCLASS_SYSTEM_CONFIG)
+                        || v == &(*VCLASS_DYNGROUP)
                         || v == &(*VCLASS_TOMBSTONE)
                         || v == &(*VCLASS_RECYCLED))
                 {
@@ -110,6 +116,7 @@ impl Plugin for Protected {
         cand.iter().try_fold((), |(), cand| {
             if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
+                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -143,6 +150,7 @@ impl Plugin for Protected {
         })
     }
 
+    #[instrument(level = "debug", name = "protected_pre_delete", skip(_qs, cand, de))]
     fn pre_delete(
         _qs: &QueryServerWriteTransaction,
         // Should these be EntrySealed
@@ -161,6 +169,7 @@ impl Plugin for Protected {
                 || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
                 || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
+                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {

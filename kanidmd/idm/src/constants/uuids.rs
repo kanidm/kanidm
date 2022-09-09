@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use compiled_uuid::uuid;
-use uuid::Uuid;
+use uuid::{uuid, Uuid};
 
 // Built in group and account ranges.
 pub const STR_UUID_ADMIN: &str = "00000000-0000-0000-0000-000000000000";

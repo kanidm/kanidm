@@ -1524,9 +1524,9 @@ mod tests {
     };
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use crate::prelude::*;
-    use compiled_uuid::uuid;
     use std::collections::BTreeSet;
     use std::sync::Arc;
+    use uuid::uuid;
 
     macro_rules! acp_from_entry_err {
         (
@@ -1619,12 +1619,14 @@ mod tests {
                         "uuid",
                         Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                     ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter"))
+                    (
+                        "acp_receiver",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
+                    (
+                        "acp_targetscope",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    )
                 ),
                 AccessControlProfile
             );
@@ -1665,12 +1667,14 @@ mod tests {
                         "uuid",
                         Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                     ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter"))
+                    (
+                        "acp_receiver",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
+                    (
+                        "acp_targetscope",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    )
                 ),
                 AccessControlDelete
             );
@@ -1754,12 +1758,14 @@ mod tests {
                         "uuid",
                         Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                     ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
+                    (
+                        "acp_receiver",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
+                    (
+                        "acp_targetscope",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
                     ("acp_search_attr", Value::new_iutf8("name")),
                     ("acp_search_attr", Value::new_iutf8("class"))
                 ),
@@ -1806,12 +1812,14 @@ mod tests {
                         "uuid",
                         Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                     ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter"))
+                    (
+                        "acp_receiver",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
+                    (
+                        "acp_targetscope",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    )
                 ),
                 AccessControlModify
             );
@@ -1827,12 +1835,14 @@ mod tests {
                         "uuid",
                         Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                     ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
+                    (
+                        "acp_receiver",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
+                    (
+                        "acp_targetscope",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
                     ("acp_modify_removedattr", Value::new_iutf8("name")),
                     ("acp_modify_presentattr", Value::new_iutf8("name")),
                     ("acp_modify_class", Value::new_iutf8("object"))
@@ -1879,12 +1889,14 @@ mod tests {
                         "uuid",
                         Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                     ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter"))
+                    (
+                        "acp_receiver",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
+                    (
+                        "acp_targetscope",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    )
                 ),
                 AccessControlCreate
             );
@@ -1900,12 +1912,14 @@ mod tests {
                         "uuid",
                         Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                     ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
+                    (
+                        "acp_receiver",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
+                    (
+                        "acp_targetscope",
+                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    ),
                     ("acp_create_attr", Value::new_iutf8("name")),
                     ("acp_create_class", Value::new_iutf8("object"))
                 ),
@@ -1924,30 +1938,32 @@ mod tests {
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             let e = entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("class", Value::new_class("access_control_create")),
-                    ("class", Value::new_class("access_control_delete")),
-                    ("class", Value::new_class("access_control_modify")),
-                    ("class", Value::new_class("access_control_search")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    ("acp_receiver", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_targetscope", Value::new_json_filter_s(
-                        "{\"eq\":[\"name\",\"a\"]}"
-                    ).expect("filter")),
-                    ("acp_search_attr", Value::new_iutf8("name")),
-                    ("acp_create_class", Value::new_iutf8("class")),
-                    ("acp_create_attr", Value::new_iutf8("name")),
-                    ("acp_modify_removedattr", Value::new_iutf8("name")),
-                    ("acp_modify_presentattr", Value::new_iutf8("name")),
-                    ("acp_modify_class", Value::new_iutf8("object"))
-                );
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("access_control_profile")),
+                ("class", Value::new_class("access_control_create")),
+                ("class", Value::new_class("access_control_delete")),
+                ("class", Value::new_class("access_control_modify")),
+                ("class", Value::new_class("access_control_search")),
+                ("name", Value::new_iname("acp_valid")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                (
+                    "acp_receiver",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (
+                    "acp_targetscope",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                ("acp_search_attr", Value::new_iutf8("name")),
+                ("acp_create_class", Value::new_iutf8("class")),
+                ("acp_create_attr", Value::new_iutf8("name")),
+                ("acp_modify_removedattr", Value::new_iutf8("name")),
+                ("acp_modify_presentattr", Value::new_iutf8("name")),
+                ("acp_modify_class", Value::new_iutf8("object"))
+            );
 
             acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlCreate);
             acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlDelete);
