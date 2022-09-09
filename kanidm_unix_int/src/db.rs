@@ -277,20 +277,25 @@ impl<'a> DbTxn<'a> {
             return Err(());
         }
 
-        let r: Result<Option<(_, _)>, ()> = data
-            .first()
-            .map(|(token, expiry)| {
-                // token convert with json.
-                let t = serde_json::from_slice(token.as_slice()).map_err(|e| {
-                    error!("json error -> {:?}", e);
-                })?;
-                let e = u64::try_from(*expiry).map_err(|e| {
-                    error!("u64 convert error -> {:?}", e);
-                })?;
-                Ok((t, e))
-            })
-            .transpose();
-        r
+        if let Some((token, expiry)) = data.first() {
+            // token convert with json.
+            // If this errors, we specifically return Ok(None) because that triggers
+            // the cache to refetch the token.
+            match serde_json::from_slice(token.as_slice()) {
+                Ok(t) => {
+                    let e = u64::try_from(*expiry).map_err(|e| {
+                        error!("u64 convert error -> {:?}", e);
+                    })?;
+                    Ok(Some((t, e)))
+                }
+                Err(e) => {
+                    warn!("recoverable - json error -> {:?}", e);
+                    Ok(None)
+                }
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn get_accounts(&self) -> Result<Vec<UnixUserToken>, ()> {
@@ -314,14 +319,18 @@ impl<'a> DbTxn<'a> {
 
         let data = data?;
 
-        data.iter()
-            .map(|token| {
+        Ok(data
+            .iter()
+            // We filter map here so that anything invalid is skipped.
+            .filter_map(|token| {
                 // token convert with json.
-                serde_json::from_slice(token.as_slice()).map_err(|e| {
-                    error!("get_accounts json error -> {:?}", e);
-                })
+                serde_json::from_slice(token.as_slice())
+                    .map_err(|e| {
+                        warn!("get_accounts json error -> {:?}", e);
+                    })
+                    .ok()
             })
-            .collect()
+            .collect())
     }
 
     pub fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), ()> {
@@ -572,20 +581,25 @@ impl<'a> DbTxn<'a> {
             return Err(());
         }
 
-        let r: Result<Option<(_, _)>, ()> = data
-            .first()
-            .map(|(token, expiry)| {
-                // token convert with json.
-                let t = serde_json::from_slice(token.as_slice()).map_err(|e| {
-                    error!("json error -> {:?}", e);
-                })?;
-                let e = u64::try_from(*expiry).map_err(|e| {
-                    error!("u64 convert error -> {:?}", e);
-                })?;
-                Ok((t, e))
-            })
-            .transpose();
-        r
+        if let Some((token, expiry)) = data.first() {
+            // token convert with json.
+            // If this errors, we specifically return Ok(None) because that triggers
+            // the cache to refetch the token.
+            match serde_json::from_slice(token.as_slice()) {
+                Ok(t) => {
+                    let e = u64::try_from(*expiry).map_err(|e| {
+                        error!("u64 convert error -> {:?}", e);
+                    })?;
+                    Ok(Some((t, e)))
+                }
+                Err(e) => {
+                    warn!("recoverable - json error -> {:?}", e);
+                    Ok(None)
+                }
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, ()> {
@@ -643,15 +657,18 @@ impl<'a> DbTxn<'a> {
 
         let data = data?;
 
-        data.iter()
-            .map(|token| {
+        Ok(data
+            .iter()
+            .filter_map(|token| {
                 // token convert with json.
                 // debug!("{:?}", token);
-                serde_json::from_slice(token.as_slice()).map_err(|e| {
-                    error!("json error -> {:?}", e);
-                })
+                serde_json::from_slice(token.as_slice())
+                    .map_err(|e| {
+                        error!("json error -> {:?}", e);
+                    })
+                    .ok()
             })
-            .collect()
+            .collect())
     }
 
     pub fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), ()> {
