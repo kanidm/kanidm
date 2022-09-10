@@ -415,6 +415,18 @@ pub const JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: &str = r#"{
     }
 }"#;
 
+pub const JSON_IDM_ALL_PERSONS: &str = r#"{
+    "attrs": {
+        "class": ["dyngroup", "group", "object"],
+        "name": ["idm_all_persons"],
+        "uuid": ["00000000-0000-0000-0000-000000000035"],
+        "description": ["Builtin IDM dynamic group containing all persons"],
+        "dyngroup_filter": [
+            "{\"eq\":[\"class\",\"person\"]}"
+        ]
+    }
+}"#;
+
 /// This must be the last group to init to include the UUID of the other high priv groups.
 pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     "attrs": {

@@ -27,7 +27,7 @@ use crate::event::{
 use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
 use crate::identity::IdentityId;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
-use crate::plugins::dyngroup::DynGroupCache;
+use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
 use crate::schema::{
@@ -57,6 +57,13 @@ lazy_static! {
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
+#[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
+enum ServerPhase {
+    Bootstrap,
+    SchemaReady,
+    Running,
+}
+
 #[derive(Debug, Clone)]
 struct DomainInfo {
     d_uuid: Uuid,
@@ -66,6 +73,7 @@ struct DomainInfo {
 
 #[derive(Clone)]
 pub struct QueryServer {
+    phase: Arc<CowCell<ServerPhase>>,
     s_uuid: Uuid,
     d_info: Arc<CowCell<DomainInfo>>,
     be: Backend,
@@ -96,6 +104,7 @@ unsafe impl<'a> Send for QueryServerReadTransaction<'a> {}
 
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
+    phase: CowCellWriteTxn<'a, ServerPhase>,
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     cid: Cid,
     be_txn: BackendWriteTransaction<'a>,
@@ -987,10 +996,13 @@ impl QueryServer {
 
         let dyngroup_cache = Arc::new(CowCell::new(DynGroupCache::default()));
 
+        let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
+
         // log_event!(log, "Starting query worker ...");
 
         #[allow(clippy::expect_used)]
         QueryServer {
+            phase,
             s_uuid,
             d_info,
             be,
@@ -1065,6 +1077,7 @@ impl QueryServer {
         let schema_write = self.schema.write();
         let be_txn = self.be.write();
         let d_info = self.d_info.write();
+        let phase = self.phase.write();
 
         #[allow(clippy::expect_used)]
         let ts_max = be_txn.get_db_ts_max(ts).expect("Unable to get db_ts_max");
@@ -1078,6 +1091,7 @@ impl QueryServer {
             // The commited flag is however used for abort-specific code in drop
             // which today I don't think we have ... yet.
             committed: false,
+            phase,
             d_info,
             cid,
             be_txn,
@@ -1139,7 +1153,11 @@ impl QueryServer {
 
         // Force the schema to reload - this is so that any changes to index slope
         // analysis are now reflected correctly.
-        let slope_reload = task::block_on(self.write_async(ts));
+        //
+        // A side effect of these reloads is that other plugins or elements that reload
+        // on schema change are now setup.
+        let mut slope_reload = task::block_on(self.write_async(ts));
+        slope_reload.set_phase(ServerPhase::SchemaReady);
         slope_reload.force_schema_reload();
         slope_reload.commit()?;
 
@@ -1185,10 +1203,11 @@ impl QueryServer {
         migrate_txn.commit()?;
         // Migrations complete. Init idm will now set the version as needed.
 
-        let ts_write_3 = task::block_on(self.write_async(ts));
-        ts_write_3
-            .initialise_idm()
-            .and_then(|_| ts_write_3.commit())?;
+        let mut ts_write_3 = task::block_on(self.write_async(ts));
+        ts_write_3.initialise_idm().and_then(|_| {
+            ts_write_3.set_phase(ServerPhase::Running);
+            ts_write_3.commit()
+        })?;
         // TODO: work out if we've actually done any migrations before printing this
         admin_debug!("Database version check and migrations success! ☀️  ");
         Ok(())
@@ -2685,6 +2704,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Create any system default access profile entries.
         let idm_entries = [
+            // Builtin dyn groups,
+            JSON_IDM_ALL_PERSONS,
             // Builtin groups
             JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
             JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
@@ -2779,66 +2800,72 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    #[instrument(level = "info", name = "reload_schema", skip(self))]
     fn reload_schema(&mut self) -> Result<(), OperationError> {
-        spanned!("server::reload_schema", {
-            // supply entries to the writable schema to reload from.
-            // find all attributes.
-            let filt = filter!(f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()));
-            let res = self.internal_search(filt).map_err(|e| {
-                admin_error!("reload schema internal search failed {:?}", e);
-                e
-            })?;
-            // load them.
-            let attributetypes: Result<Vec<_>, _> =
-                res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
-            let attributetypes = attributetypes.map_err(|e| {
-                admin_error!("reload schema attributetypes {:?}", e);
-                e
-            })?;
+        // supply entries to the writable schema to reload from.
+        // find all attributes.
+        let filt = filter!(f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()));
+        let res = self.internal_search(filt).map_err(|e| {
+            admin_error!("reload schema internal search failed {:?}", e);
+            e
+        })?;
+        // load them.
+        let attributetypes: Result<Vec<_>, _> =
+            res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
+        let attributetypes = attributetypes.map_err(|e| {
+            admin_error!("reload schema attributetypes {:?}", e);
+            e
+        })?;
 
-            self.schema.update_attributes(attributetypes).map_err(|e| {
-                admin_error!("reload schema update attributetypes {:?}", e);
-                e
-            })?;
+        self.schema.update_attributes(attributetypes).map_err(|e| {
+            admin_error!("reload schema update attributetypes {:?}", e);
+            e
+        })?;
 
-            // find all classes
-            let filt = filter!(f_eq("class", PVCLASS_CLASSTYPE.clone()));
-            let res = self.internal_search(filt).map_err(|e| {
-                admin_error!("reload schema internal search failed {:?}", e);
-                e
-            })?;
-            // load them.
-            let classtypes: Result<Vec<_>, _> =
-                res.iter().map(|e| SchemaClass::try_from(e)).collect();
-            let classtypes = classtypes.map_err(|e| {
-                admin_error!("reload schema classtypes {:?}", e);
-                e
-            })?;
+        // find all classes
+        let filt = filter!(f_eq("class", PVCLASS_CLASSTYPE.clone()));
+        let res = self.internal_search(filt).map_err(|e| {
+            admin_error!("reload schema internal search failed {:?}", e);
+            e
+        })?;
+        // load them.
+        let classtypes: Result<Vec<_>, _> = res.iter().map(|e| SchemaClass::try_from(e)).collect();
+        let classtypes = classtypes.map_err(|e| {
+            admin_error!("reload schema classtypes {:?}", e);
+            e
+        })?;
 
-            self.schema.update_classes(classtypes).map_err(|e| {
-                admin_error!("reload schema update classtypes {:?}", e);
-                e
-            })?;
+        self.schema.update_classes(classtypes).map_err(|e| {
+            admin_error!("reload schema update classtypes {:?}", e);
+            e
+        })?;
 
-            // validate.
-            let valid_r = self.schema.validate();
+        // validate.
+        let valid_r = self.schema.validate();
 
-            // Translate the result.
-            if valid_r.is_empty() {
-                // Now use this to reload the backend idxmeta
-                trace!("Reloading idxmeta ...");
-                self.be_txn
-                    .update_idxmeta(self.schema.reload_idxmeta())
-                    .map_err(|e| {
-                        admin_error!("reload schema update idxmeta {:?}", e);
-                        e
-                    })
-            } else {
-                // Log the failures?
-                admin_error!("Schema reload failed -> {:?}", valid_r);
-                Err(OperationError::ConsistencyError(valid_r))
-            }
-        })
+        // Translate the result.
+        if valid_r.is_empty() {
+            // Now use this to reload the backend idxmeta
+            trace!("Reloading idxmeta ...");
+            self.be_txn
+                .update_idxmeta(self.schema.reload_idxmeta())
+                .map_err(|e| {
+                    admin_error!("reload schema update idxmeta {:?}", e);
+                    e
+                })
+        } else {
+            // Log the failures?
+            admin_error!("Schema reload failed -> {:?}", valid_r);
+            Err(OperationError::ConsistencyError(valid_r))
+        }?;
+
+        // Trigger reloads on services that require post-schema reloads.
+        // Mainly this is plugins.
+        if *self.phase >= ServerPhase::SchemaReady {
+            DynGroup::reload(self)?;
+        }
+
+        Ok(())
     }
 
     fn reload_accesscontrols(&mut self) -> Result<(), OperationError> {
@@ -3069,6 +3096,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_domain.get()
     }
 
+    fn set_phase(&mut self, phase: ServerPhase) {
+        *self.phase = phase
+    }
+
     pub fn commit(mut self) -> Result<(), OperationError> {
         // This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not
@@ -3097,6 +3128,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
             committed,
+            phase,
             be_txn,
             schema,
             d_info,
@@ -3119,6 +3151,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             schema
                 .commit()
                 .map(|_| d_info.commit())
+                .map(|_| phase.commit())
                 .map(|_| dyngroup_cache.into_inner().commit())
                 .and_then(|_| accesscontrols.commit())
                 .and_then(|_| be_txn.commit())
@@ -3153,7 +3186,7 @@ mod tests {
             let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
             let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
 
-            let e = entry_init!(
+            let mut e = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("person")),
                 ("name", Value::new_iname("testperson")),
@@ -3176,6 +3209,11 @@ mod tests {
             let r2 = server_txn.search(&se2).expect("search failure");
             debug!("--> {:?}", r2);
             assert!(r2.len() == 1);
+
+            // We apply some member-of in the server now, so we add these before we seal.
+            e.add_ava("class", Value::new_class("memberof"));
+            e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
+            e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
 
             let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
 

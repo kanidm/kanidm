@@ -1,4 +1,4 @@
-use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
+use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::FilterInvalid;
 use crate::prelude::*;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -25,6 +25,122 @@ impl Default for DynGroupCache {
 pub struct DynGroup;
 
 impl DynGroup {
+    fn apply_dyngroup_change(
+        qs: &QueryServerWriteTransaction,
+        ident: &Identity,
+        pre_candidates: &mut Vec<Arc<EntrySealedCommitted>>,
+        candidates: &mut Vec<EntryInvalidCommitted>,
+        affected_uuids: &mut Vec<Uuid>,
+        expect: bool,
+        ident_internal: &Identity,
+        dyn_groups: &mut DynGroupCache,
+        n_dyn_groups: &[&Entry<EntrySealed, EntryCommitted>],
+    ) -> Result<(), OperationError> {
+        if !ident.is_internal() {
+            // It should be impossible to trigger this right now due to protected plugin.
+            error!("It is currently an error to create a dynamic group");
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Search all the new groups first.
+        let filt = filter!(FC::Or(
+            n_dyn_groups
+                .into_iter()
+                .map(|e| f_eq("uuid", PartialValue::new_uuid(e.get_uuid())))
+                .collect()
+        ));
+        let work_set = qs.internal_search_writeable(&filt)?;
+
+        // Go through them all and update the new groups.
+        for (pre, mut nd_group) in work_set.into_iter() {
+            let scope_f: ProtoFilter = nd_group
+                .get_ava_single_protofilter("dyngroup_filter")
+                .cloned()
+                .ok_or_else(|| {
+                    admin_error!("Missing dyngroup_filter");
+                    OperationError::InvalidEntryState
+                })?;
+
+            let scope_i = Filter::from_rw(ident_internal, &scope_f, qs).map_err(|e| {
+                admin_error!("dyngroup_filter validation failed {:?}", e);
+                e
+            })?;
+
+            let uuid = pre.get_uuid();
+            // Add our uuid as affected.
+            affected_uuids.push(uuid);
+
+            // Apply the filter and get all the uuids.
+            let entries = qs.internal_search(scope_i.clone()).map_err(|e| {
+                admin_error!("internal search failure -> {:?}", e);
+                e
+            })?;
+
+            let members = ValueSetRefer::from_iter(entries.iter().map(|e| e.get_uuid()));
+
+            if let Some(uuid_iter) = members.as_ref().and_then(|a| a.as_ref_uuid_iter()) {
+                affected_uuids.extend(uuid_iter);
+            }
+
+            if let Some(members) = members {
+                // Only set something if there is actually something to do!
+                nd_group.set_ava_set("member", members);
+                // push the entries to pre/cand
+            } else {
+                nd_group.purge_ava("member");
+            }
+
+            pre_candidates.push(pre);
+            candidates.push(nd_group);
+
+            // Insert to our new instances
+            if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
+                admin_error!("dyngroup cache uuid conflict {}", uuid);
+                return Err(OperationError::InvalidState);
+            }
+        }
+        Ok(())
+    }
+
+    #[instrument(level = "debug", name = "dyngroup_reload", skip(qs))]
+    pub fn reload(qs: &QueryServerWriteTransaction) -> Result<(), OperationError> {
+        let ident_internal = Identity::from_internal();
+        // Internal search all our definitions.
+        let filt = filter!(f_eq("class", PartialValue::new_class("dyngroup")));
+        let entries = qs.internal_search(filt).map_err(|e| {
+            admin_error!("internal search failure -> {:?}", e);
+            e
+        })?;
+
+        let dyn_groups = qs.get_dyngroup_cache();
+
+        dyn_groups.insts.clear();
+
+        for nd_group in entries.into_iter() {
+            let scope_f: ProtoFilter = nd_group
+                .get_ava_single_protofilter("dyngroup_filter")
+                .cloned()
+                .ok_or_else(|| {
+                    admin_error!("Missing dyngroup_filter");
+                    OperationError::InvalidEntryState
+                })?;
+
+            let scope_i = Filter::from_rw(&ident_internal, &scope_f, qs).map_err(|e| {
+                admin_error!("dyngroup_filter validation failed {:?}", e);
+                e
+            })?;
+
+            let uuid = nd_group.get_uuid();
+
+            if dyn_groups.insts.insert(uuid, scope_i).is_some() {
+                admin_error!("dyngroup cache uuid conflict {}", uuid);
+                return Err(OperationError::InvalidState);
+            }
+        }
+
+        Ok(())
+    }
+
     #[instrument(level = "debug", name = "dyngroup_post_create", skip(qs, cand, ce))]
     pub fn post_create(
         qs: &QueryServerWriteTransaction,
@@ -58,11 +174,10 @@ impl DynGroup {
             let dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| {
-                    f.resolve(&ident_internal, None, Some(resolve_filter_cache))
-                })?;
+                .and_then(|f| f.resolve(&ident_internal, None, Some(resolve_filter_cache)))?;
 
-            let matches: Vec<_> = entries.iter()
+            let matches: Vec<_> = entries
+                .iter()
                 .filter_map(|e| {
                     if e.entry_match_no_index(&dg_filter_valid) {
                         Some(e.get_uuid())
@@ -77,10 +192,10 @@ impl DynGroup {
                 let mut work_set = qs.internal_search_writeable(&filt)?;
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
-
-                    matches.iter().copied().for_each(|u| {
-                        d_group.add_ava("member", Value::new_refer(u))
-                    });
+                    matches
+                        .iter()
+                        .copied()
+                        .for_each(|u| d_group.add_ava("member", Value::new_refer(u)));
 
                     affected_uuids.extend(matches.into_iter());
                     affected_uuids.push(*dg_uuid);
@@ -96,67 +211,17 @@ impl DynGroup {
 
         if !n_dyn_groups.is_empty() {
             trace!("considering new dyngroups");
-
-            if !ce.ident.is_internal() {
-                // It should be impossible to trigger this right now due to protected plugin.
-                error!("It is currently an error to create a dynamic group");
-                return Err(OperationError::SystemProtectedObject);
-            }
-
-            // Search all the new groups first.
-            let filt = filter!(FC::Or(
-                n_dyn_groups
-                    .into_iter()
-                    .map(|e| f_eq("uuid", PartialValue::new_uuid(e.get_uuid())))
-                    .collect()
-            ));
-            let work_set = qs.internal_search_writeable(&filt)?;
-
-            // Go through them all and update the new groups.
-            for (pre, mut nd_group) in work_set.into_iter() {
-                let scope_f: ProtoFilter = nd_group
-                    .get_ava_single_protofilter("dyngroup_filter")
-                    .cloned()
-                    .ok_or_else(|| {
-                        admin_error!("Missing dyngroup_filter");
-                        OperationError::InvalidEntryState
-                    })?;
-                let scope_i = Filter::from_rw(&ident_internal, &scope_f, qs).map_err(|e| {
-                    admin_error!("dyngroup_filter validation failed {:?}", e);
-                    e
-                })?;
-
-                let uuid = pre.get_uuid();
-                // Add our uuid as affected.
-                affected_uuids.push(uuid);
-
-                // Apply the filter and get all the uuids.
-                let entries = qs.internal_search(scope_i.clone()).map_err(|e| {
-                    admin_error!("internal search failure -> {:?}", e);
-                    e
-                })?;
-
-                let members = ValueSetRefer::from_iter(entries.iter().map(|e| e.get_uuid()));
-
-                if let Some(uuid_iter) = members.as_ref().and_then(|a| a.as_ref_uuid_iter()) {
-                    affected_uuids.extend(uuid_iter);
-                }
-
-                if let Some(members) = members {
-                    // Only set something if there is actually something to do!
-                    nd_group.set_ava_set("member", members);
-                    // push the entries to pre/cand
-                    pre_candidates.push(pre);
-                    candidates.push(nd_group);
-                }
-
-                // Insert to our new instances
-                if dyn_groups.insts.insert(uuid, scope_i).is_some() {
-                    admin_error!("dyngroup cache already contains uuid {}", uuid);
-                    return Err(OperationError::InvalidState);
-                }
-            }
-
+            Self::apply_dyngroup_change(
+                qs,
+                &ce.ident,
+                &mut pre_candidates,
+                &mut candidates,
+                &mut affected_uuids,
+                false,
+                &ident_internal,
+                dyn_groups,
+                n_dyn_groups.as_slice(),
+            )?;
         }
 
         // Write back the new changes.
@@ -176,21 +241,115 @@ impl DynGroup {
     #[instrument(
         level = "debug",
         name = "memberof_post_modify",
-        skip(_qs, _pre_cand, _cand, _me)
+        skip(qs, pre_cand, cand, me)
     )]
     pub fn post_modify(
-        _qs: &QueryServerWriteTransaction,
-        _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
-        _cand: &[Entry<EntrySealed, EntryCommitted>],
-        _me: &ModifyEvent,
+        qs: &QueryServerWriteTransaction,
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+        me: &ModifyEvent,
     ) -> Result<Vec<Uuid>, OperationError> {
+        let mut affected_uuids = Vec::with_capacity(cand.len());
+
+        let ident_internal = Identity::from_internal();
+        let resolve_filter_cache = qs.get_resolve_filter_cache();
+
+        // Probably should be filter here instead.
+        let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) = pre_cand
+            .iter()
+            .partition(|entry| entry.attribute_equality("class", &CLASS_DYNGROUP));
+
+        let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
+            .iter()
+            .partition(|entry| entry.attribute_equality("class", &CLASS_DYNGROUP));
+
+        let dyn_groups = qs.get_dyngroup_cache();
+
+        let mut pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+        let mut candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+
         // If we modified a dyngroups member or filter, re-trigger it here.
         //    if the event is not internal, reject (for now)
+        // We do this *first* so that we don't accidentally include/exclude anything that
+        // changed in this op.
+
+        if !n_dyn_groups.is_empty() {
+            trace!("considering modified dyngroups");
+            Self::apply_dyngroup_change(
+                qs,
+                &me.ident,
+                &mut pre_candidates,
+                &mut candidates,
+                &mut affected_uuids,
+                true,
+                &ident_internal,
+                dyn_groups,
+                n_dyn_groups.as_slice(),
+            )?;
+        }
 
         // If we modified anything else, check if a dyngroup is affected by it's change
         // if it was a member.
 
-        Ok(Vec::new())
+        trace!(?dyn_groups.insts);
+
+        for (dg_uuid, dg_filter) in dyn_groups.insts.iter() {
+            let dg_filter_valid = dg_filter
+                .validate(qs.get_schema())
+                .map_err(OperationError::SchemaViolation)
+                .and_then(|f| f.resolve(&ident_internal, None, Some(resolve_filter_cache)))?;
+
+            let matches: Vec<_> = pre_entries
+                .iter()
+                .zip(post_entries.iter())
+                .filter_map(|(pre, post)| {
+                    let pre_t = pre.entry_match_no_index(&dg_filter_valid);
+                    let post_t = post.entry_match_no_index(&dg_filter_valid);
+
+                    if pre_t && !post_t {
+                        Some(Err(post.get_uuid()))
+                    } else if !pre_t && post_t {
+                        Some(Ok(post.get_uuid()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if !matches.is_empty() {
+                let filt = filter!(f_eq("uuid", PartialValue::new_uuid(*dg_uuid)));
+                let mut work_set = qs.internal_search_writeable(&filt)?;
+
+                if let Some((pre, mut d_group)) = work_set.pop() {
+                    matches.iter().copied().for_each(|choice| match choice {
+                        Ok(u) => d_group.add_ava("member", Value::new_refer(u)),
+                        Err(u) => d_group.remove_ava("member", &PartialValue::new_refer(u)),
+                    });
+
+                    affected_uuids.extend(matches.into_iter().map(|choice| match choice {
+                        Ok(u) => u,
+                        Err(u) => u,
+                    }));
+                    affected_uuids.push(*dg_uuid);
+
+                    pre_candidates.push(pre);
+                    candidates.push(d_group);
+                }
+            }
+        }
+
+        // Write back the new changes.
+        debug_assert!(pre_candidates.len() == candidates.len());
+        // Write this stripe if populated.
+        if !pre_candidates.is_empty() {
+            qs.internal_batch_modify(pre_candidates, candidates)
+                .map_err(|e| {
+                    admin_error!("Failed to commit dyngroup set {:?}", e);
+                    e
+                })?;
+        }
+
+        Ok(affected_uuids)
     }
 
     // No post_delete handler is needed as refint takes care of this for us.
@@ -523,7 +682,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_uuid(*UUID_ADMIN)
+                Value::new_refer(*UUID_ADMIN)
             )]),
             None,
             |_| {},

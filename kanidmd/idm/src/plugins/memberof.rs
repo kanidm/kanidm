@@ -312,11 +312,11 @@ impl Plugin for MemberOf {
     }
     */
 
-    #[instrument(level = "debug", name = "memberof_post_delete", skip(qs, cand, de))]
+    #[instrument(level = "debug", name = "memberof_post_delete", skip(qs, cand, _de))]
     fn post_delete(
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        de: &DeleteEvent,
+        _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         // Similar condition to create - we only trigger updates on groups's members,
         // so that they can find they are no longer a mo of what was deleted.
