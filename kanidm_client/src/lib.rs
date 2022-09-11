@@ -64,7 +64,7 @@ pub enum ClientError {
     SystemError,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct KanidmClientConfig {
     uri: Option<String>,
     verify_ca: Option<bool>,
