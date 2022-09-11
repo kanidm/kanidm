@@ -64,12 +64,12 @@ pub enum ClientError {
     SystemError,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct KanidmClientConfig {
-    uri: Option<String>,
-    verify_ca: Option<bool>,
-    verify_hostnames: Option<bool>,
-    ca_path: Option<String>,
+    pub uri: Option<String>,
+    pub verify_ca: Option<bool>,
+    pub verify_hostnames: Option<bool>,
+    pub ca_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
