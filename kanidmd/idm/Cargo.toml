@@ -85,7 +85,7 @@ users = "^0.11.0"
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
-criterion = { version = "^0.3.6", features = ["html_reports"] }
+criterion = { version = "^0.4.0", features = ["html_reports"] }
 # For testing webauthn
 webauthn-authenticator-rs = "0.4.2-beta.3"
 
