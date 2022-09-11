@@ -1,7 +1,8 @@
 //! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
-#![deny(warnings)]
+//#![deny(warnings)]
+
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -64,7 +65,7 @@ pub mod config;
 /// help make imports cleaner.
 pub mod prelude {
     pub use crate::utils::duration_from_epoch_now;
-    pub use kanidm_proto::v1::OperationError;
+    pub use kanidm_proto::v1::{ConsistencyError, OperationError};
     pub use smartstring::alias::String as AttrString;
     pub use url::Url;
     pub use uuid::Uuid;

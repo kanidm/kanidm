@@ -1488,8 +1488,8 @@ mod tests {
     use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
     use crate::idm::AuthState;
-    use compiled_uuid::uuid;
     use kanidm_proto::v1::{AuthAllowed, AuthMech, CredentialDetailType};
+    use uuid::uuid;
 
     use async_std::task;
 

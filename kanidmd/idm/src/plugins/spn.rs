@@ -26,6 +26,11 @@ impl Plugin for Spn {
     }
 
     // hook on pre-create and modify to generate / validate.
+    #[instrument(
+        level = "debug",
+        name = "spn_pre_create_transform",
+        skip(qs, cand, _ce)
+    )]
     fn pre_create_transform(
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -60,6 +65,7 @@ impl Plugin for Spn {
         Ok(())
     }
 
+    #[instrument(level = "debug", name = "spn_pre_modify", skip(qs, cand, _me))]
     fn pre_modify(
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -90,6 +96,11 @@ impl Plugin for Spn {
         Ok(())
     }
 
+    #[instrument(
+        level = "debug",
+        name = "spn_post_modify",
+        skip(qs, pre_cand, cand, _ce)
+    )]
     fn post_modify(
         qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
@@ -133,6 +144,7 @@ impl Plugin for Spn {
         )
     }
 
+    #[instrument(level = "debug", name = "spn_verify", skip(qs))]
     fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
         //   We need to consider the case that an item has a different origin domain too,

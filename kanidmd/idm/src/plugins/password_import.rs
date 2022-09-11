@@ -14,6 +14,11 @@ impl Plugin for PasswordImport {
         "plugin_password_import"
     }
 
+    #[instrument(
+        level = "debug",
+        name = "password_import_pre_create_transform",
+        skip(_qs, cand, _ce)
+    )]
     fn pre_create_transform(
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -57,6 +62,11 @@ impl Plugin for PasswordImport {
             })
     }
 
+    #[instrument(
+        level = "debug",
+        name = "password_import_pre_modify",
+        skip(_qs, cand, _me)
+    )]
     fn pre_modify(
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,

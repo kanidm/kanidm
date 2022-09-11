@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use compiled_uuid::uuid;
-use uuid::Uuid;
+use uuid::{uuid, Uuid};
 
 // Built in group and account ranges.
 pub const STR_UUID_ADMIN: &str = "00000000-0000-0000-0000-000000000000";
@@ -46,6 +45,8 @@ pub const _UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV: Uuid =
     uuid!("00000000-0000-0000-0000-000000000033");
 pub const _UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: Uuid =
     uuid!("00000000-0000-0000-0000-000000000034");
+
+pub const UUID_IDM_ALL_PERSONS: Uuid = uuid!("00000000-0000-0000-0000-000000000035");
 
 //
 pub const _UUID_IDM_HIGH_PRIVILEGE: Uuid = uuid!("00000000-0000-0000-0000-000000001000");
@@ -181,6 +182,8 @@ pub const UUID_SCHEMA_ATTR_SYSTEMEXCLUDES: Uuid = uuid!("00000000-0000-0000-0000
 pub const UUID_SCHEMA_ATTR_EXCLUDES: Uuid = uuid!("00000000-0000-0000-0000-ffff00000104");
 pub const UUID_SCHEMA_ATTR_SCOPE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000105");
 pub const UUID_SCHEMA_CLASS_SERVICE_ACCOUNT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000106");
+pub const _UUID_SCHEMA_CLASS_DYNGROUP: Uuid = uuid!("00000000-0000-0000-0000-ffff00000107");
+pub const _UUID_SCHEMA_ATTR_DYNGROUP_FILTER: Uuid = uuid!("00000000-0000-0000-0000-ffff00000108");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

@@ -61,6 +61,11 @@ impl Plugin for Oauth2Secrets {
         "plugin_oauth2_secrets"
     }
 
+    #[instrument(
+        level = "debug",
+        name = "oauth2_pre_create_transform",
+        skip(_qs, cand, _ce)
+    )]
     fn pre_create_transform(
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -69,6 +74,7 @@ impl Plugin for Oauth2Secrets {
         cand.iter_mut().try_for_each(|e| oauth2_transform!(e))
     }
 
+    #[instrument(level = "debug", name = "oauth2_pre_modify", skip(_qs, cand, _me))]
     fn pre_modify(
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,

@@ -2277,7 +2277,7 @@ where
 
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
     /// don't do anything else since we are asserting the abscence of a value.
-    fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
+    pub(crate) fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         self.valid
             .eclog
             .remove_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));

@@ -82,6 +82,7 @@ impl Plugin for ReferentialIntegrity {
     // so we can assert stronger trust in it's correct operation and interaction
     // in complex scenarioes - It actually simplifies the check from "could
     // be in cand AND db" to simply "is it in the DB?".
+    #[instrument(level = "debug", name = "refint_post_create", skip(qs, cand, _ce))]
     fn post_create(
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -118,6 +119,11 @@ impl Plugin for ReferentialIntegrity {
         Self::check_uuids_exist(qs, i)
     }
 
+    #[instrument(
+        level = "debug",
+        name = "refint_post_modify",
+        skip(qs, _pre_cand, _cand, me)
+    )]
     fn post_modify(
         qs: &QueryServerWriteTransaction,
         _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
@@ -157,6 +163,7 @@ impl Plugin for ReferentialIntegrity {
         Self::check_uuids_exist(qs, i)
     }
 
+    #[instrument(level = "debug", name = "refint_post_delete", skip(qs, cand, _ce))]
     fn post_delete(
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -209,6 +216,7 @@ impl Plugin for ReferentialIntegrity {
         qs.internal_batch_modify(pre_candidates, candidates)
     }
 
+    #[instrument(level = "debug", name = "verify", skip(qs))]
     fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set

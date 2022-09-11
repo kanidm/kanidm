@@ -207,6 +207,7 @@ impl ModifyList<ModifyInvalid> {
         })
     }
 
+    #[cfg(test)]
     pub(crate) unsafe fn into_valid(self) -> ModifyList<ModifyValid> {
         ModifyList {
             valid: ModifyValid,

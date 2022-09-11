@@ -744,20 +744,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "url",
- "uuid 1.1.2",
-]
-
-[[package]]
-name = "compiled-uuid"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18c9f404cbbb38aeaaa6a0cfe4039df817377926183d278098cdfe96dd015610"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "thiserror",
- "uuid 0.8.2",
+ "uuid",
 ]
 
 [[package]]
@@ -2123,7 +2110,6 @@ dependencies = [
  "base64urlsafedata",
  "chrono",
  "compact_jwt",
- "compiled-uuid",
  "concread",
  "criterion",
  "dyn-clone",
@@ -2164,7 +2150,7 @@ dependencies = [
  "url",
  "urlencoding",
  "users",
- "uuid 1.1.2",
+ "uuid",
  "validator",
  "webauthn-authenticator-rs",
  "webauthn-rs",
@@ -2185,7 +2171,7 @@ dependencies = [
  "toml",
  "tracing",
  "url",
- "uuid 1.1.2",
+ "uuid",
  "webauthn-rs-proto",
 ]
 
@@ -2201,7 +2187,7 @@ dependencies = [
  "time 0.2.27",
  "url",
  "urlencoding",
- "uuid 1.1.2",
+ "uuid",
  "webauthn-rs-proto",
 ]
 
@@ -2227,7 +2213,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
- "uuid 1.1.2",
+ "uuid",
  "webauthn-authenticator-rs",
  "zxcvbn",
 ]
@@ -2274,7 +2260,7 @@ dependencies = [
  "qrcode",
  "serde",
  "serde_json",
- "uuid 1.1.2",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -2809,7 +2795,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "uuid 1.1.2",
+ "uuid",
 ]
 
 [[package]]
@@ -3499,7 +3485,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "url",
- "uuid 1.1.2",
+ "uuid",
  "webauthn-authenticator-rs",
 ]
 
@@ -4298,7 +4284,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "uuid 1.1.2",
+ "uuid",
 ]
 
 [[package]]
@@ -4413,12 +4399,6 @@ dependencies = [
  "libc",
  "log",
 ]
-
-[[package]]
-name = "uuid"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 
 [[package]]
 name = "uuid"
@@ -4657,7 +4637,7 @@ dependencies = [
  "serde",
  "tracing",
  "url",
- "uuid 1.1.2",
+ "uuid",
  "webauthn-rs-core",
 ]
 
@@ -4680,7 +4660,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "url",
- "uuid 1.1.2",
+ "uuid",
  "webauthn-rs-proto",
  "x509-parser",
 ]

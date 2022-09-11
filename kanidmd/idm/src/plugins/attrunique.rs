@@ -113,6 +113,11 @@ impl Plugin for AttrUnique {
         "plugin_attrunique"
     }
 
+    #[instrument(
+        level = "debug",
+        name = "attrunique_pre_create_transform",
+        skip(qs, cand, _ce)
+    )]
     fn pre_create_transform(
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -130,6 +135,7 @@ impl Plugin for AttrUnique {
         r
     }
 
+    #[instrument(level = "debug", name = "attrunique_pre_modify", skip(qs, cand, _me))]
     fn pre_modify(
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -147,6 +153,7 @@ impl Plugin for AttrUnique {
         r
     }
 
+    #[instrument(level = "debug", name = "attrunique_verify", skip(qs))]
     fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
         let filt_in = filter!(f_pres("class"));
