@@ -53,7 +53,7 @@ sketching = { path = "../sketching" }
 toml = "^0.5.9"
 rpassword = "^7.0.0"
 tokio = { version = "^1.21.0", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
-tokio-util = { version = "^0.7.3", features = ["codec"] }
+tokio-util = { version = "^0.7.4", features = ["codec"] }
 
 futures = "^0.3.21"
 bytes = "^1.1.0"
