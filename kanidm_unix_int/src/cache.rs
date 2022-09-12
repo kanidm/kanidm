@@ -7,6 +7,7 @@ use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use lru::LruCache;
 use reqwest::StatusCode;
 use std::collections::BTreeSet;
+use std::num::NonZeroUsize;
 use std::ops::{Add, Sub};
 use std::path::Path;
 use std::string::ToString;
@@ -98,7 +99,7 @@ impl CacheLayer {
             home_alias,
             uid_attr_map,
             gid_attr_map,
-            nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
+            nxcache: Mutex::new(LruCache::new(NonZeroUsize::new(NXCACHE_SIZE).unwrap())),
         })
     }
 
