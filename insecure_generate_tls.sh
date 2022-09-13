@@ -148,29 +148,31 @@ DEVEOF
 touch ${CADB}
 echo 1000 > ${CASRL}
 
-# Make the ca key
+echo "Make the ca key..."
 openssl ecparam -genkey -name prime256v1 -noout -out "${CAKEY}"
 
-# Self sign the CA.
-openssl req -config "${CANAME_FILE}" \
+echo "Self sign the CA..."
+openssl req -batch -config "${CANAME_FILE}" \
     -key "${CAKEY}" \
     -new -x509 -days +31 \
     -sha256 -extensions v3_ca \
     -out "${CACERT}" \
     -nodes
 
-# generate the server private key
+echo "Generate the server private key..."
 openssl ecparam -genkey -name prime256v1 -noout -out "${KEYFILE}"
 
-# generate the certficate signing request
+echo "Generate the certficate signing request..."
 openssl req -sha256 -new \
+    -batch \
     -config "${ALTNAME_FILE}" -extensions v3_req \
     -key "${KEYFILE}"\
     -nodes \
     -out "${CSRFILE}"
 
-# sign the cert
+echo "Sign the cert..."
 openssl ca -config "${ALTNAME_FILE}" \
+    -batch \
     -extensions v3_req \
     -days 31 -notext -md sha256 \
     -in "${CSRFILE}" \

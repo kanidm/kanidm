@@ -1,7 +1,9 @@
+use crate::components::adminmenu;
 use crate::error::*;
 use crate::models;
 use crate::utils;
 use gloo::console;
+// use uuid::Uuid;
 use yew::prelude::*;
 
 use crate::manager::Route;
@@ -26,17 +28,38 @@ use security::SecurityApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
-    #[at("/ui/view/apps")]
-    Apps,
+  #[at("/ui/view/admin/*")]
+  Admin,
 
-    #[at("/ui/view/profile")]
-    Profile,
+  #[at("/ui/view/apps")]
+  Apps,
 
-    #[at("/ui/view/security")]
-    Security,
+  #[at("/ui/view/profile")]
+  Profile,
+
+  #[at("/ui/view/security")]
+  Security,
+
+  #[not_found]
+  #[at("/ui/view/404")]
+  NotFound,
+}
+
+
+#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+pub enum AdminRoute {
+    #[at("/ui/view/admin/menu")]
+    AdminMenu,
+
+    #[at("/ui/view/admin/butts")]
+    AdminListGroups,
+    #[at("/ui/view/admin/accounts")]
+    AdminListAccounts,
+    #[at("/ui/view/admin/oauth")]
+    AdminListOAuth,
 
     #[not_found]
-    #[at("/ui/view/404")]
+    #[at("/ui/view/admin/404")]
     NotFound,
 }
 
@@ -243,6 +266,13 @@ impl ViewsApp {
                     { "Security" }
                   </Link<ViewRoute>>
                 </li>
+                // TODO: the admin link should only show up if you're an admin
+                <li class="mb-1">
+                  <Link<AdminRoute> classes="nav-link" to={AdminRoute::AdminMenu}>
+                    <span data-feather="file"></span>
+                    { "Admin" }
+                  </Link<AdminRoute>>
+                </li>
                 <li class="mb-1">
                   <a class="nav-link" href="#"
                     data-bs-toggle="modal"
@@ -287,6 +317,10 @@ impl ViewsApp {
                         models::get_bearer_token().expect_throw("Invalid state, bearer token must be present!");
 
                     match route {
+
+                        ViewRoute::Admin => html!{
+                            <Switch<AdminRoute> render={ Switch::render(admin_routes) } />
+                        },
                         ViewRoute::Apps => html! { <AppsApp /> },
                         ViewRoute::Profile => html! { <ProfileApp token={ token } current_user={ current_user.clone() } /> },
                         ViewRoute::Security => html! { <SecurityApp token={ token } current_user={ current_user.clone() } /> },
@@ -371,4 +405,25 @@ impl ViewsApp {
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
+}
+
+fn admin_routes(route: &AdminRoute) -> Html {
+  match route {
+    AdminRoute::AdminMenu => html!{
+      <adminmenu::AdminMenu />
+    },
+    AdminRoute::AdminListAccounts => html!(
+      <adminmenu::AdminListAccounts />
+    ),
+    AdminRoute::AdminListGroups => html!(
+      <adminmenu::AdminListGroups />
+    ),
+    AdminRoute::AdminListOAuth => html!(
+      <adminmenu::AdminListOAuth />
+    ),
+    AdminRoute::NotFound => html! {
+      <Redirect<Route> to={Route::NotFound}/>
+    },
+  }
+
 }
