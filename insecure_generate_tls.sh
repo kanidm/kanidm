@@ -159,10 +159,10 @@ openssl req -batch -config "${CANAME_FILE}" \
     -out "${CACERT}" \
     -nodes
 
-echo "Generate the server private key..."
+echo "Generating the server private key..."
 openssl ecparam -genkey -name prime256v1 -noout -out "${KEYFILE}"
 
-echo "Generate the certficate signing request..."
+echo "Generating the certficate signing request..."
 openssl req -sha256 -new \
     -batch \
     -config "${ALTNAME_FILE}" -extensions v3_req \
@@ -170,7 +170,7 @@ openssl req -sha256 -new \
     -nodes \
     -out "${CSRFILE}"
 
-echo "Sign the cert..."
+echo "Signing the certificate..."
 openssl ca -config "${ALTNAME_FILE}" \
     -batch \
     -extensions v3_req \
