@@ -1,5 +1,6 @@
+use crate::components::alpha_warning_banner;
 use crate::views::AdminRoute;
-
+// use gloo::console;
 use yew::{Component, Context, html, Html, Properties};
 use yew_router::prelude::Link;
 
@@ -31,9 +32,7 @@ impl Component for AdminMenu {
               <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>{ "System Administration" }</h2>
               </div>
-              <div class="alert alert-warning" role="alert">
-                { "🦀 Kanidm is still in early Alpha, this interface is a placeholder! " }
-                </div>
+              { alpha_warning_banner() }
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
           <div class="col">
             <div class="card text-center">
@@ -98,7 +97,10 @@ impl Component for AdminListAccounts {
     type Properties = ListProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        AdminListAccounts
+      // TODO: work out the querystring thing
+      // console::log!("query: {:?}", location().query);
+
+      AdminListAccounts
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
@@ -108,9 +110,8 @@ impl Component for AdminListAccounts {
               <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>{ "System Administration" }</h2>
               </div>
-              <div class="alert alert-warning" role="alert">
-                { "🦀 Kanidm is still in early Alpha, this interface is a placeholder! " }
-                </div>
+
+              { alpha_warning_banner() }
         <div>
             {"Accounts list goes here!!"}
         </div>
@@ -137,9 +138,8 @@ impl Component for AdminListGroups {
               <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>{ "System Administration" }</h2>
               </div>
-              <div class="alert alert-warning" role="alert">
-                { "🦀 Kanidm is still in early Alpha, this interface is a placeholder! " }
-                </div>
+
+              { alpha_warning_banner() }
         <div>
             {"Groups!"}
         </div>
@@ -166,9 +166,8 @@ impl Component for AdminListOAuth {
               <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>{ "System Administration" }</h2>
               </div>
-              <div class="alert alert-warning" role="alert">
-                { "🦀 Kanidm is still in early Alpha, this interface is a placeholder! " }
-                </div>
+
+              { alpha_warning_banner() }
         <div>
             {"OAuth Configs go here!"}
         </div>

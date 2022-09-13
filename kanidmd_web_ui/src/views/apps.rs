@@ -1,3 +1,4 @@
+use crate::components::alpha_warning_banner;
 #[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
@@ -47,9 +48,8 @@ impl Component for AppsApp {
               <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <h2>{ "Apps" }</h2>
               </div>
-              <div class="alert alert-warning" role="alert">
-                { "🦀 Kanidm is still in early Alpha, this interface is a placeholder! " }
-              </div>
+
+              { alpha_warning_banner() }
               <div class="table-responsive">
                 <table class="table table-striped table-sm">
                   <thead>
