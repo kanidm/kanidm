@@ -205,6 +205,7 @@ pub struct Oauth2RS {
     userinfo_endpoint: Url,
     jwks_uri: Url,
     scopes_supported: Vec<String>,
+    prefer_short_username: bool,
 }
 
 impl std::fmt::Debug for Oauth2RS {
@@ -367,6 +368,10 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .map(|e| !e)
                         .unwrap_or(true);
 
+                    let prefer_short_username = ent
+                        .get_ava_single_bool("oauth2_prefer_short_username")
+                        .unwrap_or(false);
+
                     let mut authorization_endpoint = self.inner.origin.clone();
                     authorization_endpoint.set_path("/ui/oauth2");
 
@@ -408,6 +413,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         userinfo_endpoint,
                         jwks_uri,
                         scopes_supported,
+                        prefer_short_username,
                     };
 
                     Ok((client_id, rscfg))
@@ -935,6 +941,13 @@ impl Oauth2ResourceServersReadTransaction {
                 (None, None)
             };
 
+            admin_warn!("prefer_short_username: {:?}", o2rs.prefer_short_username);
+            let preferred_username = if o2rs.prefer_short_username {
+                Some(code_xchg.uat.name.clone())
+            } else {
+                Some(code_xchg.uat.spn.clone())
+            };
+
             // TODO: If max_age was requested in the request, we MUST provide auth_time.
 
             // amr == auth method
@@ -963,10 +976,10 @@ impl Oauth2ResourceServersReadTransaction {
                     // Map from displayname
                     name: Some(code_xchg.uat.displayname.clone()),
                     // Map from spn
-                    preferred_username: Some(code_xchg.uat.spn.clone()),
                     scopes: code_xchg.scopes.clone(),
                     email,
                     email_verified,
+                    preferred_username,
                     ..Default::default()
                 },
                 claims: Default::default(),

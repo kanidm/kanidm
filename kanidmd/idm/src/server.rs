@@ -2646,6 +2646,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_OAUTH2_RS,
             JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC,
             JSON_SCHEMA_ATTR_NSUNIQUEID,
+            JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
         ];
 
         let r = idm_schema

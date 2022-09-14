@@ -16,6 +16,8 @@ impl Oauth2Opt {
             Oauth2Opt::DisablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::EnableLegacyCrypto(nopt) => nopt.copt.debug,
             Oauth2Opt::DisableLegacyCrypto(nopt) => nopt.copt.debug,
+            Oauth2Opt::PreferShortUsername(nopt) => nopt.copt.debug,
+            Oauth2Opt::PreferSPNUsername(nopt) => nopt.copt.debug,
         }
     }
 
@@ -166,6 +168,26 @@ impl Oauth2Opt {
                 let client = nopt.copt.to_client().await;
                 match client
                     .idm_oauth2_rs_disable_legacy_crypto(nopt.name.as_str())
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::PreferShortUsername(nopt) => {
+                let client = nopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_prefer_short_username(nopt.name.as_str())
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::PreferSPNUsername(nopt) => {
+                let client = nopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_prefer_spn_username(nopt.name.as_str())
                     .await
                 {
                     Ok(_) => println!("Success"),

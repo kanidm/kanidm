@@ -1018,6 +1018,35 @@ pub const JSON_SCHEMA_ATTR_DYNGROUP_FILTER: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "Use 'name' instead of 'spn' in the preferred_username claim"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_prefer_short_username"
+      ],
+      "syntax": [
+        "BOOLEAN"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000109"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1344,7 +1373,8 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
         "oauth2_rs_implicit_scopes",
         "oauth2_allow_insecure_client_disable_pkce",
         "rs256_private_key_der",
-        "oauth2_jwt_legacy_crypto_enable"
+        "oauth2_jwt_legacy_crypto_enable",
+        "oauth2_prefer_short_username"
       ],
       "systemmust": [
         "oauth2_rs_name",

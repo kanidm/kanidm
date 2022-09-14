@@ -184,6 +184,8 @@ pub const UUID_SCHEMA_ATTR_SCOPE: Uuid = uuid!("00000000-0000-0000-0000-ffff0000
 pub const UUID_SCHEMA_CLASS_SERVICE_ACCOUNT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000106");
 pub const _UUID_SCHEMA_CLASS_DYNGROUP: Uuid = uuid!("00000000-0000-0000-0000-ffff00000107");
 pub const _UUID_SCHEMA_ATTR_DYNGROUP_FILTER: Uuid = uuid!("00000000-0000-0000-0000-ffff00000108");
+pub const _UUID_SCHEMA_ATTR_OAUTH2_PREFERR_SHORT_USERNAME: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000109");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
