@@ -1,3 +1,4 @@
+use crate::constants::CSS_PAGE_HEADER;
 use crate::error::*;
 use crate::models;
 use crate::utils;
@@ -148,7 +149,7 @@ impl Component for SecurityApp {
 
         html! {
             <>
-              <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              <div class={CSS_PAGE_HEADER}>
                 <h2>{ "Security" }</h2>
               </div>
               { flash }

@@ -1,4 +1,5 @@
 use crate::components::alpha_warning_banner;
+use crate::constants::CSS_PAGE_HEADER;
 #[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
@@ -45,7 +46,7 @@ impl Component for AppsApp {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <>
-              <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              <div class={CSS_PAGE_HEADER}>
                 <h2>{ "Apps" }</h2>
               </div>
 

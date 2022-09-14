@@ -2286,6 +2286,7 @@ version = "1.1.0-alpha.9"
 dependencies = [
  "compact_jwt",
  "gloo 0.8.0",
+ "gloo-net",
  "js-sys",
  "kanidm_proto",
  "qrcode",
