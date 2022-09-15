@@ -60,17 +60,17 @@ pub struct IdlArcSqlite {
 
 pub struct IdlArcSqliteReadTransaction<'a> {
     db: IdlSqliteReadTransaction,
-    entry_cache: ARCacheReadTxn<'a, u64, Arc<EntrySealedCommitted>>,
-    idl_cache: ARCacheReadTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
-    name_cache: ARCacheReadTxn<'a, NameCacheKey, NameCacheValue>,
+    entry_cache: ARCacheReadTxn<'a, u64, Arc<EntrySealedCommitted>, ()>,
+    idl_cache: ARCacheReadTxn<'a, IdlCacheKey, Box<IDLBitRange>, ()>,
+    name_cache: ARCacheReadTxn<'a, NameCacheKey, NameCacheValue, ()>,
     allids: CowCellReadTxn<IDLBitRange>,
 }
 
 pub struct IdlArcSqliteWriteTransaction<'a> {
     db: IdlSqliteWriteTransaction,
-    entry_cache: ARCacheWriteTxn<'a, u64, Arc<EntrySealedCommitted>>,
-    idl_cache: ARCacheWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
-    name_cache: ARCacheWriteTxn<'a, NameCacheKey, NameCacheValue>,
+    entry_cache: ARCacheWriteTxn<'a, u64, Arc<EntrySealedCommitted>, ()>,
+    idl_cache: ARCacheWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>, ()>,
+    name_cache: ARCacheWriteTxn<'a, NameCacheKey, NameCacheValue, ()>,
     op_ts_max: CowCellWriteTxn<'a, Option<Duration>>,
     allids: CowCellWriteTxn<'a, IDLBitRange>,
     maxid: CowCellWriteTxn<'a, u64>,

@@ -172,31 +172,36 @@ impl SchemaAttribute {
     // on that may only use a single tagged attribute for example.
     pub fn validate_partialvalue(&self, a: &str, v: &PartialValue) -> Result<(), SchemaError> {
         let r = match self.syntax {
-            SyntaxType::Boolean => v.is_bool(),
-            SyntaxType::SYNTAX_ID => v.is_syntax(),
-            SyntaxType::INDEX_ID => v.is_index(),
-            SyntaxType::Uuid => v.is_uuid(),
-            SyntaxType::REFERENCE_UUID => v.is_refer(),
-            SyntaxType::Utf8StringInsensitive => v.is_iutf8(),
-            SyntaxType::Utf8StringIname => v.is_iname(),
-            SyntaxType::UTF8STRING => v.is_utf8(),
-            SyntaxType::JSON_FILTER => v.is_json_filter(),
-            SyntaxType::Credential => v.is_credential(),
-            SyntaxType::SecretUtf8String => v.is_secret_string(),
-            SyntaxType::SshKey => v.is_sshkey(),
-            SyntaxType::SecurityPrincipalName => v.is_spn(),
-            SyntaxType::UINT32 => v.is_uint32(),
-            SyntaxType::Cid => v.is_cid(),
-            SyntaxType::NsUniqueId => v.is_nsuniqueid(),
-            SyntaxType::DateTime => v.is_datetime(),
-            SyntaxType::EmailAddress => v.is_email_address(),
-            SyntaxType::Url => v.is_url(),
-            SyntaxType::OauthScope => v.is_oauthscope(),
-            SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
-            SyntaxType::PrivateBinary => v.is_privatebinary(),
+            SyntaxType::Boolean => matches!(v, PartialValue::Bool(_)),
+            SyntaxType::SyntaxId => matches!(v, PartialValue::Syntax(_)),
+            SyntaxType::IndexId => matches!(v, PartialValue::Index(_)),
+            SyntaxType::Uuid => matches!(v, PartialValue::Uuid(_)),
+            SyntaxType::ReferenceUuid => matches!(v, PartialValue::Refer(_)),
+            SyntaxType::Utf8StringInsensitive => matches!(v, PartialValue::Iutf8(_)),
+            SyntaxType::Utf8StringIname => matches!(v, PartialValue::Iname(_)),
+            SyntaxType::Utf8String => matches!(v, PartialValue::Utf8(_)),
+            SyntaxType::JsonFilter => matches!(v, PartialValue::JsonFilt(_)),
+            SyntaxType::Credential => matches!(v, PartialValue::Cred(_)),
+            SyntaxType::SecretUtf8String => matches!(v, PartialValue::SecretValue),
+            SyntaxType::SshKey => matches!(v, PartialValue::SshKey(_)),
+            SyntaxType::SecurityPrincipalName => matches!(v, PartialValue::Spn(_, _)),
+            SyntaxType::Uint32 => matches!(v, PartialValue::Uint32(_)),
+            SyntaxType::Cid => matches!(v, PartialValue::Cid(_)),
+            SyntaxType::NsUniqueId => matches!(v, PartialValue::Nsuniqueid(_)),
+            SyntaxType::DateTime => matches!(v, PartialValue::DateTime(_)),
+            SyntaxType::EmailAddress => matches!(v, PartialValue::EmailAddress(_)),
+            SyntaxType::Url => matches!(v, PartialValue::Url(_)),
+            SyntaxType::OauthScope => matches!(v, PartialValue::OauthScope(_)),
+            SyntaxType::OauthScopeMap => matches!(v, PartialValue::Refer(_)),
+            SyntaxType::PrivateBinary => matches!(v, PartialValue::PrivateBinary),
             SyntaxType::IntentToken => matches!(v, PartialValue::IntentToken(_)),
             SyntaxType::Passkey => matches!(v, PartialValue::Passkey(_)),
             SyntaxType::DeviceKey => matches!(v, PartialValue::DeviceKey(_)),
+            // Allow refer types.
+            SyntaxType::Session => matches!(v, PartialValue::Refer(_)),
+            // These are just insensitive string lookups on the hex-ified kid.
+            SyntaxType::JwsKeyEs256 => matches!(v, PartialValue::Iutf8(_)),
+            SyntaxType::JwsKeyRs256 => matches!(v, PartialValue::Iutf8(_)),
         };
         if r {
             Ok(())
@@ -214,31 +219,34 @@ impl SchemaAttribute {
     pub fn validate_value(&self, a: &str, v: &Value) -> Result<(), SchemaError> {
         let r = v.validate()
             && match self.syntax {
-                SyntaxType::Boolean => v.is_bool(),
-                SyntaxType::SYNTAX_ID => v.is_syntax(),
-                SyntaxType::INDEX_ID => v.is_index(),
-                SyntaxType::Uuid => v.is_uuid(),
-                SyntaxType::REFERENCE_UUID => v.is_refer(),
-                SyntaxType::Utf8StringInsensitive => v.is_iutf8(),
-                SyntaxType::Utf8StringIname => v.is_iname(),
-                SyntaxType::UTF8STRING => v.is_utf8(),
-                SyntaxType::JSON_FILTER => v.is_json_filter(),
-                SyntaxType::Credential => v.is_credential(),
-                SyntaxType::SecretUtf8String => v.is_secret_string(),
-                SyntaxType::SshKey => v.is_sshkey(),
-                SyntaxType::SecurityPrincipalName => v.is_spn(),
-                SyntaxType::UINT32 => v.is_uint32(),
-                SyntaxType::Cid => v.is_cid(),
-                SyntaxType::NsUniqueId => v.is_nsuniqueid(),
-                SyntaxType::DateTime => v.is_datetime(),
-                SyntaxType::EmailAddress => v.is_email_address(),
-                SyntaxType::Url => v.is_url(),
-                SyntaxType::OauthScope => v.is_oauthscope(),
-                SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
-                SyntaxType::PrivateBinary => v.is_privatebinary(),
+                SyntaxType::Boolean => matches!(v, Value::Bool(_)),
+                SyntaxType::SyntaxId => matches!(v, Value::Syntax(_)),
+                SyntaxType::IndexId => matches!(v, Value::Index(_)),
+                SyntaxType::Uuid => matches!(v, Value::Uuid(_)),
+                SyntaxType::ReferenceUuid => matches!(v, Value::Refer(_)),
+                SyntaxType::Utf8StringInsensitive => matches!(v, Value::Iutf8(_)),
+                SyntaxType::Utf8StringIname => matches!(v, Value::Iname(_)),
+                SyntaxType::Utf8String => matches!(v, Value::Utf8(_)),
+                SyntaxType::JsonFilter => matches!(v, Value::JsonFilt(_)),
+                SyntaxType::Credential => matches!(v, Value::Cred(_, _)),
+                SyntaxType::SecretUtf8String => matches!(v, Value::SecretValue(_)),
+                SyntaxType::SshKey => matches!(v, Value::SshKey(_, _)),
+                SyntaxType::SecurityPrincipalName => matches!(v, Value::Spn(_, _)),
+                SyntaxType::Uint32 => matches!(v, Value::Uint32(_)),
+                SyntaxType::Cid => matches!(v, Value::Cid(_)),
+                SyntaxType::NsUniqueId => matches!(v, Value::Nsuniqueid(_)),
+                SyntaxType::DateTime => matches!(v, Value::DateTime(_)),
+                SyntaxType::EmailAddress => matches!(v, Value::EmailAddress(_, _)),
+                SyntaxType::Url => matches!(v, Value::Url(_)),
+                SyntaxType::OauthScope => matches!(v, Value::OauthScope(_)),
+                SyntaxType::OauthScopeMap => matches!(v, Value::OauthScopeMap(_, _)),
+                SyntaxType::PrivateBinary => matches!(v, Value::PrivateBinary(_)),
                 SyntaxType::IntentToken => matches!(v, Value::IntentToken(_, _)),
                 SyntaxType::Passkey => matches!(v, Value::Passkey(_, _, _)),
                 SyntaxType::DeviceKey => matches!(v, Value::DeviceKey(_, _, _)),
+                SyntaxType::Session => matches!(v, Value::Session(_, _)),
+                SyntaxType::JwsKeyEs256 => matches!(v, Value::JwsKeyEs256(_)),
+                SyntaxType::JwsKeyRs256 => matches!(v, Value::JwsKeyRs256(_)),
             };
         if r {
             Ok(())
@@ -580,7 +588,10 @@ impl<'a> SchemaWriteTransaction<'a> {
         // No, they'll over-write each other ... but we do need name uniqueness.
         attributetypes.into_iter().for_each(|a| {
             // Update the unique and ref caches.
-            if a.syntax == SyntaxType::REFERENCE_UUID || a.syntax == SyntaxType::OauthScopeMap {
+            if a.syntax == SyntaxType::ReferenceUuid || a.syntax == SyntaxType::OauthScopeMap
+            // May not need to be a ref type since it doesn't have external links/impact?
+            // || a.syntax == SyntaxType::Session
+            {
                 self.ref_cache.insert(a.name.clone(), a.clone());
             }
             if a.unique {
@@ -745,7 +756,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING,
+                    syntax: SyntaxType::Utf8String,
                 },
             );
             self.attributes.insert(AttrString::from("multivalue"), SchemaAttribute {
@@ -790,7 +801,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::INDEX_ID,
+                    syntax: SyntaxType::IndexId,
                 },
             );
             self.attributes.insert(
@@ -805,7 +816,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![IndexType::Equality],
-                    syntax: SyntaxType::SYNTAX_ID,
+                    syntax: SyntaxType::SyntaxId,
                 },
             );
             self.attributes.insert(
@@ -957,7 +968,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![IndexType::Equality, IndexType::SubString],
-                    syntax: SyntaxType::JSON_FILTER,
+                    syntax: SyntaxType::JsonFilter,
                 },
             );
             self.attributes.insert(
@@ -972,7 +983,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![IndexType::Equality, IndexType::SubString],
-                    syntax: SyntaxType::JSON_FILTER,
+                    syntax: SyntaxType::JsonFilter,
                 },
             );
             self.attributes.insert(
@@ -1069,7 +1080,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![IndexType::Equality],
-                    syntax: SyntaxType::REFERENCE_UUID,
+                    syntax: SyntaxType::ReferenceUuid,
                 },
             );
             self.attributes.insert(
@@ -1082,7 +1093,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![IndexType::Equality],
-                    syntax: SyntaxType::REFERENCE_UUID,
+                    syntax: SyntaxType::ReferenceUuid,
                 },
             );
             self.attributes.insert(
@@ -1095,7 +1106,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![IndexType::Equality],
-                    syntax: SyntaxType::REFERENCE_UUID,
+                    syntax: SyntaxType::ReferenceUuid,
                 },
             );
             // Migration related
@@ -1111,7 +1122,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::UINT32,
+                    syntax: SyntaxType::Uint32,
                 },
             );
             // Domain for sysinfo
@@ -1169,7 +1180,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING,
+                    syntax: SyntaxType::Utf8String,
                 },
             );
 
@@ -1301,7 +1312,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::UINT32,
+                    syntax: SyntaxType::Uint32,
                 },
             );
             // end LDAP masking phantoms
@@ -1906,7 +1917,7 @@ mod tests {
             unique: false,
             phantom: false,
             index: vec![IndexType::Equality],
-            syntax: SyntaxType::UTF8STRING,
+            syntax: SyntaxType::Utf8String,
         };
 
         let rvs = vs_utf8!["test1".to_string(), "test2".to_string()] as _;
@@ -1955,7 +1966,7 @@ mod tests {
             unique: false,
             phantom: false,
             index: vec![IndexType::Equality],
-            syntax: SyntaxType::SYNTAX_ID,
+            syntax: SyntaxType::SyntaxId,
         };
 
         let rvs = vs_syntax![SyntaxType::try_from("UTF8STRING").unwrap()] as _;
@@ -1978,7 +1989,7 @@ mod tests {
             unique: false,
             phantom: false,
             index: vec![IndexType::Equality],
-            syntax: SyntaxType::INDEX_ID,
+            syntax: SyntaxType::IndexId,
         };
         //
         let rvs = vs_index![IndexType::try_from("EQUALITY").unwrap()] as _;

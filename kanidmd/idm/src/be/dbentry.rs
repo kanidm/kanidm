@@ -397,7 +397,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
         }
         // Neither of these should exist yet.
         Some(DbValueV1::TrustedDeviceEnrollment { u: _ })
-        | Some(DbValueV1::AuthSession { u: _ })
+        | Some(DbValueV1::Session { u: _ })
         | None => {
             // Shiiiiii
             debug_assert!(false);

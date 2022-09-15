@@ -7,11 +7,12 @@ use compact_jwt::JwsSigner;
 lazy_static! {
     static ref CLASS_OAUTH2_BASIC: PartialValue =
         PartialValue::new_class("oauth2_resource_server_basic");
+    static ref CLASS_SERVICE_ACCOUNT: PartialValue = PartialValue::new_class("service_account");
 }
 
-pub struct Oauth2Secrets {}
+pub struct JwsKeygen {}
 
-macro_rules! oauth2_transform {
+macro_rules! keygen_transform {
     (
         $e:expr
     ) => {{
@@ -52,18 +53,32 @@ macro_rules! oauth2_transform {
                 }
             }
         }
+
+        if $e.attribute_equality("class", &CLASS_SERVICE_ACCOUNT) {
+            if !$e.attribute_pres("jws_es256_private_key") {
+                security_info!("regenerating jws es256 private key");
+                let jwssigner = JwsSigner::generate_es256()
+                    .map_err(|e| {
+                        admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");
+                        OperationError::CryptographyError
+                    })?;
+                let v = Value::JwsKeyEs256(jwssigner);
+                $e.add_ava("jws_es256_private_key", v);
+            }
+        }
+
         Ok(())
     }};
 }
 
-impl Plugin for Oauth2Secrets {
+impl Plugin for JwsKeygen {
     fn id() -> &'static str {
-        "plugin_oauth2_secrets"
+        "plugin_jws_keygen"
     }
 
     #[instrument(
         level = "debug",
-        name = "oauth2_pre_create_transform",
+        name = "jwskeygen_pre_create_transform",
         skip(_qs, cand, _ce)
     )]
     fn pre_create_transform(
@@ -71,16 +86,16 @@ impl Plugin for Oauth2Secrets {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| oauth2_transform!(e))
+        cand.iter_mut().try_for_each(|e| keygen_transform!(e))
     }
 
-    #[instrument(level = "debug", name = "oauth2_pre_modify", skip(_qs, cand, _me))]
+    #[instrument(level = "debug", name = "jwskeygen_pre_modify", skip(_qs, cand, _me))]
     fn pre_modify(
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| oauth2_transform!(e))
+        cand.iter_mut().try_for_each(|e| keygen_transform!(e))
     }
 }
 

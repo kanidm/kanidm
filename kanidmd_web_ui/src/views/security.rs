@@ -86,7 +86,7 @@ impl Component for SecurityApp {
                     .unsafe_release_without_verification()
                     .expect_throw("Unvalid UAT, unable to release ");
 
-                let id = uat.inner.uuid.to_string();
+                let id = uat.into_inner().uuid.to_string();
 
                 ctx.link().send_future(async {
                     match Self::fetch_token_valid(id, token).await {

@@ -43,9 +43,8 @@ impl SelfOpt {
                 match client.whoami().await {
                     Ok(o_ent) => {
                         match o_ent {
-                            Some((ent, uat)) => {
-                                debug!("{:?}", ent);
-                                println!("{}", uat);
+                            Some(ent) => {
+                                println!("{}", ent);
                             }
                             None => {
                                 error!("Authentication with cached token failed, can't query information.");

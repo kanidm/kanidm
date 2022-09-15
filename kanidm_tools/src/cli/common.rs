@@ -115,7 +115,7 @@ impl CommonOpt {
         // Is the token (probably) valid?
         match jwtu
             .validate_embeded()
-            .map(|jws: Jws<UserAuthToken>| jws.inner)
+            .map(|jws: Jws<UserAuthToken>| jws.into_inner())
         {
             Ok(uat) => {
                 if time::OffsetDateTime::now_utc() >= uat.expiry {
@@ -126,8 +126,9 @@ impl CommonOpt {
                     std::process::exit(1);
                 }
             }
-            Err(_e) => {
+            Err(e) => {
                 error!("Unable to read token for requested user - you may need to login again.");
+                debug!(?e, "JWT Error");
                 std::process::exit(1);
             }
         };

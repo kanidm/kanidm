@@ -12,6 +12,7 @@ pub(crate) mod group;
 pub mod oauth2;
 pub(crate) mod radius;
 pub mod server;
+pub(crate) mod serviceaccount;
 pub(crate) mod unix;
 
 use kanidm_proto::v1::{AuthAllowed, AuthMech};

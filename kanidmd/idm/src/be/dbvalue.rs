@@ -286,6 +286,16 @@ pub struct DbValueCredV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum DbApiToken {
+    V1 {
+        #[serde(rename = "u")]
+        uuid: Uuid,
+        #[serde(rename = "s")]
+        secret: DbPasswordV1,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValuePasskeyV1 {
     V4 { u: Uuid, t: String, k: PasskeyV4 },
 }
@@ -342,6 +352,30 @@ pub struct DbValueOauthScopeMapV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueIdentityId {
+    #[serde(rename = "v1i")]
+    V1Internal,
+    #[serde(rename = "v1u")]
+    V1Uuid(Uuid),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueSession {
+    V1 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "l")]
+        label: String,
+        #[serde(rename = "e")]
+        expiry: Option<String>,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "b")]
+        issued_by: DbValueIdentityId,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
     Utf8(String),
@@ -354,7 +388,7 @@ pub enum DbValueV1 {
     #[serde(rename = "BO")]
     Bool(bool),
     #[serde(rename = "SY")]
-    SyntaxType(usize),
+    SyntaxType(u16),
     #[serde(rename = "IN")]
     IndexType(usize),
     #[serde(rename = "RF")]
@@ -403,7 +437,7 @@ pub enum DbValueV1 {
     #[serde(rename = "TE")]
     TrustedDeviceEnrollment { u: Uuid },
     #[serde(rename = "AS")]
-    AuthSession { u: Uuid },
+    Session { u: Uuid },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -419,7 +453,7 @@ pub enum DbValueSetV2 {
     #[serde(rename = "BO")]
     Bool(Vec<bool>),
     #[serde(rename = "SY")]
-    SyntaxType(Vec<usize>),
+    SyntaxType(Vec<u16>),
     #[serde(rename = "IN")]
     IndexType(Vec<usize>),
     #[serde(rename = "RF")]
@@ -469,7 +503,11 @@ pub enum DbValueSetV2 {
     #[serde(rename = "TE")]
     TrustedDeviceEnrollment(Vec<Uuid>),
     #[serde(rename = "AS")]
-    AuthSession(Vec<Uuid>),
+    Session(Vec<DbValueSession>),
+    #[serde(rename = "JE")]
+    JwsKeyEs256(Vec<Vec<u8>>),
+    #[serde(rename = "JR")]
+    JwsKeyRs256(Vec<Vec<u8>>),
 }
 
 impl DbValueSetV2 {
@@ -505,7 +543,9 @@ impl DbValueSetV2 {
             DbValueSetV2::Passkey(set) => set.len(),
             DbValueSetV2::DeviceKey(set) => set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
-            DbValueSetV2::AuthSession(set) => set.len(),
+            DbValueSetV2::Session(set) => set.len(),
+            DbValueSetV2::JwsKeyEs256(set) => set.len(),
+            DbValueSetV2::JwsKeyRs256(set) => set.len(),
         }
     }
 

@@ -407,6 +407,16 @@ pub(crate) trait IdmServerTransaction<'a> {
 
     fn get_uat_validator_txn(&self) -> &JwsValidator;
 
+    fn validate_and_parse_token_to_ident(
+        &self,
+        token: Option<&str>,
+        ct: Duration,
+    ) -> Result<Identity, OperationError> {
+        self
+            .validate_and_parse_uat(token, ct)
+            .and_then(|uat| self.process_uat_to_identity(&uat, ct))
+    }
+
     fn validate_and_parse_uat(
         &self,
         token: Option<&str>,
@@ -429,7 +439,7 @@ pub(crate) trait IdmServerTransaction<'a> {
                         security_info!(?e, "Unable to verify token");
                         OperationError::NotAuthenticated
                     })
-                    .map(|t: Jws<UserAuthToken>| t.inner)
+                    .map(|t: Jws<UserAuthToken>| t.into_inner())
             })?;
 
         if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
@@ -461,6 +471,18 @@ pub(crate) trait IdmServerTransaction<'a> {
         }
     }
 
+    /// For any event/operation to proceed, we need to attach an identity to the
+    /// event for security and access processing. When that event is externally
+    /// triggered via one of our various api layers, we process some type of
+    /// account token into this identity. In the current server this is the
+    /// UserAuthToken. For a UserAuthToken to be provided it MUST have been
+    /// cryptographically verified meaning it is now a *trusted* source of
+    /// data that we previously issued.
+    ///
+    /// This is the function that is responsible for converting that UAT into
+    /// something we can pin access controls and other limits and references to.
+    /// This is why it is the location where validity windows are checked and other
+    /// relevant session information is injected.
     fn process_uat_to_identity(
         &self,
         uat: &UserAuthToken,
@@ -1288,9 +1310,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(PW_MIN_LENGTH)])
         })?;
 
-        // check account pwpolicy (for 3 or 4)? Do we need pw strength beyond this
-        // or should we be enforcing mfa instead
-        if entropy.score() < 3 {
+        // Unix PW's are a single factor, so we enforce good pws
+        if entropy.score() < 4 {
             // The password is too week as per:
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
             let feedback: zxcvbn::feedback::Feedback = entropy
@@ -1784,7 +1805,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = ModifyList::new_list(vec![
             Modify::Removed(
                 AttrString::from("oauth2_consent_scope_map"),
-                PartialValue::OauthScopeMap(o2cg.oauth2_rs_uuid),
+                PartialValue::Refer(o2cg.oauth2_rs_uuid),
             ),
             Modify::Present(
                 AttrString::from("oauth2_consent_scope_map"),

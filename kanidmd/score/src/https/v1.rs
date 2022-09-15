@@ -960,9 +960,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .and_then(|_| {
                             let kref = &req.state().jws_signer;
 
-                            let jws = Jws {
-                                inner: SessionId { sessionid },
-                            };
+                            let jws = Jws::new(SessionId { sessionid });
                             // Get the header token ready.
                             jws.sign(&kref)
                                 .map(|jwss| {
@@ -989,9 +987,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .and_then(|_| {
                             let kref = &req.state().jws_signer;
                             // Get the header token ready.
-                            let jws = Jws {
-                                inner: SessionId { sessionid },
-                            };
+                            let jws = Jws::new(SessionId { sessionid });
                             jws.sign(&kref)
                                 .map(|jwss| {
                                     auth_session_id_tok = Some(jwss.to_string());

@@ -364,6 +364,15 @@ impl fmt::Display for UserAuthToken {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub struct ApiToken {
+    pub token_id: Uuid,
+    pub label: String,
+    pub expiry: Option<time::OffsetDateTime>,
+    pub issued_at: time::OffsetDateTime,
+}
+
 // UAT will need a downcast to Entry, which adds in the claims to the entry
 // for the purpose of filtering.
 
@@ -981,58 +990,15 @@ pub struct CUStatus {
     pub mfaregstate: CURegState,
 }
 
-/* Recycle Requests area */
-
-// Only two actions on recycled is possible. Search and Revive.
-
-/*
-pub struct SearchRecycledRequest {
-    pub filter: Filter,
-}
-
-impl SearchRecycledRequest {
-    pub fn new(filter: Filter) -> Self {
-        SearchRecycledRequest { filter }
-    }
-}
-*/
-
-// Need a search response here later.
-
-/*
-pub struct ReviveRecycledRequest {
-    pub filter: Filter,
-}
-
-impl ReviveRecycledRequest {
-    pub fn new(filter: Filter) -> Self {
-        ReviveRecycledRequest { filter }
-    }
-}
-*/
-
-// This doesn't need seralise because it's only accessed via a "get".
-/*
-#[derive(Debug, Default)]
-pub struct WhoamiRequest {}
-
-impl WhoamiRequest {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-*/
-
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?
     pub youare: Entry,
-    pub uat: UserAuthToken,
 }
 
 impl WhoamiResponse {
-    pub fn new(e: Entry, uat: UserAuthToken) -> Self {
-        WhoamiResponse { youare: e, uat }
+    pub fn new(youare: Entry) -> Self {
+        WhoamiResponse { youare }
     }
 }
 

@@ -528,11 +528,16 @@ mod tests {
     // use crate::prelude::*;
     use crate::event::{CreateEvent, ModifyEvent};
     use crate::idm::event::UnixPasswordChangeEvent;
+    use crate::idm::serviceaccount::GenerateApiTokenEvent;
     use crate::ldap::LdapServer;
     use async_std::task;
     use hashbrown::HashSet;
+    use kanidm_proto::v1::ApiToken;
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_proto::simple::*;
+    use std::str::FromStr;
+
+    use compact_jwt::{Jws, JwsUnverified};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 
@@ -853,28 +858,164 @@ mod tests {
     fn test_ldap_token_privilege_granting() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
+                // Setup the ldap server
+                let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+
+                // Prebuild the search req we'll be using this test.
+                let sr = SearchRequest {
+                    msgid: 1,
+                    base: "dc=example,dc=com".to_string(),
+                    scope: LdapSearchScope::Subtree,
+                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+                    attrs: vec!["name".to_string(), "mail".to_string()],
+                };
+
+                let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
                 // Configure the user account that will have the tokens issued.
                 // Should be a SERVICE account.
+                let apitoken = {
+                    // Create a service account,
 
-                // Should I finally do the class rules shit?
+                    let e1 = entry_init!(
+                        ("class", Value::new_class("object")),
+                        ("class", Value::new_class("service_account")),
+                        ("class", Value::new_class("account")),
+                        ("uuid", Value::new_uuid(sa_uuid)),
+                        ("name", Value::new_iname("service_permission_test")),
+                        ("displayname", Value::new_utf8s("service_permission_test"))
+                    );
 
-                // Issue a token, make it purpose = ldap.
+                    // Setup a person with an email
+                    let e2 = entry_init!(
+                        ("class", Value::new_class("object")),
+                        ("class", Value::new_class("person")),
+                        ("class", Value::new_class("account")),
+                        ("class", Value::new_class("posixaccount")),
+                        ("name", Value::new_iname("testperson1")),
+                        (
+                            "mail",
+                            Value::EmailAddress("testperson1@example.com".to_string(), true)
+                        ),
+                        ("description", Value::new_utf8s("testperson1")),
+                        ("displayname", Value::new_utf8s("testperson1")),
+                        ("gidnumber", Value::new_uint32(12345678)),
+                        ("loginshell", Value::new_iutf8("/bin/zsh"))
+                    );
 
-                // assert the uat fails on non-ldap events.
+                    // Setup an access control for the service account to view mail attrs.
 
-                // Setup a person with
-                // Setup an access control for the service account to view mail attrs.
+                    let ct = duration_from_epoch_now();
 
-                // Setup the ldap server
-                let _ldaps = LdapServer::new(idms).expect("failed to start ldap");
+                    let server_txn = idms.proxy_write(ct);
+                    let ce = CreateEvent::new_internal(vec![e1, e2]);
+                    assert!(server_txn.qs_write.create(&ce).is_ok());
 
-                // Bind with account pw, search and show attr isn't accessible.
+                    // idm_people_read_priv
+                    let me = unsafe {
+                        ModifyEvent::new_internal_invalid(
+                            filter!(f_eq(
+                                "name",
+                                PartialValue::new_iname("idm_people_read_priv")
+                            )),
+                            ModifyList::new_list(vec![Modify::Present(
+                                AttrString::from("member"),
+                                Value::new_refer(sa_uuid),
+                            )]),
+                        )
+                    };
+                    assert!(server_txn.qs_write.modify(&me).is_ok());
 
-                // Bind using the token instead of the PW.
+                    // Issue a token
+                    // make it purpose = ldap <- currently purpose isn't supported,
+                    // it's an idea for future.
+                    let gte = GenerateApiTokenEvent::new_internal(sa_uuid, "TestToken", None);
 
-                // Search and retrieve an attribute that's now accessible.
+                    let apitoken = server_txn
+                        .service_account_generate_api_token(&gte, ct)
+                        .expect("Failed to create new apitoken");
 
-                assert!(true);
+                    assert!(server_txn.commit().is_ok());
+
+                    apitoken
+                };
+
+                // assert the token fails on non-ldap events token-xchg <- currently
+                // we don't have purpose so this isn't tested.
+
+                // Bind with anonymous, search and show mail attr isn't accessible.
+                let anon_lbt = task::block_on(ldaps.do_bind(idms, "", ""))
+                    .unwrap()
+                    .unwrap();
+                assert!(anon_lbt.uuid == UUID_ANONYMOUS);
+
+                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_lbt)).unwrap();
+                assert!(r1.len() == 2);
+                match &r1[0].op {
+                    LdapOp::SearchResultEntry(lsre) => {
+                        assert_entry_contains!(
+                            lsre,
+                            "spn=testperson1@example.com,dc=example,dc=com",
+                            ("name", "testperson1")
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+                // Bind using the token
+                let sa_lbt = task::block_on(ldaps.do_bind(idms, "", ""))
+                    .unwrap()
+                    .unwrap();
+                assert!(sa_lbt.uuid == sa_uuid);
+
+                // Search and retrieve mail that's now accessible.
+                let r1 = task::block_on(ldaps.do_search(idms, &sr, &sa_lbt)).unwrap();
+                assert!(r1.len() == 2);
+                match &r1[0].op {
+                    LdapOp::SearchResultEntry(lsre) => {
+                        assert_entry_contains!(
+                            lsre,
+                            "spn=testperson1@example.com,dc=example,dc=com",
+                            ("name", "testperson1"),
+                            ("mail", "testperson1@example.com")
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+                // Inspect the token to get its uuid out.
+                let apitoken_unverified =
+                    JwsUnverified::from_str(&apitoken).expect("Failed to parse apitoken");
+
+                let apitoken_inner: Jws<ApiToken> = apitoken_unverified
+                    .validate_embeded()
+                    .expect("Embedded jwk not found");
+
+                let apitoken_inner = apitoken_inner.into_inner();
+
+                // Remove / revoke the token
+                {
+                    let server_txn = idms.proxy_write(duration_from_epoch_now());
+                    server_txn
+                        .service_account_destroy_api_token(apitoken_inner.token_id)
+                        .expect("Failed to create new apitoken");
+                    assert!(server_txn.commit().is_ok());
+                }
+
+                // Show that the previous connection is now invalidated even though it was
+                // still existing (done by using the existing LBT.)
+                let r1 = task::block_on(ldaps.do_search(idms, &sr, &sa_lbt)).unwrap();
+                assert!(r1.len() == 2);
+                match &r1[0].op {
+                    // Should be an error
+                    _ => assert!(false),
+                };
+
+                // Show a new connection will fail to start.
+                let x = task::block_on(ldaps.do_bind(idms, "", "")).unwrap();
+                eprintln!("⚠️   {:?}", x);
+
+                assert!(false);
             }
         )
     }

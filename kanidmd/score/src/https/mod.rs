@@ -119,7 +119,7 @@ impl RequestExtensions for tide::Request<AppState> {
             })
             .and_then(|jwsu| {
                 jwsu.validate(kref)
-                    .map(|jws: Jws<SessionId>| jws.inner.sessionid)
+                    .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
                     .ok()
             })
             // If not there, get from the cookie instead.

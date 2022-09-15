@@ -33,7 +33,7 @@ use crate::repl::cid::Cid;
 use crate::repl::entry::EntryChangelog;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{IndexType, SyntaxType};
-use crate::value::{IntentTokenState, PartialValue, Value};
+use crate::value::{IntentTokenState, PartialValue, Session, Value};
 use crate::valueset::{self, ValueSet};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -44,6 +44,7 @@ use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
 
+use compact_jwt::JwsSigner;
 use hashbrown::HashMap;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use smartstring::alias::String as AttrString;
@@ -1866,6 +1867,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
+    pub fn get_ava_as_session_map(
+        &self,
+        attr: &str,
+    ) -> Option<&std::collections::BTreeMap<Uuid, Session>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_session_map())
+    }
+
+    #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&str`.
     pub fn get_ava_iter_iname(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_iname_iter())
@@ -2029,6 +2038,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs
             .get(attr)
             .and_then(|vs| vs.to_private_binary_single())
+    }
+
+    pub fn get_ava_single_jws_key_es256(&self, attr: &str) -> Option<&JwsSigner> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_jws_key_es256_single())
     }
 
     #[inline(always)]

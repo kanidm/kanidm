@@ -5,9 +5,11 @@
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::Credential;
+use crate::identity::IdentityId;
 use crate::repl::cid::Cid;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
+use compact_jwt::JwsSigner;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
@@ -149,32 +151,36 @@ impl fmt::Display for IndexType {
 
 #[allow(non_camel_case_types)]
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[repr(u16)]
 pub enum SyntaxType {
-    UTF8STRING,
-    Utf8StringInsensitive,
-    Utf8StringIname,
-    Uuid,
-    Boolean,
-    SYNTAX_ID,
-    INDEX_ID,
-    REFERENCE_UUID,
-    JSON_FILTER,
-    Credential,
-    SecretUtf8String,
-    SshKey,
-    SecurityPrincipalName,
-    UINT32,
-    Cid,
-    NsUniqueId,
-    DateTime,
-    EmailAddress,
-    Url,
-    OauthScope,
-    OauthScopeMap,
-    PrivateBinary,
-    IntentToken,
-    Passkey,
-    DeviceKey,
+    Utf8String = 0,
+    Utf8StringInsensitive = 1,
+    Uuid = 2,
+    Boolean = 3,
+    SyntaxId = 4,
+    IndexId = 5,
+    ReferenceUuid = 6,
+    JsonFilter = 7,
+    Credential = 8,
+    SecretUtf8String = 9,
+    SshKey = 10,
+    SecurityPrincipalName = 11,
+    Uint32 = 12,
+    Cid = 13,
+    Utf8StringIname = 14,
+    NsUniqueId = 15,
+    DateTime = 16,
+    EmailAddress = 17,
+    Url = 18,
+    OauthScope = 19,
+    OauthScopeMap = 20,
+    PrivateBinary = 21,
+    IntentToken = 22,
+    Passkey = 23,
+    DeviceKey = 24,
+    Session = 25,
+    JwsKeyEs256 = 26,
+    JwsKeyRs256 = 27,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -183,21 +189,21 @@ impl TryFrom<&str> for SyntaxType {
     fn try_from(value: &str) -> Result<SyntaxType, Self::Error> {
         let n_value = value.to_uppercase();
         match n_value.as_str() {
-            "UTF8STRING" => Ok(SyntaxType::UTF8STRING),
+            "UTF8STRING" => Ok(SyntaxType::Utf8String),
             "UTF8STRING_INSENSITIVE" => Ok(SyntaxType::Utf8StringInsensitive),
             "UTF8STRING_INAME" => Ok(SyntaxType::Utf8StringIname),
             "UUID" => Ok(SyntaxType::Uuid),
             "BOOLEAN" => Ok(SyntaxType::Boolean),
-            "SYNTAX_ID" => Ok(SyntaxType::SYNTAX_ID),
-            "INDEX_ID" => Ok(SyntaxType::INDEX_ID),
-            "REFERENCE_UUID" => Ok(SyntaxType::REFERENCE_UUID),
-            "JSON_FILTER" => Ok(SyntaxType::JSON_FILTER),
+            "SYNTAX_ID" => Ok(SyntaxType::SyntaxId),
+            "INDEX_ID" => Ok(SyntaxType::IndexId),
+            "REFERENCE_UUID" => Ok(SyntaxType::ReferenceUuid),
+            "JSON_FILTER" => Ok(SyntaxType::JsonFilter),
             "CREDENTIAL" => Ok(SyntaxType::Credential),
             // Compatability for older syntax name.
             "RADIUS_UTF8STRING" | "SECRET_UTF8STRING" => Ok(SyntaxType::SecretUtf8String),
             "SSHKEY" => Ok(SyntaxType::SshKey),
             "SECURITY_PRINCIPAL_NAME" => Ok(SyntaxType::SecurityPrincipalName),
-            "UINT32" => Ok(SyntaxType::UINT32),
+            "UINT32" => Ok(SyntaxType::Uint32),
             "CID" => Ok(SyntaxType::Cid),
             "NSUNIQUEID" => Ok(SyntaxType::NsUniqueId),
             "DATETIME" => Ok(SyntaxType::DateTime),
@@ -209,29 +215,32 @@ impl TryFrom<&str> for SyntaxType {
             "INTENT_TOKEN" => Ok(SyntaxType::IntentToken),
             "PASSKEY" => Ok(SyntaxType::Passkey),
             "DEVICEKEY" => Ok(SyntaxType::DeviceKey),
+            "SESSION" => Ok(SyntaxType::Session),
+            "JWS_KEY_ES256" => Ok(SyntaxType::JwsKeyEs256),
+            "JWS_KEY_RS256" => Ok(SyntaxType::JwsKeyRs256),
             _ => Err(()),
         }
     }
 }
 
-impl TryFrom<usize> for SyntaxType {
+impl TryFrom<u16> for SyntaxType {
     type Error = ();
 
-    fn try_from(value: usize) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(SyntaxType::UTF8STRING),
+            0 => Ok(SyntaxType::Utf8String),
             1 => Ok(SyntaxType::Utf8StringInsensitive),
             2 => Ok(SyntaxType::Uuid),
             3 => Ok(SyntaxType::Boolean),
-            4 => Ok(SyntaxType::SYNTAX_ID),
-            5 => Ok(SyntaxType::INDEX_ID),
-            6 => Ok(SyntaxType::REFERENCE_UUID),
-            7 => Ok(SyntaxType::JSON_FILTER),
+            4 => Ok(SyntaxType::SyntaxId),
+            5 => Ok(SyntaxType::IndexId),
+            6 => Ok(SyntaxType::ReferenceUuid),
+            7 => Ok(SyntaxType::JsonFilter),
             8 => Ok(SyntaxType::Credential),
             9 => Ok(SyntaxType::SecretUtf8String),
             10 => Ok(SyntaxType::SshKey),
             11 => Ok(SyntaxType::SecurityPrincipalName),
-            12 => Ok(SyntaxType::UINT32),
+            12 => Ok(SyntaxType::Uint32),
             13 => Ok(SyntaxType::Cid),
             14 => Ok(SyntaxType::Utf8StringIname),
             15 => Ok(SyntaxType::NsUniqueId),
@@ -244,39 +253,10 @@ impl TryFrom<usize> for SyntaxType {
             22 => Ok(SyntaxType::IntentToken),
             23 => Ok(SyntaxType::Passkey),
             24 => Ok(SyntaxType::DeviceKey),
+            25 => Ok(SyntaxType::Session),
+            26 => Ok(SyntaxType::JwsKeyEs256),
+            27 => Ok(SyntaxType::JwsKeyRs256),
             _ => Err(()),
-        }
-    }
-}
-
-impl SyntaxType {
-    pub fn to_usize(&self) -> usize {
-        match self {
-            SyntaxType::UTF8STRING => 0,
-            SyntaxType::Utf8StringInsensitive => 1,
-            SyntaxType::Uuid => 2,
-            SyntaxType::Boolean => 3,
-            SyntaxType::SYNTAX_ID => 4,
-            SyntaxType::INDEX_ID => 5,
-            SyntaxType::REFERENCE_UUID => 6,
-            SyntaxType::JSON_FILTER => 7,
-            SyntaxType::Credential => 8,
-            SyntaxType::SecretUtf8String => 9,
-            SyntaxType::SshKey => 10,
-            SyntaxType::SecurityPrincipalName => 11,
-            SyntaxType::UINT32 => 12,
-            SyntaxType::Cid => 13,
-            SyntaxType::Utf8StringIname => 14,
-            SyntaxType::NsUniqueId => 15,
-            SyntaxType::DateTime => 16,
-            SyntaxType::EmailAddress => 17,
-            SyntaxType::Url => 18,
-            SyntaxType::OauthScope => 19,
-            SyntaxType::OauthScopeMap => 20,
-            SyntaxType::PrivateBinary => 21,
-            SyntaxType::IntentToken => 22,
-            SyntaxType::Passkey => 23,
-            SyntaxType::DeviceKey => 24,
         }
     }
 }
@@ -284,20 +264,20 @@ impl SyntaxType {
 impl fmt::Display for SyntaxType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match self {
-            SyntaxType::UTF8STRING => "UTF8STRING",
+            SyntaxType::Utf8String => "UTF8STRING",
             SyntaxType::Utf8StringInsensitive => "UTF8STRING_INSENSITIVE",
             SyntaxType::Utf8StringIname => "UTF8STRING_INAME",
             SyntaxType::Uuid => "UUID",
             SyntaxType::Boolean => "BOOLEAN",
-            SyntaxType::SYNTAX_ID => "SYNTAX_ID",
-            SyntaxType::INDEX_ID => "INDEX_ID",
-            SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
-            SyntaxType::JSON_FILTER => "JSON_FILTER",
+            SyntaxType::SyntaxId => "SYNTAX_ID",
+            SyntaxType::IndexId => "INDEX_ID",
+            SyntaxType::ReferenceUuid => "REFERENCE_UUID",
+            SyntaxType::JsonFilter => "JSON_FILTER",
             SyntaxType::Credential => "CREDENTIAL",
             SyntaxType::SecretUtf8String => "SECRET_UTF8STRING",
             SyntaxType::SshKey => "SSHKEY",
             SyntaxType::SecurityPrincipalName => "SECURITY_PRINCIPAL_NAME",
-            SyntaxType::UINT32 => "UINT32",
+            SyntaxType::Uint32 => "UINT32",
             SyntaxType::Cid => "CID",
             SyntaxType::NsUniqueId => "NSUNIQUEID",
             SyntaxType::DateTime => "DATETIME",
@@ -309,6 +289,9 @@ impl fmt::Display for SyntaxType {
             SyntaxType::IntentToken => "INTENT_TOKEN",
             SyntaxType::Passkey => "PASSKEY",
             SyntaxType::DeviceKey => "DEVICEKEY",
+            SyntaxType::Session => "SESSION",
+            SyntaxType::JwsKeyEs256 => "JWS_KEY_ES256",
+            SyntaxType::JwsKeyRs256 => "JWS_KEY_RS256",
         })
     }
 }
@@ -347,7 +330,7 @@ pub enum PartialValue {
     // Can add other selectors later.
     Url(Url),
     OauthScope(String),
-    OauthScopeMap(Uuid),
+    // OauthScopeMap(Uuid),
     PrivateBinary,
     PublicBinary(String),
     // Enumeration(String),
@@ -359,7 +342,7 @@ pub enum PartialValue {
     DeviceKey(Uuid),
 
     TrustedDeviceEnrollment(Uuid),
-    AuthSession(Uuid),
+    Session(Uuid),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -645,6 +628,7 @@ impl PartialValue {
         matches!(self, PartialValue::OauthScope(_))
     }
 
+    /*
     pub fn new_oauthscopemap(u: Uuid) -> Self {
         PartialValue::OauthScopeMap(u)
     }
@@ -659,6 +643,7 @@ impl PartialValue {
     pub fn is_oauthscopemap(&self) -> bool {
         matches!(self, PartialValue::OauthScopeMap(_))
     }
+    */
 
     pub fn is_privatebinary(&self) -> bool {
         matches!(self, PartialValue::PrivateBinary)
@@ -735,18 +720,25 @@ impl PartialValue {
             }
             PartialValue::Url(u) => u.to_string(),
             PartialValue::OauthScope(u) => u.to_string(),
-            PartialValue::OauthScopeMap(u) => u.as_hyphenated().to_string(),
             PartialValue::Address(a) => a.to_string(),
             PartialValue::PhoneNumber(a) => a.to_string(),
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::TrustedDeviceEnrollment(u) => u.as_hyphenated().to_string(),
-            PartialValue::AuthSession(u) => u.as_hyphenated().to_string(),
+            PartialValue::Session(u) => u.as_hyphenated().to_string(),
         }
     }
 
     pub fn get_idx_sub_key(&self) -> String {
         unimplemented!();
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Session {
+    pub label: String,
+    pub expiry: Option<OffsetDateTime>,
+    pub issued_at: OffsetDateTime,
+    pub issued_by: IdentityId,
 }
 
 /// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is
@@ -792,7 +784,10 @@ pub enum Value {
     DeviceKey(Uuid, String, DeviceKeyV4),
 
     TrustedDeviceEnrollment(Uuid),
-    AuthSession(Uuid),
+    Session(Uuid, Session),
+
+    JwsKeyEs256(JwsSigner),
+    JwsKeyRs256(JwsSigner),
 }
 
 impl PartialEq for Value {
@@ -831,13 +826,16 @@ impl PartialEq for Value {
             // OauthScopeMap
             (Value::OauthScopeMap(a, c), Value::OauthScopeMap(b, d)) => a.eq(b) && c.eq(d),
 
-            // Address
-            // PrivateBinary
-            // SecretValue
             (Value::Address(_), Value::Address(_))
             | (Value::PrivateBinary(_), Value::PrivateBinary(_))
             | (Value::SecretValue(_), Value::SecretValue(_)) => false,
-            _ => false,
+            // Specifically related to migrations, we allow the invalid comparison.
+            (Value::Iutf8(_), Value::Iname(_)) | (Value::Iname(_), Value::Iutf8(_)) => false,
+            (l, r) => {
+                error!(?l, ?r, "mismatched value types");
+                debug_assert!(false);
+                false
+            }
         }
     }
 }
@@ -1492,9 +1490,9 @@ impl Value {
         }
     }
 
-    pub fn to_authsession(self) -> Option<(Uuid, ())> {
+    pub fn to_session(self) -> Option<(Uuid, Session)> {
         match self {
-            Value::AuthSession(u) => Some((u, ())),
+            Value::Session(u, s) => Some((u, s)),
             _ => None,
         }
     }
@@ -1584,7 +1582,7 @@ mod tests {
     #[test]
     fn test_value_syntax_tryfrom() {
         let r1 = SyntaxType::try_from("UTF8STRING");
-        assert_eq!(r1, Ok(SyntaxType::UTF8STRING));
+        assert_eq!(r1, Ok(SyntaxType::Utf8String));
 
         let r2 = SyntaxType::try_from("UTF8STRING_INSENSITIVE");
         assert_eq!(r2, Ok(SyntaxType::Utf8StringInsensitive));
@@ -1593,10 +1591,10 @@ mod tests {
         assert_eq!(r3, Ok(SyntaxType::Boolean));
 
         let r4 = SyntaxType::try_from("SYNTAX_ID");
-        assert_eq!(r4, Ok(SyntaxType::SYNTAX_ID));
+        assert_eq!(r4, Ok(SyntaxType::SyntaxId));
 
         let r5 = SyntaxType::try_from("INDEX_ID");
-        assert_eq!(r5, Ok(SyntaxType::INDEX_ID));
+        assert_eq!(r5, Ok(SyntaxType::IndexId));
 
         let r6 = SyntaxType::try_from("zzzzantheou");
         assert_eq!(r6, Err(()));

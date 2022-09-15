@@ -72,8 +72,7 @@ impl QueryServerWriteV1 {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -122,8 +121,7 @@ impl QueryServerWriteV1 {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -180,8 +178,7 @@ impl QueryServerWriteV1 {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -222,8 +219,7 @@ impl QueryServerWriteV1 {
         let res = spanned!("actors::v1_write::handle<ModifyMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -263,8 +259,7 @@ impl QueryServerWriteV1 {
         let res = spanned!("actors::v1_write::handle<DeleteMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -305,8 +300,7 @@ impl QueryServerWriteV1 {
         let res = spanned!("actors::v1_write::handle<InternalPatch>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -356,8 +350,7 @@ impl QueryServerWriteV1 {
         let res = spanned!("actors::v1_write::handle<InternalDeleteMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -396,8 +389,7 @@ impl QueryServerWriteV1 {
         let res = spanned!("actors::v1_write::handle<ReviveRecycledMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -437,8 +429,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<InternalCredentialSetMessage>", {
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -487,8 +478,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmCredentialUpdate>", {
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -541,8 +531,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmCredentialUpdateIntent>", {
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -680,49 +669,6 @@ impl QueryServerWriteV1 {
         res
     }
 
-    /*
-    #[instrument(
-        level = "info",
-        name = "idm_account_set_password",
-        skip(self, uat, cleartext, eventid)
-        fields(uuid = ?eventid)
-    )]
-    pub async fn handle_idmaccountsetpassword(
-        &self,
-        uat: Option<String>,
-        cleartext: String,
-        eventid: Uuid,
-    ) -> Result<(), OperationError> {
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
-        let res = spanned!("actors::v1_write::handle<IdmAccountSetPasswordMessage>", {
-            idms_prox_write.expire_mfareg_sessions(ct);
-
-            let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
-                .map_err(|e| {
-                    admin_error!(err = ?e, "Invalid identity");
-                    e
-                })?;
-
-            let pce = PasswordChangeEvent::from_idm_account_set_password(
-                ident, cleartext,
-                // &idms_prox_write.qs_write,
-            )
-            .map_err(|e| {
-                admin_error!(err = ?e, "Failed to begin idm_account_set_password");
-                e
-            })?;
-
-            idms_prox_write
-                .set_account_password(&pce)
-                .and_then(|_| idms_prox_write.commit())
-        });
-        res
-    }
-    */
-
     #[instrument(
         level = "info",
         name = "handle_service_account_into_person",
@@ -739,8 +685,7 @@ impl QueryServerWriteV1 {
         let idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmServiceAccountIntoPerson>", {
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -778,8 +723,7 @@ impl QueryServerWriteV1 {
             "actors::v1_write::handle<InternalRegenerateRadiusMessage>",
             {
                 let ident = idms_prox_write
-                    .validate_and_parse_uat(uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                     .map_err(|e| {
                         admin_error!(err = ?e, "Invalid identity");
                         e
@@ -832,8 +776,7 @@ impl QueryServerWriteV1 {
         let idms_prox_write = self.idms.proxy_write_async(ct).await;
         spanned!("actors::v1_write::handle<PurgeAttributeMessage>", {
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -888,8 +831,7 @@ impl QueryServerWriteV1 {
         spanned!("actors::v1_write::handle<RemoveAttributeValuesMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -1107,8 +1049,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmAccountUnixSetCredMessage>", {
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -1163,8 +1104,7 @@ impl QueryServerWriteV1 {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -1229,8 +1169,7 @@ impl QueryServerWriteV1 {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -1244,10 +1183,7 @@ impl QueryServerWriteV1 {
                     e
                 })?;
 
-            let ml = ModifyList::new_remove(
-                "oauth2_rs_scope_map",
-                PartialValue::new_oauthscopemap(group_uuid),
-            );
+            let ml = ModifyList::new_remove("oauth2_rs_scope_map", PartialValue::Refer(group_uuid));
 
             let mdf = match ModifyEvent::from_internal_parts(
                 ident,

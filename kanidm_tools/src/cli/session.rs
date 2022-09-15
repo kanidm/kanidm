@@ -438,7 +438,7 @@ impl SessionOpt {
                         error!(?e, "Unable to verify token signature, may be corrupt");
                     })
                     .map(|jwt| {
-                        let uat = jwt.inner;
+                        let uat = jwt.into_inner();
                         (u, (t, uat))
                     })
                     .ok()

@@ -86,7 +86,7 @@ impl ValueSetT for ValueSetIndex {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::INDEX_ID
+        SyntaxType::IndexId
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {

@@ -370,6 +370,7 @@ impl ViewsApp {
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
+
     async fn fetch_user_data(token: String) -> Result<ViewsMsg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
@@ -396,7 +397,7 @@ impl ViewsApp {
             let jsval = JsFuture::from(resp.json()?).await?;
             let whoamiresponse: WhoamiResponse = serde_wasm_bindgen::from_value(jsval)
                 .map_err(|e| {
-                    let e_msg = format!("serde error getting user data -> {:?}", e);
+                    let e_msg = format!("serde error -> {:?}", e);
                     console::error!(e_msg.as_str());
                 })
                 .expect_throw("Invalid response type");
@@ -407,6 +408,7 @@ impl ViewsApp {
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
+
 }
 
 fn admin_routes(route: &AdminRoute) -> Html {

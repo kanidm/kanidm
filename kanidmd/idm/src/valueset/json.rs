@@ -96,7 +96,7 @@ impl ValueSetT for ValueSetJsonFilter {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::JSON_FILTER
+        SyntaxType::JsonFilter
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {

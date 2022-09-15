@@ -33,7 +33,7 @@ serde = { version = "^1.0.142", features = ["derive"] }
 serde_json = "^1.0.83"
 serde-wasm-bindgen = "0.4"
 uuid = "^1.1.2"
-wasm-bindgen = { version = "^0.2.81", features = ["serde-serialize"] }
+wasm-bindgen = { version = "^0.2.81" }
 wasm-bindgen-futures = { version = "^0.4.30" }
 wasm-bindgen-test = "0.3.33"
 yew = "^0.19.3"

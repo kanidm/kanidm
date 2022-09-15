@@ -102,8 +102,7 @@ impl QueryServerReadV1 {
         // ! in order to not short-circuit the entire function.
         let res = spanned!("actors::v1_read::handle<SearchMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(?e, "Invalid identity");
                     e
@@ -329,13 +328,8 @@ impl QueryServerReadV1 {
             // trigger the failure, but if we can manage to work out async
             // then move this to core.rs, and don't allow Option<UAT> to get
             // this far.
-            let (uat, ident) = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| {
-                    idms_prox_read
-                        .process_uat_to_identity(&uat, ct)
-                        .map(|i| (uat, i))
-                })
+            let ident = idms_prox_read
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(?e, "Invalid identity");
                     e
@@ -353,7 +347,7 @@ impl QueryServerReadV1 {
 
             match entries.pop() {
                 Some(e) if entries.is_empty() => {
-                    WhoamiResult::new(&idms_prox_read.qs_read, &e, uat).map(WhoamiResult::response)
+                    WhoamiResult::new(&idms_prox_read.qs_read, &e).map(WhoamiResult::response)
                 }
                 Some(_) => Err(OperationError::InvalidState), // Somehow matched multiple entries...
                 _ => Err(OperationError::NoMatchingEntries),
@@ -379,8 +373,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSearchMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -428,8 +421,7 @@ impl QueryServerReadV1 {
 
         let res = spanned!("actors::v1_read::handle<InternalSearchRecycledMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -475,8 +467,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalRadiusReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -541,8 +532,7 @@ impl QueryServerReadV1 {
 
         let res = spanned!("actors::v1_read::handle<InternalRadiusTokenReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -595,8 +585,7 @@ impl QueryServerReadV1 {
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
             {
                 let ident = idms_prox_read
-                    .validate_and_parse_uat(uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                    .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                     .map_err(|e| {
                         admin_error!("Invalid identity: {:?}", e);
                         e
@@ -649,8 +638,7 @@ impl QueryServerReadV1 {
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
             {
                 let ident = idms_prox_read
-                    .validate_and_parse_uat(uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                    .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                     .map_err(|e| {
                         admin_error!("Invalid identity: {:?}", e);
                         e
@@ -701,8 +689,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSshKeyReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                    .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -769,8 +756,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSshKeyTagReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                    .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -840,8 +826,7 @@ impl QueryServerReadV1 {
         // let res = spanned!("actors::v1_read::handle<IdmAccountUnixAuthMessage>", {
         // resolve the id
         let ident = idm_auth
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| idm_auth.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -893,8 +878,7 @@ impl QueryServerReadV1 {
 
         let res = spanned!("actors::v1_read::handle<IdmCredentialStatusMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -944,8 +928,7 @@ impl QueryServerReadV1 {
 
         let res = spanned!("actors::v1_read::handle<IdmBackupCodeViewMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e

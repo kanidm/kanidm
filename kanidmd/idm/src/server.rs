@@ -53,6 +53,7 @@ lazy_static! {
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
     static ref PVCLASS_PERSON: PartialValue = PartialValue::new_class("person");
+    static ref PVCLASS_SERVICE_ACCOUNT: PartialValue = PartialValue::new_class("service_account");
     static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
@@ -94,8 +95,9 @@ pub struct QueryServerReadTransaction<'a> {
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+    resolve_filter_cache: Cell<
+        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    >,
 }
 
 unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
@@ -121,8 +123,9 @@ pub struct QueryServerWriteTransaction<'a> {
     changed_uuid: Cell<HashSet<Uuid>>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+    resolve_filter_cache: Cell<
+        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    >,
     dyngroup_cache: Cell<CowCellWriteTxn<'a, DynGroupCache>>,
 }
 
@@ -163,7 +166,7 @@ pub trait QueryServerTransaction<'a> {
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>;
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
 
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
@@ -475,14 +478,14 @@ pub trait QueryServerTransaction<'a> {
         match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.to_string())),
+                    SyntaxType::Utf8String => Ok(Value::new_utf8(value.to_string())),
                     SyntaxType::Utf8StringInsensitive => Ok(Value::new_iutf8(value)),
                     SyntaxType::Utf8StringIname => Ok(Value::new_iname(value)),
                     SyntaxType::Boolean => Value::new_bools(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
-                    SyntaxType::SYNTAX_ID => Value::new_syntaxs(value)
+                    SyntaxType::SyntaxId => Value::new_syntaxs(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())),
-                    SyntaxType::INDEX_ID => Value::new_indexs(value)
+                    SyntaxType::IndexId => Value::new_indexs(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
                     SyntaxType::Uuid => {
                         // It's a uuid - we do NOT check for existance, because that
@@ -503,7 +506,7 @@ pub trait QueryServerTransaction<'a> {
                             // I think this is unreachable due to how the .or_else works.
                             .ok_or_else(|| OperationError::InvalidAttribute("Invalid UUID syntax".to_string()))
                     }
-                    SyntaxType::REFERENCE_UUID => {
+                    SyntaxType::ReferenceUuid => {
                         // See comments above.
                         Value::new_refer_s(value)
                             .or_else(|| {
@@ -515,13 +518,13 @@ pub trait QueryServerTransaction<'a> {
                             // I think this is unreachable due to how the .or_else works.
                             .ok_or_else(|| OperationError::InvalidAttribute("Invalid Reference syntax".to_string()))
                     }
-                    SyntaxType::JSON_FILTER => Value::new_json_filter_s(value)
+                    SyntaxType::JsonFilter => Value::new_json_filter_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
                     SyntaxType::Credential => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SshKey => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
-                    SyntaxType::UINT32 => Value::new_uint32_str(value)
+                    SyntaxType::Uint32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
                     SyntaxType::Cid => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
                     SyntaxType::NsUniqueId => Value::new_nsuniqueid_s(value)
@@ -539,6 +542,9 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::IntentToken => Err(OperationError::InvalidAttribute("Intent Token Values can not be supplied through modification".to_string())),
                     SyntaxType::Passkey => Err(OperationError::InvalidAttribute("Passkey Values can not be supplied through modification".to_string())),
                     SyntaxType::DeviceKey => Err(OperationError::InvalidAttribute("DeviceKey Values can not be supplied through modification".to_string())),
+                    SyntaxType::Session => Err(OperationError::InvalidAttribute("Session Values can not be supplied through modification".to_string())),
+                    SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute("JwsKeyEs256 Values can not be supplied through modification".to_string())),
+                    SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute("JwsKeyRs256 Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -556,16 +562,18 @@ pub trait QueryServerTransaction<'a> {
         match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.to_string())),
-                    SyntaxType::Utf8StringInsensitive => Ok(PartialValue::new_iutf8(value)),
+                    SyntaxType::Utf8String => Ok(PartialValue::new_utf8(value.to_string())),
+                    SyntaxType::Utf8StringInsensitive
+                    | SyntaxType::JwsKeyEs256
+                    | SyntaxType::JwsKeyRs256 => Ok(PartialValue::new_iutf8(value)),
                     SyntaxType::Utf8StringIname => Ok(PartialValue::new_iname(value)),
                     SyntaxType::Boolean => PartialValue::new_bools(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid boolean syntax".to_string())
                     }),
-                    SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value).ok_or_else(|| {
+                    SyntaxType::SyntaxId => PartialValue::new_syntaxs(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())
                     }),
-                    SyntaxType::INDEX_ID => PartialValue::new_indexs(value).ok_or_else(|| {
+                    SyntaxType::IndexId => PartialValue::new_indexs(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Index syntax".to_string())
                     }),
                     SyntaxType::Uuid => {
@@ -595,7 +603,10 @@ pub trait QueryServerTransaction<'a> {
                         //         PartialValue::new_uuid(un)
                         //     }))
                     }
-                    SyntaxType::REFERENCE_UUID => {
+                    // ⚠️   Any types here need to also be added to update_attributes in
+                    // schema.rs for reference type / cache awareness during referential
+                    // integrity processing. Exceptions are self-contained value types!
+                    SyntaxType::ReferenceUuid | SyntaxType::OauthScopeMap | SyntaxType::Session => {
                         // See comments above.
                         PartialValue::new_refer_s(value)
                             .or_else(|| {
@@ -610,23 +621,7 @@ pub trait QueryServerTransaction<'a> {
                                 )
                             })
                     }
-                    SyntaxType::OauthScopeMap => {
-                        // See comments above.
-                        PartialValue::new_oauthscopemap_s(value)
-                            .or_else(|| {
-                                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
-                                Some(PartialValue::new_oauthscopemap(un))
-                            })
-                            // I think this is unreachable due to how the .or_else works.
-                            // See above case for how to avoid having unreachable code
-                            .ok_or_else(|| {
-                                OperationError::InvalidAttribute(
-                                    "Invalid Reference syntax".to_string(),
-                                )
-                            })
-                    }
-
-                    SyntaxType::JSON_FILTER => {
+                    SyntaxType::JsonFilter => {
                         PartialValue::new_json_filter_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute("Invalid Filter syntax".to_string())
                         })
@@ -639,7 +634,7 @@ pub trait QueryServerTransaction<'a> {
                             OperationError::InvalidAttribute("Invalid spn syntax".to_string())
                         })
                     }
-                    SyntaxType::UINT32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
+                    SyntaxType::Uint32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())
                     }),
                     SyntaxType::Cid => PartialValue::new_cid_s(value).ok_or_else(|| {
@@ -832,7 +827,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
 
     fn get_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
         unsafe {
             let mptr = self.resolve_filter_cache.as_ptr();
@@ -841,6 +836,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
                     'a,
                     (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
+                    (),
                 >
         }
     }
@@ -942,7 +938,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn get_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
         unsafe {
             let mptr = self.resolve_filter_cache.as_ptr();
@@ -951,6 +947,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
                     'a,
                     (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
+                    (),
                 >
         }
     }
@@ -1198,6 +1195,10 @@ impl QueryServer {
 
         if system_info_version < 7 {
             migrate_txn.migrate_6_to_7()?;
+        }
+
+        if system_info_version < 8 {
+            migrate_txn.migrate_7_to_8()?;
         }
 
         migrate_txn.commit()?;
@@ -2319,12 +2320,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Modify accounts that are not persons, to be service accounts so that the extension
     /// rules remain valid.
     pub fn migrate_6_to_7(&self) -> Result<(), OperationError> {
-        spanned!("server::migrate_5_to_6", {
+        spanned!("server::migrate_6_to_7", {
             admin_warn!("starting 6 to 7 migration.");
             let filter = filter!(f_and!([
                 f_eq("class", (*PVCLASS_ACCOUNT).clone()),
                 f_andnot(f_eq("class", (*PVCLASS_PERSON).clone())),
             ]));
+            let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
+            self.internal_modify(&filter, &modlist)
+            // Complete
+        })
+    }
+
+    /// Migrate 7 to 8
+    ///
+    /// Touch all service accounts to trigger a regen of their es256 jws keys for api tokens
+    pub fn migrate_7_to_8(&self) -> Result<(), OperationError> {
+        spanned!("server::migrate_7_to_8", {
+            admin_warn!("starting 7 to 8 migration.");
+            let filter = filter!(f_eq("class", (*PVCLASS_SERVICE_ACCOUNT).clone()));
             let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
             self.internal_modify(&filter, &modlist)
             // Complete
@@ -2633,6 +2647,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_PASSKEYS,
             JSON_SCHEMA_ATTR_DEVICEKEYS,
             JSON_SCHEMA_ATTR_DYNGROUP_FILTER,
+            JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY,
+            JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,

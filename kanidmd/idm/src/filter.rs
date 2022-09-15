@@ -285,7 +285,12 @@ impl Filter<FilterValid> {
         ev: &Identity,
         idxmeta: Option<&IdxMeta>,
         mut rsv_cache: Option<
-            &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>,
+            &mut ARCacheReadTxn<
+                'a,
+                (IdentityId, Filter<FilterValid>),
+                Filter<FilterValidResolved>,
+                (),
+            >,
         >,
     ) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUuid to real terms.

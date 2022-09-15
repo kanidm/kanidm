@@ -20,7 +20,7 @@ impl ValueSetSyntax {
         self.set.insert(s)
     }
 
-    pub fn from_dbvs2(data: Vec<usize>) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: Vec<u16>) -> Result<ValueSet, OperationError> {
         let set: Result<_, _> = data.into_iter().map(SyntaxType::try_from).collect();
         let set = set.map_err(|()| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetSyntax { set }))
@@ -86,7 +86,7 @@ impl ValueSetT for ValueSetSyntax {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::SYNTAX_ID
+        SyntaxType::SyntaxId
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -98,7 +98,7 @@ impl ValueSetT for ValueSetSyntax {
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        DbValueSetV2::SyntaxType(self.set.iter().map(|s| s.to_usize()).collect())
+        DbValueSetV2::SyntaxType(self.set.iter().map(|s| *s as u16).collect())
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

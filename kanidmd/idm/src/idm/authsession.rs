@@ -756,7 +756,7 @@ impl AuthSession {
                             .to_userauthtoken(session_id, *time, auth_type)
                             .ok_or(OperationError::InvalidState)?;
 
-                        let jwt = Jws { inner: uat };
+                        let jwt = Jws::new(uat);
 
                         // Now encrypt and prepare the token for return to the client.
                         let token = jwt

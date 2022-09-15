@@ -186,6 +186,10 @@ pub const _UUID_SCHEMA_CLASS_DYNGROUP: Uuid = uuid!("00000000-0000-0000-0000-fff
 pub const _UUID_SCHEMA_ATTR_DYNGROUP_FILTER: Uuid = uuid!("00000000-0000-0000-0000-ffff00000108");
 pub const _UUID_SCHEMA_ATTR_OAUTH2_PREFERR_SHORT_USERNAME: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000109");
+pub const _UUID_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000110");
+pub const _UUID_SCHEMA_ATTR_API_TOKEN_SESSION: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000111");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
