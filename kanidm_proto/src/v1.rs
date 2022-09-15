@@ -333,7 +333,7 @@ pub struct UserAuthToken {
     // may depend on the client application.
     pub expiry: time::OffsetDateTime,
     pub uuid: Uuid,
-    // pub name: String,
+    pub name: String,
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,

@@ -202,7 +202,7 @@ impl Account {
             auth_type,
             expiry,
             uuid: self.uuid,
-            // name: self.name.clone(),
+            name: self.name.clone(),
             displayname: self.displayname.clone(),
             spn: self.spn.clone(),
             mail_primary: self.mail_primary.clone(),

@@ -239,13 +239,17 @@ pub enum ServiceAccountPosix {
 pub struct PersonUpdateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long, short, help="Set the legal name for the person.")]
+    #[clap(long, short, help = "Set the legal name for the person.")]
     legalname: Option<String>,
-    #[clap(long, short, help="Set the account name for the person.")]
+    #[clap(long, short, help = "Set the account name for the person.")]
     newname: Option<String>,
-    #[clap(long, short='i', help="Set the display name for the person.")]
+    #[clap(long, short = 'i', help = "Set the display name for the person.")]
     displayname: Option<String>,
-    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'")]
+    #[clap(
+        long,
+        short,
+        help = "Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'"
+    )]
     mail: Option<Vec<String>>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -339,11 +343,19 @@ pub enum ServiceAccountCredential {
 pub struct ServiceAccountUpdateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long, short, help="Set the account name for the service account.")]
+    #[clap(long, short, help = "Set the account name for the service account.")]
     newname: Option<String>,
-    #[clap(long, short='i', help="Set the display name for the service account.")]
+    #[clap(
+        long,
+        short = 'i',
+        help = "Set the display name for the service account."
+    )]
     displayname: Option<String>,
-    #[clap(long, short, help="Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'")]
+    #[clap(
+        long,
+        short,
+        help = "Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the 'primary'"
+    )]
     mail: Option<Vec<String>>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -575,10 +587,16 @@ pub enum Oauth2Opt {
     /// Disable legacy signing crypto on this oauth2 resource server. This is the default.
     #[clap(name = "disable_legacy_crypto")]
     DisableLegacyCrypto(Named),
+    #[clap(name = "prefer_short_username")]
+    /// Use the 'name' attribute instead of 'spn' for the preferred_username
+    PreferShortUsername(Named),
+    #[clap(name = "prefer_spn_username")]
+    /// Use the 'spn' attribute instead of 'name' for the preferred_username
+    PreferSPNUsername(Named),
 }
 
 #[derive(Args, Debug)]
-pub struct OptSetDomainDisplayName{
+pub struct OptSetDomainDisplayName {
     #[clap(flatten)]
     copt: CommonOpt,
     #[clap(name = "new_display_Name")]
@@ -636,7 +654,7 @@ pub enum KanidmClientOpt {
     /// Actions to manage and view person (user) accounts
     Person {
         #[clap(subcommand)]
-        commands: PersonOpt
+        commands: PersonOpt,
     },
     /// Actions to manage groups
     Group {
@@ -666,9 +684,7 @@ pub enum KanidmClientOpt {
         commands: RawOpt,
     },
     /// Print the program version and exit
-    Version {
-
-    }
+    Version {},
 }
 
 #[derive(Debug, clap::Parser)]
