@@ -37,7 +37,6 @@ wasm-bindgen-futures = { version = "^0.4.30" }
 yew = "^0.19.3"
 yew-agent = "^0.1.0"
 yew-router = "^0.16.0"
-wee_alloc = "^0.4.5"
 
 [dependencies.web-sys]
 version = "^0.3.57"
