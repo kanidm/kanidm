@@ -6,7 +6,6 @@ pub const CSS_CLASSES_BODY_FORM: &[&str] = &["flex-column", "d-flex", "h-100"];
 // when you want to put big text at the top of the page
 pub const CSS_PAGE_HEADER: &str = "d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom";
 
-
 // the HTML element ID that the signout modal dialogue box has
 pub const ID_SIGNOUTMODAL: &str = "signoutModal";
 

@@ -1,8 +1,10 @@
-use crate::components::adminmenu;
+use crate::components::{admin_accounts, admin_oauth, adminmenu};
 use crate::error::*;
 use crate::models;
 use crate::utils;
 use gloo::console;
+use std::collections::BTreeMap;
+
 // use uuid::Uuid;
 use yew::prelude::*;
 
@@ -28,23 +30,22 @@ use security::SecurityApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
-  #[at("/ui/view/admin/*")]
-  Admin,
+    #[at("/ui/view/admin/*")]
+    Admin,
 
-  #[at("/ui/view/apps")]
-  Apps,
+    #[at("/ui/view/apps")]
+    Apps,
 
-  #[at("/ui/view/profile")]
-  Profile,
+    #[at("/ui/view/profile")]
+    Profile,
 
-  #[at("/ui/view/security")]
-  Security,
+    #[at("/ui/view/security")]
+    Security,
 
-  #[not_found]
-  #[at("/ui/view/404")]
-  NotFound,
+    #[not_found]
+    #[at("/ui/view/404")]
+    NotFound,
 }
-
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum AdminRoute {
@@ -408,22 +409,21 @@ impl ViewsApp {
 }
 
 fn admin_routes(route: &AdminRoute) -> Html {
-  match route {
-    AdminRoute::AdminMenu => html!{
-      <adminmenu::AdminMenu />
-    },
-    AdminRoute::AdminListAccounts => html!(
-      <adminmenu::AdminListAccounts />
-    ),
-    AdminRoute::AdminListGroups => html!(
-      <adminmenu::AdminListGroups />
-    ),
-    AdminRoute::AdminListOAuth => html!(
-      <adminmenu::AdminListOAuth />
-    ),
-    AdminRoute::NotFound => html! {
-      <Redirect<Route> to={Route::NotFound}/>
-    },
-  }
-
+    match route {
+        AdminRoute::AdminMenu => html! {
+          <adminmenu::AdminMenu />
+        },
+        AdminRoute::AdminListAccounts => html!(
+          <admin_accounts::AdminListAccounts accounts={BTreeMap::new()}  />
+        ),
+        AdminRoute::AdminListGroups => html!(
+          <adminmenu::AdminListGroups />
+        ),
+        AdminRoute::AdminListOAuth => html!(
+          <admin_oauth::AdminListOAuth />
+        ),
+        AdminRoute::NotFound => html! {
+          <Redirect<Route> to={Route::NotFound}/>
+        },
+    }
 }
