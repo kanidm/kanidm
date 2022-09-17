@@ -3,7 +3,7 @@ use yew::Html;
 
 pub mod admin_accounts;
 pub mod admin_groups;
-pub mod admin_oauth;
+pub mod admin_oauth2;
 pub mod adminmenu;
 pub mod change_unix_password;
 

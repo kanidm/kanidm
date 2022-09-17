@@ -5,24 +5,23 @@ use crate::models;
 use crate::utils::{do_alert_error, init_request};
 use gloo::console;
 use std::collections::BTreeMap;
-// use yew::prelude::*;
 use yew::{html, Component, Context, Html, Properties};
 
-impl From<GetError> for AdminListAccountsMsg {
+impl From<GetError> for AdminListOAuth2Msg {
     fn from(ge: GetError) -> Self {
-        AdminListAccountsMsg::Failed {
+        AdminListOAuth2Msg::Failed {
             emsg: ge.err,
             kopid: None,
         }
     }
 }
 
-pub struct AdminListAccounts {
+pub struct AdminListOAuth2 {
     state: ViewState,
 }
 
 // callback messaging for this confused pile of crab-bait
-pub enum AdminListAccountsMsg {
+pub enum AdminListOAuth2Msg {
     /// When the server responds and we need to update the page
     Responded {
         response: BTreeMap<String, Entity>,
@@ -51,7 +50,7 @@ enum ViewState {
 }
 
 #[derive(PartialEq, Properties, Eq)]
-pub struct AdminListAccountsProps {
+pub struct AdminListOAuth2Props {
     // for filtering and pagination
     // #[allow(dead_code)]
     // search: Option<String>,
@@ -59,17 +58,14 @@ pub struct AdminListAccountsProps {
     // page: Option<u32>,
 }
 
-/// Pulls all accounts (service or person-class) from the backend and returns a HashMap
+/// Pulls all OAuth2 RPs from the backend and returns a HashMap
 /// with the "name" field being the keys, for easy human-facing sortability.
-pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError> {
-    // TODO: the actual pulling and turning into a BTreeMap in this and get_groups could *probably* be rolled up into one function? The result object differs but all the widgets are the same.
-    let mut all_accounts = BTreeMap::new();
+pub async fn get_entities(token: &str) -> Result<AdminListOAuth2Msg, GetError> {
+    // TODO: the actual pulling and turning into a BTreeMap across the admin systems could *probably* be rolled up into one function? The result object differs but all the query bits are the same.
+    let mut oauth2_objects = BTreeMap::new();
 
     // we iterate over these endpoints
-    let endpoints = [
-        ("/v1/service_account", "service_account"),
-        ("/v1/person", "person"),
-    ];
+    let endpoints = [("/v1/oauth2", "oauth2_rp")];
 
     for (endpoint, object_type) in endpoints {
         let request = init_request(endpoint, token);
@@ -84,53 +80,48 @@ pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError>
         #[allow(clippy::panic)]
         let data: Vec<Entity> = match response.json().await {
             Ok(value) => value,
-            Err(error) => panic!("Failed to grab the account data into JSON: {:?}", error),
+            Err(error) => panic!("Failed to grab the OAuth2 RP data into JSON: {:?}", error),
         };
 
         for entity in data.iter() {
             let mut new_entity = entity.to_owned();
             new_entity.object_type = Some(object_type.to_string());
 
-            // first we try the short name and, if that isn't there then just use the SPN...
+            // first we try the uuid and if that isn't there oh no.
             #[allow(clippy::expect_used)]
-            let entity_id = match entity.attrs.name.first() {
-                Some(value) => value.to_string(),
-                None => entity
-                    .attrs
-                    .spn
-                    .first()
-                    .expect("Failed to grab the SPN for an account.")
-                    .to_string(),
-            };
-            all_accounts.insert(entity_id.to_string(), new_entity);
+            let entity_id = entity
+                .attrs
+                .uuid
+                .first()
+                .expect("Failed to grab the SPN for an account.");
+            oauth2_objects.insert(entity_id.to_string(), new_entity);
         }
     }
 
-    Ok(AdminListAccountsMsg::Responded {
-        response: all_accounts,
+    Ok(AdminListOAuth2Msg::Responded {
+        response: oauth2_objects,
     })
 }
 
-impl Component for AdminListAccounts {
-    type Message = AdminListAccountsMsg;
-    type Properties = AdminListAccountsProps;
+impl Component for AdminListOAuth2 {
+    type Message = AdminListOAuth2Msg;
+    type Properties = AdminListOAuth2Props;
 
     fn create(ctx: &Context<Self>) -> Self {
         // TODO: work out the querystring thing so we can just show x number of elements
-        // console::log!("query: {:?}", location().query);
         let token = match models::get_bearer_token() {
             Some(value) => value,
             None => String::from(""),
         };
 
-        // start pulling the account data on startup
+        // start pulling the data on startup
         ctx.link().send_future(async move {
-            match get_accounts(token.clone().as_str()).await {
+            match get_entities(token.clone().as_str()).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
         });
-        AdminListAccounts {
+        AdminListOAuth2 {
             state: ViewState::Loading,
         }
     }
@@ -139,7 +130,7 @@ impl Component for AdminListAccounts {
         html! {
             <>
               <div class={CSS_PAGE_HEADER}>
-                <h2>{ "System Administration" }</h2>
+                <h2>{ "OAuth2 Configs" }</h2>
               </div>
 
               { alpha_warning_banner() }
@@ -152,11 +143,10 @@ impl Component for AdminListAccounts {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            AdminListAccountsMsg::Responded { response } => {
+            AdminListOAuth2Msg::Responded { response } => {
                 // TODO: do we paginate here?
                 #[cfg(debug)]
                 for key in response.keys() {
-                    #[allow(clippy::unwrap_used)]
                     console::log!(
                         "response: {:?}",
                         serde_json::to_string(response.get(key).unwrap()).unwrap()
@@ -165,7 +155,7 @@ impl Component for AdminListAccounts {
                 self.state = ViewState::Responded { response };
                 return true;
             }
-            AdminListAccountsMsg::Failed { emsg, kopid } => {
+            AdminListOAuth2Msg::Failed { emsg, kopid } => {
                 console::log!("emsg: {:?}", emsg);
                 console::log!("kopid: {:?}", kopid);
             }
@@ -174,12 +164,12 @@ impl Component for AdminListAccounts {
     }
 }
 
-impl AdminListAccounts {
+impl AdminListOAuth2 {
     /// output the information based on what's in the current state
     fn view_state(&self, _ctx: &Context<Self>) -> Html {
         match &self.state {
             ViewState::Loading => {
-                html! {"Waiting on the accounts list to load..."}
+                html! {"Waiting on the OAuth2 data to load..."}
             }
 
             ViewState::Responded { response } => {
@@ -189,7 +179,6 @@ impl AdminListAccounts {
                   <table class={CSS_TABLE}>
                   <thead>
                     <tr>
-                      <th scope={scope_col}></th>
                       <th scope={scope_col}>{"Display Name"}</th>
                       <th scope={scope_col}>{"Username"}</th>
                       <th scope={scope_col}>{"Description"}</th>
@@ -197,43 +186,33 @@ impl AdminListAccounts {
                   </thead>
 
                   {
-                    response.keys().map(|name| {
+                    response.keys().map(|uuid| {
                         #[allow(clippy::expect_used)]
-                      let account: &Entity = response.get(name).expect("Couldn't get account key when it was just in the iter...");
+                      let oauth2_object: &Entity = response.get(uuid).expect("Couldn't get oauth2 key when it was just in the iter...");
 
-                        let display_name: String = match account.attrs.displayname.first() {
+                        let display_name: String = match oauth2_object.attrs.displayname.first() {
                           Some(value) => value.to_string(),
                           None => String::from(""),
                         };
 
-                        let description: String = match account.attrs.description.first() {
+                        let description: String = match oauth2_object.attrs.description.first() {
                           Some(value) => value.to_string(),
                           None => String::from(""),
                         };
-                        let account_type: Html = match &account.object_type {
-                            Some(value) => match value.as_str() {
-                                // TODO: make these into tiny images
-                                "service_account" => html!{<img src={"/pkg/img/icon-robot.svg"} alt={"Service Account"} class={"p-0"} />},
-                                "person" => html!{<img src={"/pkg/img/icon-person.svg"} alt={"Person"} class={"p-0"} />},
-                                &_ => html!("x"),
-                            },
-                            None => html!{"x"},
-                        };
+                        // TODO: maybe pull the OAuth2 RP details here? "path": "/v1/oauth2/:id",
 
-
-                        let uuid: String = match account.attrs.uuid.first() {
+                        let uuid: String = match oauth2_object.attrs.uuid.first() {
                             Some(value) => value.to_string(),
                             None => {
-                                console::error!("Account without a UUID?", format!("{:?}", account).to_string());
+                                console::error!("Config without a UUID?", format!("{:?}", oauth2_object).to_string());
                                 String::from("Unknown UUID!")
                             }
                         };
 
                         html!{
-                          <tr key={uuid}>
-                          <td class={CSS_CELL}>{account_type}</td>
+                          <tr key={uuid.clone()}>
                           <th scope={scope_col} class={CSS_CELL}>{display_name}</th>
-                          <td class={CSS_CELL}>{name}</td>
+                          <td class={CSS_CELL}>{uuid}</td>
                           <td class={CSS_CELL}>{description}</td>
                           </tr>
                         }
@@ -246,7 +225,7 @@ impl AdminListAccounts {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
-                    {do_alert_error("Failed to Query Accounts", Some(emsg))}
+                    {do_alert_error("Failed to Query OAuth2", Some(emsg))}
                     </>
                 )
             }

@@ -1,4 +1,4 @@
-use crate::components::{admin_accounts, admin_groups, admin_oauth, adminmenu};
+use crate::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
 use crate::error::*;
 use crate::manager::Route;
 use crate::models;
@@ -413,7 +413,7 @@ fn admin_routes(route: &AdminRoute) -> Html {
           <admin_groups::AdminListGroups />
         ),
         AdminRoute::AdminListOAuth => html!(
-          <admin_oauth::AdminListOAuth />
+          <admin_oauth2::AdminListOAuth2 />
         ),
         AdminRoute::NotFound => html! {
           <Redirect<Route> to={Route::NotFound}/>

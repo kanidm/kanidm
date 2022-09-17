@@ -84,7 +84,7 @@ pub async fn get_groups(token: &str) -> Result<AdminListGroupsMsg, GetError> {
 
         for entity in data.iter() {
             let mut new_entity = entity.to_owned();
-            new_entity.attrs.object_type = Some(object_type.to_string());
+            new_entity.object_type = Some(object_type.to_string());
 
             // first we try the short name and, if that isn't there then just use the SPN...
             #[allow(clippy::expect_used)]

@@ -14,13 +14,13 @@ const CSS_CARD_BODY: &str = "card-body text-center";
 #[derive(PartialEq, Properties)]
 pub struct Props;
 
-#[derive(PartialEq, Properties)]
-pub struct ListProps {
-    #[allow(dead_code)]
-    search: Option<String>,
-    #[allow(dead_code)]
-    page: Option<u32>,
-}
+// #[derive(PartialEq, Properties)]
+// pub struct ListProps {
+//     #[allow(dead_code)]
+//     search: Option<String>,
+//     #[allow(dead_code)]
+//     page: Option<u32>,
+// }
 pub struct AdminMenu;
 
 impl Component for AdminMenu {
@@ -109,13 +109,13 @@ pub struct Attributes {
     pub spn: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub uuid: Vec<String>,
-    #[serde(default)]
-    pub object_type: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Entity {
     pub attrs: Attributes,
+    #[serde(default)]
+    pub object_type: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
