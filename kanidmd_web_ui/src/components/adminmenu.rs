@@ -75,12 +75,12 @@ impl Component for AdminMenu {
           // card for oauth
           <div class="col">
             <div class={CSS_CARD}>
-            <Link<AdminRoute> classes={CSS_LINK_DARK_STRETCHED} to={AdminRoute::AdminListOAuth}>
+            <Link<AdminRoute> classes={CSS_LINK_DARK_STRETCHED} to={AdminRoute::AdminListOAuth2}>
             <img src={"/pkg/img/icon-oauth2.svg"} />
             </Link<AdminRoute>>
               <div class={CSS_CARD_BODY}>
               <h3>
-              <Link<AdminRoute> classes={CSS_LINK_DARK_STRETCHED} to={AdminRoute::AdminListOAuth}>
+              <Link<AdminRoute> classes={CSS_LINK_DARK_STRETCHED} to={AdminRoute::AdminListOAuth2}>
               { "OAuth Configurations" }
               </Link<AdminRoute>>
               </h3>
