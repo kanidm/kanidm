@@ -1,23 +1,16 @@
-use crate::components::{admin_accounts, admin_oauth, adminmenu};
+use crate::components::{admin_accounts, admin_groups, admin_oauth, adminmenu};
 use crate::error::*;
+use crate::manager::Route;
 use crate::models;
 use crate::utils;
 use gloo::console;
-use std::collections::BTreeMap;
-
-// use uuid::Uuid;
-use yew::prelude::*;
-
-use crate::manager::Route;
-use yew_router::prelude::*;
-
 use kanidm_proto::v1::WhoamiResponse;
-
 use serde::{Deserialize, Serialize};
-
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
+use yew::prelude::*;
+use yew_router::prelude::*;
 
 mod apps;
 mod components;
@@ -414,10 +407,10 @@ fn admin_routes(route: &AdminRoute) -> Html {
           <adminmenu::AdminMenu />
         },
         AdminRoute::AdminListAccounts => html!(
-          <admin_accounts::AdminListAccounts accounts={BTreeMap::new()}  />
+          <admin_accounts::AdminListAccounts />
         ),
         AdminRoute::AdminListGroups => html!(
-          <adminmenu::AdminListGroups />
+          <admin_groups::AdminListGroups />
         ),
         AdminRoute::AdminListOAuth => html!(
           <admin_oauth::AdminListOAuth />

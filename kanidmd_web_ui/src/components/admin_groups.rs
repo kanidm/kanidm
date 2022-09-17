@@ -5,24 +5,23 @@ use crate::models;
 use crate::utils::{do_alert_error, init_request};
 use gloo::console;
 use std::collections::BTreeMap;
-// use yew::prelude::*;
 use yew::{html, Component, Context, Html, Properties};
 
-impl From<GetError> for AdminListAccountsMsg {
+impl From<GetError> for AdminListGroupsMsg {
     fn from(ge: GetError) -> Self {
-        AdminListAccountsMsg::Failed {
+        AdminListGroupsMsg::Failed {
             emsg: ge.err,
             kopid: None,
         }
     }
 }
 
-pub struct AdminListAccounts {
+pub struct AdminListGroups {
     state: ViewState,
 }
 
 // callback messaging for this confused pile of crab-bait
-pub enum AdminListAccountsMsg {
+pub enum AdminListGroupsMsg {
     /// When the server responds and we need to update the page
     Responded {
         response: BTreeMap<String, Entity>,
@@ -51,7 +50,7 @@ enum ViewState {
 }
 
 #[derive(PartialEq, Properties, Eq)]
-pub struct AdminListAccountsProps {
+pub struct AdminListGroupsProps {
     // for filtering and pagination
     // #[allow(dead_code)]
     // search: Option<String>,
@@ -61,15 +60,11 @@ pub struct AdminListAccountsProps {
 
 /// Pulls all accounts (service or person-class) from the backend and returns a HashMap
 /// with the "name" field being the keys, for easy human-facing sortability.
-pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError> {
-    // TODO: the actual pulling and turning into a BTreeMap in this and get_groups could *probably* be rolled up into one function? The result object differs but all the widgets are the same.
-    let mut all_accounts = BTreeMap::new();
+pub async fn get_groups(token: &str) -> Result<AdminListGroupsMsg, GetError> {
+    let mut all_groups = BTreeMap::new();
 
     // we iterate over these endpoints
-    let endpoints = [
-        ("/v1/service_account", "service_account"),
-        ("/v1/person", "person"),
-    ];
+    let endpoints = [("/v1/group", "group")];
 
     for (endpoint, object_type) in endpoints {
         let request = init_request(endpoint, token);
@@ -84,7 +79,7 @@ pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError>
         #[allow(clippy::panic)]
         let data: Vec<Entity> = match response.json().await {
             Ok(value) => value,
-            Err(error) => panic!("Failed to grab the account data into JSON: {:?}", error),
+            Err(error) => panic!("Failed to grab the group data into JSON: {:?}", error),
         };
 
         for entity in data.iter() {
@@ -99,21 +94,21 @@ pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError>
                     .attrs
                     .spn
                     .first()
-                    .expect("Failed to grab the SPN for an account.")
+                    .expect("Failed to grab the SPN for a group.")
                     .to_string(),
             };
-            all_accounts.insert(entity_id.to_string(), new_entity);
+            all_groups.insert(entity_id.to_string(), new_entity);
         }
     }
 
-    Ok(AdminListAccountsMsg::Responded {
-        response: all_accounts,
+    Ok(AdminListGroupsMsg::Responded {
+        response: all_groups,
     })
 }
 
-impl Component for AdminListAccounts {
-    type Message = AdminListAccountsMsg;
-    type Properties = AdminListAccountsProps;
+impl Component for AdminListGroups {
+    type Message = AdminListGroupsMsg;
+    type Properties = AdminListGroupsProps;
 
     fn create(ctx: &Context<Self>) -> Self {
         // TODO: work out the querystring thing so we can just show x number of elements
@@ -125,12 +120,12 @@ impl Component for AdminListAccounts {
 
         // start pulling the account data on startup
         ctx.link().send_future(async move {
-            match get_accounts(token.clone().as_str()).await {
+            match get_groups(token.clone().as_str()).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
         });
-        AdminListAccounts {
+        AdminListGroups {
             state: ViewState::Loading,
         }
     }
@@ -139,11 +134,11 @@ impl Component for AdminListAccounts {
         html! {
             <>
               <div class={CSS_PAGE_HEADER}>
-                <h2>{ "System Administration" }</h2>
+                <h2>{ "Group Administration" }</h2>
               </div>
 
               { alpha_warning_banner() }
-        <div id={"accountlist"}>
+        <div id={"grouplist"}>
         {self.view_state(ctx)}
         </div>
         </>
@@ -152,12 +147,11 @@ impl Component for AdminListAccounts {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            AdminListAccountsMsg::Responded { response } => {
+            AdminListGroupsMsg::Responded { response } => {
                 // TODO: do we paginate here?
-                #[cfg(debug)]
+                #[cfg(test)]
                 for key in response.keys() {
-                    #[allow(clippy::unwrap_used)]
-                    console::log!(
+                    console::debug!(
                         "response: {:?}",
                         serde_json::to_string(response.get(key).unwrap()).unwrap()
                     );
@@ -165,7 +159,8 @@ impl Component for AdminListAccounts {
                 self.state = ViewState::Responded { response };
                 return true;
             }
-            AdminListAccountsMsg::Failed { emsg, kopid } => {
+            AdminListGroupsMsg::Failed { emsg, kopid } => {
+                // TODO: make this push a view state
                 console::log!("emsg: {:?}", emsg);
                 console::log!("kopid: {:?}", kopid);
             }
@@ -174,12 +169,12 @@ impl Component for AdminListAccounts {
     }
 }
 
-impl AdminListAccounts {
+impl AdminListGroups {
     /// output the information based on what's in the current state
     fn view_state(&self, _ctx: &Context<Self>) -> Html {
         match &self.state {
             ViewState::Loading => {
-                html! {"Waiting on the accounts list to load..."}
+                html! {"Waiting on the groups list to load..."}
             }
 
             ViewState::Responded { response } => {
@@ -189,8 +184,7 @@ impl AdminListAccounts {
                   <table class={CSS_TABLE}>
                   <thead>
                     <tr>
-                      <th scope={scope_col}>{"Display Name"}</th>
-                      <th scope={scope_col}>{"Username"}</th>
+                      <th scope={scope_col}>{"Name"}</th>
                       <th scope={scope_col}>{"Description"}</th>
                     </tr>
                   </thead>
@@ -198,31 +192,23 @@ impl AdminListAccounts {
                   {
                     response.keys().map(|name| {
                         #[allow(clippy::expect_used)]
-                      let account: &Entity = response.get(name).expect("Couldn't get account key when it was just in the iter...");
+                      let group: &Entity = response.get(name).expect("Couldn't get group key when it was just in the iter...");
 
-                        let display_name: String = match account.attrs.displayname.first() {
+                        let description: String = match group.attrs.description.first() {
                           Some(value) => value.to_string(),
                           None => String::from(""),
                         };
-
-                        let description: String = match account.attrs.description.first() {
-                          Some(value) => value.to_string(),
-                          None => String::from(""),
-                        };
-
-
-                        let uuid: String = match account.attrs.uuid.first() {
+                        let uuid: String = match group.attrs.uuid.first() {
                             Some(value) => value.to_string(),
                             None => {
-                                console::error!("Account without a UUID?", format!("{:?}", account).to_string());
-                                String::from("Unknown UUID!")
+                                console::error!("Group without a UUID?", format!("{:?}", group).to_string());
+                                String::from("GROUP WITHOUT A UUID!")
                             }
                         };
 
                         html!{
                           <tr key={uuid}>
-                          <th scope={scope_col} class={CSS_CELL}>{display_name}</th>
-                          <td class={CSS_CELL}>{name}</td>
+                          <td class={CSS_CELL} scope={scope_col}>{name}</td>
                           <td class={CSS_CELL}>{description}</td>
                           </tr>
                         }
@@ -231,11 +217,12 @@ impl AdminListAccounts {
                   </table>
                 )
             }
+
             ViewState::Failed { emsg, kopid } => {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
-                    {do_alert_error("Failed to Query Accounts", Some(emsg))}
+                    {do_alert_error("Failed to Query Groups", Some(emsg))}
                     </>
                 )
             }

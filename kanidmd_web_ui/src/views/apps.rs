@@ -1,5 +1,5 @@
 use crate::components::alpha_warning_banner;
-use crate::constants::CSS_PAGE_HEADER;
+use crate::constants::{CSS_CELL, CSS_PAGE_HEADER, CSS_TABLE};
 #[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
@@ -52,7 +52,7 @@ impl Component for AppsApp {
 
               { alpha_warning_banner() }
               <div class="table-responsive">
-                <table class="table table-striped table-sm">
+                <table class={CSS_TABLE}>
                   <thead>
                     <tr>
                       <th scope="col">{ "#" }</th>
@@ -64,18 +64,18 @@ impl Component for AppsApp {
                   </thead>
                   <tbody>
                     <tr>
-                      <td>{ "1,001" }</td>
-                      <td>{ "random" }</td>
-                      <td>{ "data" }</td>
-                      <td>{ "placeholder" }</td>
-                      <td>{ "text" }</td>
+                      <td class={CSS_CELL}>{ "1,001" }</td>
+                      <td class={CSS_CELL}>{ "random" }</td>
+                      <td class={CSS_CELL}>{ "data" }</td>
+                      <td class={CSS_CELL}>{ "placeholder" }</td>
+                      <td class={CSS_CELL}>{ "text" }</td>
                     </tr>
                     <tr>
-                      <td>{ "1,015" }</td>
-                      <td>{ "random" }</td>
-                      <td>{ "tabular" }</td>
-                      <td>{ "informaasdftion" }</td>
-                      <td>{ "text" }</td>
+                      <td class={CSS_CELL}>{ "1,015" }</td>
+                      <td class={CSS_CELL}>{ "random" }</td>
+                      <td class={CSS_CELL}>{ "tabular" }</td>
+                      <td class={CSS_CELL}>{ "informaasdftion" }</td>
+                      <td class={CSS_CELL}>{ "text" }</td>
                     </tr>
                   </tbody>
                 </table>

@@ -95,35 +95,7 @@ impl Component for AdminMenu {
     }
 }
 
-pub struct AdminListGroups;
-
-impl Component for AdminListGroups {
-    type Message = ();
-    type Properties = ListProps;
-
-    fn create(_ctx: &Context<Self>) -> Self {
-        AdminListGroups
-    }
-
-    fn view(&self, _ctx: &Context<Self>) -> Html {
-        html! {
-            <>
-              <div class={CSS_PAGE_HEADER}>
-                <h2>{ "System Administration" }</h2>
-              </div>
-
-              { alpha_warning_banner() }
-        <div>
-            {"Groups!"}
-        </div>
-        // TODO: pull the list from /v1/groups
-        </>
-        }
-    }
-}
-
-// impl AdminListAccounts {
-
+// TODO: can this come from somewhere else more simply? Probably not, because reasons.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Attributes {
     pub class: Vec<String>,
@@ -137,6 +109,8 @@ pub struct Attributes {
     pub spn: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub uuid: Vec<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
