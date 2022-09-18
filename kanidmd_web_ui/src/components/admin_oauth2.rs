@@ -20,7 +20,7 @@ impl From<GetError> for AdminListOAuth2Msg {
 }
 
 pub struct AdminListOAuth2 {
-    state: ViewState,
+    state: ListViewState,
 }
 
 // callback messaging for this confused pile of crab-bait
@@ -35,7 +35,7 @@ pub enum AdminListOAuth2Msg {
     },
 }
 
-enum ViewState {
+enum ListViewState {
     /// waiting for the page to load
     Loading,
     /// server has responded
@@ -125,63 +125,29 @@ impl Component for AdminListOAuth2 {
             }
         });
         AdminListOAuth2 {
-            state: ViewState::Loading,
+            state: ListViewState::Loading,
         }
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        html! {
-            <>
-
-            <ol class="breadcrumb">
-            <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-            <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"OAuth2 Configs"}</li>
-            </ol>
-              {do_page_header("OAuth2 Configs")}
-
-              { alpha_warning_banner() }
-        <div id={"accountlist"}>
-        {self.view_state(ctx)}
-        </div>
-        </>
-        }
-    }
-
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            AdminListOAuth2Msg::Responded { response } => {
-                // TODO: do we paginate here?
-                #[cfg(debug)]
-                for key in response.keys() {
-                    console::log!(
-                        "response: {:?}",
-                        serde_json::to_string(response.get(key).unwrap()).unwrap()
-                    );
-                }
-                self.state = ViewState::Responded { response };
-                return true;
-            }
-            AdminListOAuth2Msg::Failed { emsg, kopid } => {
-                console::log!("emsg: {:?}", emsg);
-                console::log!("kopid: {:?}", kopid);
-            }
-        }
-        false
-    }
-}
-
-impl AdminListOAuth2 {
-    /// output the information based on what's in the current state
-    fn view_state(&self, _ctx: &Context<Self>) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         match &self.state {
-            ViewState::Loading => {
+            ListViewState::Loading => {
                 html! {"Waiting on the OAuth2 data to load..."}
             }
 
-            ViewState::Responded { response } => {
+            ListViewState::Responded { response } => {
                 let scope_col = "col";
+                html! {
+                    <>
 
-                html!(
+                    <ol class="breadcrumb">
+                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"OAuth2 Configs"}</li>
+                    </ol>
+                      {do_page_header("OAuth2 Configs")}
+
+                      { alpha_warning_banner() }
+                <div id={"accountlist"}>
                   <table class={CSS_TABLE}>
                   <thead>
                     <tr>
@@ -217,7 +183,10 @@ impl AdminListOAuth2 {
 
                         html!{
                           <tr key={uuid.clone()}>
-                          <th scope={scope_col} class={CSS_CELL}>{display_name}</th>
+                          <th scope={scope_col} class={CSS_CELL}>
+                            <Link<AdminRoute> to={AdminRoute::ViewOAuth2RP{uuid: uuid.clone()}}>
+                                {display_name}
+                                </Link<AdminRoute>></th>
                           <td class={CSS_CELL}>{uuid}</td>
                           <td class={CSS_CELL}>{description}</td>
                           </tr>
@@ -225,7 +194,160 @@ impl AdminListOAuth2 {
                     }).collect::<Html>()
                   }
                   </table>
+                  </div>
+                  </>
+                }
+            }
+            ListViewState::Failed { emsg, kopid } => {
+                console::error!("Failed to pull details", format!("{:?}", kopid));
+                html!(
+                    <>
+                    {do_alert_error("Failed to Query OAuth2", Some(emsg))}
+                    </>
                 )
+            }
+            ListViewState::NotAuthorized {} => {
+                do_alert_error("You're not authorized to see this page!", None)
+            }
+        }
+    }
+
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            AdminListOAuth2Msg::Responded { response } => {
+                // TODO: do we paginate here?
+                #[cfg(debug)]
+                for key in response.keys() {
+                    console::log!(
+                        "response: {:?}",
+                        serde_json::to_string(response.get(key).unwrap()).unwrap()
+                    );
+                }
+                self.state = ListViewState::Responded { response };
+                return true;
+            }
+            AdminListOAuth2Msg::Failed { emsg, kopid } => {
+                console::log!("emsg: {:?}", emsg);
+                console::log!("kopid: {:?}", kopid);
+            }
+        }
+        false
+    }
+}
+
+impl From<GetError> for AdminViewOAuth2Msg {
+    fn from(ge: GetError) -> Self {
+        AdminViewOAuth2Msg::Failed {
+            emsg: ge.err,
+            kopid: None,
+        }
+    }
+}
+
+// callback messaging for this confused pile of crab-bait
+pub enum AdminViewOAuth2Msg {
+    /// When the server responds and we need to update the page
+    Responded {
+        response: Entity,
+    },
+    Failed {
+        emsg: String,
+        kopid: Option<String>,
+    },
+}
+
+#[derive(PartialEq, Eq, Properties)]
+pub struct AdminViewOAuth2Props {
+    pub uuid: String,
+}
+
+enum ViewState {
+    /// waiting for the page to load
+    Loading,
+    /// server has responded
+    Responded { response: Entity },
+    /// failed to pull the details
+    #[allow(dead_code)]
+    Failed {
+        // TODO: use this
+        emsg: String,
+        kopid: Option<String>,
+    },
+    #[allow(dead_code)]
+    /// Not authorized to pull the details
+    NotAuthorized {}, // TODO: use this
+}
+
+pub struct AdminViewOAuth2 {
+    state: ViewState,
+}
+
+impl Component for AdminViewOAuth2 {
+    type Message = AdminViewOAuth2Msg;
+    type Properties = AdminViewOAuth2Props;
+
+    fn create(ctx: &Context<Self>) -> Self {
+        let token = match models::get_bearer_token() {
+            Some(value) => value,
+            None => String::from(""),
+        };
+        let uuid = ctx.props().uuid.clone();
+
+        // start pulling the data on startup
+        ctx.link().send_future(async move {
+            match get_oauth2_rp(token.clone().as_str(), &uuid).await {
+                Ok(v) => v,
+                Err(v) => v.into(),
+            }
+        });
+        AdminViewOAuth2 {
+            state: ViewState::Loading,
+        }
+    }
+
+    fn view(&self, _ctx: &Context<Self>) -> Html {
+        match &self.state {
+            ViewState::Loading => {
+                html! {"Waiting on the OAuth2 data to load..."}
+            }
+
+            ViewState::Responded { response } => {
+                let oauth2_object: &Entity = response;
+
+                let display_name: String = match oauth2_object.attrs.displayname.first() {
+                    Some(value) => value.to_string(),
+                    None => String::from(""),
+                };
+
+                let description: String = match oauth2_object.attrs.description.first() {
+                    Some(value) => value.to_string(),
+                    None => String::from(""),
+                };
+                let uuid: String = match oauth2_object.attrs.uuid.first() {
+                    Some(value) => value.to_string(),
+                    None => {
+                        console::error!("Config without a UUID?", format!("{:?}", oauth2_object));
+                        String::from("Unknown UUID!")
+                    }
+                };
+                html! {
+                  <>
+
+                  <ol class="breadcrumb">
+                  <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+                  <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"OAuth2 Configs"}</Link<AdminRoute>></li>
+                  <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{display_name.as_str()}</li>
+                  </ol>
+                  {do_page_header(display_name.as_str())}
+
+                  { alpha_warning_banner() }
+
+                  // TODO: maybe pull the OAuth2 RP details here? "path": "/v1/oauth2/:id",
+
+                  <p>{uuid}</p>
+                  <p>{description}</p>
+                  </>
+                }
             }
             ViewState::Failed { emsg, kopid } => {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
@@ -240,4 +362,52 @@ impl AdminListOAuth2 {
             }
         }
     }
+
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            AdminViewOAuth2Msg::Responded { response } => {
+                // TODO: do we paginate here?
+                #[cfg(debug)]
+                for key in response.keys() {
+                    console::log!(
+                        "response: {:?}",
+                        serde_json::to_string(response.get(key).unwrap()).unwrap()
+                    );
+                }
+                self.state = ViewState::Responded { response };
+            }
+            AdminViewOAuth2Msg::Failed { emsg, kopid } => {
+                console::log!("emsg: {:?}", &emsg);
+                console::log!("kopid: {:?}", kopid.to_owned());
+                self.state = ViewState::Failed { emsg, kopid };
+            }
+        }
+        true
+    }
+}
+
+pub async fn get_oauth2_rp(token: &str, uuid: &str) -> Result<AdminViewOAuth2Msg, GetError> {
+    let request = init_request(format!("/v1/oauth2/{}", uuid).as_str(), token);
+    let response = match request.send().await {
+        Ok(value) => value,
+        Err(error) => {
+            return Err(GetError {
+                err: format!("{:?}", error),
+            })
+        }
+    };
+    #[allow(clippy::panic)]
+    let data: Entity = match response.json().await {
+        Ok(value) => {
+            console::log!(format!("{:?}", value));
+            value
+        },
+        Err(error) => {
+            //TODO: turn this into an error, and handle when we aren't authorized. The server doesn't seem to be sending back anything nice for this, which is.. painful.
+            console::log!("Failed to grab the OAuth2 RP data into JSON:", format!("{:?}", error));
+            return Err(GetError{err:format!("Failed to grab the OAuth2 RP data into JSON: {:?}", error) })
+        }
+    };
+
+    Ok(AdminViewOAuth2Msg::Responded { response: data })
 }
