@@ -1,11 +1,13 @@
 use crate::components::adminmenu::{Entity, GetError};
 use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_CELL, CSS_PAGE_HEADER, CSS_TABLE};
+use crate::constants::{CSS_CELL, CSS_TABLE};
 use crate::models;
-use crate::utils::{do_alert_error, init_request};
+use crate::utils::{do_alert_error, do_page_header, init_request};
+use crate::views::AdminRoute;
 use gloo::console;
 use std::collections::BTreeMap;
 use yew::{html, Component, Context, Html, Properties};
+use yew_router::prelude::Link;
 
 impl From<GetError> for AdminListGroupsMsg {
     fn from(ge: GetError) -> Self {
@@ -17,7 +19,7 @@ impl From<GetError> for AdminListGroupsMsg {
 }
 
 pub struct AdminListGroups {
-    state: ViewState,
+    state: GroupsViewState,
 }
 
 // callback messaging for this confused pile of crab-bait
@@ -32,7 +34,7 @@ pub enum AdminListGroupsMsg {
     },
 }
 
-enum ViewState {
+enum GroupsViewState {
     /// waiting for the page to load
     Loading,
     /// server has responded
@@ -126,16 +128,14 @@ impl Component for AdminListGroups {
             }
         });
         AdminListGroups {
-            state: ViewState::Loading,
+            state: GroupsViewState::Loading,
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
-              <div class={CSS_PAGE_HEADER}>
-                <h2>{ "Group Administration" }</h2>
-              </div>
+              {do_page_header("Group Administration")}
 
               { alpha_warning_banner() }
         <div id={"grouplist"}>
@@ -156,7 +156,7 @@ impl Component for AdminListGroups {
                         serde_json::to_string(response.get(key).unwrap()).unwrap()
                     );
                 }
-                self.state = ViewState::Responded { response };
+                self.state = GroupsViewState::Responded { response };
                 return true;
             }
             AdminListGroupsMsg::Failed { emsg, kopid } => {
@@ -173,11 +173,11 @@ impl AdminListGroups {
     /// output the information based on what's in the current state
     fn view_state(&self, _ctx: &Context<Self>) -> Html {
         match &self.state {
-            ViewState::Loading => {
+            GroupsViewState::Loading => {
                 html! {"Waiting on the groups list to load..."}
             }
 
-            ViewState::Responded { response } => {
+            GroupsViewState::Responded { response } => {
                 let scope_col = "col";
 
                 html!(
@@ -207,8 +207,9 @@ impl AdminListGroups {
                         };
 
                         html!{
-                          <tr key={uuid}>
-                          <td class={CSS_CELL} scope={scope_col}>{name}</td>
+                          <tr key={uuid.clone()}>
+                          <td class={CSS_CELL} scope={scope_col}>
+                          <Link<AdminRoute> to={AdminRoute::ViewGroup{uuid:{uuid.clone()}}} >{name}</Link<AdminRoute>></td>
                           <td class={CSS_CELL}>{description}</td>
                           </tr>
                         }
@@ -218,7 +219,7 @@ impl AdminListGroups {
                 )
             }
 
-            ViewState::Failed { emsg, kopid } => {
+            GroupsViewState::Failed { emsg, kopid } => {
                 console::error!("Failed to pull details", format!("{:?}", kopid));
                 html!(
                     <>
@@ -226,9 +227,154 @@ impl AdminListGroups {
                     </>
                 )
             }
-            ViewState::NotAuthorized {} => {
+            GroupsViewState::NotAuthorized {} => {
                 do_alert_error("You're not authorized to see this page!", None)
             }
         }
     }
+}
+
+#[derive(Properties, PartialEq, Eq, Clone)]
+pub struct AdminViewGroupProps {
+    pub uuid: String,
+}
+
+// callback messaging for group detail view
+pub enum AdminViewGroupMsg {
+    /// When the server responds and we need to update the page
+    Responded { response: Entity },
+    #[allow(dead_code)]
+    Failed { emsg: String, kopid: Option<String> },
+    #[allow(dead_code)]
+    NotAuthorized {},
+}
+
+impl From<GetError> for AdminViewGroupMsg {
+    fn from(ge: GetError) -> Self {
+        AdminViewGroupMsg::Failed {
+            emsg: ge.err,
+            kopid: None,
+        }
+    }
+}
+
+enum GroupViewState {
+    /// waiting for the page to load
+    Loading,
+    /// server has responded
+    Responded { response: Entity },
+    /// failed to pull the details
+    #[allow(dead_code)]
+    Failed {
+        // TODO: use this
+        emsg: String,
+        kopid: Option<String>,
+    },
+    #[allow(dead_code)]
+    /// Not authorized to pull the details
+    NotAuthorized {}, // TODO: use this
+}
+
+pub struct AdminViewGroup {
+    state: GroupViewState,
+}
+
+impl Component for AdminViewGroup {
+    type Message = AdminViewGroupMsg;
+
+    type Properties = AdminViewGroupProps;
+
+    fn create(ctx: &Context<Self>) -> Self {
+        let token = match models::get_bearer_token() {
+            Some(value) => value,
+            None => String::from(""),
+        };
+        let uuid = ctx.props().uuid.clone();
+        // TODO: start pulling the group details then send the msg blep blep
+        ctx.link().send_future(async move {
+            match get_group(token.clone().as_str(), &uuid).await {
+                Ok(v) => v,
+                Err(v) => v.into(),
+            }
+        });
+
+        AdminViewGroup {
+            state: GroupViewState::Loading,
+        }
+    }
+
+    fn view(&self, _ctx: &Context<Self>) -> Html {
+        match &self.state {
+            GroupViewState::Loading => html! {"waaaaaaaiiiitttt....."},
+            GroupViewState::Responded { response } => {
+                let page_title = format!(
+                    "Group: {}",
+                    response
+                        .attrs
+                        .name
+                        .first()
+                        .unwrap_or(&String::from("Error: Name Field Missing"))
+                );
+
+                let group_uuid = match response.attrs.uuid.first() {
+                    Some(value) => value.clone(),
+                    None => String::from("Error querying UUID!"),
+                };
+                html! {
+                    <>
+                    {do_page_header(&page_title)}
+                    <p>{"UUID: "}{group_uuid}</p>
+                    <p>{"Group Membership will show up here soon..."}</p>
+                    </>
+                }
+            }
+            GroupViewState::Failed { emsg, kopid } => do_alert_error(
+                emsg,
+                Some(
+                    kopid
+                        .as_ref()
+                        .unwrap_or(&String::from("unknown operation ID")),
+                ),
+            ),
+            GroupViewState::NotAuthorized {} => {
+                do_alert_error("You are not authorized to view this page!", None)
+            }
+        }
+    }
+
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            AdminViewGroupMsg::Responded { response } => {
+                self.state = GroupViewState::Responded { response };
+                true
+            }
+            AdminViewGroupMsg::Failed { emsg, kopid } => {
+                self.state = GroupViewState::Failed { emsg, kopid };
+                true
+            }
+            AdminViewGroupMsg::NotAuthorized {} => {
+                self.state = GroupViewState::NotAuthorized {};
+                true
+            }
+        }
+    }
+}
+
+/// pull the details for a single group by UUID
+pub async fn get_group(token: &str, groupid: &str) -> Result<AdminViewGroupMsg, GetError> {
+    let request = init_request(format!("/v1/group/{}", groupid).as_str(), token);
+    let response = match request.send().await {
+        Ok(value) => value,
+        Err(error) => {
+            return Err(GetError {
+                err: format!("{:?}", error),
+            })
+        }
+    };
+    #[allow(clippy::panic)]
+    let data: Entity = match response.json().await {
+        Ok(value) => value,
+        Err(error) => panic!("Failed to grab the group data into JSON: {:?}", error),
+    };
+    Ok(AdminViewGroupMsg::Responded { response: data })
 }

@@ -52,9 +52,8 @@ pub enum AdminRoute {
     #[at("/ui/view/admin/oauth2")]
     AdminListOAuth2,
 
-
-    #[at("/ui/view/admin/group/uuid:uuid")]
-    ViewGroup{ uuid: String },
+    #[at("/ui/view/admin/group/:uuid")]
+    ViewGroup { uuid: String },
 
     #[not_found]
     #[at("/ui/view/admin/404")]
@@ -419,10 +418,11 @@ fn admin_routes(route: &AdminRoute) -> Html {
         AdminRoute::AdminListOAuth2 => html!(
           <admin_oauth2::AdminListOAuth2 />
         ),
-        AdminRoute::NotFound => html! {
+        AdminRoute::NotFound => html! (
           <Redirect<Route> to={Route::NotFound}/>
-        },
-        // TODO: implement ViewGroup
-        AdminRoute::ViewGroup { uuid } => todo!("uuid: {}", uuid),
+        ),
+        AdminRoute::ViewGroup { uuid } => {
+            html!(<admin_groups::AdminViewGroup uuid={uuid.clone()} />)
+        }
     }
 }

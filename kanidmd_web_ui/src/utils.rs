@@ -106,3 +106,11 @@ pub fn do_alert_error(alert_title: &str, alert_message: Option<&str>) -> Html {
     </div>
     }
 }
+
+pub fn do_page_header(page_title: &str) -> Html {
+    html! {
+        <div class={crate::constants::CSS_PAGE_HEADER}>
+            <h2>{ page_title }</h2>
+        </div>
+    }
+}
