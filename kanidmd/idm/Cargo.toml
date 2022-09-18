@@ -74,7 +74,7 @@ features = ["bundled"]
 version = "^0.28.0"
 
 [target.'cfg(target_family = "windows")'.dependencies]
-whoami = "^1.2.1"
+whoami = "^1.2.3"
 
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
