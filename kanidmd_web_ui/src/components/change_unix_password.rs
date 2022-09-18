@@ -38,11 +38,11 @@ impl From<FormData> for FormValues {
             password_input: data
                 .get("password_input")
                 .as_string()
-                .expect("Failed to pull the password input field"),
+                .expect_throw("Failed to pull the password input field"),
             password_repeat_input: data
                 .get("password_repeat_input")
                 .as_string()
-                .expect("Failed to pull the password_repeat input field"),
+                .expect_throw("Failed to pull the password_repeat input field"),
         }
     }
 }

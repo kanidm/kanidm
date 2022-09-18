@@ -213,7 +213,7 @@ impl AdminListAccounts {
                         let account_type: Html = match &account.object_type {
                             Some(value) => match value.as_str() {
                                 // TODO: make these into tiny images
-                                "service_account" => html!{<img src={"/pkg/img/icon-robot.svg"} alt={"Service Account"} class={"p-0"} />},
+                                "service_account" => html!{<img src={"/pkg/img/icon-robot.svg"}  alt={"Service Account"} class={"p-0"} />},
                                 "person" => html!{<img src={"/pkg/img/icon-person.svg"} alt={"Person"} class={"p-0"} />},
                                 &_ => html!("x"),
                             },
@@ -232,7 +232,11 @@ impl AdminListAccounts {
                         html!{
                           <tr key={uuid}>
                           <td class={CSS_CELL}>{account_type}</td>
-                          <th scope={scope_col} class={CSS_CELL}>{display_name}</th>
+                          <th scope={scope_col} class={CSS_CELL}>
+                          // <Link<AdminRoute> classes={CSS_LINK_DARK_STRETCHED} to={AdminRoute::AdminViewAccount uuid}>
+                          {display_name}
+                        //   </Link<AdminRoute>>
+                          </th>
                           <td class={CSS_CELL}>{name}</td>
                           <td class={CSS_CELL}>{description}</td>
                           </tr>

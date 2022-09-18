@@ -324,6 +324,7 @@ impl Component for AdminViewGroup {
                     <>
                     {do_page_header(&page_title)}
                     <p>{"UUID: "}{group_uuid}</p>
+                    // TODO: pull group membership and show members
                     <p>{"Group Membership will show up here soon..."}</p>
                     </>
                 }
