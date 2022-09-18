@@ -142,9 +142,9 @@ impl Component for AdminListOAuth2 {
 
                     <ol class="breadcrumb">
                     <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"OAuth2 Configs"}</li>
+                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"OAuth2"}</li>
                     </ol>
-                      {do_page_header("OAuth2 Configs")}
+                      {do_page_header("OAuth2")}
 
                       { alpha_warning_banner() }
                 <div id={"accountlist"}>
@@ -171,7 +171,11 @@ impl Component for AdminListOAuth2 {
                           Some(value) => value.to_string(),
                           None => String::from(""),
                         };
-                        // TODO: maybe pull the OAuth2 RP details here? "path": "/v1/oauth2/:id",
+                        console::log!(format!("{:?}", oauth2_object.attrs));
+                        let rs_name: String = match oauth2_object.attrs.oauth2_rs_name.first() {
+                            Some(value) => value.to_string(),
+                            None => String::from("!error getting rs_name!")
+                        };
 
                         let uuid: String = match oauth2_object.attrs.uuid.first() {
                             Some(value) => value.to_string(),
@@ -184,7 +188,7 @@ impl Component for AdminListOAuth2 {
                         html!{
                           <tr key={uuid.clone()}>
                           <th scope={scope_col} class={CSS_CELL}>
-                            <Link<AdminRoute> to={AdminRoute::ViewOAuth2RP{uuid: uuid.clone()}}>
+                            <Link<AdminRoute> to={AdminRoute::ViewOAuth2RP{rs_name: rs_name.clone()}}>
                                 {display_name}
                                 </Link<AdminRoute>></th>
                           <td class={CSS_CELL}>{uuid}</td>
@@ -258,7 +262,7 @@ pub enum AdminViewOAuth2Msg {
 
 #[derive(PartialEq, Eq, Properties)]
 pub struct AdminViewOAuth2Props {
-    pub uuid: String,
+    pub rs_name: String,
 }
 
 enum ViewState {
@@ -291,11 +295,11 @@ impl Component for AdminViewOAuth2 {
             Some(value) => value,
             None => String::from(""),
         };
-        let uuid = ctx.props().uuid.clone();
+        let rs_name = ctx.props().rs_name.clone();
 
         // start pulling the data on startup
         ctx.link().send_future(async move {
-            match get_oauth2_rp(token.clone().as_str(), &uuid).await {
+            match get_oauth2_rp(token.clone().as_str(), &rs_name).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -316,12 +320,20 @@ impl Component for AdminViewOAuth2 {
 
                 let display_name: String = match oauth2_object.attrs.displayname.first() {
                     Some(value) => value.to_string(),
-                    None => String::from(""),
+                    None => String::from("!error getting display name!"),
                 };
 
                 let description: String = match oauth2_object.attrs.description.first() {
                     Some(value) => value.to_string(),
                     None => String::from(""),
+                };
+                let oauth2_rs_name: String = match oauth2_object.attrs.oauth2_rs_name.first() {
+                    Some(value) => value.to_string(),
+                    None => String::from("!error getting oauth2_rs_name!"),
+                };
+                let oauth2_rs_origin: String = match oauth2_object.attrs.oauth2_rs_origin.first() {
+                    Some(value) => value.to_string(),
+                    None => String::from("!error getting oauth2_rs_origin!"),
                 };
                 let uuid: String = match oauth2_object.attrs.uuid.first() {
                     Some(value) => value.to_string(),
@@ -335,17 +347,16 @@ impl Component for AdminViewOAuth2 {
 
                   <ol class="breadcrumb">
                   <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
-                  <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"OAuth2 Configs"}</Link<AdminRoute>></li>
+                  <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListOAuth2}>{"OAuth2"}</Link<AdminRoute>></li>
                   <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{display_name.as_str()}</li>
                   </ol>
                   {do_page_header(display_name.as_str())}
+                  {alpha_warning_banner()}
 
-                  { alpha_warning_banner() }
-
-                  // TODO: maybe pull the OAuth2 RP details here? "path": "/v1/oauth2/:id",
-
-                  <p>{uuid}</p>
+                  <p>{"UUID: "}{uuid}</p>
                   <p>{description}</p>
+                  <p>{"RS Name: "}{oauth2_rs_name}</p>
+                  <p>{"Origin: "}{oauth2_rs_origin}</p>
                   </>
                 }
             }
@@ -386,8 +397,8 @@ impl Component for AdminViewOAuth2 {
     }
 }
 
-pub async fn get_oauth2_rp(token: &str, uuid: &str) -> Result<AdminViewOAuth2Msg, GetError> {
-    let request = init_request(format!("/v1/oauth2/{}", uuid).as_str(), token);
+pub async fn get_oauth2_rp(token: &str, rs_name: &str) -> Result<AdminViewOAuth2Msg, GetError> {
+    let request = init_request(format!("/v1/oauth2/{}", rs_name).as_str(), token);
     let response = match request.send().await {
         Ok(value) => value,
         Err(error) => {
@@ -401,11 +412,16 @@ pub async fn get_oauth2_rp(token: &str, uuid: &str) -> Result<AdminViewOAuth2Msg
         Ok(value) => {
             console::log!(format!("{:?}", value));
             value
-        },
+        }
         Err(error) => {
             //TODO: turn this into an error, and handle when we aren't authorized. The server doesn't seem to be sending back anything nice for this, which is.. painful.
-            console::log!("Failed to grab the OAuth2 RP data into JSON:", format!("{:?}", error));
-            return Err(GetError{err:format!("Failed to grab the OAuth2 RP data into JSON: {:?}", error) })
+            console::log!(
+                "Failed to grab the OAuth2 RP data into JSON:",
+                format!("{:?}", error)
+            );
+            return Err(GetError {
+                err: format!("Failed to grab the OAuth2 RP data into JSON: {:?}", error),
+            });
         }
     };
 

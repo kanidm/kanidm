@@ -555,7 +555,7 @@ pub fn create_https_server(
         .mapped_post(&mut routemap, oauth2_basic_post);
 
     oauth2_route
-        .at("/:id")
+        .at("/:rs_name")
         .mapped_get(&mut routemap, oauth2_id_get)
         // It's not really possible to replace this wholesale.
         // .mapped_put(&mut routemap, oauth2_id_put)
