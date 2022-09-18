@@ -24,7 +24,7 @@ sketching = { path = "../../sketching" }
 
 clap = { version = "^3.2", features = ["derive", "env"] }
 serde = { version = "^1.0.142", features = ["derive"] }
-tokio = { version = "^1.21.0", features = ["rt-multi-thread", "macros", "signal"] }
+tokio = { version = "^1.21.1", features = ["rt-multi-thread", "macros", "signal"] }
 toml = "0.5.9"
 
 [target.'cfg(target_family = "windows")'.dependencies]
