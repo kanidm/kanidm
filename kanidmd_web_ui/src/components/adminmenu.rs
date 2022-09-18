@@ -1,13 +1,13 @@
 use crate::components::alpha_warning_banner;
-use crate::constants::CSS_PAGE_HEADER;
+use crate::constants::{CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
 // use crate::error::FetchError;
 use crate::views::AdminRoute;
 
 use serde::{Deserialize, Serialize};
+
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
-const CSS_LINK_DARK_STRETCHED: &str = "link-dark stretched-link";
 const CSS_CARD: &str = "card text-center";
 const CSS_CARD_BODY: &str = "card-body text-center";
 
@@ -112,10 +112,25 @@ pub struct Attributes {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum EntityType {
+    Person,
+    ServiceAccount,
+    Group,
+    OAuth2RP,
+    Unknown,
+}
+
+impl Default for EntityType {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Entity {
     pub attrs: Attributes,
     #[serde(default)]
-    pub object_type: Option<String>,
+    pub object_type: EntityType,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,4 +1,4 @@
-use crate::components::adminmenu::{Entity, GetError};
+use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_CELL, CSS_PAGE_HEADER, CSS_TABLE};
 use crate::models;
@@ -65,7 +65,7 @@ pub async fn get_entities(token: &str) -> Result<AdminListOAuth2Msg, GetError> {
     let mut oauth2_objects = BTreeMap::new();
 
     // we iterate over these endpoints
-    let endpoints = [("/v1/oauth2", "oauth2_rp")];
+    let endpoints = [("/v1/oauth2", EntityType::OAuth2RP)];
 
     for (endpoint, object_type) in endpoints {
         let request = init_request(endpoint, token);
@@ -85,7 +85,7 @@ pub async fn get_entities(token: &str) -> Result<AdminListOAuth2Msg, GetError> {
 
         for entity in data.iter() {
             let mut new_entity = entity.to_owned();
-            new_entity.object_type = Some(object_type.to_string());
+            new_entity.object_type = object_type.clone();
 
             // first we try the uuid and if that isn't there oh no.
             #[allow(clippy::expect_used)]

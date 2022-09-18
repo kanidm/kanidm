@@ -1,4 +1,4 @@
-use crate::components::adminmenu::{Entity, GetError};
+use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_CELL, CSS_TABLE};
 use crate::models;
@@ -66,7 +66,7 @@ pub async fn get_groups(token: &str) -> Result<AdminListGroupsMsg, GetError> {
     let mut all_groups = BTreeMap::new();
 
     // we iterate over these endpoints
-    let endpoints = [("/v1/group", "group")];
+    let endpoints = [("/v1/group", EntityType::Group)];
 
     for (endpoint, object_type) in endpoints {
         let request = init_request(endpoint, token);
@@ -86,7 +86,7 @@ pub async fn get_groups(token: &str) -> Result<AdminListGroupsMsg, GetError> {
 
         for entity in data.iter() {
             let mut new_entity = entity.to_owned();
-            new_entity.object_type = Some(object_type.to_string());
+            new_entity.object_type = object_type.clone();
 
             // first we try the short name and, if that isn't there then just use the SPN...
             #[allow(clippy::expect_used)]

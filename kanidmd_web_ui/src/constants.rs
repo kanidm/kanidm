@@ -20,7 +20,10 @@ pub const CLASS_DIV_LOGIN_FIELD: &str = "input-group mb-3";
 // the CSS classes to apply to the div which a login button sits inside
 pub const CLASS_DIV_LOGIN_BUTTON: &str = "input-group mb-3 justify-content-md-center";
 
+pub const CSS_LINK_DARK_STRETCHED: &str = "link-dark stretched-link";
 // default table classes
 pub const CSS_TABLE: &str = "table table-striped table-hover";
 // default table cell class
 pub const CSS_CELL: &str = "p-1";
+
+pub const CSS_DT: &str = "col-6";

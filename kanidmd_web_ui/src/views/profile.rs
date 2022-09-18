@@ -2,6 +2,7 @@ use crate::constants::CSS_PAGE_HEADER;
 use crate::views::ViewProps;
 
 use gloo::console;
+use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 
 // User Profile UI
@@ -50,7 +51,6 @@ impl Component for ProfileApp {
                 }
             }
             Some(userinfo) => {
-                #[allow(clippy::unwrap_used)]
                 let mail_primary = match userinfo.uat.mail_primary.as_ref() {
                     Some(email_address) => {
                         html! {
@@ -64,11 +64,8 @@ impl Component for ProfileApp {
 
                 let spn = &userinfo.uat.spn.to_owned();
                 let spn_split = spn.split('@');
-
-                #[allow(clippy::unwrap_used)]
-                let username = &spn_split.clone().next().unwrap();
-                #[allow(clippy::unwrap_used)]
-                let domain = &spn_split.clone().last().unwrap();
+                let username = &spn_split.clone().next().unwrap_throw();
+                let domain = &spn_split.clone().last().unwrap_throw();
                 let display_name = userinfo.uat.displayname.to_owned();
                 let user_groups = userinfo.youare.attrs.get("memberof");
 

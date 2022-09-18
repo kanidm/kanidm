@@ -54,6 +54,10 @@ pub enum AdminRoute {
 
     #[at("/ui/view/admin/group/:uuid")]
     ViewGroup { uuid: String },
+    #[at("/ui/view/admin/person/:uuid")]
+    ViewPerson { uuid: String },
+    #[at("/ui/view/admin/service_account/:uuid")]
+    ViewServiceAccount { uuid: String },
 
     #[not_found]
     #[at("/ui/view/admin/404")]
@@ -423,5 +427,11 @@ fn admin_routes(route: &AdminRoute) -> Html {
         AdminRoute::ViewGroup { uuid } => {
             html!(<admin_groups::AdminViewGroup uuid={uuid.clone()} />)
         }
+        AdminRoute::ViewPerson { uuid } => html!(
+          <admin_accounts::AdminViewPerson uuid={uuid.clone()} />
+        ),
+        AdminRoute::ViewServiceAccount { uuid } => html!(
+          <admin_accounts::AdminViewServiceAccount uuid={uuid.clone()} />
+        ),
     }
 }
