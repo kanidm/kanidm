@@ -61,7 +61,7 @@ url = { version = "^2.3.1", features = ["serde"] }
 urlencoding = "2.1.2"
 uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
 validator = { version = "^0.16.0", features = ["phone"] }
-webauthn-rs = { version = "0.4.5", features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
+webauthn-rs = { version = "0.4.6", features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
 webauthn-rs-core = "0.4.2-beta.3"
 zxcvbn = "^2.2.1"
 
