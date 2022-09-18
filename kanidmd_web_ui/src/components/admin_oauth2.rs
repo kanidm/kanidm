@@ -1,11 +1,14 @@
 use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_CELL, CSS_PAGE_HEADER, CSS_TABLE};
+use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE};
+use crate::constants::{CSS_CELL, CSS_TABLE};
 use crate::models;
-use crate::utils::{do_alert_error, init_request};
+use crate::utils::{do_alert_error, do_page_header, init_request};
+use crate::views::AdminRoute;
 use gloo::console;
 use std::collections::BTreeMap;
 use yew::{html, Component, Context, Html, Properties};
+use yew_router::prelude::Link;
 
 impl From<GetError> for AdminListOAuth2Msg {
     fn from(ge: GetError) -> Self {
@@ -129,9 +132,12 @@ impl Component for AdminListOAuth2 {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <>
-              <div class={CSS_PAGE_HEADER}>
-                <h2>{ "OAuth2 Configs" }</h2>
-              </div>
+
+            <ol class="breadcrumb">
+            <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+            <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"OAuth2 Configs"}</li>
+            </ol>
+              {do_page_header("OAuth2 Configs")}
 
               { alpha_warning_banner() }
         <div id={"accountlist"}>

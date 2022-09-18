@@ -1,5 +1,6 @@
 use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
+use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE};
 use crate::constants::{CSS_CELL, CSS_TABLE};
 use crate::models;
 use crate::utils::{do_alert_error, do_page_header, init_request};
@@ -305,16 +306,16 @@ impl Component for AdminViewGroup {
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         match &self.state {
-            GroupViewState::Loading => html! {"waaaaaaaiiiitttt....."},
+            GroupViewState::Loading => html! {"Loading..."},
             GroupViewState::Responded { response } => {
-                let page_title = format!(
-                    "Group: {}",
-                    response
-                        .attrs
-                        .name
-                        .first()
-                        .unwrap_or(&String::from("Error: Name Field Missing"))
-                );
+                let group_name = match response.attrs.name.first() {
+                    Some(value) => value.as_str(),
+                    None => {
+                        // TODO: this should throw an error
+                        "No Group Name?"
+                    }
+                };
+                let page_title = format!("Group: {}", group_name);
 
                 let group_uuid = match response.attrs.uuid.first() {
                     Some(value) => value.clone(),
@@ -322,6 +323,11 @@ impl Component for AdminViewGroup {
                 };
                 html! {
                     <>
+                    <ol class="breadcrumb">
+                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListGroups}>{"Groups"}</Link<AdminRoute>></li>
+                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{group_name}</li>
+                    </ol>
                     {do_page_header(&page_title)}
                     <p>{"UUID: "}{group_uuid}</p>
                     // TODO: pull group membership and show members

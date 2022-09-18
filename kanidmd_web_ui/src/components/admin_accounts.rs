@@ -1,6 +1,8 @@
 use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_CELL, CSS_DT, CSS_PAGE_HEADER, CSS_TABLE};
+use crate::constants::{
+    CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
+};
 use crate::models;
 use crate::utils::{do_alert_error, do_page_header, init_request};
 use crate::views::AdminRoute;
@@ -102,7 +104,13 @@ pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError>
         #[allow(clippy::panic)]
         let data: Vec<Entity> = match response.json().await {
             Ok(value) => value,
-            Err(error) => panic!("Failed to grab the account data into JSON: {:?}", error),
+
+            // TODO: this kind of thing comes back when you're logged out:  SerdeError(Error("invalid type: string \"sessionexpired\", expected a sequence", line: 1, column: 16))', kanidmd_web_ui/src/components/admin_accounts.rs:107:27
+            Err(error) => {
+                return Err(GetError {
+                    err: format!("Failed to grab the account data into JSON: {:?}", error),
+                })
+            }
         };
 
         for entity in data.iter() {
@@ -156,11 +164,13 @@ impl Component for AdminListAccounts {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <>
-              <div class={CSS_PAGE_HEADER}>
-                <h2>{ "Account Administration" }</h2>
-              </div>
 
-              { alpha_warning_banner() }
+            <ol class="breadcrumb">
+            <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+            <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{"Accounts"}</li>
+            </ol>
+            {do_page_header("Account Administration")}
+            { alpha_warning_banner() }
         <div id={"accountlist"}>
         {match &self.state {
             ViewState::Loading => {
@@ -357,7 +367,7 @@ impl Component for AdminViewPerson {
             ViewAccountState::Responded { response } => {
                 // TODO: This is pretty lacking in detail, even logged in as the idm_admin user, so will have to work out how to pull all the details
                 let username = match response.attrs.name.first() {
-                    Some(value) => value.to_string(),
+                    Some(value) => value.to_owned(),
                     None => String::from("Unable to query username"),
                 };
                 let display_name = match response.attrs.displayname.first() {
@@ -378,6 +388,11 @@ impl Component for AdminViewPerson {
                 // };
                 html! {
                     <>
+                    <ol class="breadcrumb">
+                        <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+                        <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListAccounts}>{"Accounts"}</Link<AdminRoute>></li>
+                        <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{username.as_str()}</li>
+                    </ol>
                     {do_page_header(display_name.as_str())}
                     {alpha_warning_banner()}
 
@@ -499,6 +514,11 @@ impl Component for AdminViewServiceAccount {
 
                 html! {
                 <>
+                <ol class="breadcrumb">
+                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>></li>
+                    <li class={CSS_BREADCRUMB_ITEM}><Link<AdminRoute> to={AdminRoute::AdminListAccounts}>{"Accounts"}</Link<AdminRoute>></li>
+                    <li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current="page">{username}</li>
+                </ol>
                 {do_page_header(&format!("Service Account: {}", username))}
                 {alpha_warning_banner()}
                 <p>{"Display Name: "}{displayname}</p>

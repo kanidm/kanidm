@@ -27,3 +27,6 @@ pub const CSS_TABLE: &str = "table table-striped table-hover";
 pub const CSS_CELL: &str = "p-1";
 
 pub const CSS_DT: &str = "col-6";
+
+pub const CSS_BREADCRUMB_ITEM: &str = "breadcrumb-item";
+pub const CSS_BREADCRUMB_ITEM_ACTIVE: &str = "breadcrumb-item active";
