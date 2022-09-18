@@ -210,7 +210,7 @@ impl SecurityApp {
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
             let (token, status): (CUSessionToken, CUStatus) =
-                jsval.into_serde().expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
             Ok(Msg::BeginCredentialUpdate { token, status })
         } else {
             let headers = resp.headers();

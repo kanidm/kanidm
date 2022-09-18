@@ -388,8 +388,7 @@ impl ViewsApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let whoamiresponse: WhoamiResponse = jsval
-                .into_serde()
+            let whoamiresponse: WhoamiResponse = serde_wasm_bindgen::from_value(jsval)
                 .map_err(|e| {
                     let e_msg = format!("serde error getting user data -> {:?}", e);
                     console::error!(e_msg.as_str());
