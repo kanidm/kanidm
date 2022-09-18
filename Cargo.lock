@@ -1376,9 +1376,9 @@ dependencies = [
 
 [[package]]
 name = "fernet"
-version = "0.1.4"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93804560e638370a8be6d59ce71ed803e55e230abdbf42598e666b41adda9b1f"
+checksum = "c6dedfc944f4ac38cac8b74cb1c7b4fb73c175db232d6fa98e9bd1fd81908b89"
 dependencies = [
  "base64 0.13.0",
  "byteorder",
