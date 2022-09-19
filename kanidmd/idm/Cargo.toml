@@ -49,7 +49,7 @@ smolset = "^1.3.1"
 sshkeys = "^0.3.1"
 tide = "^0.16.0"
 time = { version = "=0.2.27", features = ["serde", "std"] }
-tokio = { version = "^1.21.0", features = ["net", "sync", "time"] }
+tokio = { version = "^1.21.1", features = ["net", "sync", "time"] }
 tokio-util = { version = "^0.7.4", features = ["codec"] }
 toml = "^0.5.9"
 touch = "^0.0.1"
