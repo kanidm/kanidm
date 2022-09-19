@@ -171,11 +171,6 @@ impl Component for AdminListOAuth2 {
                           Some(value) => value.to_string(),
                           None => String::from(""),
                         };
-                        console::log!(format!("{:?}", oauth2_object.attrs));
-                        let rs_name: String = match oauth2_object.attrs.oauth2_rs_name.first() {
-                            Some(value) => value.to_string(),
-                            None => String::from("!error getting rs_name!")
-                        };
 
                         let uuid: String = match oauth2_object.attrs.uuid.first() {
                             Some(value) => value.to_string(),
@@ -185,12 +180,24 @@ impl Component for AdminListOAuth2 {
                             }
                         };
 
+                        let rs_link = match oauth2_object.attrs.oauth2_rs_name.first() {
+                            Some(rs_name) => {
+                                html!{
+                                    <Link<AdminRoute> to={AdminRoute::ViewOAuth2RP{rs_name: rs_name.clone()}}>
+                                    {display_name}
+                                    </Link<AdminRoute>>
+                                }
+                            },
+                            None => {
+                                html!{{display_name}}
+                            }
+                        };
+
                         html!{
                           <tr key={uuid.clone()}>
                           <th scope={scope_col} class={CSS_CELL}>
-                            <Link<AdminRoute> to={AdminRoute::ViewOAuth2RP{rs_name: rs_name.clone()}}>
-                                {display_name}
-                                </Link<AdminRoute>></th>
+                          {rs_link}
+                            </th>
                           <td class={CSS_CELL}>{uuid}</td>
                           <td class={CSS_CELL}>{description}</td>
                           </tr>
