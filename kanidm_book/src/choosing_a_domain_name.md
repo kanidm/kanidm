@@ -6,11 +6,9 @@ is not simple as there are a number of considerations you need to be careful of.
 
 {{#template
     templates/kani-warning.md
-    imagepath=images
+    imagepath=images/
     title=Take note!
-    text=Incorrect choice of the domain name *may* have security impacts on your Kanidm instance, not
-    limited to credential phishing, theft, session leaks and more. It is critical you follow this advice
-    in this chapter!
+    text=Incorrect choice of the domain name may have security impacts on your Kanidm instance, not limited to credential phishing, theft, session leaks and more. It is critical you follow the advice in this chapter.
 }}
 
 ## Considerations

@@ -60,16 +60,16 @@ This is similar to what you *should* see:
 true
 ```
 
-This means you've:
+This means:
 
-1. successfully connected to a host (10.0.0.14),
+1. you've successfully connected to a host (10.0.0.14),
 2. TLS worked
 3. Received the status response "true"
 
 If you see something like this:
 
 ```
-➜ curl -vk https://idm.example.com:8443
+➜ curl -v https://idm.example.com:8443
 *   Trying 10.0.0.1:8443...
 * connect to 10.0.0.1 port 8443 failed: Connection refused
 * Failed to connect to idm.example.com port 8443 after 5 ms: Connection refused
@@ -78,6 +78,12 @@ curl: (7) Failed to connect to idm.example.com port 8443 after 5 ms: Connection 
 ```
 
 Then either your DNS is wrong (it's pointing at 10.0.0.1) or you can't connect to the server for some reason.
+
+If you get errors about certificates, try adding `-k` to skip certificate verification checking and just test connectivity:
+
+```
+curl -v https://idm.example.com:8443
+```
 
 ## Things to check:
 
