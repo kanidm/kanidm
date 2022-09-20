@@ -82,11 +82,20 @@ Then either your DNS is wrong (it's pointing at 10.0.0.1) or you can't connect t
 If you get errors about certificates, try adding `-k` to skip certificate verification checking and just test connectivity:
 
 ```
-curl -v https://idm.example.com:8443
+curl -vk https://idm.example.com:8443
 ```
 
-## Things to check:
+## Server things to check
 
 * Has the config file got `bindaddress = "127.0.0.1:8443"` ? Change it to `bindaddress = "[::]:8443"`, so it listens on all interfaces.
 * Is there a firewall on the server?
 * If you're running in docker, did you expose the port? (`-p 8443:8443`)
+
+## Client things to check
+
+Try running commands with `RUST_LOG=debug` to get more information:
+
+```
+RUST_LOG=debug kanidm login --name anonymous
+```
+

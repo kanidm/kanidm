@@ -3,7 +3,6 @@
 {{#template  
     ../../templates/kani-warning.md
     imagepath=../../images/
-    title=Note!
     text=Here begins some early notes on the REST interface - much better ones are in the repository's designs directory.
 }}
 
