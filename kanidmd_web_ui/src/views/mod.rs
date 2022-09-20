@@ -1,19 +1,16 @@
+use crate::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
 use crate::error::*;
+use crate::manager::Route;
 use crate::models;
 use crate::utils;
 use gloo::console;
-use yew::prelude::*;
-
-use crate::manager::Route;
-use yew_router::prelude::*;
-
 use kanidm_proto::v1::WhoamiResponse;
-
 use serde::{Deserialize, Serialize};
-
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
+use yew::prelude::*;
+use yew_router::prelude::*;
 
 mod apps;
 mod components;
@@ -26,6 +23,9 @@ use security::SecurityApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
+    #[at("/ui/view/admin/*")]
+    Admin,
+
     #[at("/ui/view/apps")]
     Apps,
 
@@ -37,6 +37,32 @@ pub enum ViewRoute {
 
     #[not_found]
     #[at("/ui/view/404")]
+    NotFound,
+}
+
+#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+pub enum AdminRoute {
+    #[at("/ui/view/admin/menu")]
+    AdminMenu,
+
+    #[at("/ui/view/admin/groups")]
+    AdminListGroups,
+    #[at("/ui/view/admin/accounts")]
+    AdminListAccounts,
+    #[at("/ui/view/admin/oauth2")]
+    AdminListOAuth2,
+
+    #[at("/ui/view/admin/group/:uuid")]
+    ViewGroup { uuid: String },
+    #[at("/ui/view/admin/person/:uuid")]
+    ViewPerson { uuid: String },
+    #[at("/ui/view/admin/service_account/:uuid")]
+    ViewServiceAccount { uuid: String },
+    #[at("/ui/view/admin/oauth2/:rs_name")]
+    ViewOAuth2RP { rs_name: String },
+
+    #[not_found]
+    #[at("/ui/view/admin/404")]
     NotFound,
 }
 
@@ -243,6 +269,13 @@ impl ViewsApp {
                     { "Security" }
                   </Link<ViewRoute>>
                 </li>
+                // TODO: the admin link should only show up if you're an admin
+                <li class="mb-1">
+                  <Link<AdminRoute> classes="nav-link" to={AdminRoute::AdminMenu}>
+                    <span data-feather="file"></span>
+                    { "Admin" }
+                  </Link<AdminRoute>>
+                </li>
                 <li class="mb-1">
                   <a class="nav-link" href="#"
                     data-bs-toggle="modal"
@@ -287,6 +320,10 @@ impl ViewsApp {
                         models::get_bearer_token().expect_throw("Invalid state, bearer token must be present!");
 
                     match route {
+
+                        ViewRoute::Admin => html!{
+                            <Switch<AdminRoute> render={ Switch::render(admin_routes) } />
+                        },
                         ViewRoute::Apps => html! { <AppsApp /> },
                         ViewRoute::Profile => html! { <ProfileApp token={ token } current_user={ current_user.clone() } /> },
                         ViewRoute::Security => html! { <SecurityApp token={ token } current_user={ current_user.clone() } /> },
@@ -357,8 +394,7 @@ impl ViewsApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let whoamiresponse: WhoamiResponse = jsval
-                .into_serde()
+            let whoamiresponse: WhoamiResponse = serde_wasm_bindgen::from_value(jsval)
                 .map_err(|e| {
                     let e_msg = format!("serde error getting user data -> {:?}", e);
                     console::error!(e_msg.as_str());
@@ -370,5 +406,37 @@ impl ViewsApp {
             let emsg = text.as_string().unwrap_or_else(|| "".to_string());
             Ok(ViewsMsg::Error { emsg, kopid })
         }
+    }
+}
+
+fn admin_routes(route: &AdminRoute) -> Html {
+    match route {
+        AdminRoute::AdminMenu => html! {
+          <adminmenu::AdminMenu />
+        },
+        AdminRoute::AdminListAccounts => html!(
+          <admin_accounts::AdminListAccounts />
+        ),
+        AdminRoute::AdminListGroups => html!(
+          <admin_groups::AdminListGroups />
+        ),
+        AdminRoute::AdminListOAuth2 => html!(
+          <admin_oauth2::AdminListOAuth2 />
+        ),
+        AdminRoute::NotFound => html! (
+          <Redirect<Route> to={Route::NotFound}/>
+        ),
+        AdminRoute::ViewGroup { uuid } => {
+            html!(<admin_groups::AdminViewGroup uuid={uuid.clone()} />)
+        }
+        AdminRoute::ViewPerson { uuid } => html!(
+          <admin_accounts::AdminViewPerson uuid={uuid.clone()} />
+        ),
+        AdminRoute::ViewServiceAccount { uuid } => html!(
+          <admin_accounts::AdminViewServiceAccount uuid={uuid.clone()} />
+        ),
+        AdminRoute::ViewOAuth2RP { rs_name } => html! {
+          <admin_oauth2::AdminViewOAuth2 rs_name={rs_name.clone()} />
+        },
     }
 }

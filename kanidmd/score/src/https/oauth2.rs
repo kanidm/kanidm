@@ -38,7 +38,7 @@ fn oauth2_id(id: &str) -> Filter<FilterInvalid> {
 pub async fn oauth2_id_get(req: tide::Request<AppState>) -> tide::Result {
     // Get a specific config
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let id = req.get_url_param("rs_name")?;
 
     let filter = oauth2_id(&id);
 
@@ -56,7 +56,7 @@ pub async fn oauth2_id_get(req: tide::Request<AppState>) -> tide::Result {
 pub async fn oauth2_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
     // Update a value / attrs
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let id = req.get_url_param("rs_name")?;
 
     let obj: ProtoEntry = req.body_json().await?;
 
@@ -109,7 +109,7 @@ pub async fn oauth2_id_scopemap_delete(req: tide::Request<AppState>) -> tide::Re
 pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
     // Delete this
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let id = req.get_url_param("rs_name")?;
 
     let filter = oauth2_id(&id);
 

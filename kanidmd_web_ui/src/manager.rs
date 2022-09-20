@@ -22,7 +22,7 @@ pub enum Route {
     #[at("/")]
     Landing,
 
-    #[at("/ui/view/:s")]
+    #[at("/ui/view/*")]
     Views,
 
     #[at("/ui/login")]

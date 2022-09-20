@@ -135,8 +135,7 @@ impl Oauth2App {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthorisationResponse = jsval
-                .into_serde()
+            let state: AuthorisationResponse = serde_wasm_bindgen::from_value(jsval)
                 .map_err(|e| {
                     let e_msg = format!("serde error -> {:?}", e);
                     console::error!(e_msg.as_str());
