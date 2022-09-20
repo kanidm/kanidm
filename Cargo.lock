@@ -755,12 +755,13 @@ dependencies = [
 
 [[package]]
 name = "compact_jwt"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9417bb4f581b7a5e08fabb4398b910064363bbfd7b75a10d1da3bfff3ef9b36"
+checksum = "42c27827fd8d4c7b1328a3e3d4e3f0a4a72ae42a7ad77792d874466f37f1c960"
 dependencies = [
  "base64 0.13.0",
  "base64urlsafedata",
+ "hex",
  "openssl",
  "serde",
  "serde_json",
@@ -1859,6 +1860,12 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hkdf"
