@@ -111,7 +111,8 @@ impl LoginApp {
                 .flatten()
                 .unwrap_or_else(|| "".to_string());
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = jsval.into_serde().expect_throw("Invalid response type");
+            let state: AuthResponse =
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
             Ok(LoginAppMsg::Start(session_id, state))
         } else if status == 404 {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -161,7 +162,8 @@ impl LoginApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = jsval.into_serde().expect_throw("Invalid response type.");
+            let state: AuthResponse =
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type.");
             Ok(LoginAppMsg::Next(state))
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();

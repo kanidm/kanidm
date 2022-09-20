@@ -87,7 +87,8 @@ impl PasskeyModalApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let status: CUStatus = jsval.into_serde().expect_throw("Invalid response type");
+            let status: CUStatus =
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
 
             EventBus::dispatcher().send(EventBusMsg::UpdateStatus {
                 status: status.clone(),

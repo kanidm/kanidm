@@ -86,12 +86,14 @@ impl PwModalApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let status: CUStatus = jsval.into_serde().expect_throw("Invalid response type");
+            let status: CUStatus =
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
             Ok(Msg::PasswordResponseSuccess { status })
         } else if status == 400 {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let jsval = JsFuture::from(resp.json()?).await?;
-            let status: OperationError = jsval.into_serde().expect_throw("Invalid response type");
+            let status: OperationError =
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
             match status {
                 OperationError::PasswordQuality(feedback) => {
                     Ok(Msg::PasswordResponseQuality { feedback })

@@ -52,7 +52,7 @@ sketching = { path = "../sketching" }
 
 toml = "^0.5.9"
 rpassword = "^7.0.0"
-tokio = { version = "^1.21.0", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
+tokio = { version = "^1.21.1", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
 tokio-util = { version = "^0.7.4", features = ["codec"] }
 
 futures = "^0.3.21"
@@ -83,6 +83,6 @@ score = { path = "../kanidmd/score" }
 
 [build-dependencies]
 clap = { version = "^3.2", features = ["derive"] }
-clap_complete = "^3.2.3"
+clap_complete = "^3.2.5"
 profiles = { path = "../profiles" }
 

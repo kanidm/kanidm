@@ -1615,6 +1615,7 @@ impl KanidmClient {
             .await
     }
 
+    // TODO: the "id" here is actually the *name* not the uuid of the entry...
     pub async fn idm_oauth2_rs_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/oauth2/{}", id).as_str())
             .await

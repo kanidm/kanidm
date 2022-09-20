@@ -25,21 +25,23 @@ crate-type = ["cdylib", "rlib"]
 compact_jwt = { version = "^0.2.3", default-features = false, features = ["unsafe_release_without_verify"] }
 # compact_jwt = { path = "../../compact_jwt" , default-features = false, features = ["unsafe_release_without_verify"] }
 gloo = "^0.8.0"
+gloo-net = "0.2.4"
 js-sys = "^0.3.58"
 kanidm_proto = { path = "../kanidm_proto", features = ["wasm"] }
 qrcode = { version = "^0.12.0", default-features = false, features = ["svg"] }
 serde = { version = "^1.0.142", features = ["derive"] }
 serde_json = "^1.0.83"
+serde-wasm-bindgen = "0.4"
 uuid = "^1.1.2"
 wasm-bindgen = { version = "^0.2.81", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "^0.4.30" }
+wasm-bindgen-test = "0.3.33"
 yew = "^0.19.3"
 yew-agent = "^0.1.0"
 yew-router = "^0.16.0"
-wee_alloc = "^0.4.5"
 
 [dependencies.web-sys]
-version = "^0.3.57"
+version = "^0.3.60"
 features = [
     "AuthenticationExtensionsClientOutputs",
     "AuthenticatorResponse",

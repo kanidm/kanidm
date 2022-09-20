@@ -560,7 +560,7 @@ impl CredentialResetApp {
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
             let (token, status): (CUSessionToken, CUStatus) =
-                jsval.into_serde().expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
             Ok(Msg::BeginSession { token, status })
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();

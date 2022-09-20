@@ -33,9 +33,16 @@ struct FormValues {
 
 impl From<FormData> for FormValues {
     fn from(data: FormData) -> Self {
+        #[allow(clippy::expect_used)]
         Self {
-            password_input: data.get("password_input").as_string().unwrap(),
-            password_repeat_input: data.get("password_repeat_input").as_string().unwrap(),
+            password_input: data
+                .get("password_input")
+                .as_string()
+                .expect_throw("Failed to pull the password input field"),
+            password_repeat_input: data
+                .get("password_repeat_input")
+                .as_string()
+                .expect_throw("Failed to pull the password_repeat input field"),
         }
     }
 }
@@ -170,8 +177,10 @@ impl Component for ChangeUnixPassword {
                       onsubmit={
                         ctx.link().callback(|e: FocusEvent| {
                           e.prevent_default();
-                          let form = e.target().and_then(|t| t.dyn_into::<HtmlFormElement>().ok()).unwrap();
-                          Msg::Submit(FormData::new_with_form(&form).unwrap())
+                          #[allow(clippy::expect_used)]
+                          let form = e.target().and_then(|t| t.dyn_into::<HtmlFormElement>().ok()).expect("Failed to pull the form data from the browser");
+                          #[allow(clippy::expect_used)]
+                          Msg::Submit(FormData::new_with_form(&form).expect("Failed to send the form data across the channel"))
                         })
                       }
                   >

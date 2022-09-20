@@ -1,0 +1,50 @@
+---
+name: WASM Testing
+
+# Trigger the workflow on push or pull request
+"on": [push, pull_request]
+
+jobs:
+  wasm_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Update package manager
+        run: sudo apt-get update
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: cargo
+          # target: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      # https://github.com/browser-actions/setup-chrome
+      - name: Install Chrome Headless
+        uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: latest
+      # https://github.com/marketplace/actions/setup-chromedriver
+      - uses: nanasess/setup-chromedriver@v1
+        # with:
+          # Optional: do not specify to match Chrome's version
+          # chromedriver-version: '88.0.4324.96'
+
+      # docs here:
+      # https://rustwasm.github.io/docs/wasm-bindgen/wasm-bindgen-test/browsers.html
+      - name: "Run clippy (ignores errors, this is just a check)"
+        run: wasm-pack test --headless --chrome
+        continue-on-error: true
