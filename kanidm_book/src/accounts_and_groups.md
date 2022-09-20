@@ -54,7 +54,8 @@ to be "recovered" from the server that is running the kanidmd server.
 {{#template
     templates/kani-warning.md
     imagepath=images
-    text=Warning: The server must not be running at this point, as it requires exclusive access to the database.
+    title=Warning!
+    text=The server must not be running at this point, as it requires exclusive access to the database.
 }}
 
 ```shell
@@ -131,7 +132,8 @@ kanidm account person update demo_user --legalname "initial name" --mail "initia
 {{#template
     templates/kani-warning.md
     imagepath=images
-    text=Warning: Persons may change their own displayname, name, and legal name at any time. You MUST NOT use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
+    title=Warning!
+    text=Persons may change their own displayname, name, and legal name at any time. You MUST NOT use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
 }}
 
 ## Resetting Person Account Credentials

@@ -16,6 +16,8 @@
   - [SSH Key Distribution](ssh_key_dist.md)
   - [The Recycle Bin](recycle_bin.md)
   - [Why TLS?](why_tls.md)
+- [Frequently Asked Questions](frequently_asked_questions.md)
+- [Troubleshooting](troubleshooting.md)
 
 # Integrations
 

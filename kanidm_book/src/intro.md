@@ -9,8 +9,7 @@ The intent of the Kanidm project is to:
 * Enable integrations to systems and services so they can authenticate accounts.
 * Make system, network, application and web authentication easy and accessible.
 
-
- {{#template
+{{#template
     templates/kani-warning.md
     imagepath=images
     title=NOTICE
