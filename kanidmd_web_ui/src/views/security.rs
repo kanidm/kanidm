@@ -14,7 +14,7 @@ use std::str::FromStr;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use kanidm_proto::v1::{CUSessionToken, CUStatus, UserAuthToken};
+use kanidm_proto::v1::{CUSessionToken, CUStatus, UserAuthToken, UiHint};
 
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
@@ -145,7 +145,7 @@ impl Component for SecurityApp {
             _ => html! { <></> },
         };
 
-        let current_user = ctx.props().current_user.clone();
+        let current_user_uat = ctx.props().current_user_uat.clone();
 
         html! {
             <>
@@ -169,8 +169,8 @@ impl Component for SecurityApp {
                 </p>
               </div>
               <hr/>
-              if let Some(user) = current_user {
-                if user.youare.attrs.get("class").map(|x| x.contains(&String::from("posixaccount"))).unwrap_or(true) {
+              if let Some(uat) = current_user_uat {
+                if uat.ui_hints.contains(&UiHint::PosixAccount) {
                   <div>
                       <p>
                         <ChangeUnixPassword token={ctx.props().token.clone()}></ChangeUnixPassword>

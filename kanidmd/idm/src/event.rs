@@ -28,7 +28,7 @@ use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AuthCredential, AuthMech, AuthRequest, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
-    SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
+    SearchRequest, SearchResponse, WhoamiResponse,
 };
 
 use ldap3_proto::simple::LdapFilter;
@@ -878,25 +878,21 @@ impl AuthResult {
 
 pub struct WhoamiResult {
     youare: ProtoEntry,
-    uat: UserAuthToken,
 }
 
 impl WhoamiResult {
     pub fn new(
         qs: &QueryServerReadTransaction,
         e: &Entry<EntryReduced, EntryCommitted>,
-        uat: UserAuthToken,
     ) -> Result<Self, OperationError> {
         Ok(WhoamiResult {
             youare: e.to_pe(qs)?,
-            uat,
         })
     }
 
     pub fn response(self) -> WhoamiResponse {
         WhoamiResponse {
             youare: self.youare,
-            uat: self.uat,
         }
     }
 }

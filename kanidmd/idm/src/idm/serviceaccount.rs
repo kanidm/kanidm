@@ -202,6 +202,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 mod tests {
     use super::GenerateApiTokenEvent;
     use crate::prelude::*;
+    use crate::idm::server::IdmServerTransaction;
 
     use crate::event::CreateEvent;
     use compact_jwt::Jws;
@@ -242,9 +243,9 @@ mod tests {
 
             trace!("api_token");
 
-
-
-
+            let ident = idms_prox_write
+                .validate_and_parse_token_to_ident(Some(&api_token), ct)
+                .expect("Unable to verify api token.");
         });
     }
 }

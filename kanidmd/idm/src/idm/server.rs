@@ -407,11 +407,21 @@ pub(crate) trait IdmServerTransaction<'a> {
 
     fn get_uat_validator_txn(&self) -> &JwsValidator;
 
+    /// This is the preferred method to transform and securely verify a token into
+    /// an identity that can be used for operations and access enforcement. This
+    /// function *is* aware of the various classes of tokens that may exist, and can
+    /// appropriately check them.
+    ///
+    /// The primary method of verification selection is the use of the KID parameter
+    /// that we internally sign with. We can use this to select the appropriate token type
+    /// and validation method.
     fn validate_and_parse_token_to_ident(
         &self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
+
+
         self
             .validate_and_parse_uat(token, ct)
             .and_then(|uat| self.process_uat_to_identity(&uat, ct))
@@ -3269,11 +3279,11 @@ mod tests {
 
                 // Check it's valid.
                 idms_prox_read
-                    .validate_and_parse_uat(Some(token.as_str()), ct)
+                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
                     .expect("Failed to validate");
 
                 // In X time it should be INVALID
-                match idms_prox_read.validate_and_parse_uat(Some(token.as_str()), expiry) {
+                match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), expiry) {
                     Err(OperationError::SessionExpired) => {}
                     _ => assert!(false),
                 }
@@ -3397,7 +3407,7 @@ mod tests {
 
                 // Check it's valid.
                 idms_prox_read
-                    .validate_and_parse_uat(Some(token.as_str()), ct)
+                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
                     .expect("Failed to validate");
 
                 drop(idms_prox_read);
@@ -3425,11 +3435,11 @@ mod tests {
 
                 let idms_prox_read = idms.proxy_read();
                 assert!(idms_prox_read
-                    .validate_and_parse_uat(Some(token.as_str()), ct)
+                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
                     .is_err());
                 // A new token will work due to the matching key.
                 idms_prox_read
-                    .validate_and_parse_uat(Some(new_token.as_str()), ct)
+                    .validate_and_parse_token_to_ident(Some(new_token.as_str()), ct)
                     .expect("Failed to validate");
             }
         )

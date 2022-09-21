@@ -78,12 +78,11 @@ async fn test_server_whoami_anonymous() {
     assert!(res.is_ok());
 
     // Now do a whoami.
-    let (_e, uat) = match rsclient.whoami().await.unwrap() {
-        Some((e, uat)) => (e, uat),
-        None => panic!(),
-    };
-    debug!("{}", uat);
-    assert!(uat.spn == "anonymous@localhost");
+    let e = rsclient.whoami().await
+        .expect("Unable to call whoami")
+        .expect("No entry matching self returned");
+    debug!(?e);
+    assert!(e.attrs.get("spn") == Some(&vec!["anonymous@localhost".to_string()]));
 
     // Do a check of the auth/valid endpoint, tells us if our token
     // is okay.
@@ -105,12 +104,11 @@ async fn test_server_whoami_admin_simple_password() {
     assert!(res.is_ok());
 
     // Now do a whoami.
-    let (_e, uat) = match rsclient.whoami().await.unwrap() {
-        Some((e, uat)) => (e, uat),
-        None => panic!(),
-    };
-    debug!("{}", uat);
-    assert!(uat.spn == "admin@localhost");
+    let e = rsclient.whoami().await
+        .expect("Unable to call whoami")
+        .expect("No entry matching self returned");
+    debug!(?e);
+    assert!(e.attrs.get("spn") == Some(&vec!["admin@localhost".to_string()]));
 }
 
 #[tokio::test]

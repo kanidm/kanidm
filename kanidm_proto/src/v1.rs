@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::fmt;
 use uuid::Uuid;
 use webauthn_rs_proto::{
@@ -261,13 +262,13 @@ impl PartialEq for OperationError {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Group {
-    pub name: String,
+    pub spn: String,
     pub uuid: String,
 }
 
 impl fmt::Display for Group {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[ name: {}, ", self.name)?;
+        write!(f, "[ spn: {}, ", self.spn)?;
         write!(f, "uuid: {} ]", self.uuid)
     }
 }
@@ -313,6 +314,13 @@ impl fmt::Display for AuthType {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum UiHint {
+    PosixAccount,
+}
+
+
 /// The currently authenticated user, and any required metadata for them
 /// to properly authorise them. This is similar in nature to oauth and the krb
 /// PAC/PAD structures. Currently we only use this internally, but we should
@@ -324,7 +332,7 @@ impl fmt::Display for AuthType {
 ///
 /// It's likely that this must have a relationship to the server's user structure
 /// and to the Entry so that filters or access controls can be applied.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
@@ -337,7 +345,8 @@ pub struct UserAuthToken {
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
-    // pub groups: Vec<Group>,
+    pub groups: Vec<Group>,
+    pub ui_hints: BTreeSet<UiHint>,
     // Should we just retrieve these inside the server instead of in the uat?
     // or do we want per-session limit capabilities?
     pub lim_uidx: bool,
@@ -363,6 +372,16 @@ impl fmt::Display for UserAuthToken {
         writeln!(f, "token expiry: {}", self.expiry)
     }
 }
+
+
+
+impl PartialEq for UserAuthToken {
+    fn eq(&self, other: &Self) -> bool {
+        self.session_id == other.session_id
+    }
+}
+
+impl Eq for UserAuthToken { }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
