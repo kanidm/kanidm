@@ -30,10 +30,9 @@ db_path = "/data/kanidm.db"
 #   an automatic heuristic is used to scale this.
 # db_arc_size = 2048
 #
-#   TLS chain and key in pem format. Both must be
-#   commented, or both must be present
-# tls_chain = "/data/chain.pem"
-# tls_key = "/data/key.pem"
+#   TLS chain and key in pem format. Both must be present
+tls_chain = "/data/chain.pem"
+tls_key = "/data/key.pem"
 #
 #   The log level of the server. May be default, verbose,
 #   perfbasic, perffull

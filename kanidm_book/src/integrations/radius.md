@@ -145,7 +145,6 @@ radius_groups = [
 # A mapping of clients and their authentication tokens
 radius_clients = [
     { name = "test", ipaddr = "127.0.0.1", secret  = "testing123" },
-    # TODO: see if this works - it gets written out to the file
     { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
 ]
 

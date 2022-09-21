@@ -59,10 +59,8 @@ we don't believe this is a limitation for the consuming applications.
 ### TLS
 
 StartTLS is not supported due to security risks. LDAPS is the only secure method
-of communicating to any LDAP server. Kanidm, if configured with certificates, will
-use them for LDAPS (and will not listen on a plaintext LDAP port). If no certificates exist
-Kanidm will listen on a plaintext LDAP port, and you MUST TLS terminate in front
-of the Kanidm system to secure data and authentication.
+of communicating to any LDAP server. Kanidm, when configured with certificates, will
+use them for LDAPS (and will not listen on a plaintext LDAP port).
 
 ### Access Controls
 
