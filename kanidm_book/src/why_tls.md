@@ -1,10 +1,10 @@
 
 # Why TLS?
 
-You may have noticed that Kanidm requires you to configure TLS in
-your container - or that you provide something *with* TLS in front, like haproxy.
+You may have noticed that Kanidm requires you to configure TLS in your container.
 
-This is due to a single setting on the server - `secure_cookies`
+We are a secure-by-design rather than secure-by-installation system, so TLS for 
+all connections is considered mandatory.
 
 ## What are Secure Cookies?
 
@@ -27,6 +27,6 @@ If you do NOT have a HTTPS URL, the cookie with the session-id is not transmitte
 The server detects this as an invalid-state request in the authentication design, 
 and immediately breaks the connection, because it appears insecure.
 
-Simply put, we are trying to use settings like secure_cookies to add constraints
+Simply put, we are trying to use settings like `secure_cookies` to add constraints
 to the server so that you *must* perform and adhere to best practices - such
 as having TLS present on your communication channels.

@@ -139,23 +139,23 @@ async fn tls_acceptor(
 }
 
 /// Plain TCP LDAP Listener, hands off to [client_process]
-async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
-    loop {
-        match listener.accept().await {
-            Ok((tcpstream, client_socket_addr)) => {
-                // Start the event
-                let (r, w) = tokio::io::split(tcpstream);
-                let r = FramedRead::new(r, LdapCodec);
-                let w = FramedWrite::new(w, LdapCodec);
-                // Let it rip.
-                tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
-            }
-            Err(e) => {
-                error!("LDAP acceptor error, continuing -> {:?}", e);
-            }
-        }
-    }
-}
+// async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
+//     loop {
+//         match listener.accept().await {
+//             Ok((tcpstream, client_socket_addr)) => {
+//                 // Start the event
+//                 let (r, w) = tokio::io::split(tcpstream);
+//                 let r = FramedRead::new(r, LdapCodec);
+//                 let w = FramedWrite::new(w, LdapCodec);
+//                 // Let it rip.
+//                 tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
+//             }
+//             Err(e) => {
+//                 error!("LDAP acceptor error, continuing -> {:?}", e);
+//             }
+//         }
+//     }
+// }
 
 pub(crate) async fn create_ldap_server(
     address: &str,
@@ -169,12 +169,12 @@ pub(crate) async fn create_ldap_server(
     };
 
     let addr = net::SocketAddr::from_str(address).map_err(|e| {
-        eprintln!("Could not parse ldap server address {} -> {:?}", address, e);
+        eprintln!("Could not parse LDAP server address {} -> {:?}", address, e);
     })?;
 
     let listener = TcpListener::bind(&addr).await.map_err(|e| {
         eprintln!(
-            "Could not bind to ldap server address {} -> {:?}",
+            "Could not bind to LDAP server address {} -> {:?}",
             address, e
         );
     })?;
@@ -186,8 +186,8 @@ pub(crate) async fn create_ldap_server(
             tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref));
         }
         None => {
-            eprintln!("Starting LDAP interface ldap://{} ...", address);
-            tokio::spawn(acceptor(listener, qe_r_ref));
+            eprintln!("The server won't run without TLS!");
+            return Err(());
         }
     }
 
