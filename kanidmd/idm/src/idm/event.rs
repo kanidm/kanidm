@@ -274,3 +274,13 @@ impl LdapAuthEvent {
         })
     }
 }
+
+pub struct LdapTokenAuthEvent {
+    pub token: String,
+}
+
+impl LdapTokenAuthEvent {
+    pub fn from_parts(token: String) -> Result<Self, OperationError> {
+        Ok(LdapTokenAuthEvent { token })
+    }
+}

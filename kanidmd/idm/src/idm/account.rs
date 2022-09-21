@@ -3,9 +3,9 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 
 use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::UiHint;
 use kanidm_proto::v1::{AuthType, UserAuthToken};
 use kanidm_proto::v1::{BackupCodesView, CredentialStatus};
-use kanidm_proto::v1::UiHint;
 
 use webauthn_rs::prelude::CredentialID;
 use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
@@ -219,11 +219,6 @@ impl Account {
             ui_hints: self.ui_hints.clone(),
             // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
-            // What's the best way to get access to these limits with regard to claims/other?
-            lim_uidx: false,
-            lim_rmax: 128,
-            lim_pmax: 256,
-            lim_fmax: 32,
         })
     }
 

@@ -14,7 +14,7 @@ use std::str::FromStr;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use kanidm_proto::v1::{CUSessionToken, CUStatus, UserAuthToken, UiHint};
+use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
 
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;

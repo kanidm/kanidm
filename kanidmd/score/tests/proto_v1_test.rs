@@ -78,7 +78,9 @@ async fn test_server_whoami_anonymous() {
     assert!(res.is_ok());
 
     // Now do a whoami.
-    let e = rsclient.whoami().await
+    let e = rsclient
+        .whoami()
+        .await
         .expect("Unable to call whoami")
         .expect("No entry matching self returned");
     debug!(?e);
@@ -104,7 +106,9 @@ async fn test_server_whoami_admin_simple_password() {
     assert!(res.is_ok());
 
     // Now do a whoami.
-    let e = rsclient.whoami().await
+    let e = rsclient
+        .whoami()
+        .await
         .expect("Unable to call whoami")
         .expect("No entry matching self returned");
     debug!(?e);

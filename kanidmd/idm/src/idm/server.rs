@@ -8,9 +8,9 @@ use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{
-    CredentialStatusEvent, GeneratePasswordEvent, LdapAuthEvent, RadiusAuthTokenEvent,
-    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent,
+    CredentialStatusEvent, GeneratePasswordEvent, LdapAuthEvent, LdapTokenAuthEvent,
+    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
+    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
@@ -19,9 +19,10 @@ use crate::idm::oauth2::{
     Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::radius::RadiusAccount;
+use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
-use crate::ldap::LdapBoundToken;
+use crate::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 
@@ -33,7 +34,7 @@ use crate::idm::delayed::{
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    AuthType, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UnixGroupToken,
+    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UnixGroupToken,
     UnixUserToken, UserAuthToken,
 };
 
@@ -400,6 +401,11 @@ impl IdmServerDelayed {
     }
 }
 
+pub(crate) enum Token {
+    UserAuthToken(UserAuthToken),
+    ApiToken(ApiToken, Arc<EntrySealedCommitted>),
+}
+
 pub(crate) trait IdmServerTransaction<'a> {
     type QsTransactionType: QueryServerTransaction<'a>;
 
@@ -420,11 +426,110 @@ pub(crate) trait IdmServerTransaction<'a> {
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
+        match self.validate_and_parse_token_to_token(token, ct)? {
+            Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct),
+            Token::ApiToken(apit, entry) => self.process_apit_to_identity(&apit, entry, ct),
+        }
+    }
 
+    fn validate_and_parse_token_to_token(
+        &self,
+        token: Option<&str>,
+        ct: Duration,
+    ) -> Result<Token, OperationError> {
+        let jwsu = token
+            .ok_or_else(|| {
+                security_info!("No token provided");
+                OperationError::NotAuthenticated
+            })
+            .and_then(|s| {
+                JwsUnverified::from_str(s).map_err(|e| {
+                    security_info!(?e, "Unable to decode token");
+                    OperationError::NotAuthenticated
+                })
+            })?;
 
-        self
-            .validate_and_parse_uat(token, ct)
-            .and_then(|uat| self.process_uat_to_identity(&uat, ct))
+        // Frow the unverified token we can now get the kid, and use that to locate the correct
+        // key to id the token.
+        let jws_validator = self.get_uat_validator_txn();
+        let kid = jwsu.get_jwk_kid().ok_or_else(|| {
+            security_info!("Token does not contain a valid kid");
+            OperationError::NotAuthenticated
+        })?;
+
+        let jwsv_kid = jws_validator.get_jwk_kid().ok_or_else(|| {
+            security_info!("JWS validator does not contain a valid kid");
+            OperationError::NotAuthenticated
+        })?;
+
+        if kid == jwsv_kid {
+            // It's signed by the primary jws, so it's probably a UserAuthToken.
+            let uat = jwsu
+                .validate(jws_validator)
+                .map_err(|e| {
+                    security_info!(?e, "Unable to verify token");
+                    OperationError::NotAuthenticated
+                })
+                .map(|t: Jws<UserAuthToken>| t.into_inner())?;
+
+            if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
+                security_info!("Session expired");
+                Err(OperationError::SessionExpired)
+            } else {
+                Ok(Token::UserAuthToken(uat))
+            }
+        } else {
+            // It's a per-user key, get their validator.
+            let entry = self
+                .get_qs_txn()
+                .internal_search(filter!(f_eq(
+                    "jws_es256_private_key",
+                    PartialValue::new_iutf8(&kid)
+                )))
+                .and_then(|mut vs| match vs.pop() {
+                    Some(entry) if vs.is_empty() => Ok(entry),
+                    _ => {
+                        admin_error!(
+                            ?kid,
+                            "entries was empty, or matched multiple results for kid"
+                        );
+                        Err(OperationError::NotAuthenticated)
+                    }
+                })?;
+
+            let user_signer = entry
+                .get_ava_single_jws_key_es256("jws_es256_private_key")
+                .ok_or_else(|| {
+                    admin_error!(
+                        ?kid,
+                        "A kid was present on entry {} but it does not contain a signing key",
+                        entry.get_uuid()
+                    );
+                    OperationError::NotAuthenticated
+                })?;
+
+            let user_validator = user_signer.get_validator().map_err(|e| {
+                security_info!(?e, "Unable to access token verifier");
+                OperationError::NotAuthenticated
+            })?;
+
+            let apit = jwsu
+                .validate(&user_validator)
+                .map_err(|e| {
+                    security_info!(?e, "Unable to verify token");
+                    OperationError::NotAuthenticated
+                })
+                .map(|t: Jws<ApiToken>| t.into_inner())?;
+
+            if let Some(expiry) = apit.expiry {
+                if time::OffsetDateTime::unix_epoch() + ct >= expiry {
+                    security_info!("Session expired");
+                    return Err(OperationError::SessionExpired);
+                }
+            }
+
+            Ok(Token::ApiToken(apit, entry))
+        }
     }
 
     fn validate_and_parse_uat(
@@ -551,11 +656,86 @@ pub(crate) trait IdmServerTransaction<'a> {
 
         trace!(claims = ?entry.get_ava_set("claim"), "Applied claims");
 
-        let limits = Limits::from_uat(uat);
+        let limits = Limits::default();
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
             limits,
         })
+    }
+
+    fn process_apit_to_identity(
+        &self,
+        apit: &ApiToken,
+        entry: Arc<EntrySealedCommitted>,
+        ct: Duration,
+    ) -> Result<Identity, OperationError> {
+        let valid = ServiceAccount::check_api_token_valid(ct, apit, &entry);
+
+        if !valid {
+            // Check_api token logs this.
+            return Err(OperationError::SessionExpired);
+        }
+
+        let limits = Limits::default();
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry }),
+            limits,
+        })
+    }
+
+    fn validate_ldap_session(
+        &self,
+        session: &LdapSession,
+        ct: Duration,
+    ) -> Result<Identity, OperationError> {
+        match session {
+            LdapSession::UnixBind(uuid) => {
+                let anon_entry = self
+                    .get_qs_txn()
+                    .internal_search_uuid(&UUID_ANONYMOUS)
+                    .map_err(|e| {
+                        admin_error!("Failed to validate ldap session -> {:?}", e);
+                        e
+                    })?;
+
+                let entry = if uuid == &UUID_ANONYMOUS {
+                    anon_entry.clone()
+                } else {
+                    self.get_qs_txn().internal_search_uuid(&uuid).map_err(|e| {
+                        admin_error!("Failed to start auth ldap -> {:?}", e);
+                        e
+                    })?
+                };
+
+                if Account::check_within_valid_time(
+                    ct,
+                    entry.get_ava_single_datetime("account_valid_from").as_ref(),
+                    entry.get_ava_single_datetime("account_expire").as_ref(),
+                ) {
+                    // Good to go
+                    let limits = Limits::default();
+                    Ok(Identity {
+                        origin: IdentType::User(IdentUser { entry: anon_entry }),
+                        limits,
+                    })
+                } else {
+                    // Nope, expired
+                    Err(OperationError::SessionExpired)
+                }
+            }
+            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct),
+            LdapSession::ApiToken(apit) => {
+                let entry = self
+                    .get_qs_txn()
+                    .internal_search_uuid(&apit.uuid)
+                    .map_err(|e| {
+                        admin_error!("Failed to validate ldap session -> {:?}", e);
+                        e
+                    })?;
+
+                self.process_apit_to_identity(&apit, entry, ct)
+            }
+        }
     }
 }
 
@@ -953,6 +1133,34 @@ impl<'a> IdmServerAuthTransaction<'a> {
         res
     }
 
+    pub async fn token_auth_ldap(
+        &mut self,
+        lae: &LdapTokenAuthEvent,
+        ct: Duration,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        match self.validate_and_parse_token_to_token(Some(&lae.token), ct)? {
+            Token::UserAuthToken(uat) => {
+                let spn = uat.spn.clone();
+                Ok(Some(LdapBoundToken {
+                    session_id: uat.session_id,
+                    spn,
+                    effective_session: LdapSession::UserAuthToken(uat),
+                }))
+            }
+            Token::ApiToken(apit, entry) => {
+                let spn = entry.get_ava_single_proto_string("spn").ok_or(
+                    OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
+                )?;
+
+                Ok(Some(LdapBoundToken {
+                    session_id: apit.token_id,
+                    spn,
+                    effective_session: LdapSession::ApiToken(apit),
+                }))
+            }
+        }
+    }
+
     pub async fn auth_ldap(
         &mut self,
         lae: &LdapAuthEvent,
@@ -985,15 +1193,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
-                uuid: UUID_ANONYMOUS,
-                effective_uat: account
-                    .to_userauthtoken(session_id, ct, AuthType::Anonymous)
-                    .ok_or(OperationError::InvalidState)
-                    .map_err(|e| {
-                        admin_error!("Unable to generate effective_uat -> {:?}", e);
-                        e
-                    })?,
+                session_id,
                 spn: account.spn,
+                effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
             }))
         } else {
             let account =
@@ -1047,20 +1249,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
                     .is_some()
                 {
-                    // Get the anon uat
-                    let anon_entry =
-                        self.qs_read
-                            .internal_search_uuid(&UUID_ANONYMOUS)
-                            .map_err(|e| {
-                                admin_error!(
-                                    "Failed to find effective uat for auth ldap -> {:?}",
-                                    e
-                                );
-                                e
-                            })?;
-                    let anon_account =
-                        Account::try_from_entry_ro(anon_entry.as_ref(), &mut self.qs_read)?;
-
                     let session_id = Uuid::new_v4();
                     security_info!(
                         "Starting session {} for {} {}",
@@ -1071,14 +1259,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
                     Ok(Some(LdapBoundToken {
                         spn: account.spn,
-                        uuid: account.uuid,
-                        effective_uat: anon_account
-                            .to_userauthtoken(session_id, ct, AuthType::UnixPassword)
-                            .ok_or(OperationError::InvalidState)
-                            .map_err(|e| {
-                                admin_error!("Unable to generate effective_uat -> {:?}", e);
-                                e
-                            })?,
+                        session_id,
+                        effective_session: LdapSession::UnixBind(account.uuid),
                     }))
                 } else {
                     // PW failure, update softlock.
@@ -3283,7 +3465,8 @@ mod tests {
                     .expect("Failed to validate");
 
                 // In X time it should be INVALID
-                match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), expiry) {
+                match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), expiry)
+                {
                     Err(OperationError::SessionExpired) => {}
                     _ => assert!(false),
                 }

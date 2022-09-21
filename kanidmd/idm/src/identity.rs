@@ -4,7 +4,6 @@
 //! identity may consume during operations to prevent denial-of-service.
 
 use crate::prelude::*;
-use kanidm_proto::v1::UserAuthToken;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::hash::Hash;
@@ -20,6 +19,17 @@ pub struct Limits {
     pub filter_max_elements: usize,
 }
 
+impl Default for Limits {
+    fn default() -> Self {
+        Limits {
+            unindexed_allow: false,
+            search_max_results: 128,
+            search_max_filter_test: 256,
+            filter_max_elements: 32,
+        }
+    }
+}
+
 impl Limits {
     pub fn unlimited() -> Self {
         Limits {
@@ -27,16 +37,6 @@ impl Limits {
             search_max_results: usize::MAX,
             search_max_filter_test: usize::MAX,
             filter_max_elements: usize::MAX,
-        }
-    }
-
-    // From a userauthtoken
-    pub fn from_uat(uat: &UserAuthToken) -> Self {
-        Limits {
-            unindexed_allow: uat.lim_uidx,
-            search_max_results: uat.lim_rmax,
-            search_max_filter_test: uat.lim_pmax,
-            filter_max_elements: uat.lim_fmax,
         }
     }
 }

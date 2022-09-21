@@ -320,18 +320,14 @@ pub enum UiHint {
     PosixAccount,
 }
 
-
 /// The currently authenticated user, and any required metadata for them
 /// to properly authorise them. This is similar in nature to oauth and the krb
-/// PAC/PAD structures. Currently we only use this internally, but we should
-/// consider making it "parseable" by the client so they can have per-session
-/// group/authorisation data.
+/// PAC/PAD structures. This information is transparent to clients and CAN
+/// be parsed by them!
 ///
 /// This structure and how it works will *very much* change over time from this
-/// point onward!
-///
-/// It's likely that this must have a relationship to the server's user structure
-/// and to the Entry so that filters or access controls can be applied.
+/// point onward! This means on updates, that sessions will invalidate in many
+/// cases.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
@@ -347,12 +343,6 @@ pub struct UserAuthToken {
     pub mail_primary: Option<String>,
     pub groups: Vec<Group>,
     pub ui_hints: BTreeSet<UiHint>,
-    // Should we just retrieve these inside the server instead of in the uat?
-    // or do we want per-session limit capabilities?
-    pub lim_uidx: bool,
-    pub lim_rmax: usize,
-    pub lim_pmax: usize,
-    pub lim_fmax: usize,
 }
 
 impl fmt::Display for UserAuthToken {
@@ -373,24 +363,31 @@ impl fmt::Display for UserAuthToken {
     }
 }
 
-
-
 impl PartialEq for UserAuthToken {
     fn eq(&self, other: &Self) -> bool {
         self.session_id == other.session_id
     }
 }
 
-impl Eq for UserAuthToken { }
+impl Eq for UserAuthToken {}
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub struct ApiToken {
+    pub uuid: Uuid,
     pub token_id: Uuid,
     pub label: String,
     pub expiry: Option<time::OffsetDateTime>,
     pub issued_at: time::OffsetDateTime,
 }
+
+impl PartialEq for ApiToken {
+    fn eq(&self, other: &Self) -> bool {
+        self.token_id == other.token_id
+    }
+}
+
+impl Eq for ApiToken {}
 
 // UAT will need a downcast to Entry, which adds in the claims to the entry
 // for the purpose of filtering.

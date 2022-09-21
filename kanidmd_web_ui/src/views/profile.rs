@@ -67,7 +67,9 @@ impl Component for ProfileApp {
                 let username = &spn_split.clone().next().unwrap_throw();
                 let domain = &spn_split.clone().last().unwrap_throw();
                 let display_name = uat.displayname.to_owned();
-                let user_groups: Vec<String> = uat.groups.iter()
+                let user_groups: Vec<String> = uat
+                    .groups
+                    .iter()
                     .map(|group| {
                         #[allow(clippy::unwrap_used)]
                         group.spn.split('@').next().unwrap().to_string()
@@ -91,7 +93,7 @@ impl Component for ProfileApp {
                                         <li>{"Not a member of any groups"}</li>
                                     }
                                 } else {
-                                    html!{ 
+                                    html!{
                                         {
                                             for user_groups.iter()
                                                 .map(|group|

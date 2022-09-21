@@ -2,11 +2,11 @@
 //! are sent to for processing.
 
 use crate::event::SearchEvent;
-use crate::idm::event::LdapAuthEvent;
+use crate::idm::event::{LdapAuthEvent, LdapTokenAuthEvent};
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::prelude::*;
 use async_std::task;
-use kanidm_proto::v1::{OperationError, UserAuthToken};
+use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
 use std::collections::BTreeSet;
@@ -26,12 +26,27 @@ pub enum LdapResponseState {
     BindMultiPartResponse(LdapBoundToken, Vec<LdapMsg>),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum LdapSession {
+    // Maps through and provides anon read, but allows us to check the validity
+    // of the account still.
+    UnixBind(Uuid),
+    UserAuthToken(UserAuthToken),
+    ApiToken(ApiToken),
+}
+
 #[derive(Debug, Clone)]
 pub struct LdapBoundToken {
+    // Used to help ID the user doing the action, makes logging nicer.
     pub spn: String,
-    pub uuid: Uuid,
-    // For now, always anonymous
-    pub effective_uat: UserAuthToken,
+    pub session_id: Uuid,
+    // This is the effective session permission. This is generated from either:
+    // * A valid anonymous bind
+    // * A valid unix pw bind
+    // * A valid ApiToken
+    // In a way, this is a stepping stone to an "ident" but allows us to check
+    // the session is still "valid" depending on it's origin.
+    pub effective_session: LdapSession,
 }
 
 pub struct LdapServer {
@@ -269,12 +284,12 @@ impl LdapServer {
 
                 admin_info!(filter = ?lfilter, "LDAP Search Filter");
 
-                // Build the event, with the permissions from effective_uuid
-                // (should always be anonymous at the moment)
+                // Build the event, with the permissions from effective_session
+                //
                 // ! Remember, searchEvent wraps to ignore hidden for us.
                 let se = spanned!("ldap::do_search<core><prepare_se>", {
                     let ident = idm_read
-                        .process_uat_to_identity(&uat.effective_uat, ct)
+                        .validate_ldap_session(&uat.effective_session, ct)
                         .map_err(|e| {
                             admin_error!("Invalid identity: {:?}", e);
                             e
@@ -346,9 +361,18 @@ impl LdapServer {
                 security_info!("✅ LDAP Bind success anonymous");
                 UUID_ANONYMOUS
             } else {
-                security_info!("❌ LDAP Bind failure anonymous");
-                // Yeah-nahhhhh
-                return Ok(None);
+                // This is the path to access api-token logins.
+                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
+                    idm_auth.commit().map(|_| {
+                        if r.is_some() {
+                            security_info!(%dn, "✅ LDAP Bind success");
+                        } else {
+                            security_info!(%dn, "❌ LDAP Bind failure");
+                        };
+                        r
+                    })
+                });
             }
         } else {
             let rdn = match self
@@ -529,7 +553,7 @@ mod tests {
     use crate::event::{CreateEvent, ModifyEvent};
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
-    use crate::ldap::LdapServer;
+    use crate::ldap::{LdapServer, LdapSession};
     use async_std::task;
     use hashbrown::HashSet;
     use kanidm_proto::v1::ApiToken;
@@ -571,25 +595,26 @@ mod tests {
                 let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
                     .unwrap()
                     .unwrap();
-                assert!(anon_t.uuid == UUID_ANONYMOUS);
-                assert!(task::block_on(ldaps.do_bind(idms, "", "test"))
-                    .unwrap()
-                    .is_none());
+                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+                assert!(
+                    task::block_on(ldaps.do_bind(idms, "", "test")).unwrap_err()
+                        == OperationError::NotAuthenticated
+                );
 
                 // Now test the admin and various DN's
                 let admin_t = task::block_on(ldaps.do_bind(idms, "admin", TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "admin@example.com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "name=admin,dc=example,dc=com",
@@ -597,7 +622,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "spn=admin@example.com,dc=example,dc=com",
@@ -605,7 +630,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("uuid={},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
@@ -613,17 +638,17 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
 
                 let admin_t = task::block_on(ldaps.do_bind(idms, "name=admin", TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "spn=admin@example.com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("uuid={}", STR_UUID_ADMIN).as_str(),
@@ -631,13 +656,13 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
 
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "admin,dc=example,dc=com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "admin@example.com,dc=example,dc=com",
@@ -645,7 +670,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("{},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
@@ -653,7 +678,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
 
                 // Bad password, check last to prevent softlocking of the admin account.
                 assert!(task::block_on(ldaps.do_bind(idms, "admin", "test"))
@@ -750,7 +775,7 @@ mod tests {
                 let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
                     .unwrap()
                     .unwrap();
-                assert!(anon_t.uuid == UUID_ANONYMOUS);
+                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
                 // Check that when we request *, we get default list.
                 let sr = SearchRequest {
@@ -947,7 +972,7 @@ mod tests {
                 let anon_lbt = task::block_on(ldaps.do_bind(idms, "", ""))
                     .unwrap()
                     .unwrap();
-                assert!(anon_lbt.uuid == UUID_ANONYMOUS);
+                assert!(anon_lbt.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
                 let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_lbt)).unwrap();
                 assert!(r1.len() == 2);
@@ -957,27 +982,6 @@ mod tests {
                             lsre,
                             "spn=testperson1@example.com,dc=example,dc=com",
                             ("name", "testperson1")
-                        );
-                    }
-                    _ => assert!(false),
-                };
-
-                // Bind using the token
-                let sa_lbt = task::block_on(ldaps.do_bind(idms, "", ""))
-                    .unwrap()
-                    .unwrap();
-                assert!(sa_lbt.uuid == sa_uuid);
-
-                // Search and retrieve mail that's now accessible.
-                let r1 = task::block_on(ldaps.do_search(idms, &sr, &sa_lbt)).unwrap();
-                assert!(r1.len() == 2);
-                match &r1[0].op {
-                    LdapOp::SearchResultEntry(lsre) => {
-                        assert_entry_contains!(
-                            lsre,
-                            "spn=testperson1@example.com,dc=example,dc=com",
-                            ("name", "testperson1"),
-                            ("mail", "testperson1@example.com")
                         );
                     }
                     _ => assert!(false),
@@ -993,29 +997,26 @@ mod tests {
 
                 let apitoken_inner = apitoken_inner.into_inner();
 
-                // Remove / revoke the token
-                {
-                    let server_txn = idms.proxy_write(duration_from_epoch_now());
-                    server_txn
-                        .service_account_destroy_api_token(apitoken_inner.token_id)
-                        .expect("Failed to create new apitoken");
-                    assert!(server_txn.commit().is_ok());
-                }
+                // Bind using the token
+                let sa_lbt = task::block_on(ldaps.do_bind(idms, "", &apitoken))
+                    .unwrap()
+                    .unwrap();
+                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
 
-                // Show that the previous connection is now invalidated even though it was
-                // still existing (done by using the existing LBT.)
+                // Search and retrieve mail that's now accessible.
                 let r1 = task::block_on(ldaps.do_search(idms, &sr, &sa_lbt)).unwrap();
                 assert!(r1.len() == 2);
                 match &r1[0].op {
-                    // Should be an error
+                    LdapOp::SearchResultEntry(lsre) => {
+                        assert_entry_contains!(
+                            lsre,
+                            "spn=testperson1@example.com,dc=example,dc=com",
+                            ("name", "testperson1"),
+                            ("mail", "testperson1@example.com")
+                        );
+                    }
                     _ => assert!(false),
                 };
-
-                // Show a new connection will fail to start.
-                let x = task::block_on(ldaps.do_bind(idms, "", "")).unwrap();
-                eprintln!("⚠️   {:?}", x);
-
-                assert!(false);
             }
         )
     }

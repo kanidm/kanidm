@@ -689,7 +689,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSshKeyReadMessage>", {
             let ident = idms_prox_read
-                    .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -756,7 +756,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSshKeyTagReadMessage>", {
             let ident = idms_prox_read
-                    .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -826,7 +826,7 @@ impl QueryServerReadV1 {
         // let res = spanned!("actors::v1_read::handle<IdmAccountUnixAuthMessage>", {
         // resolve the id
         let ident = idm_auth
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e

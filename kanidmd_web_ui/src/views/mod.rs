@@ -6,13 +6,12 @@ use crate::utils;
 use compact_jwt::{Jws, JwsUnverified};
 use kanidm_proto::v1::UserAuthToken;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
-use std::str::FromStr;
-
 
 mod apps;
 mod components;
@@ -91,9 +90,7 @@ pub struct ViewsApp {
 pub enum ViewsMsg {
     Verified(String),
     Logout,
-    ProfileInfoRecieved {
-        uat: UserAuthToken,
-    },
+    ProfileInfoRecieved { uat: UserAuthToken },
     Error { emsg: String, kopid: Option<String> },
 }
 
@@ -378,8 +375,7 @@ impl ViewsApp {
     }
 
     async fn fetch_user_data(token: String) -> Result<ViewsMsg, FetchError> {
-        let jwtu = JwsUnverified::from_str(&token)
-            .expect_throw("Invalid UAT, unable to parse");
+        let jwtu = JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
 
         let uat: Jws<UserAuthToken> = jwtu
             .unsafe_release_without_verification()
@@ -388,9 +384,10 @@ impl ViewsApp {
         // We could get rid of this since the token is all we need?
         //
         // How will we manage this on changes?
-        Ok(ViewsMsg::ProfileInfoRecieved { uat: uat.into_inner() })
+        Ok(ViewsMsg::ProfileInfoRecieved {
+            uat: uat.into_inner(),
+        })
     }
-
 }
 
 fn admin_routes(route: &AdminRoute) -> Html {
