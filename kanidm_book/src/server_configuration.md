@@ -35,5 +35,14 @@ Then you can setup the initial admin account and initialise the database into yo
 
 Now we can run the server so that it can accept connections. This defaults to using `-c /data/server.toml`
 
-    docker run -p 8443:8443 -v kanidmd:/data kanidm/server:latest
+    docker run -p 443:8443 -v kanidmd:/data kanidm/server:latest
+
+### Using the NET\_BIND\_SERVICE capability
+
+If you plan to run without using docker port mapping or some other reverse proxy, and your bindaddress
+or ldapbindaddress port is less than `1024` you will need the `NET_BIND_SERVICE` in docker to allow
+these port binds. You can add this with `--cap-add` in your docker run command.
+
+    docker run --cap-add NET_BIND_SERVICE --network [host OR macvlan OR ipvlan] \
+        -v kanidmd:/data kanidm/server:latest
 
