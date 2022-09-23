@@ -350,11 +350,11 @@ impl fmt::Display for UserAuthToken {
         // writeln!(f, "name: {}", self.name)?;
         writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "uuid: {}", self.uuid)?;
-        /*
         writeln!(f, "display: {}", self.displayname)?;
         for group in &self.groups {
-            writeln!(f, "group: {:?}", group.name)?;
+            writeln!(f, "group: {:?}", group.spn)?;
         }
+        /*
         for claim in &self.claims {
             writeln!(f, "claim: {:?}", claim)?;
         }
@@ -374,11 +374,34 @@ impl Eq for UserAuthToken {}
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub struct ApiToken {
-    pub uuid: Uuid,
+    // The account this is associated with.
+    pub account_id: Uuid,
     pub token_id: Uuid,
     pub label: String,
     pub expiry: Option<time::OffsetDateTime>,
     pub issued_at: time::OffsetDateTime,
+}
+
+impl fmt::Display for ApiToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "account_id: {}", self.account_id)?;
+        writeln!(f, "token_id: {}", self.token_id)?;
+        writeln!(f, "label: {}", self.label)?;
+        writeln!(f, "issued at: {}", self.issued_at)?;
+        if let Some(expiry) = self.expiry {
+            writeln!(
+                f,
+                "token expiry: {}",
+                expiry
+                    .to_offset(
+                        time::UtcOffset::try_current_local_offset().unwrap_or(time::UtcOffset::UTC),
+                    )
+                    .format(time::Format::Rfc3339)
+            )
+        } else {
+            writeln!(f, "token expiry: never")
+        }
+    }
 }
 
 impl PartialEq for ApiToken {

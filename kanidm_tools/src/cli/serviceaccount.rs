@@ -1,5 +1,6 @@
 use crate::{
-    AccountSsh, AccountValidity, ServiceAccountCredential, ServiceAccountOpt, ServiceAccountPosix,
+    AccountSsh, AccountValidity, ServiceAccountApiToken, ServiceAccountCredential,
+    ServiceAccountOpt, ServiceAccountPosix,
 };
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
@@ -10,6 +11,11 @@ impl ServiceAccountOpt {
             ServiceAccountOpt::Credential { commands } => match commands {
                 ServiceAccountCredential::Status(apo) => apo.copt.debug,
                 ServiceAccountCredential::GeneratePw(apo) => apo.copt.debug,
+            },
+            ServiceAccountOpt::ApiToken { commands } => match commands {
+                ServiceAccountApiToken::Status(apo) => apo.copt.debug,
+                ServiceAccountApiToken::Generate { copt, .. } => copt.debug,
+                ServiceAccountApiToken::Destroy { copt, .. } => copt.debug,
             },
             ServiceAccountOpt::Posix { commands } => match commands {
                 ServiceAccountPosix::Show(apo) => apo.copt.debug,
@@ -61,11 +67,93 @@ impl ServiceAccountOpt {
                             println!("Success: {}", new_pw);
                         }
                         Err(e) => {
-                            error!("Error generating service account credential-> {:?}", e);
+                            error!("Error generating service account credential -> {:?}", e);
                         }
                     }
                 }
-            },
+            }, // End ServiceAccountOpt::Credential
+            ServiceAccountOpt::ApiToken { commands } => match commands {
+                ServiceAccountApiToken::Status(apo) => {
+                    let client = apo.copt.to_client().await;
+                    match client
+                        .idm_service_account_list_api_token(apo.aopts.account_id.as_str())
+                        .await
+                    {
+                        Ok(tokens) => {
+                            for token in tokens {
+                                println!("{}", token);
+                            }
+                        }
+                        Err(e) => {
+                            error!("Error listing service account api tokens -> {:?}", e);
+                        }
+                    }
+                }
+                ServiceAccountApiToken::Generate {
+                    aopts,
+                    copt,
+                    label,
+                    expiry,
+                } => {
+                    let expiry_odt = if let Some(t) = expiry {
+                        // Convert the time to local timezone.
+                        match OffsetDateTime::parse(&t, time::Format::Rfc3339).map(|odt| {
+                            odt.to_offset(
+                                time::UtcOffset::try_current_local_offset()
+                                    .unwrap_or(time::UtcOffset::UTC),
+                            )
+                        }) {
+                            Ok(odt) => {
+                                debug!("valid until: {}", odt);
+                                Some(odt)
+                            }
+                            Err(e) => {
+                                error!("Error -> {:?}", e);
+                                return;
+                            }
+                        }
+                    } else {
+                        None
+                    };
+
+                    let client = copt.to_client().await;
+
+                    match client
+                        .idm_service_account_generate_api_token(
+                            aopts.account_id.as_str(),
+                            label,
+                            expiry_odt,
+                        )
+                        .await
+                    {
+                        Ok(new_token) => {
+                            println!("Success: This token will only be displayed ONCE");
+                            println!("{}", new_token)
+                        }
+                        Err(e) => {
+                            error!("Error generating service account api token -> {:?}", e);
+                        }
+                    }
+                }
+                ServiceAccountApiToken::Destroy {
+                    // aopts: _,
+                    copt,
+                    token_id,
+                } => {
+                    let client = copt.to_client().await;
+                    match client
+                        .idm_service_account_destroy_api_token(*token_id)
+                        .await
+                    {
+                        Ok(()) => {
+                            println!("Success");
+                        }
+                        Err(e) => {
+                            error!("Error destroying service account token -> {:?}", e);
+                        }
+                    }
+                }
+            }, // End ServiceAccountOpt::ApiToken
             ServiceAccountOpt::Posix { commands } => match commands {
                 ServiceAccountPosix::Show(aopt) => {
                     let client = aopt.copt.to_client().await;

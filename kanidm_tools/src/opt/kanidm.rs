@@ -329,14 +329,48 @@ pub enum PersonOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum ServiceAccountCredential {
-    /// Show the status of this accounts credentials.
+    /// Show the status of this accounts password
     #[clap(name = "status")]
     Status(AccountNamedOpt),
     /// Reset and generate a new service account password. This password can NOT
     /// be used with the LDAP interface.
-    #[clap(name = "generate-pw")]
+    #[clap(name = "generate")]
     GeneratePw(AccountNamedOpt),
-    // Future - add a token creator / remover.
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ServiceAccountApiToken {
+    /// Show the status of api tokens associated to this service account.
+    #[clap(name = "status")]
+    Status(AccountNamedOpt),
+    /// Generate a new api token for this service account.
+    #[clap(name = "generate")]
+    Generate {
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        /// A string describing the token. This is not used to identify the token, it is only
+        /// for human description of the tokens purpose.
+        #[clap(name = "label")]
+        label: String,
+        #[clap(name = "expiry")]
+        /// An optional rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00".
+        /// After this time the api token will no longer be valid.
+        expiry: Option<String>,
+    },
+    /// Destroy / revoke an api token from this service account. Access to the
+    /// token is NOT required, only the tag/uuid of the token.
+    #[clap(name = "destroy")]
+    Destroy {
+        // #[clap(flatten)]
+        // aopts: AccountCommonOpt,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        /// The UUID of the token to destroy.
+        #[clap(name = "token_id")]
+        token_id: Uuid,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -363,11 +397,17 @@ pub struct ServiceAccountUpdateOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum ServiceAccountOpt {
-    /// Manage generated passwords or access tokens for this service account.
+    /// Manage the generated password of this service account.
     #[clap(name = "credential")]
     Credential {
         #[clap(subcommand)]
         commands: ServiceAccountCredential,
+    },
+    /// Manage api tokens associated to this service account.
+    #[clap(name = "api-token")]
+    ApiToken {
+        #[clap(subcommand)]
+        commands: ServiceAccountApiToken,
     },
     /// Manage posix extensions for this service account allowing access to unix/linux systems
     #[clap(name = "posix")]

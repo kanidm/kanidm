@@ -53,3 +53,4 @@ zxcvbn = "^2.2.1"
 [build-dependencies]
 clap = { version = "^3.2", features = ["derive"] }
 clap_complete = { version = "^3.2.5"}
+uuid = "^1.1.2"

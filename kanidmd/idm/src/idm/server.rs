@@ -727,7 +727,7 @@ pub(crate) trait IdmServerTransaction<'a> {
             LdapSession::ApiToken(apit) => {
                 let entry = self
                     .get_qs_txn()
-                    .internal_search_uuid(&apit.uuid)
+                    .internal_search_uuid(&apit.account_id)
                     .map_err(|e| {
                         admin_error!("Failed to validate ldap session -> {:?}", e);
                         e

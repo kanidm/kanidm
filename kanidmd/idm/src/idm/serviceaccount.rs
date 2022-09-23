@@ -197,12 +197,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let session_id = Uuid::new_v4();
         let issued_at = time::OffsetDateTime::unix_epoch() + ct;
 
+        // Normalise to UTC incase it was provided as something else.
+        let expiry = gte
+            .expiry
+            .clone()
+            .map(|odt| odt.to_offset(time::UtcOffset::UTC));
+
         // create a new session
         let session = Value::Session(
             session_id,
             Session {
                 label: gte.label.clone(),
-                expiry: gte.expiry.clone(),
+                expiry,
                 // Need the other inner bits?
                 // for the gracewindow.
                 issued_at,
@@ -213,7 +219,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // create the session token (not yet signed)
         let token = Jws::new(ApiToken {
-            uuid: service_account.uuid,
+            account_id: service_account.uuid,
             token_id: session_id,
             label: gte.label.clone(),
             expiry: gte.expiry.clone(),

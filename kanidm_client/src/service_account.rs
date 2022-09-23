@@ -1,9 +1,12 @@
 use crate::ClientError;
 use crate::KanidmClient;
 use kanidm_proto::v1::AccountUnixExtend;
+use kanidm_proto::v1::ApiToken;
 use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::Entry;
 use std::collections::BTreeMap;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 impl KanidmClient {
     pub async fn idm_service_account_list(&self) -> Result<Vec<Entry>, ClientError> {
@@ -192,5 +195,28 @@ impl KanidmClient {
                 Ok(pw)
             }
         })
+    }
+
+    pub async fn idm_service_account_list_api_token(
+        &self,
+        _id: &str,
+    ) -> Result<Vec<ApiToken>, ClientError> {
+        todo!();
+    }
+
+    pub async fn idm_service_account_generate_api_token(
+        &self,
+        _id: &str,
+        _label: &str,
+        _expiry: Option<OffsetDateTime>,
+    ) -> Result<String, ClientError> {
+        todo!();
+    }
+
+    pub async fn idm_service_account_destroy_api_token(
+        &self,
+        _token_id: Uuid,
+    ) -> Result<(), ClientError> {
+        todo!();
     }
 }
