@@ -80,8 +80,12 @@ impl ServiceAccountOpt {
                         .await
                     {
                         Ok(tokens) => {
-                            for token in tokens {
-                                println!("{}", token);
+                            if tokens.is_empty() {
+                                println!("No api tokens exist");
+                            } else {
+                                for token in tokens {
+                                    println!("token: {}", token);
+                                }
                             }
                         }
                         Err(e) => {

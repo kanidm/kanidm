@@ -177,7 +177,44 @@ kanidm service-account create demo_service "Demonstration Service" --name admin
 kanidm service-account get demo_service --name admin
 ```
 
-## Resetting Service Account Credentials
+## Using API Tokens with Service Accounts
+
+Service accounts can have api tokens generated and associated with them. These tokens can be used for
+identification of the service account, and for granting extended access rights where the service
+account may previously have not had the access. Additionally service accounts can have expiry times
+and other auditing information attached.
+
+To show api tokens for a service account:
+
+```shell
+kanidm service-account api-token status --name admin ACCOUNT_ID
+kanidm service-account api-token status --name admin demo_service
+```
+
+To generate a new api token:
+
+```shell
+kanidm service-account api-token generate --name admin ACCOUNT_ID LABEL [EXPIRY]
+kanidm service-account api-token generate --name admin demo_service "Test Token"
+kanidm service-account api-token generate --name admin demo_service "Test Token" 2020-09-25T11:22:02+10:00
+```
+
+To destroy (revoke) an api token you will need it's token id. This can be shown with the "status"
+command.
+
+```shell
+kanidm service-account api-token destroy --name admin ACCOUNT_ID TOKEN_ID
+kanidm service-account api-token destroy --name admin demo_service 4de2a4e9-e06a-4c5e-8a1b-33f4e7dd5dc7
+```
+
+
+## Resetting Service Account Credentials (Deprecated)
+
+{{#template
+    templates/kani-warning.md
+    imagepath=images
+    text=Api Tokens are a better method to manage credentials for service accounts, and passwords may be removed in the future!
+}}
 
 Service accounts can not have their credentials interactively updated in the same manner as
 persons. Service accounts may only have server side generated high entropy passwords.
