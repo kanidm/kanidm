@@ -8,6 +8,7 @@ use kanidm_proto::v1::{CURegState, CredentialDetailType, Entry, Filter, Modify, 
 
 mod common;
 use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
+use compact_jwt::{Jws, JwsUnverified};
 
 use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
@@ -1166,3 +1167,63 @@ async fn test_server_credential_update_session_passkey() {
     let res = rsclient.auth_passkey_complete(pkc).await;
     assert!(res.is_ok());
 }
+
+
+#[tokio::test]
+async fn test_server_api_token_lifecycle() {
+    let rsclient = setup_async_test().await;
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    rsclient
+        .idm_service_account_create("test_service", "Test Service")
+        .await
+        .expect("Failed to create service account");
+
+    let tokens = rsclient
+        .idm_service_account_list_api_token("test_service")
+        .await
+        .expect("Failed to list service account api tokens");
+    assert!(tokens.is_empty());
+
+    let token = rsclient
+        .idm_service_account_generate_api_token(
+            "test_service",
+            "test token",
+            None
+        )
+        .await
+        .expect("Failed to create service account api token");
+
+    // Decode it?
+    let token_unverified =
+        JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
+
+    let token: Jws<ApiToken> = token_unverified
+        .validate_embeded()
+        .expect("Embedded jwk not found");
+
+    let tokens = rsclient
+        .idm_service_account_list_api_token("test_service")
+        .await
+        .expect("Failed to list service account api tokens");
+
+    assert!(tokens == vec![token]);
+
+    rsclient
+        .idm_service_account_destroy_api_token(token.token_id)
+        .await
+        .expect("Failed to destroy service account api token");
+
+    let tokens = rsclient
+        .idm_service_account_list_api_token("test_service")
+        .await
+        .expect("Failed to list service account api tokens");
+    assert!(tokens.is_empty());
+
+    // No need to test expiry, that's validated in the server internal tests.
+}
+
+
