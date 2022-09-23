@@ -24,11 +24,12 @@ use crate::idm::oauth2::{
     JwkKeySet, Oauth2Error, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::server::{IdmServer, IdmServerTransaction};
+use crate::idm::serviceaccount::ListApiTokenEvent;
 use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AuthRequest, CURequest, CUSessionToken, CUStatus, CredentialStatus, SearchRequest,
+    ApiToken, AuthRequest, CURequest, CUSessionToken, CUStatus, CredentialStatus, SearchRequest,
     SearchResponse, UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
 
@@ -806,6 +807,39 @@ impl QueryServerReadV1 {
             }
         });
         res
+    }
+
+    #[instrument(
+        level = "info",
+        name = "service_account_api_token_get",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_service_account_api_token_get(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        eventid: Uuid,
+    ) -> Result<Vec<ApiToken>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+        let target = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!("Error resolving id to target");
+                e
+            })?;
+
+        let lte = ListApiTokenEvent { ident, target };
+
+        idms_prox_read.service_account_list_api_token(&lte)
     }
 
     #[instrument(

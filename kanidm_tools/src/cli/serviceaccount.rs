@@ -136,13 +136,13 @@ impl ServiceAccountOpt {
                     }
                 }
                 ServiceAccountApiToken::Destroy {
-                    // aopts: _,
+                    aopts,
                     copt,
                     token_id,
                 } => {
                     let client = copt.to_client().await;
                     match client
-                        .idm_service_account_destroy_api_token(*token_id)
+                        .idm_service_account_destroy_api_token(aopts.account_id.as_str(), *token_id)
                         .await
                     {
                         Ok(()) => {

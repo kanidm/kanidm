@@ -1,5 +1,6 @@
+use crate::event::SearchEvent;
 use crate::idm::account::Account;
-use crate::idm::server::IdmServerProxyWriteTransaction;
+use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
 use crate::value::Session;
 
@@ -138,6 +139,13 @@ impl ServiceAccount {
     }
 }
 
+pub struct ListApiTokenEvent {
+    // Who initiated this?
+    pub ident: Identity,
+    // Who is it targetting?
+    pub target: Uuid,
+}
+
 pub struct GenerateApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
@@ -165,15 +173,18 @@ impl GenerateApiTokenEvent {
 pub struct DestroyApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
+    // Who is it targetting?
+    pub target: Uuid,
     // Which token id.
     pub token_id: Uuid,
 }
 
 impl DestroyApiTokenEvent {
     #[cfg(test)]
-    pub fn new_internal(token_id: Uuid) -> Self {
+    pub fn new_internal(target: Uuid, token_id: Uuid) -> Self {
         DestroyApiTokenEvent {
             ident: Identity::from_internal(),
+            target,
             token_id,
         }
     }
@@ -272,9 +283,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("api_token_session", PartialValue::Refer(dte.token_id))),
+                &filter!(f_and!([
+                    f_eq("uuid", PartialValue::Uuid(dte.target)),
+                    f_eq("api_token_session", PartialValue::Refer(dte.token_id))
+                ])),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("api_token_session", PartialValue::Refer(dte.token_id))),
+                &filter_all!(f_and!([
+                    f_eq("uuid", PartialValue::Uuid(dte.target)),
+                    f_eq("api_token_session", PartialValue::Refer(dte.token_id))
+                ])),
                 &modlist,
                 // Provide the event to impersonate
                 &dte.ident,
@@ -283,6 +300,55 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 admin_error!("Failed to destroy api token {:?}", e);
                 e
             })
+    }
+}
+
+impl<'a> IdmServerProxyReadTransaction<'a> {
+    pub fn service_account_list_api_token(
+        &self,
+        lte: &ListApiTokenEvent,
+    ) -> Result<Vec<ApiToken>, OperationError> {
+        // Make an event from the request
+        let srch = match SearchEvent::from_target_uuid_request(
+            lte.ident.clone(),
+            lte.target,
+            &self.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin ssh key read: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        match self.qs_read.search_ext(&srch) {
+            Ok(mut entries) => {
+                let r = entries
+                    .pop()
+                    // get the first entry
+                    .and_then(|e| {
+                        let account_id = e.get_uuid();
+                        // From the entry, turn it into the value
+                        e.get_ava_as_session_map("api_token_session").map(|smap| {
+                            smap.iter()
+                                .map(|(u, s)| ApiToken {
+                                    account_id,
+                                    token_id: *u,
+                                    label: s.label.clone(),
+                                    expiry: s.expiry.clone(),
+                                    issued_at: s.issued_at.clone(),
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                    })
+                    .unwrap_or_else(|| {
+                        // No matching entry? Return none.
+                        Vec::new()
+                    });
+                Ok(r)
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -360,7 +426,10 @@ mod tests {
             );
 
             // Delete session
-            let dte = DestroyApiTokenEvent::new_internal(apitoken_inner.token_id);
+            let dte = DestroyApiTokenEvent::new_internal(
+                apitoken_inner.account_id,
+                apitoken_inner.token_id,
+            );
             assert!(idms_prox_write
                 .service_account_destroy_api_token(&dte)
                 .is_ok());

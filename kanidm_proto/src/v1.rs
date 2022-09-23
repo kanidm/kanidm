@@ -412,6 +412,13 @@ impl PartialEq for ApiToken {
 
 impl Eq for ApiToken {}
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub struct ApiTokenGenerate {
+    pub label: String,
+    pub expiry: Option<time::OffsetDateTime>,
+}
+
 // UAT will need a downcast to Entry, which adds in the claims to the entry
 // for the purpose of filtering.
 

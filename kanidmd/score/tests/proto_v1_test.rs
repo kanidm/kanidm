@@ -4,11 +4,14 @@ use std::time::SystemTime;
 use tracing::debug;
 
 use kanidm::credential::totp::Totp;
-use kanidm_proto::v1::{CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList};
+use kanidm_proto::v1::{
+    ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList,
+};
 
 mod common;
 use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
-use compact_jwt::{Jws, JwsUnverified};
+use compact_jwt::JwsUnverified;
+use std::str::FromStr;
 
 use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
 
@@ -1168,7 +1171,6 @@ async fn test_server_credential_update_session_passkey() {
     assert!(res.is_ok());
 }
 
-
 #[tokio::test]
 async fn test_server_api_token_lifecycle() {
     let rsclient = setup_async_test().await;
@@ -1176,6 +1178,12 @@ async fn test_server_api_token_lifecycle() {
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
+
+    // Not recommended in production!
+    rsclient
+        .idm_group_add_members("idm_admins", &["admin"])
+        .await
+        .unwrap();
 
     rsclient
         .idm_service_account_create("test_service", "Test Service")
@@ -1189,20 +1197,16 @@ async fn test_server_api_token_lifecycle() {
     assert!(tokens.is_empty());
 
     let token = rsclient
-        .idm_service_account_generate_api_token(
-            "test_service",
-            "test token",
-            None
-        )
+        .idm_service_account_generate_api_token("test_service", "test token", None)
         .await
         .expect("Failed to create service account api token");
 
     // Decode it?
-    let token_unverified =
-        JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
+    let token_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
 
-    let token: Jws<ApiToken> = token_unverified
+    let token: ApiToken = token_unverified
         .validate_embeded()
+        .map(|j| j.into_inner())
         .expect("Embedded jwk not found");
 
     let tokens = rsclient
@@ -1210,10 +1214,10 @@ async fn test_server_api_token_lifecycle() {
         .await
         .expect("Failed to list service account api tokens");
 
-    assert!(tokens == vec![token]);
+    assert!(tokens == vec![token.clone()]);
 
     rsclient
-        .idm_service_account_destroy_api_token(token.token_id)
+        .idm_service_account_destroy_api_token(&token.account_id.to_string(), token.token_id)
         .await
         .expect("Failed to destroy service account api token");
 
@@ -1225,5 +1229,3 @@ async fn test_server_api_token_lifecycle() {
 
     // No need to test expiry, that's validated in the server internal tests.
 }
-
-

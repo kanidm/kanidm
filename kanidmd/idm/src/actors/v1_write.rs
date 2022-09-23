@@ -24,6 +24,7 @@ use kanidm_proto::v1::OperationError;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::delayed::DelayedAction;
 use crate::idm::server::{IdmServer, IdmServerTransaction};
+use crate::idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent};
 use crate::utils::duration_from_epoch_now;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -33,6 +34,8 @@ use kanidm_proto::v1::{
     AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
     GroupUnixExtend, ModifyRequest,
 };
+
+use time::OffsetDateTime;
 
 use uuid::Uuid;
 
@@ -460,6 +463,90 @@ impl QueryServerWriteV1 {
                 .and_then(|r| idms_prox_write.commit().map(|_| r))
         });
         res
+    }
+
+    #[instrument(
+        level = "info",
+        name = "service_account_credential_generate",
+        skip(self, uat, uuid_or_name, label, expiry, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_service_account_api_token_generate(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        label: String,
+        expiry: Option<OffsetDateTime>,
+        eventid: Uuid,
+    ) -> Result<String, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving id to target");
+                e
+            })?;
+
+        let gte = GenerateApiTokenEvent {
+            ident,
+            target,
+            label,
+            expiry,
+        };
+
+        idms_prox_write
+            .service_account_generate_api_token(&gte, ct)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        name = "service_account_credential_generate",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_service_account_api_token_destroy(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        token_id: Uuid,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving id to target");
+                e
+            })?;
+
+        let dte = DestroyApiTokenEvent {
+            ident,
+            target,
+            token_id,
+        };
+
+        idms_prox_write
+            .service_account_destroy_api_token(&dte)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 
     #[instrument(

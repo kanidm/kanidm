@@ -363,8 +363,8 @@ pub enum ServiceAccountApiToken {
     /// token is NOT required, only the tag/uuid of the token.
     #[clap(name = "destroy")]
     Destroy {
-        // #[clap(flatten)]
-        // aopts: AccountCommonOpt,
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
         #[clap(flatten)]
         copt: CommonOpt,
         /// The UUID of the token to destroy.

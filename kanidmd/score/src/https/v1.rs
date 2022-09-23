@@ -6,9 +6,9 @@ use kanidm::status::StatusRequestEvent;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState, CUIntentToken,
-    CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest,
-    OperationError, SearchRequest, SingleStringRequest,
+    AccountUnixExtend, ApiTokenGenerate, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
+    CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend,
+    ModifyRequest, OperationError, SearchRequest, SingleStringRequest,
 };
 
 use super::{to_tide_response, AppState, RequestExtensions, RouteMap};
@@ -420,6 +420,52 @@ pub async fn service_account_into_person(req: tide::Request<AppState>) -> tide::
     to_tide_response(res, hvalue)
 }
 
+// Api Token
+pub async fn service_account_api_token_get(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_service_account_api_token_get(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn service_account_api_token_post(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+    let ApiTokenGenerate { label, expiry } = req.body_json().await?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_service_account_api_token_generate(uat, uuid_or_name, label, expiry, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn service_account_api_token_delete(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+    let token_id = req.get_url_param_uuid("token_id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_service_account_api_token_destroy(uat, uuid_or_name, token_id, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+// Account stuff
 pub async fn account_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_get_id_attr(req, filter).await
