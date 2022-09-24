@@ -1476,7 +1476,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn get_origin(&self) -> &Url {
-        self.webauthn.get_origin()
+        self.webauthn.get_allowed_origins().get(0).unwrap()
     }
 
     fn check_password_quality(

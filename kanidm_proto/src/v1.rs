@@ -239,6 +239,7 @@ pub enum OperationError {
     ResourceLimit,
     QueueDisconnected,
     Webauthn,
+    #[serde(with = "time::serde::timestamp")]
     Wait(time::OffsetDateTime),
     ReplReplayFailure,
     ReplEntryNotChanged,
@@ -335,6 +336,7 @@ pub struct UserAuthToken {
     pub auth_type: AuthType,
     // When this token should be considered expired. Interpretation
     // may depend on the client application.
+    #[serde(with = "time::serde::timestamp")]
     pub expiry: time::OffsetDateTime,
     pub uuid: Uuid,
     pub name: String,
@@ -378,7 +380,9 @@ pub struct ApiToken {
     pub account_id: Uuid,
     pub token_id: Uuid,
     pub label: String,
+    #[serde(with = "time::serde::timestamp::option")]
     pub expiry: Option<time::OffsetDateTime>,
+    #[serde(with = "time::serde::timestamp")]
     pub issued_at: time::OffsetDateTime,
 }
 
@@ -416,6 +420,7 @@ impl Eq for ApiToken {}
 #[serde(rename_all = "lowercase")]
 pub struct ApiTokenGenerate {
     pub label: String,
+    #[serde(with = "time::serde::timestamp::option")]
     pub expiry: Option<time::OffsetDateTime>,
 }
 

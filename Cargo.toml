@@ -38,6 +38,11 @@ exclude = [
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
 
+webauthn-rs =               { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7579ffce509c8b96620012eee47e3bade0f62666" }
+webauthn-rs-core =          { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7579ffce509c8b96620012eee47e3bade0f62666" }
+webauthn-rs-proto =         { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7579ffce509c8b96620012eee47e3bade0f62666" }
+webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "7579ffce509c8b96620012eee47e3bade0f62666" }
+
 # compact_jwt = { path = "../compact_jwt" }
 # compact_jwt = { git = "https://github.com/kanidm/compact-jwt.git" }
 

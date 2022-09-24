@@ -886,7 +886,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 impl<'a> IdmServerCredUpdateTransaction<'a> {
     #[cfg(test)]
     pub fn get_origin(&self) -> &Url {
-        self.webauthn.get_origin()
+        &self.webauthn.get_allowed_origins()[0]
     }
 
     fn get_current_session(
