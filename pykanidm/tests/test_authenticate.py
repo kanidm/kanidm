@@ -13,6 +13,7 @@ from testutils import client, client_configfile, MockResponse
 from kanidm import KanidmClient
 from kanidm.exceptions import AuthCredFailed, AuthInitFailed
 from kanidm.types import AuthBeginResponse
+from kanidm.tokens import TokenStore
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -26,7 +27,7 @@ async def test_auth_init(client_configfile: KanidmClient) -> None:
     print(f"Doing auth_init for {client_configfile.config.username}")
 
     if client_configfile.config.username is None:
-        raise ValueError("This path shouldn't be possible in the test!")
+        pytest.skip("Can't run auth test without a username/password")
     async with aiohttp.ClientSession() as session:
         client_configfile.session = session
         result = await client_configfile.auth_init(client_configfile.config.username)
@@ -44,7 +45,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
     async with aiohttp.ClientSession() as session:
         client_configfile.session = session
         if client_configfile.config.username is None:
-            raise ValueError("This path shouldn't be possible in the test!")
+            pytest.skip("Can't run auth test without a username/password")
         result = await client_configfile.auth_init(client_configfile.config.username)
         print(f"{result=}")
         print("Result dict:")
@@ -72,17 +73,18 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
 @pytest.mark.asyncio
 async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow"""
+    if client_configfile.config.username is None or client_configfile.config.password is None:
+        pytest.skip("Can't run this without a username and password set in the config file")
     async with aiohttp.ClientSession() as session:
         print(f"Doing client.authenticate for {client_configfile.config.username}")
         client_configfile.session = session
         result = await client_configfile.authenticate_password()
     print(result)
 
-
 @pytest.mark.network
 @pytest.mark.asyncio
 async def test_authenticate_flow_fail(client_configfile: KanidmClient) -> None:
-    """tests the authenticate() flow with a valid (hopefully) usernamd and invalid password"""
+    """tests the authenticate() flow with a valid (hopefully) username and invalid password"""
     if not bool(os.getenv("RUN_SCARY_TESTS", None)):
         pytest.skip(reason="Skipping because env var RUN_SCARY_TESTS isn't set")
     print("Starting client...")
@@ -152,3 +154,37 @@ async def test_auth_step_password(client: KanidmClient) -> None:
         async with aiohttp.ClientSession() as session:
             client.session = session
             await client.auth_step_password()
+
+
+
+@pytest.mark.interactive
+@pytest.mark.asyncio
+async def test_authenticate_with_token(client_configfile: KanidmClient) -> None:
+    """ tests auth with a token, needs to have a valid token in your local cache """
+
+
+    if "KANIDM_TEST_USERNAME" in os.environ:
+        test_username: str = os.environ["KANIDM_TEST_USERNAME"]
+        print(f"Using username {test_username} from KANIDM_TEST_USERNAME env var")
+    else:
+        test_username = "idm_admin"
+        print("Using username {test_username} by default - set KANIDM_TEST_USERNAME env var if you want to change this.")
+
+
+    tokens = TokenStore()
+    tokens.load_tokens()
+
+    if test_username not in tokens:
+        print(f"Can't find {test_username} user in token store")
+        raise pytest.skip(f"Can't find {test_username} user in token store")
+    test_token: str = tokens[test_username]
+    if not await client_configfile.check_token_valid(test_token):
+        print(f"Token for {test_username} isn't valid")
+        pytest.skip(f"Token for {test_username} isn't valid")
+    else:
+        print("Token was noted as valid?")
+
+    result = await client_configfile.authenticate_with_token(test_token)
+
+    print(f"test result: {result}")
+    assert result.status_code == 200

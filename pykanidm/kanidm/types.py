@@ -1,10 +1,12 @@
 """ type objects """
 # pylint: disable=too-few-public-methods
 
+from http.cookies import SimpleCookie
 from ipaddress import IPv4Address,IPv6Address, IPv6Network, IPv4Network
 import socket
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
+
 
 from pydantic import BaseModel, Field, validator
 import toml
@@ -16,6 +18,10 @@ class ClientResponse(BaseModel):
     data: Optional[Dict[str, Any]]
     headers: Dict[str, Any]
     status_code: int
+    cookies: Optional[SimpleCookie]
+    class Config:
+        """ Configuration """
+        arbitrary_types_allowed = True
 
 
 class AuthInitResponse(BaseModel):

@@ -1,3 +1,4 @@
 
+# kanidm.KanidmClient
 
 ::: kanidm.KanidmClient

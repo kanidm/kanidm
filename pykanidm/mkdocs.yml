@@ -20,6 +20,7 @@ plugins:
 
 nav:
   - "Home": README.md
-  - "KanidmClient": kanidmclient.md
-  - "KanidmClientConfig": kanidmclientconfig.md
-  - "RadiusClient": radiusclient.md
+  - "Client": kanidmclient.md
+  - "Client Configuration": kanidmclientconfig.md
+  - "RADIUS Client": radiusclient.md
+  - "Token Storage" : tokenstore.md

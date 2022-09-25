@@ -342,6 +342,7 @@ pub async fn person_get(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_get(req, filter, None).await
 }
 
+// expects the following fields in the attrs field of the req: [name, displayname]
 pub async fn person_post(req: tide::Request<AppState>) -> tide::Result {
     let classes = vec![
         "person".to_string(),
