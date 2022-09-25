@@ -5,7 +5,7 @@ authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
     ]
-rust-version = "1.59"
+rust-version = "1.64"
 edition = "2021"
 license = "MPL-2.0"
 description = "Kanidm Server Web User Interface"

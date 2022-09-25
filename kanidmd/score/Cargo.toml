@@ -44,7 +44,7 @@ profiles = { path = "../../profiles" }
 kanidm_client = { path = "../../kanidm_client" }
 futures = "^0.3.21"
 
-webauthn-authenticator-rs = "0.4.5"
+webauthn-authenticator-rs.workspace = true
 oauth2_ext = { package = "oauth2", version = "^4.1.0", default-features = false }
 base64 = "^0.13.0"
 
