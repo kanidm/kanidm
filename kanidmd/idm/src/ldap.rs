@@ -2,11 +2,11 @@
 //! are sent to for processing.
 
 use crate::event::SearchEvent;
-use crate::idm::event::LdapAuthEvent;
+use crate::idm::event::{LdapAuthEvent, LdapTokenAuthEvent};
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::prelude::*;
 use async_std::task;
-use kanidm_proto::v1::{OperationError, UserAuthToken};
+use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
 use std::collections::BTreeSet;
@@ -26,12 +26,27 @@ pub enum LdapResponseState {
     BindMultiPartResponse(LdapBoundToken, Vec<LdapMsg>),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum LdapSession {
+    // Maps through and provides anon read, but allows us to check the validity
+    // of the account still.
+    UnixBind(Uuid),
+    UserAuthToken(UserAuthToken),
+    ApiToken(ApiToken),
+}
+
 #[derive(Debug, Clone)]
 pub struct LdapBoundToken {
+    // Used to help ID the user doing the action, makes logging nicer.
     pub spn: String,
-    pub uuid: Uuid,
-    // For now, always anonymous
-    pub effective_uat: UserAuthToken,
+    pub session_id: Uuid,
+    // This is the effective session permission. This is generated from either:
+    // * A valid anonymous bind
+    // * A valid unix pw bind
+    // * A valid ApiToken
+    // In a way, this is a stepping stone to an "ident" but allows us to check
+    // the session is still "valid" depending on it's origin.
+    pub effective_session: LdapSession,
 }
 
 pub struct LdapServer {
@@ -269,12 +284,12 @@ impl LdapServer {
 
                 admin_info!(filter = ?lfilter, "LDAP Search Filter");
 
-                // Build the event, with the permissions from effective_uuid
-                // (should always be anonymous at the moment)
+                // Build the event, with the permissions from effective_session
+                //
                 // ! Remember, searchEvent wraps to ignore hidden for us.
                 let se = spanned!("ldap::do_search<core><prepare_se>", {
                     let ident = idm_read
-                        .process_uat_to_identity(&uat.effective_uat, ct)
+                        .validate_ldap_session(&uat.effective_session, ct)
                         .map_err(|e| {
                             admin_error!("Invalid identity: {:?}", e);
                             e
@@ -346,9 +361,18 @@ impl LdapServer {
                 security_info!("✅ LDAP Bind success anonymous");
                 UUID_ANONYMOUS
             } else {
-                security_info!("❌ LDAP Bind failure anonymous");
-                // Yeah-nahhhhh
-                return Ok(None);
+                // This is the path to access api-token logins.
+                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
+                    idm_auth.commit().map(|_| {
+                        if r.is_some() {
+                            security_info!(%dn, "✅ LDAP Bind success");
+                        } else {
+                            security_info!(%dn, "❌ LDAP Bind failure");
+                        };
+                        r
+                    })
+                });
             }
         } else {
             let rdn = match self
@@ -528,11 +552,16 @@ mod tests {
     // use crate::prelude::*;
     use crate::event::{CreateEvent, ModifyEvent};
     use crate::idm::event::UnixPasswordChangeEvent;
-    use crate::ldap::LdapServer;
+    use crate::idm::serviceaccount::GenerateApiTokenEvent;
+    use crate::ldap::{LdapServer, LdapSession};
     use async_std::task;
     use hashbrown::HashSet;
+    use kanidm_proto::v1::ApiToken;
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_proto::simple::*;
+    use std::str::FromStr;
+
+    use compact_jwt::{Jws, JwsUnverified};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 
@@ -566,25 +595,26 @@ mod tests {
                 let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
                     .unwrap()
                     .unwrap();
-                assert!(anon_t.uuid == UUID_ANONYMOUS);
-                assert!(task::block_on(ldaps.do_bind(idms, "", "test"))
-                    .unwrap()
-                    .is_none());
+                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+                assert!(
+                    task::block_on(ldaps.do_bind(idms, "", "test")).unwrap_err()
+                        == OperationError::NotAuthenticated
+                );
 
                 // Now test the admin and various DN's
                 let admin_t = task::block_on(ldaps.do_bind(idms, "admin", TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "admin@example.com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "name=admin,dc=example,dc=com",
@@ -592,7 +622,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "spn=admin@example.com,dc=example,dc=com",
@@ -600,7 +630,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("uuid={},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
@@ -608,17 +638,17 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
 
                 let admin_t = task::block_on(ldaps.do_bind(idms, "name=admin", TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "spn=admin@example.com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("uuid={}", STR_UUID_ADMIN).as_str(),
@@ -626,13 +656,13 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
 
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "admin,dc=example,dc=com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "admin@example.com,dc=example,dc=com",
@@ -640,7 +670,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("{},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
@@ -648,7 +678,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.uuid == *UUID_ADMIN);
+                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
 
                 // Bad password, check last to prevent softlocking of the admin account.
                 assert!(task::block_on(ldaps.do_bind(idms, "admin", "test"))
@@ -745,7 +775,7 @@ mod tests {
                 let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
                     .unwrap()
                     .unwrap();
-                assert!(anon_t.uuid == UUID_ANONYMOUS);
+                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
                 // Check that when we request *, we get default list.
                 let sr = SearchRequest {
@@ -853,28 +883,140 @@ mod tests {
     fn test_ldap_token_privilege_granting() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
+                // Setup the ldap server
+                let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+
+                // Prebuild the search req we'll be using this test.
+                let sr = SearchRequest {
+                    msgid: 1,
+                    base: "dc=example,dc=com".to_string(),
+                    scope: LdapSearchScope::Subtree,
+                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+                    attrs: vec!["name".to_string(), "mail".to_string()],
+                };
+
+                let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
                 // Configure the user account that will have the tokens issued.
                 // Should be a SERVICE account.
+                let apitoken = {
+                    // Create a service account,
 
-                // Should I finally do the class rules shit?
+                    let e1 = entry_init!(
+                        ("class", Value::new_class("object")),
+                        ("class", Value::new_class("service_account")),
+                        ("class", Value::new_class("account")),
+                        ("uuid", Value::new_uuid(sa_uuid)),
+                        ("name", Value::new_iname("service_permission_test")),
+                        ("displayname", Value::new_utf8s("service_permission_test"))
+                    );
 
-                // Issue a token, make it purpose = ldap.
+                    // Setup a person with an email
+                    let e2 = entry_init!(
+                        ("class", Value::new_class("object")),
+                        ("class", Value::new_class("person")),
+                        ("class", Value::new_class("account")),
+                        ("class", Value::new_class("posixaccount")),
+                        ("name", Value::new_iname("testperson1")),
+                        (
+                            "mail",
+                            Value::EmailAddress("testperson1@example.com".to_string(), true)
+                        ),
+                        ("description", Value::new_utf8s("testperson1")),
+                        ("displayname", Value::new_utf8s("testperson1")),
+                        ("gidnumber", Value::new_uint32(12345678)),
+                        ("loginshell", Value::new_iutf8("/bin/zsh"))
+                    );
 
-                // assert the uat fails on non-ldap events.
+                    // Setup an access control for the service account to view mail attrs.
 
-                // Setup a person with
-                // Setup an access control for the service account to view mail attrs.
+                    let ct = duration_from_epoch_now();
 
-                // Setup the ldap server
-                let _ldaps = LdapServer::new(idms).expect("failed to start ldap");
+                    let server_txn = idms.proxy_write(ct);
+                    let ce = CreateEvent::new_internal(vec![e1, e2]);
+                    assert!(server_txn.qs_write.create(&ce).is_ok());
 
-                // Bind with account pw, search and show attr isn't accessible.
+                    // idm_people_read_priv
+                    let me = unsafe {
+                        ModifyEvent::new_internal_invalid(
+                            filter!(f_eq(
+                                "name",
+                                PartialValue::new_iname("idm_people_read_priv")
+                            )),
+                            ModifyList::new_list(vec![Modify::Present(
+                                AttrString::from("member"),
+                                Value::new_refer(sa_uuid),
+                            )]),
+                        )
+                    };
+                    assert!(server_txn.qs_write.modify(&me).is_ok());
 
-                // Bind using the token instead of the PW.
+                    // Issue a token
+                    // make it purpose = ldap <- currently purpose isn't supported,
+                    // it's an idea for future.
+                    let gte = GenerateApiTokenEvent::new_internal(sa_uuid, "TestToken", None);
 
-                // Search and retrieve an attribute that's now accessible.
+                    let apitoken = server_txn
+                        .service_account_generate_api_token(&gte, ct)
+                        .expect("Failed to create new apitoken");
 
-                assert!(true);
+                    assert!(server_txn.commit().is_ok());
+
+                    apitoken
+                };
+
+                // assert the token fails on non-ldap events token-xchg <- currently
+                // we don't have purpose so this isn't tested.
+
+                // Bind with anonymous, search and show mail attr isn't accessible.
+                let anon_lbt = task::block_on(ldaps.do_bind(idms, "", ""))
+                    .unwrap()
+                    .unwrap();
+                assert!(anon_lbt.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_lbt)).unwrap();
+                assert!(r1.len() == 2);
+                match &r1[0].op {
+                    LdapOp::SearchResultEntry(lsre) => {
+                        assert_entry_contains!(
+                            lsre,
+                            "spn=testperson1@example.com,dc=example,dc=com",
+                            ("name", "testperson1")
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+                // Inspect the token to get its uuid out.
+                let apitoken_unverified =
+                    JwsUnverified::from_str(&apitoken).expect("Failed to parse apitoken");
+
+                let apitoken_inner: Jws<ApiToken> = apitoken_unverified
+                    .validate_embeded()
+                    .expect("Embedded jwk not found");
+
+                let apitoken_inner = apitoken_inner.into_inner();
+
+                // Bind using the token
+                let sa_lbt = task::block_on(ldaps.do_bind(idms, "", &apitoken))
+                    .unwrap()
+                    .unwrap();
+                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
+
+                // Search and retrieve mail that's now accessible.
+                let r1 = task::block_on(ldaps.do_search(idms, &sr, &sa_lbt)).unwrap();
+                assert!(r1.len() == 2);
+                match &r1[0].op {
+                    LdapOp::SearchResultEntry(lsre) => {
+                        assert_entry_contains!(
+                            lsre,
+                            "spn=testperson1@example.com,dc=example,dc=com",
+                            ("name", "testperson1"),
+                            ("mail", "testperson1@example.com")
+                        );
+                    }
+                    _ => assert!(false),
+                };
             }
         )
     }

@@ -89,7 +89,7 @@ impl ValueSetT for ValueSetUint32 {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::UINT32
+        SyntaxType::Uint32
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {

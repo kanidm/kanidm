@@ -3,9 +3,10 @@ use crate::error::*;
 use crate::manager::Route;
 use crate::models;
 use crate::utils;
-use gloo::console;
-use kanidm_proto::v1::WhoamiResponse;
+use compact_jwt::{Jws, JwsUnverified};
+use kanidm_proto::v1::UserAuthToken;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
@@ -76,18 +77,20 @@ enum State {
 #[derive(PartialEq, Eq, Properties)]
 pub struct ViewProps {
     pub token: String,
-    pub current_user: Option<WhoamiResponse>,
+    // pub current_user_entry: Option<Entry>,
+    pub current_user_uat: Option<UserAuthToken>,
 }
 
 pub struct ViewsApp {
     state: State,
-    current_user: Option<WhoamiResponse>,
+    // pub current_user_entry: Option<Entry>,
+    pub current_user_uat: Option<UserAuthToken>,
 }
 
 pub enum ViewsMsg {
     Verified(String),
     Logout,
-    ProfileInfoRecieved(WhoamiResponse),
+    ProfileInfoRecieved { uat: UserAuthToken },
     Error { emsg: String, kopid: Option<String> },
 }
 
@@ -128,7 +131,7 @@ impl Component for ViewsApp {
 
         ViewsApp {
             state,
-            current_user: None,
+            current_user_uat: None,
         }
     }
 
@@ -159,8 +162,8 @@ impl Component for ViewsApp {
                 self.state = State::LoginRequired;
                 true
             }
-            ViewsMsg::ProfileInfoRecieved(profile) => {
-                self.current_user = Some(profile);
+            ViewsMsg::ProfileInfoRecieved { uat } => {
+                self.current_user_uat = Some(uat);
                 true
             }
             ViewsMsg::Error { emsg, kopid } => {
@@ -234,7 +237,7 @@ impl Component for ViewsApp {
 impl ViewsApp {
     /// The base page for the user dashboard
     fn view_authenticated(&self, ctx: &Context<Self>) -> Html {
-        let current_user = self.current_user.clone();
+        let current_user_uat = self.current_user_uat.clone();
 
         // WARN set dash-body against body here?
         html! {
@@ -325,8 +328,8 @@ impl ViewsApp {
                             <Switch<AdminRoute> render={ Switch::render(admin_routes) } />
                         },
                         ViewRoute::Apps => html! { <AppsApp /> },
-                        ViewRoute::Profile => html! { <ProfileApp token={ token } current_user={ current_user.clone() } /> },
-                        ViewRoute::Security => html! { <SecurityApp token={ token } current_user={ current_user.clone() } /> },
+                        ViewRoute::Profile => html! { <ProfileApp token={ token } current_user_uat={ current_user_uat.clone() } /> },
+                        ViewRoute::Security => html! { <SecurityApp token={ token } current_user_uat={ current_user_uat.clone() } /> },
                         ViewRoute::NotFound => html! {
                             <Redirect<Route> to={Route::NotFound}/>
                         },
@@ -370,42 +373,20 @@ impl ViewsApp {
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
+
     async fn fetch_user_data(token: String) -> Result<ViewsMsg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
+        let jwtu = JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
 
-        let request = Request::new_with_str_and_init("/v1/self", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
-            .expect_throw("failed to set header");
+        let uat: Jws<UserAuthToken> = jwtu
+            .unsafe_release_without_verification()
+            .expect_throw("Invalid UAT, unable to release");
 
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
-        let kopid = headers.get("x-kanidm-opid").ok().flatten();
-
-        if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let whoamiresponse: WhoamiResponse = serde_wasm_bindgen::from_value(jsval)
-                .map_err(|e| {
-                    let e_msg = format!("serde error getting user data -> {:?}", e);
-                    console::error!(e_msg.as_str());
-                })
-                .expect_throw("Invalid response type");
-            Ok(ViewsMsg::ProfileInfoRecieved(whoamiresponse))
-        } else {
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
-            Ok(ViewsMsg::Error { emsg, kopid })
-        }
+        // We could get rid of this since the token is all we need?
+        //
+        // How will we manage this on changes?
+        Ok(ViewsMsg::ProfileInfoRecieved {
+            uat: uat.into_inner(),
+        })
     }
 }
 

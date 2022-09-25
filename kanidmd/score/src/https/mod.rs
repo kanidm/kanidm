@@ -73,6 +73,8 @@ pub trait RequestExtensions {
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error>;
 
+    fn get_url_param_uuid(&self, param: &str) -> Result<Uuid, tide::Error>;
+
     fn new_eventid(&self) -> (Uuid, String);
 }
 
@@ -92,16 +94,6 @@ impl RequestExtensions for tide::Request<AppState> {
             })
             .map(|s| s.to_string())
             .or_else(|| self.session().get::<String>("bearer"))
-        /*
-        .and_then(|ts| {
-            // Take the token str and attempt to decrypt
-            // Attempt to re-inflate a UAT from bytes.
-            //
-            // NOTE: UAT expiry validation is performed in event.rs!
-            let uat: Option<UserAuthToken> = kref.verify(ts).ok();
-            uat
-        })
-        */
     }
 
     fn get_current_auth_session_id(&self) -> Option<Uuid> {
@@ -119,7 +111,7 @@ impl RequestExtensions for tide::Request<AppState> {
             })
             .and_then(|jwsu| {
                 jwsu.validate(kref)
-                    .map(|jws: Jws<SessionId>| jws.inner.sessionid)
+                    .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
                     .ok()
             })
             // If not there, get from the cookie instead.
@@ -131,6 +123,20 @@ impl RequestExtensions for tide::Request<AppState> {
             error!(?e);
             tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
         })
+    }
+
+    fn get_url_param_uuid(&self, param: &str) -> Result<Uuid, tide::Error> {
+        self.param(param)
+            .map_err(|e| {
+                error!(?e);
+                tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
+            })
+            .and_then(|s| {
+                Uuid::try_parse(s).map_err(|e| {
+                    error!(?e);
+                    tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
+                })
+            })
     }
 
     fn new_eventid(&self) -> (Uuid, String) {
@@ -685,6 +691,14 @@ pub fn create_https_server(
     service_account_route
         .at("/:id/_into_person")
         .mapped_post(&mut routemap, service_account_into_person);
+
+    service_account_route
+        .at("/:id/_api_token")
+        .mapped_post(&mut routemap, service_account_api_token_post)
+        .mapped_get(&mut routemap, service_account_api_token_get);
+    service_account_route
+        .at("/:id/_api_token/:token_id")
+        .mapped_delete(&mut routemap, service_account_api_token_delete);
 
     service_account_route
         .at("/:id/_credential")

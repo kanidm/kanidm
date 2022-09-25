@@ -406,7 +406,7 @@ pub trait AccessControlsTransaction<'a> {
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>;
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
 
     fn search_related_acp<'b>(
         &'b self,
@@ -1303,8 +1303,9 @@ pub struct AccessControlsWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, AccessControlsInner>,
     // acp_related_search_cache_wr: ARCacheWriteTxn<'a, Uuid, Vec<Uuid>>,
     // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
-    acp_resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+    acp_resolve_filter_cache: Cell<
+        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    >,
 }
 
 impl<'a> AccessControlsWriteTransaction<'a> {
@@ -1399,7 +1400,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 
     fn get_acp_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
         unsafe {
             let mptr = self.acp_resolve_filter_cache.as_ptr();
@@ -1408,6 +1409,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
                     'a,
                     (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
+                    (),
                 >
         }
     }
@@ -1420,8 +1422,9 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 pub struct AccessControlsReadTransaction<'a> {
     inner: CowCellReadTxn<AccessControlsInner>,
     // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
-    acp_resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+    acp_resolve_filter_cache: Cell<
+        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    >,
 }
 
 unsafe impl<'a> Sync for AccessControlsReadTransaction<'a> {}
@@ -1456,7 +1459,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
 
     fn get_acp_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
         unsafe {
             let mptr = self.acp_resolve_filter_cache.as_ptr();
@@ -1465,6 +1468,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
                     'a,
                     (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
+                    (),
                 >
         }
     }

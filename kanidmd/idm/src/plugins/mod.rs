@@ -16,8 +16,8 @@ mod domain;
 pub(crate) mod dyngroup;
 mod failure;
 mod gidnumber;
+mod jwskeygen;
 mod memberof;
-mod oauth2;
 mod password_import;
 mod protected;
 mod recycle;
@@ -126,7 +126,7 @@ impl Plugins {
         spanned!("plugins::run_pre_create_transform", {
             base::Base::pre_create_transform(qs, cand, ce)
                 .and_then(|_| password_import::PasswordImport::pre_create_transform(qs, cand, ce))
-                .and_then(|_| oauth2::Oauth2Secrets::pre_create_transform(qs, cand, ce))
+                .and_then(|_| jwskeygen::JwsKeygen::pre_create_transform(qs, cand, ce))
                 .and_then(|_| gidnumber::GidNumber::pre_create_transform(qs, cand, ce))
                 .and_then(|_| domain::Domain::pre_create_transform(qs, cand, ce))
                 .and_then(|_| spn::Spn::pre_create_transform(qs, cand, ce))
@@ -165,7 +165,7 @@ impl Plugins {
             protected::Protected::pre_modify(qs, cand, me)
                 .and_then(|_| base::Base::pre_modify(qs, cand, me))
                 .and_then(|_| password_import::PasswordImport::pre_modify(qs, cand, me))
-                .and_then(|_| oauth2::Oauth2Secrets::pre_modify(qs, cand, me))
+                .and_then(|_| jwskeygen::JwsKeygen::pre_modify(qs, cand, me))
                 .and_then(|_| gidnumber::GidNumber::pre_modify(qs, cand, me))
                 .and_then(|_| domain::Domain::pre_modify(qs, cand, me))
                 .and_then(|_| spn::Spn::pre_modify(qs, cand, me))

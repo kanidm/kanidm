@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::fmt;
 use uuid::Uuid;
 use webauthn_rs_proto::{
@@ -238,6 +239,7 @@ pub enum OperationError {
     ResourceLimit,
     QueueDisconnected,
     Webauthn,
+    #[serde(with = "time::serde::timestamp")]
     Wait(time::OffsetDateTime),
     ReplReplayFailure,
     ReplEntryNotChanged,
@@ -261,13 +263,13 @@ impl PartialEq for OperationError {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Group {
-    pub name: String,
+    pub spn: String,
     pub uuid: String,
 }
 
 impl fmt::Display for Group {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[ name: {}, ", self.name)?;
+        write!(f, "[ spn: {}, ", self.spn)?;
         write!(f, "uuid: {} ]", self.uuid)
     }
 }
@@ -313,37 +315,36 @@ impl fmt::Display for AuthType {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum UiHint {
+    PosixAccount,
+}
+
 /// The currently authenticated user, and any required metadata for them
 /// to properly authorise them. This is similar in nature to oauth and the krb
-/// PAC/PAD structures. Currently we only use this internally, but we should
-/// consider making it "parseable" by the client so they can have per-session
-/// group/authorisation data.
+/// PAC/PAD structures. This information is transparent to clients and CAN
+/// be parsed by them!
 ///
 /// This structure and how it works will *very much* change over time from this
-/// point onward!
-///
-/// It's likely that this must have a relationship to the server's user structure
-/// and to the Entry so that filters or access controls can be applied.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+/// point onward! This means on updates, that sessions will invalidate in many
+/// cases.
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
     pub auth_type: AuthType,
     // When this token should be considered expired. Interpretation
     // may depend on the client application.
+    #[serde(with = "time::serde::timestamp")]
     pub expiry: time::OffsetDateTime,
     pub uuid: Uuid,
     pub name: String,
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
-    // pub groups: Vec<Group>,
-    // Should we just retrieve these inside the server instead of in the uat?
-    // or do we want per-session limit capabilities?
-    pub lim_uidx: bool,
-    pub lim_rmax: usize,
-    pub lim_pmax: usize,
-    pub lim_fmax: usize,
+    pub groups: Vec<Group>,
+    pub ui_hints: BTreeSet<UiHint>,
 }
 
 impl fmt::Display for UserAuthToken {
@@ -351,17 +352,76 @@ impl fmt::Display for UserAuthToken {
         // writeln!(f, "name: {}", self.name)?;
         writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "uuid: {}", self.uuid)?;
-        /*
         writeln!(f, "display: {}", self.displayname)?;
         for group in &self.groups {
-            writeln!(f, "group: {:?}", group.name)?;
+            writeln!(f, "group: {:?}", group.spn)?;
         }
+        /*
         for claim in &self.claims {
             writeln!(f, "claim: {:?}", claim)?;
         }
         */
         writeln!(f, "token expiry: {}", self.expiry)
     }
+}
+
+impl PartialEq for UserAuthToken {
+    fn eq(&self, other: &Self) -> bool {
+        self.session_id == other.session_id
+    }
+}
+
+impl Eq for UserAuthToken {}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub struct ApiToken {
+    // The account this is associated with.
+    pub account_id: Uuid,
+    pub token_id: Uuid,
+    pub label: String,
+    #[serde(with = "time::serde::timestamp::option")]
+    pub expiry: Option<time::OffsetDateTime>,
+    #[serde(with = "time::serde::timestamp")]
+    pub issued_at: time::OffsetDateTime,
+}
+
+impl fmt::Display for ApiToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "account_id: {}", self.account_id)?;
+        writeln!(f, "token_id: {}", self.token_id)?;
+        writeln!(f, "label: {}", self.label)?;
+        writeln!(f, "issued at: {}", self.issued_at)?;
+        if let Some(expiry) = self.expiry {
+            writeln!(
+                f,
+                "token expiry: {}",
+                expiry
+                    .to_offset(
+                        time::UtcOffset::try_current_local_offset().unwrap_or(time::UtcOffset::UTC),
+                    )
+                    .format(time::Format::Rfc3339)
+            )
+        } else {
+            writeln!(f, "token expiry: never")
+        }
+    }
+}
+
+impl PartialEq for ApiToken {
+    fn eq(&self, other: &Self) -> bool {
+        self.token_id == other.token_id
+    }
+}
+
+impl Eq for ApiToken {}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub struct ApiTokenGenerate {
+    pub label: String,
+    #[serde(with = "time::serde::timestamp::option")]
+    pub expiry: Option<time::OffsetDateTime>,
 }
 
 // UAT will need a downcast to Entry, which adds in the claims to the entry
@@ -981,58 +1041,15 @@ pub struct CUStatus {
     pub mfaregstate: CURegState,
 }
 
-/* Recycle Requests area */
-
-// Only two actions on recycled is possible. Search and Revive.
-
-/*
-pub struct SearchRecycledRequest {
-    pub filter: Filter,
-}
-
-impl SearchRecycledRequest {
-    pub fn new(filter: Filter) -> Self {
-        SearchRecycledRequest { filter }
-    }
-}
-*/
-
-// Need a search response here later.
-
-/*
-pub struct ReviveRecycledRequest {
-    pub filter: Filter,
-}
-
-impl ReviveRecycledRequest {
-    pub fn new(filter: Filter) -> Self {
-        ReviveRecycledRequest { filter }
-    }
-}
-*/
-
-// This doesn't need seralise because it's only accessed via a "get".
-/*
-#[derive(Debug, Default)]
-pub struct WhoamiRequest {}
-
-impl WhoamiRequest {
-    pub fn new() -> Self {
-        Default::default()
-    }
-}
-*/
-
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?
     pub youare: Entry,
-    pub uat: UserAuthToken,
 }
 
 impl WhoamiResponse {
-    pub fn new(e: Entry, uat: UserAuthToken) -> Self {
-        WhoamiResponse { youare: e, uat }
+    pub fn new(youare: Entry) -> Self {
+        WhoamiResponse { youare }
     }
 }
 

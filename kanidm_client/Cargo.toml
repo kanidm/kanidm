@@ -2,7 +2,7 @@
 name = "kanidm_client"
 version = "1.1.0-alpha.9"
 authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.59"
+rust-version = "1.64"
 edition = "2021"
 license = "MPL-2.0"
 description = "Kanidm Client Library"
@@ -16,9 +16,10 @@ reqwest = { version = "^0.11.11", features=["cookies", "json", "native-tls"] }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.8" }
 serde = { version = "^1.0.142", features = ["derive"] }
 serde_json = "^1.0.83"
+time = { version = "=0.2.27", features = ["serde", "std"] }
 tokio = { version = "^1.21.1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 toml = "^0.5.9"
 uuid = { version = "^1.1.2", features = ["serde", "v4"] }
 url = { version = "^2.3.1", features = ["serde"] }
-webauthn-rs-proto = { version = "0.4.6", features = ["wasm"] }
+webauthn-rs-proto = { workspace = true, features = ["wasm"] }
 

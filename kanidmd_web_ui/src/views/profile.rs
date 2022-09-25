@@ -22,7 +22,7 @@ impl Component for ProfileApp {
     fn changed(&mut self, ctx: &Context<Self>) -> bool {
         console::debug!(format!(
             "views::profile::changed current_user: {:?}",
-            ctx.props().current_user,
+            ctx.props().current_user_uat,
         ));
         true
     }
@@ -30,7 +30,7 @@ impl Component for ProfileApp {
     fn update(&mut self, ctx: &Context<Self>, _msg: Self::Message) -> bool {
         console::debug!(format!(
             "views::profile::update current_user: {:?}",
-            ctx.props().current_user,
+            ctx.props().current_user_uat,
         ));
         true
     }
@@ -42,7 +42,7 @@ impl Component for ProfileApp {
 
     /// UI view for the user profile
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let pagecontent = match &ctx.props().current_user {
+        let pagecontent = match &ctx.props().current_user_uat {
             None => {
                 html! {
                     <h2>
@@ -50,8 +50,8 @@ impl Component for ProfileApp {
                     </h2>
                 }
             }
-            Some(userinfo) => {
-                let mail_primary = match userinfo.uat.mail_primary.as_ref() {
+            Some(uat) => {
+                let mail_primary = match uat.mail_primary.as_ref() {
                     Some(email_address) => {
                         html! {
                             <a href={ format!("mailto:{}", &email_address)}>
@@ -62,12 +62,19 @@ impl Component for ProfileApp {
                     None => html! { {"<primary email is unset>"}},
                 };
 
-                let spn = &userinfo.uat.spn.to_owned();
+                let spn = &uat.spn.to_owned();
                 let spn_split = spn.split('@');
                 let username = &spn_split.clone().next().unwrap_throw();
                 let domain = &spn_split.clone().last().unwrap_throw();
-                let display_name = userinfo.uat.displayname.to_owned();
-                let user_groups = userinfo.youare.attrs.get("memberof");
+                let display_name = uat.displayname.to_owned();
+                let user_groups: Vec<String> = uat
+                    .groups
+                    .iter()
+                    .map(|group| {
+                        #[allow(clippy::unwrap_used)]
+                        group.spn.split('@').next().unwrap().to_string()
+                    })
+                    .collect();
 
                 html! {
                     <dl class="row">
@@ -81,22 +88,18 @@ impl Component for ProfileApp {
                         <dd class="col">
                             <ul class="list-group">
                             {
-                            match user_groups {
-                                Some(grouplist) => html!{
-                                    {
-                                        for grouplist.iter()
-                                            .map(|group|
-                                    {
-                                        html!{ <li>{
-                                            #[allow(clippy::unwrap_used)]
-                                            group.split('@').next().unwrap().to_string()
-                                        }</li> }
-
-                                    })
-                                }
-                                },
-                                None => html!{
-                                    <li>{"Not a member of any groups"}</li>
+                                if user_groups.is_empty() {
+                                    html!{
+                                        <li>{"Not a member of any groups"}</li>
+                                    }
+                                } else {
+                                    html!{
+                                        {
+                                            for user_groups.iter()
+                                                .map(|group|
+                                                    html!{ <li>{ group }</li> }
+                                                )
+                                        }
                                     }
                                 }
                             }
@@ -115,7 +118,7 @@ impl Component for ProfileApp {
                     { "User's UUID" }
                     </dt>
                       <dd class="col">
-                      { format!("{}", &userinfo.uat.uuid ) }
+                      { format!("{}", &uat.uuid ) }
                       </dd>
 
                 </dl>

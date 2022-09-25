@@ -78,7 +78,7 @@ impl ValueSetT for ValueSetUtf8 {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::UTF8STRING
+        SyntaxType::Utf8String
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {

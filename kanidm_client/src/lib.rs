@@ -1168,7 +1168,7 @@ impl KanidmClient {
         self.perform_get_request("/v1/auth/valid").await
     }
 
-    pub async fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
+    pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {
         let whoami_dest = [self.addr.as_str(), "/v1/self"].concat();
         // format!("{}/v1/self", self.addr);
         debug!("{:?}", whoami_dest);
@@ -1211,7 +1211,7 @@ impl KanidmClient {
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))?;
 
-        Ok(Some((r.youare, r.uat)))
+        Ok(Some(r.youare))
     }
 
     // Raw DB actions

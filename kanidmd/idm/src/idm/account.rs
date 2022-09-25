@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 
 use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::UiHint;
 use kanidm_proto::v1::{AuthType, UserAuthToken};
 use kanidm_proto::v1::{BackupCodesView, CredentialStatus};
 
@@ -26,6 +27,7 @@ use webauthn_rs::prelude::AuthenticationResult;
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
+    static ref PVCLASS_POSIXACCOUNT: PartialValue = PartialValue::new_class("posixaccount");
 }
 
 macro_rules! try_from_entry {
@@ -93,7 +95,13 @@ macro_rules! try_from_entry {
         let credential_update_intent_tokens = $value
             .get_ava_as_intenttokens("credential_update_intent_token")
             .cloned()
-            .unwrap_or_else(|| BTreeMap::new());
+            .unwrap_or_default();
+
+        let mut ui_hints = BTreeSet::default();
+
+        if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
+            ui_hints.insert(UiHint::PosixAccount);
+        }
 
         Ok(Account {
             uuid,
@@ -107,6 +115,7 @@ macro_rules! try_from_entry {
             expire,
             radius_secret,
             spn,
+            ui_hints,
             mail_primary,
             mail,
             credential_update_intent_tokens,
@@ -135,6 +144,7 @@ pub(crate) struct Account {
     pub expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
     pub spn: String,
+    pub ui_hints: BTreeSet<UiHint>,
     // TODO #256: When you add mail, you should update the check to zxcvbn
     // to include these.
     pub mail_primary: Option<String>,
@@ -206,13 +216,9 @@ impl Account {
             displayname: self.displayname.clone(),
             spn: self.spn.clone(),
             mail_primary: self.mail_primary.clone(),
+            ui_hints: self.ui_hints.clone(),
             // application: None,
-            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
-            // What's the best way to get access to these limits with regard to claims/other?
-            lim_uidx: false,
-            lim_rmax: 128,
-            lim_pmax: 256,
-            lim_fmax: 32,
+            groups: self.groups.iter().map(|g| g.to_proto()).collect(),
         })
     }
 

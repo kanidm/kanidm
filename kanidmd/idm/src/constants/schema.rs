@@ -839,6 +839,37 @@ pub const JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "An es256 private key for jws"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "jws_es256_private_key"
+      ],
+      "syntax": [
+        "JWS_KEY_ES256"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000110"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str = r#"{
     "attrs": {
       "class": [
@@ -1047,6 +1078,37 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_API_TOKEN_SESSION: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A session entry related to an issued api token"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "api_token_session"
+      ],
+      "syntax": [
+        "SESSION"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000111"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1220,7 +1282,9 @@ pub const JSON_SCHEMA_CLASS_SERVICE_ACCOUNT: &str = r#"
       ],
       "systemmay": [
         "mail",
-        "primary_credential"
+        "primary_credential",
+        "jws_es256_private_key",
+        "api_token_session"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000106"

@@ -21,9 +21,9 @@ base64 = "^0.13.0"
 base64urlsafedata = "0.1.0"
 chrono = "^0.4.20"
 compact_jwt = "^0.2.3"
-concread = "^0.3.7"
+concread = "^0.4.0"
 dyn-clone = "^1.0.9"
-fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
+fernet = { version = "^0.2.0", features = ["fernet_danger_timestamps"] }
 filetime = "^0.2.17"
 futures = "^0.3.21"
 futures-util = "^0.3.21"
@@ -61,8 +61,8 @@ url = { version = "^2.3.1", features = ["serde"] }
 urlencoding = "2.1.2"
 uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
 validator = { version = "^0.16.0", features = ["phone"] }
-webauthn-rs = { version = "0.4.5", features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
-webauthn-rs-core = "0.4.2-beta.3"
+webauthn-rs = { workspace = true, features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
+webauthn-rs-core.workspace = true
 zxcvbn = "^2.2.1"
 
 # because windows really can't build without the bundled one
@@ -87,7 +87,7 @@ users = "^0.11.0"
 [dev-dependencies]
 criterion = { version = "^0.4.0", features = ["html_reports"] }
 # For testing webauthn
-webauthn-authenticator-rs = "0.4.2-beta.3"
+webauthn-authenticator-rs.workspace = true
 
 [build-dependencies]
 profiles = { path = "../../profiles" }

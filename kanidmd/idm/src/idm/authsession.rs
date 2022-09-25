@@ -756,7 +756,7 @@ impl AuthSession {
                             .to_userauthtoken(session_id, *time, auth_type)
                             .ok_or(OperationError::InvalidState)?;
 
-                        let jwt = Jws { inner: uat };
+                        let jwt = Jws::new(uat);
 
                         // Now encrypt and prepare the token for return to the client.
                         let token = jwt
@@ -1353,7 +1353,7 @@ mod tests {
             .expect("Failed to setup passkey rego challenge");
 
         let r = wa
-            .do_registration(webauthn.get_origin().clone(), chal)
+            .do_registration(webauthn.get_allowed_origins()[0].clone(), chal)
             .expect("Failed to create soft passkey");
 
         let wan_cred = webauthn
@@ -1381,7 +1381,7 @@ mod tests {
             .expect("Failed to setup passkey rego challenge");
 
         let r = wa
-            .do_registration(webauthn.get_origin().clone(), chal)
+            .do_registration(webauthn.get_allowed_origins()[0].clone(), chal)
             .expect("Failed to create soft securitykey");
 
         let wan_cred = webauthn
@@ -1431,7 +1431,7 @@ mod tests {
             let (mut session, chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
 
             let resp = wa
-                .do_authentication(webauthn.get_origin().clone(), chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1460,7 +1460,7 @@ mod tests {
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
-                .do_authentication(webauthn.get_origin().clone(), inv_chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1484,7 +1484,7 @@ mod tests {
                 .expect("Failed to setup webauthn rego challenge");
 
             let r = inv_wa
-                .do_registration(webauthn.get_origin().clone(), chal)
+                .do_registration(webauthn.get_allowed_origins()[0].clone(), chal)
                 .expect("Failed to create soft token");
 
             let inv_cred = webauthn
@@ -1498,7 +1498,7 @@ mod tests {
 
             // Create the response.
             let resp = inv_wa
-                .do_authentication(webauthn.get_origin().clone(), chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
                 .expect("Failed to use softtoken for response.");
 
             let (mut session, _chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
@@ -1592,7 +1592,7 @@ mod tests {
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
-                .do_authentication(webauthn.get_origin().clone(), inv_chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1615,7 +1615,7 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication(webauthn.get_origin().clone(), chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1655,7 +1655,7 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication(webauthn.get_origin().clone(), chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1771,7 +1771,7 @@ mod tests {
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
-                .do_authentication(webauthn.get_origin().clone(), inv_chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1794,7 +1794,7 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication(webauthn.get_origin().clone(), chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1892,7 +1892,7 @@ mod tests {
             let chal = chal.unwrap();
 
             let resp = wa
-                .do_authentication(webauthn.get_origin().clone(), chal)
+                .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(

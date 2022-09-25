@@ -472,7 +472,7 @@ pub const JSON_SYSTEM_INFO_V1: &str = r#"{
         "class": ["object", "system_info", "system"],
         "uuid": ["00000000-0000-0000-0000-ffffff000001"],
         "description": ["System (local) info and metadata object."],
-        "version": ["7"]
+        "version": ["8"]
     }
 }"#;
 

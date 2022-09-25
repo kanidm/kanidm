@@ -262,9 +262,9 @@ impl ChangeUnixPassword {
 
         let uat: Jws<UserAuthToken> = jwtu
             .unsafe_release_without_verification()
-            .expect_throw("Unvalid UAT, unable to release ");
+            .expect_throw("Invalid UAT, unable to release ");
 
-        let id = uat.inner.uuid.to_string();
+        let id = uat.into_inner().uuid.to_string();
         let changereq_jsvalue = serde_json::to_string(&SingleStringRequest {
             value: new_password,
         })

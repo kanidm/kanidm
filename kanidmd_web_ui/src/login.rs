@@ -100,7 +100,9 @@ impl LoginApp {
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+        let resp: Response = resp_value
+            .dyn_into()
+            .expect_throw("Invalid response type - auth_init::Response");
         let status = resp.status();
         let headers = resp.headers();
 
@@ -111,8 +113,8 @@ impl LoginApp {
                 .flatten()
                 .unwrap_or_else(|| "".to_string());
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+            let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+                .expect_throw("Invalid response type - auth_init::AuthResponse");
             Ok(LoginAppMsg::Start(session_id, state))
         } else if status == 404 {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -156,14 +158,20 @@ impl LoginApp {
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+        let resp: Response = resp_value
+            .dyn_into()
+            .expect_throw("Invalid response type - auth_step::Response");
         let status = resp.status();
         let headers = resp.headers();
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type.");
+            let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+                .map_err(|e| {
+                    console::error!(format!("auth_step::AuthResponse: {:?}", e));
+                    e
+                })
+                .expect_throw("Invalid response type - auth_step::AuthResponse");
             Ok(LoginAppMsg::Next(state))
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();

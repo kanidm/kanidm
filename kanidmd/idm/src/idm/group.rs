@@ -12,23 +12,29 @@ lazy_static! {
 
 #[derive(Debug, Clone)]
 pub struct Group {
-    name: String,
+    spn: String,
     uuid: Uuid,
     // We'll probably add policy and claims later to this
 }
 
 macro_rules! try_from_account_e {
     ($value:expr, $qs:expr) => {{
+        /*
         let name = $value
             .get_ava_single_iname("name")
             .map(str::to_string)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
+        */
+
+        let spn = $value.get_ava_single_proto_string("spn").ok_or(
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
+        )?;
 
         let uuid = $value.get_uuid();
 
-        let upg = Group { name, uuid };
+        let upg = Group { spn, uuid };
 
         let mut groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
             Some(riter) => {
@@ -48,6 +54,7 @@ macro_rules! try_from_account_e {
                     .iter()
                     .map(|e| Group::try_from_entry(e.as_ref()))
                     .collect();
+
                 groups.map_err(|e| {
                     admin_error!(?e, "failed to transform group entries to groups");
                     e
@@ -95,21 +102,29 @@ impl Group {
         }
 
         // Now extract our needed attributes
+        /*
         let name = value
             .get_ava_single_iname("name")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
+        */
+        let spn =
+            value
+                .get_ava_single_proto_string("spn")
+                .ok_or(OperationError::InvalidAccountState(
+                    "Missing attribute: spn".to_string(),
+                ))?;
 
         let uuid = value.get_uuid();
 
-        Ok(Group { name, uuid })
+        Ok(Group { spn, uuid })
     }
 
     pub fn to_proto(&self) -> ProtoGroup {
         ProtoGroup {
-            name: self.name.clone(),
+            spn: self.spn.clone(),
             uuid: self.uuid.as_hyphenated().to_string(),
         }
     }

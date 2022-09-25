@@ -241,7 +241,7 @@ impl ValueSetT for ValueSetRefer {
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::REFERENCE_UUID
+        SyntaxType::ReferenceUuid
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {

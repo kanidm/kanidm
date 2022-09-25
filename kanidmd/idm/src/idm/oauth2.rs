@@ -702,7 +702,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         // Validate that the session id matches our uat.
         if consent_req.session_id != uat.session_id {
-            security_info!("consent request sessien id does not match the session id of our UAT.");
+            security_info!("consent request session id does not match the session id of our UAT.");
             return Err(OperationError::InvalidSessionState);
         }
 
@@ -988,7 +988,7 @@ impl Oauth2ResourceServersReadTransaction {
             trace!(?oidc);
 
             Some(
-                oidc.sign_with_kid(&o2rs.jws_signer, &client_id)
+                oidc.sign(&o2rs.jws_signer)
                     .map(|jwt_signed| jwt_signed.to_string())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to encode uat data");
@@ -1310,7 +1310,7 @@ impl Oauth2ResourceServersReadTransaction {
         })?;
 
         o2rs.jws_signer
-            .public_key_as_jwk(Some(&o2rs.name))
+            .public_key_as_jwk()
             .map_err(|e| {
                 admin_error!("Unable to retrieve public key for {} - {:?}", o2rs.name, e);
                 OperationError::InvalidState
@@ -2207,7 +2207,7 @@ mod tests {
                         _ => panic!(),
                     };
                     assert!(use_.unwrap() == JwkUse::Sig);
-                    assert!(kid.unwrap() == "test_resource_server")
+                    assert!(kid.is_some())
                 }
                 _ => panic!(),
             };
@@ -2486,7 +2486,7 @@ mod tests {
                             _ => panic!(),
                         };
                         assert!(use_.unwrap() == JwkUse::Sig);
-                        assert!(kid.unwrap() == "test_resource_server")
+                        assert!(kid.is_some());
                     }
                     _ => panic!(),
                 };
@@ -2742,7 +2742,6 @@ mod tests {
                     )))
                 };
 
-                trace!("ATTACHHERE");
                 assert!(idms_prox_write.qs_write.delete(&de).is_ok());
                 // Assert the consent maps are gone.
                 let ident = idms_prox_write

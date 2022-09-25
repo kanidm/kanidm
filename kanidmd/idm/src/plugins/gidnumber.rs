@@ -68,6 +68,11 @@ impl Plugin for GidNumber {
         "plugin_gidnumber"
     }
 
+    #[instrument(
+        level = "debug",
+        name = "gidnumber_pre_create_transform",
+        skip(_qs, cand, _ce)
+    )]
     fn pre_create_transform(
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -80,6 +85,7 @@ impl Plugin for GidNumber {
         Ok(())
     }
 
+    #[instrument(level = "debug", name = "gidnumber_pre_modify", skip(_qs, cand, _me))]
     fn pre_modify(
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,

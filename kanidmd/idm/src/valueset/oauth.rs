@@ -214,14 +214,14 @@ impl ValueSetT for ValueSetOauthScopeMap {
 
     fn remove(&mut self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::OauthScopeMap(u) | PartialValue::Refer(u) => self.map.remove(u).is_some(),
+            PartialValue::Refer(u) => self.map.remove(u).is_some(),
             _ => false,
         }
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::OauthScopeMap(u) | PartialValue::Refer(u) => self.map.contains_key(u),
+            PartialValue::Refer(u) => self.map.contains_key(u),
             _ => false,
         }
     }
@@ -277,7 +277,7 @@ impl ValueSetT for ValueSetOauthScopeMap {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.map.keys().cloned().map(PartialValue::OauthScopeMap))
+        Box::new(self.map.keys().cloned().map(PartialValue::Refer))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {

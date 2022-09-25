@@ -886,7 +886,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 impl<'a> IdmServerCredUpdateTransaction<'a> {
     #[cfg(test)]
     pub fn get_origin(&self) -> &Url {
-        self.webauthn.get_origin()
+        &self.webauthn.get_allowed_origins()[0]
     }
 
     fn get_current_session(
@@ -962,9 +962,8 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             PasswordQuality::TooShort(PW_MIN_LENGTH)
         })?;
 
-        // check account pwpolicy (for 3 or 4)? Do we need pw strength beyond this
-        // or should we be enforcing mfa instead
-        if entropy.score() < 3 {
+        // PW's should always be enforced as strong as possible.
+        if entropy.score() < 4 {
             // The password is too week as per:
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
             let feedback: zxcvbn::feedback::Feedback = entropy

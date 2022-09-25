@@ -3,7 +3,10 @@ use crate::KanidmClient;
 use kanidm_proto::v1::AccountUnixExtend;
 use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::Entry;
+use kanidm_proto::v1::{ApiToken, ApiTokenGenerate};
 use std::collections::BTreeMap;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 impl KanidmClient {
     pub async fn idm_service_account_list(&self) -> Result<Vec<Entry>, ClientError> {
@@ -192,5 +195,46 @@ impl KanidmClient {
                 Ok(pw)
             }
         })
+    }
+
+    pub async fn idm_service_account_list_api_token(
+        &self,
+        id: &str,
+    ) -> Result<Vec<ApiToken>, ClientError> {
+        self.perform_get_request(format!("/v1/service_account/{}/_api_token", id).as_str())
+            .await
+    }
+
+    pub async fn idm_service_account_generate_api_token(
+        &self,
+        id: &str,
+        label: &str,
+        expiry: Option<OffsetDateTime>,
+    ) -> Result<String, ClientError> {
+        let new_token = ApiTokenGenerate {
+            label: label.to_string(),
+            expiry,
+        };
+        self.perform_post_request(
+            format!("/v1/service_account/{}/_api_token", id).as_str(),
+            new_token,
+        )
+        .await
+    }
+
+    pub async fn idm_service_account_destroy_api_token(
+        &self,
+        id: &str,
+        token_id: Uuid,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(
+            format!(
+                "/v1/service_account/{}/_api_token/{}",
+                id,
+                &token_id.to_string()
+            )
+            .as_str(),
+        )
+        .await
     }
 }

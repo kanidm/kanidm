@@ -2,6 +2,7 @@
 
 use std::env;
 use std::path::PathBuf;
+use uuid::Uuid;
 
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate_to, Shell};

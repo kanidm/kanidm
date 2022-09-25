@@ -2,7 +2,7 @@
 name = "kanidm_proto"
 version = "1.1.0-alpha.9"
 authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.59"
+rust-version = "1.64"
 edition = "2021"
 license = "MPL-2.0"
 description = "Kanidm Protocol Bindings for serde"
@@ -24,7 +24,7 @@ time = { version = "=0.2.27", features = ["serde", "std"] }
 url = { version = "^2.3.1", features = ["serde"] }
 urlencoding = "2.1.2"
 uuid = { version = "^1.1.2", features = ["serde"] }
-webauthn-rs-proto = "0.4.6"
+webauthn-rs-proto.workspace = true
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 last-git-commit = "0.2.0"

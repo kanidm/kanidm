@@ -6,12 +6,15 @@ use crate::schema::SchemaAttribute;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::value::Address;
 use crate::value::IntentTokenState;
+use crate::value::Session;
+use compact_jwt::JwsSigner;
 
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use dyn_clone::DynClone;
+use hashbrown::HashSet;
 use smolset::SmolSet;
 // use std::fmt::Debug;
 
@@ -30,10 +33,12 @@ mod iname;
 mod index;
 mod iutf8;
 mod json;
+mod jws;
 mod nsuniqueid;
 mod oauth;
 mod restricted;
 mod secret;
+mod session;
 mod spn;
 mod ssh;
 mod syntax;
@@ -52,10 +57,12 @@ pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
 pub use self::iutf8::ValueSetIutf8;
 pub use self::json::ValueSetJsonFilter;
+pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
 pub use self::nsuniqueid::ValueSetNsUniqueId;
 pub use self::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
 pub use self::restricted::ValueSetRestricted;
 pub use self::secret::ValueSetSecret;
+pub use self::session::ValueSetSession;
 pub use self::spn::ValueSetSpn;
 pub use self::ssh::ValueSetSshKey;
 pub use self::syntax::ValueSetSyntax;
@@ -465,6 +472,31 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         debug_assert!(false);
         None
     }
+
+    fn as_session_map(&self) -> Option<&BTreeMap<Uuid, Session>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn to_jws_key_es256_single(&self) -> Option<&JwsSigner> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_jws_key_es256_set(&self) -> Option<&HashSet<JwsSigner>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn to_jws_key_rs256_single(&self) -> Option<&JwsSigner> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_jws_key_rs256_set(&self) -> Option<&HashSet<JwsSigner>> {
+        debug_assert!(false);
+        None
+    }
 }
 
 impl PartialEq for ValueSet {
@@ -516,7 +548,16 @@ pub fn from_result_value_iter(
         Value::PublicBinary(t, b) => ValueSetPublicBinary::new(t, b),
         Value::IntentToken(u, s) => ValueSetIntentToken::new(u, s),
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
-        _ => return Err(OperationError::InvalidValueState),
+        Value::PhoneNumber(_, _)
+        | Value::Passkey(_, _, _)
+        | Value::DeviceKey(_, _, _)
+        | Value::TrustedDeviceEnrollment(_)
+        | Value::Session(_, _)
+        | Value::JwsKeyEs256(_)
+        | Value::JwsKeyRs256(_) => {
+            debug_assert!(false);
+            return Err(OperationError::InvalidValueState);
+        }
     };
 
     for maybe_v in iter {
@@ -564,7 +605,13 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
         Value::Passkey(u, t, k) => ValueSetPasskey::new(u, t, k),
         Value::DeviceKey(u, t, k) => ValueSetDeviceKey::new(u, t, k),
-        _ => return Err(OperationError::InvalidValueState),
+        Value::JwsKeyEs256(k) => ValueSetJwsKeyEs256::new(k),
+        Value::JwsKeyRs256(k) => ValueSetJwsKeyRs256::new(k),
+        Value::Session(u, m) => ValueSetSession::new(u, m),
+        Value::PhoneNumber(_, _) | Value::TrustedDeviceEnrollment(_) => {
+            debug_assert!(false);
+            return Err(OperationError::InvalidValueState);
+        }
     };
 
     for v in iter {
@@ -603,11 +650,11 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::EmailAddress(primary, set) => ValueSetEmailAddress::from_dbvs2(primary, set),
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
         DbValueSetV2::DeviceKey(set) => ValueSetDeviceKey::from_dbvs2(set),
-        /*
-        DbValueSetV2::PhoneNumber(set) =>
-        DbValueSetV2::TrustedDeviceEnrollment(set) =>
-        DbValueSetV2::AuthSession(set) =>
-        */
-        _ => unimplemented!(),
+        DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(set),
+        DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(set),
+        DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(set),
+        DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
+            unimplemented!()
+        }
     }
 }
