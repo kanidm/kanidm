@@ -31,15 +31,15 @@ exclude = [
 # idlset = { path = "../idlset" }
 # ldap3_server = { path = "../ldap3_server" }
 
-# webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
-# webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
-# webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
-# webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
 
 webauthn-authenticator-rs = "0.4.7"
 webauthn-rs = "0.4.7"
 webauthn-rs-core = "0.4.7"
 webauthn-rs-proto = "0.4.7"
+# webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
+# webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
+# webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
+# webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 
 # enshrinken the WASMs
 [profile.release.package.kanidmd_web_ui]
@@ -47,7 +47,5 @@ webauthn-rs-proto = "0.4.7"
 codegen-units = 1
 # optimization for size ( more aggressive )
 opt-level = 'z'
-# optimization for size
-# opt-level = 's'
 # link time optimization using using whole-program analysis
 # lto = true
