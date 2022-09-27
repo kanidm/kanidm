@@ -4,6 +4,10 @@ name: Clippy
 # Trigger the workflow on push or pull request
 "on":
   push:
+    branches-ignore:
+      - master
+  pull_request:
+
 
 jobs:
   clippy:
