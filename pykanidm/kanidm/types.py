@@ -1,12 +1,13 @@
 """ type objects """
 # pylint: disable=too-few-public-methods
+# ^ disabling this because pydantic models don't have public methods
 
 from http.cookies import SimpleCookie
 from ipaddress import IPv4Address,IPv6Address, IPv6Network, IPv4Network
+import logging
 import socket
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
-
 
 from pydantic import BaseModel, Field, validator
 import toml
@@ -18,10 +19,19 @@ class ClientResponse(BaseModel):
     data: Optional[Dict[str, Any]]
     headers: Dict[str, Any]
     status_code: int
-    cookies: Optional[SimpleCookie]
+    cookies: Optional[Dict[str, Any]]
     class Config:
         """ Configuration """
         arbitrary_types_allowed = True
+
+    @validator("cookies")
+    def validate_cookies(cls, value: SimpleCookie) -> Optional[Dict[str, Any]]: #type: ignore
+        """ converts the cookies into a Dict """
+        try:
+            return dict(value)
+        except ValueError as error:
+            logging.debug("Failed to parse cookies into dict: %s", error)
+            return None
 
 
 class AuthInitResponse(BaseModel):

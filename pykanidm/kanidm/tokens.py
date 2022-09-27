@@ -128,7 +128,7 @@ class TokenStore(BaseModel):
         with filepath.expanduser().resolve().open(mode='w', encoding="utf-8") as file_handle:
             file_handle.write(data)
 
-    def load_tokens(self, overwrite: bool=True, filepath: Path = TOKEN_PATH) -> Dict[str,str]:
+    def load(self, overwrite: bool=True, filepath: Path = TOKEN_PATH) -> Dict[str,str]:
         """ Loads the tokens from from the store and caches them in memory - by default
             from the local user's store path, but you can point it at any file path.
 

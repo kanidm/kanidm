@@ -168,11 +168,10 @@ async def test_authenticate_with_token(client_configfile: KanidmClient) -> None:
         print(f"Using username {test_username} from KANIDM_TEST_USERNAME env var")
     else:
         test_username = "idm_admin"
-        print("Using username {test_username} by default - set KANIDM_TEST_USERNAME env var if you want to change this.")
-
+        print(f"Using username {test_username} by default - set KANIDM_TEST_USERNAME env var if you want to change this.")
 
     tokens = TokenStore()
-    tokens.load_tokens()
+    tokens.load()
 
     if test_username not in tokens:
         print(f"Can't find {test_username} user in token store")
@@ -182,7 +181,7 @@ async def test_authenticate_with_token(client_configfile: KanidmClient) -> None:
         print(f"Token for {test_username} isn't valid")
         pytest.skip(f"Token for {test_username} isn't valid")
     else:
-        print("Token was noted as valid?")
+        print("Token was noted as valid!")
 
     result = await client_configfile.authenticate_with_token(test_token)
 
