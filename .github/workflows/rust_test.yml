@@ -27,5 +27,8 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          override: true
       - name: Run tests
-        run: cargo test --verbose
+        uses: actions-rs/cargo@v1
+        with:
+          command: test --release
