@@ -155,9 +155,7 @@ async def test_auth_step_password(client: KanidmClient) -> None:
             client.session = session
             await client.auth_step_password()
 
-
-
-@pytest.mark.interactive
+@pytest.mark.network
 @pytest.mark.asyncio
 async def test_authenticate_with_token(client_configfile: KanidmClient) -> None:
     """ tests auth with a token, needs to have a valid token in your local cache """
