@@ -1,98 +1,91 @@
 [package]
 name = "kanidm"
-version = "1.1.0-alpha.9"
-authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.59"
-edition = "2021"
-license = "MPL-2.0"
 description = "Kanidm Server Library and Binary"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
-homepage = "https://github.com/kanidm/kanidm/"
-repository = "https://github.com/kanidm/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [lib]
 name = "kanidm"
 path = "src/lib.rs"
 
+[[bench]]
+name = "scaling_10k"
+harness = false
+
 [dependencies]
-async-std = { version = "^1.12.0", features = ["tokio1"] }
-async-trait = "^0.1.57"
-base64 = "^0.13.0"
-base64urlsafedata = "0.1.0"
-chrono = "^0.4.20"
-compact_jwt = "^0.2.3"
-concread = "^0.4.0"
-dyn-clone = "^1.0.9"
-fernet = { version = "^0.2.0", features = ["fernet_danger_timestamps"] }
-filetime = "^0.2.17"
-futures = "^0.3.21"
-futures-util = "^0.3.21"
-hashbrown = { version = "0.12.3", features = ["serde", "inline-more", "ahash"] }
-idlset = { version = "^0.2.4" }
-kanidm_proto = { path = "../../kanidm_proto" }
-lazy_static = "^1.4.0"
-ldap3_proto = "^0.2.3"
-libc = "^0.2.127"
-libsqlite3-sys = "^0.25.0"
-num_enum = "^0.5.7"
-openssl = "^0.10.41"
-r2d2 = "^0.8.9"
-r2d2_sqlite = "^0.21.0"
-rand = "^0.8.5"
-regex = "^1.5.6"
-saffron = "^0.1.0"
-serde = { version = "^1.0.142", features = ["derive"] }
-serde_cbor = "^0.11.2"
-serde_json = "^1.0.83"
-smartstring = { version = "^1.0.1", features = ["serde"] }
-smolset = "^1.3.1"
-sshkeys = "^0.3.1"
-tide = "^0.16.0"
-time = { version = "=0.2.27", features = ["serde", "std"] }
-tokio = { version = "^1.21.1", features = ["net", "sync", "time"] }
-tokio-util = { version = "^0.7.4", features = ["codec"] }
-toml = "^0.5.9"
-touch = "^0.0.1"
+async-std.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+base64urlsafedata.workspace = true
+chrono.workspace = true
+compact_jwt.workspace = true
+concread.workspace = true
+dyn-clone.workspace = true
+fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
+filetime.workspace = true
+futures.workspace = true
+futures-util.workspace = true
+hashbrown.workspace = true
+idlset.workspace = true
+kanidm_proto.workspace = true
+lazy_static.workspace = true
+ldap3_proto.workspace = true
+libc.workspace = true
+libsqlite3-sys.workspace = true
+num_enum.workspace = true
+openssl.workspace = true
+r2d2.workspace = true
+r2d2_sqlite.workspace = true
+rand.workspace = true
+regex.workspace = true
+saffron.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_cbor.workspace = true
+serde_json.workspace = true
+sketching.workspace = true
+smartstring = { workspace = true, features = ["serde"] }
+smolset.workspace = true
+sshkeys.workspace = true
+tide.workspace = true
+time = { workspace = true, features = ["serde", "std"] }
+tokio = { workspace = true, features = ["net", "sync", "time"] }
+tokio-util = { workspace = true, features = ["codec"] }
+toml.workspace = true
+touch.workspace = true
 
-sketching = { path = "../../sketching" }
-tracing = { version = "^0.1.35", features = ["attributes"] }
+tracing = { workspace = true, features = ["attributes"] }
 
-url = { version = "^2.3.1", features = ["serde"] }
-urlencoding = "2.1.2"
-uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
-validator = { version = "^0.16.0", features = ["phone"] }
+url = { workspace = true, features = ["serde"] }
+urlencoding.workspace = true
+uuid = { workspace = true, features = ["serde", "v4" ] }
+validator = { workspace = true, features = ["phone"] }
 webauthn-rs = { workspace = true, features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
 webauthn-rs-core.workspace = true
-zxcvbn = "^2.2.1"
+zxcvbn.workspace = true
 
 # because windows really can't build without the bundled one
-[target.'cfg(target_family = "windows")'.dependencies.rusqlite]
-version = "^0.28.0"
-features = ["bundled"]
-
-[target.'cfg(not(target_family = "windows"))'.dependencies.rusqlite]
-version = "^0.28.0"
-
 [target.'cfg(target_family = "windows")'.dependencies]
-whoami = "^1.2.3"
-
+rusqlite = { workspace = true, features = ["bundled"] }
+whoami.workspace = true
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-users = "^0.11.0"
-
+rusqlite.workspace = true
+users.workspace = true
 
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
-criterion = { version = "^0.4.0", features = ["html_reports"] }
-# For testing webauthn
+criterion = { workspace = true, features = ["html_reports"] }
 webauthn-authenticator-rs.workspace = true
 
 [build-dependencies]
-profiles = { path = "../../profiles" }
-
-[[bench]]
-name = "scaling_10k"
-harness = false
+profiles.workspace = true
 

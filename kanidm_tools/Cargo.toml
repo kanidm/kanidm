@@ -1,15 +1,16 @@
 [package]
 name = "kanidm_tools"
-version = "1.1.0-alpha.9"
-authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.64"
-edition = "2021"
 default-run = "kanidm"
-license = "MPL-2.0"
 description = "Kanidm Client Tools"
 documentation = "https://docs.rs/kanidm_tools/latest/kanidm_tools/"
-homepage = "https://github.com/kanidm/kanidm/"
-repository = "https://github.com/kanidm/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [lib]
 name = "kanidm_cli"
@@ -29,28 +30,28 @@ name = "kanidm_badlist_preprocess"
 path = "src/badlist_preprocess.rs"
 
 [dependencies]
-clap = { version = "^3.2", features = ["derive", "env"] }
-compact_jwt = "^0.2.3"
-dialoguer =  "^0.10.1"
-libc = "^0.2.127"
-kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha.8" }
-kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.8" }
-qrcode = { version = "^0.12.0", default-features = false }
-rayon = "^1.5.3"
-rpassword = "^7.0.0"
-serde = { version = "^1.0.142", features = ["derive"] }
-serde_json = "^1.0.83"
-shellexpand = "^2.1.2"
-time = { version = "=0.2.27", features = ["serde", "std"] }
-tracing = "^0.1.35"
-tracing-subscriber = { version = "^0.3.14", features = ["env-filter", "fmt"] }
-tokio = { version = "^1.21.1", features = ["rt", "macros"] }
-url = { version = "^2.3.1", features = ["serde"] }
-uuid = "^1.1.2"
+clap = { workspace = true, features = ["derive", "env"] }
+compact_jwt.workspace = true
+dialoguer.workspace = true
+libc.workspace = true
+kanidm_client.workspace = true
+kanidm_proto.workspace = true
+qrcode = { workspace = true, default-features = false }
+rayon.workspace = true
+rpassword.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+shellexpand.workspace = true
+time = { workspace = true, features = ["serde", "std"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+tokio = { workspace = true, features = ["rt", "macros"] }
+url = { workspace = true, features = ["serde"] }
+uuid.workspace = true
 webauthn-authenticator-rs = { workspace = true, features = ["u2fhid"] }
-zxcvbn = "^2.2.1"
+zxcvbn.workspace = true
 
 [build-dependencies]
-clap = { version = "^3.2", features = ["derive"] }
-clap_complete = { version = "^3.2.5"}
-uuid = "^1.1.2"
+clap = { workspace = true, features = ["derive"] }
+clap_complete.workspace = true
+uuid.workspace = true
