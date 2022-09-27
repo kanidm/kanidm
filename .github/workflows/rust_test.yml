@@ -28,6 +28,7 @@ jobs:
         with:
           toolchain: stable
           override: true
+          default: true
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:

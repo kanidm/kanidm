@@ -27,10 +27,15 @@ jobs:
         with:
           toolchain: stable
           components: cargo
+          default: true
+          override: true
           # target: wasm32-unknown-unknown
 
       - name: Install wasm-pack
-        run: cargo install wasm-pack
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: wasm-pack
 
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
