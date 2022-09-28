@@ -25,13 +25,12 @@ keywords = [
 classifiers=[
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Operating System :: OS Independent",
 ]
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 toml = "^0.10.2"
 pydantic = "^1.9.2"
 aiohttp = "^3.8.1"
