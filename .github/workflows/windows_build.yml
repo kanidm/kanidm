@@ -23,6 +23,7 @@ jobs:
         with:
           toolchain: stable
           default: true
+          override: true
           components: cargo
       - name: build
         uses: actions-rs/cargo@v1

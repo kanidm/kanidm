@@ -15,7 +15,7 @@ ARG KANIDM_BUILD_PROFILE
 ARG KANIDM_BUILD_OPTIONS=""
 
 RUN zypper install -y \
-        cargo rust wasm-pack \
+        rustup wasm-pack \
         gcc clang lld \
         make automake autoconf \
         libopenssl-devel \
@@ -25,6 +25,7 @@ RUN zypper install -y \
         sccache \
         rsync
 RUN zypper clean -a
+RUN rustup default stable
 
 COPY . /usr/src/kanidm
 

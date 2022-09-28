@@ -2,7 +2,12 @@
 name: Clippy
 
 # Trigger the workflow on push or pull request
-"on": [push, pull_request]
+"on":
+  push:
+    branches-ignore:
+      - master
+  pull_request:
+
 
 jobs:
   clippy:
@@ -26,7 +31,11 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          override: true
+          default: true
 
       - name: "Run clippy (ignores errors, this is just a check)"
-        run: cargo clippy --no-deps
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
         continue-on-error: true

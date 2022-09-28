@@ -28,5 +28,10 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Build
-        run: cargo build --verbose
+          override: true
+          default: true
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose

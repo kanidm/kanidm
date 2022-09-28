@@ -13,6 +13,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          default: true
       - name: Update package manager
         run: sudo apt-get update
       - name: Install dependencies

@@ -10,8 +10,8 @@ RUN zypper dup -y
 FROM repos AS builder
 
 RUN zypper install -y \
-        cargo \
-        rust wasm-pack \
+        rustup \
+        wasm-pack \
         clang lld \
         make automake autoconf \
         libopenssl-devel pam-devel \
@@ -22,6 +22,7 @@ RUN zypper install -y \
         findutils \
         which
 RUN zypper clean -a
+RUN rustup default stable
 
 COPY . /usr/src/kanidm
 
