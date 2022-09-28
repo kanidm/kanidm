@@ -700,7 +700,7 @@ impl AuthEventStep {
                     mech,
                 })),
                 None => Err(OperationError::InvalidAuthState(
-                    "session id not present in cred".to_string(),
+                    "session id not present in cred presented to 'begin' step".to_string(),
                 )),
             },
             AuthStep::Cred(cred) => match sid {
@@ -709,7 +709,7 @@ impl AuthEventStep {
                     cred,
                 })),
                 None => Err(OperationError::InvalidAuthState(
-                    "session id not present in cred".to_string(),
+                    "session id not present in cred to 'cred' step".to_string(),
                 )),
             },
         }

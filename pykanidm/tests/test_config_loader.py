@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 import sys
 
-import aiohttp
 import pydantic
 import pytest
 
@@ -20,11 +19,9 @@ EXAMPLE_CONFIG_FILE = "../examples/config"
 @pytest.fixture(scope="function")
 async def client() -> KanidmClient:
     """sets up a client with a basic thing"""
-    async with aiohttp.ClientSession() as session:
-        return KanidmClient(
-            uri="https://idm.example.com",
-            session=session,
-        )
+    return KanidmClient(
+        uri="https://idm.example.com",
+    )
 
 
 def test_load_config_file() -> None:
@@ -57,41 +54,23 @@ def test_parse_config_validationerror(client: KanidmClient) -> None:
         client.parse_config_data(config_data=testdict)
 
 
-@pytest.mark.asyncio
 async def test_parse_config_data(client: KanidmClient) -> None:
     """tests parse_config witha  valid input"""
-
-    async with aiohttp.ClientSession() as session:
-        client.session = session
-        testdict = {
-            "uri": "https://example.com",
-            "username": "testuser",
-            "password": "CraBzR0oL",
-        }
-        client.parse_config_data(config_data=testdict)
+    testdict = {
+        "uri": "https://example.com",
+        "username": "testuser",
+        "password": "CraBzR0oL",
+    }
+    client.parse_config_data(config_data=testdict)
 
 
-@pytest.mark.asyncio
 async def test_init_with_uri() -> None:
     """tests the class"""
 
-    async with aiohttp.ClientSession() as session:
-        testclient = KanidmClient(
-            uri="https://example.com",
-            session=session,
-        )
+    testclient = KanidmClient(
+        uri="https://example.com",
+    )
     assert testclient.config.uri == "https://example.com/"
-
-
-@pytest.mark.asyncio
-async def test_init_with_session() -> None:
-    """tests the class"""
-    async with aiohttp.ClientSession() as session:
-        testclient = KanidmClient(
-            uri="https://google.com",
-            session=session,
-        )
-        assert testclient.session is session
 
 
 def test_config_invalid_uri() -> None:

@@ -40,22 +40,16 @@ RUN chown -R radiusd: /etc/raddb
 RUN chmod 775 /etc/raddb/certs
 RUN chmod 640 /etc/raddb/clients.conf
 
-# install the packages
-RUN mkdir -p /pkg/kanidmradius/kanidmradius/
-COPY kanidm_rlm_python/kanidmradius/ /pkg/kanidmradius/kanidmradius/
-COPY kanidm_rlm_python/pyproject.toml /pkg/kanidmradius/
-
 RUN mkdir -p /pkg/pykanidm/
 COPY pykanidm/ /pkg/pykanidm/
 
 # install the package and its dependencies
 RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm
-RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/kanidmradius
 # clean up after install
 RUN rm -rf /pkg/*
 
 USER radiusd
 ENV LD_PRELOAD=/usr/lib64/libpython3.so
 
-COPY kanidm_rlm_python/entrypoint.py /entrypoint.py
-CMD [ "/usr/bin/python3", "/entrypoint.py" ]
+COPY kanidm_rlm_python/radius_entrypoint.py /radius_entrypoint.py
+CMD [ "/usr/bin/python3", "/radius_entrypoint.py" ]

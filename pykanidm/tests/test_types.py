@@ -57,6 +57,10 @@ def test_kanidmconfig_parse_toml() -> None:
 def test_radius_client_bad_hostname() -> None:
     """tests with a bad hostname"""
     with pytest.raises(pydantic.error_wrappers.ValidationError):
-        RadiusClient(name="test", ipaddr="thiscannotpossiblywork.kanidm.example.com",secret="nothing")
+        RadiusClient(
+            name="test",
+            ipaddr="thiscannotpossiblywork.kanidm.example.com",
+            secret="nothing",
+        )
 
-    assert RadiusClient(name="test", ipaddr="kanidm.com",secret="nothing")
+    assert RadiusClient(name="test", ipaddr="kanidm.com", secret="nothing")

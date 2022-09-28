@@ -18,15 +18,13 @@ async def test_ssl_valid() -> None:
 
     url = "https://badssl.com"
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri=url,
-            session=session,
-        )
+    client = KanidmClient(
+        uri=url,
+    )
 
-        result = await client.call_get("/")
-        assert result.content
-        print(f"{result.status_code=}")
+    result = await client.call_get("/")
+    assert result.content
+    print(f"{result.status_code=}")
 
 
 @pytest.mark.network
@@ -36,14 +34,12 @@ async def test_ssl_self_signed() -> None:
 
     url = "https://self-signed.badssl.com"
 
-    async with aiohttp.ClientSession() as session:
-        print("testing self signed cert with defaults and expecting an error")
-        client = KanidmClient(
-            uri=url,
-            session=session,
-        )
-        with pytest.raises(aiohttp.client_exceptions.ClientConnectorCertificateError):
-            await client.call_get("/")
+    print("testing self signed cert with defaults and expecting an error")
+    client = KanidmClient(
+        uri=url,
+    )
+    with pytest.raises(aiohttp.client_exceptions.ClientConnectorCertificateError):
+        await client.call_get("/")
 
 
 @pytest.mark.network
@@ -51,14 +47,12 @@ async def test_ssl_self_signed() -> None:
 async def test_ssl_self_signed_with_verify() -> None:
     """tests with a self-signed cert"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://self-signed.badssl.com",
-            session=session,
-            verify_certificate=False,
-        )
-        result = await client.call_get("/")
-        assert result.content
+    client = KanidmClient(
+        uri="https://self-signed.badssl.com",
+        verify_certificate=False,
+    )
+    result = await client.call_get("/")
+    assert result.content
 
 
 @pytest.mark.network
@@ -66,14 +60,12 @@ async def test_ssl_self_signed_with_verify() -> None:
 async def test_ssl_self_signed_no_verify_certificate() -> None:
     """tests with a self-signed cert"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://self-signed.badssl.com",
-            session=session,
-            verify_certificate=False,
-        )
-        result = await client.call_get("/")
-        assert result.content
+    client = KanidmClient(
+        uri="https://self-signed.badssl.com",
+        verify_certificate=False,
+    )
+    result = await client.call_get("/")
+    assert result.content
 
 
 @pytest.mark.network
@@ -81,16 +73,13 @@ async def test_ssl_self_signed_no_verify_certificate() -> None:
 async def test_ssl_wrong_hostname_throws_error() -> None:
     """tests with validate hostnames and wrong hostname in the cert"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://wrong.host.badssl.com/", session=session, verify_hostnames=True
-        )
-        with pytest.raises(
-            aiohttp.client_exceptions.ClientConnectorCertificateError,
-            match="Cannot connect to host wrong.host.badssl.com:443",
-        ):
-            result = await client.call_get("/")
-            assert result.content
+    client = KanidmClient(uri="https://wrong.host.badssl.com/", verify_hostnames=True)
+    with pytest.raises(
+        aiohttp.client_exceptions.ClientConnectorCertificateError,
+        match="Cannot connect to host wrong.host.badssl.com:443",
+    ):
+        result = await client.call_get("/")
+        assert result.content
 
 
 @pytest.mark.network
@@ -98,14 +87,12 @@ async def test_ssl_wrong_hostname_throws_error() -> None:
 async def test_ssl_wrong_hostname_dont_verify_hostnames() -> None:
     """tests with validate hostnames and wrong hostname in the cert"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://wrong.host.badssl.com/",
-            session=session,
-            verify_hostnames=False,
-        )
-        result = await client.call_get("/")
-        assert result.content
+    client = KanidmClient(
+        uri="https://wrong.host.badssl.com/",
+        verify_hostnames=False,
+    )
+    result = await client.call_get("/")
+    assert result.content
 
 
 @pytest.mark.network
@@ -113,15 +100,13 @@ async def test_ssl_wrong_hostname_dont_verify_hostnames() -> None:
 async def test_ssl_wrong_hostname_verify_certificate() -> None:
     """tests with validate hostnames and wrong hostname in the cert"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://wrong.host.badssl.com/",
-            session=session,
-            verify_hostnames=False,
-            verify_certificate=False,
-        )
-        result = await client.call_get("/")
-        assert result.content
+    client = KanidmClient(
+        uri="https://wrong.host.badssl.com/",
+        verify_hostnames=False,
+        verify_certificate=False,
+    )
+    result = await client.call_get("/")
+    assert result.content
 
 
 @pytest.mark.network
@@ -129,13 +114,11 @@ async def test_ssl_wrong_hostname_verify_certificate() -> None:
 async def test_ssl_revoked() -> None:
     """tests with a revoked certificate, it'll pass but one day this should be a thing"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://revoked.badssl.com/",
-            session=session,
-        )
-        result = await client.call_get("/")
-        assert result.content
+    client = KanidmClient(
+        uri="https://revoked.badssl.com/",
+    )
+    result = await client.call_get("/")
+    assert result.content
 
 
 @pytest.mark.network
@@ -143,17 +126,15 @@ async def test_ssl_revoked() -> None:
 async def test_ssl_expired() -> None:
     """tests with an expired certificate"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://expired.badssl.com/",
-            session=session,
-        )
-        with pytest.raises(
-            aiohttp.client_exceptions.ClientConnectorCertificateError,
-            match="certificate verify failed: certificate has expired",
-        ):
-            result = await client.call_get("/")
-            assert result.content
+    client = KanidmClient(
+        uri="https://expired.badssl.com/",
+    )
+    with pytest.raises(
+        aiohttp.client_exceptions.ClientConnectorCertificateError,
+        match="certificate verify failed: certificate has expired",
+    ):
+        result = await client.call_get("/")
+        assert result.content
 
 
 @pytest.mark.network
@@ -161,14 +142,12 @@ async def test_ssl_expired() -> None:
 async def test_ssl_expired_ignore() -> None:
     """tests with an expired certificate"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://expired.badssl.com/",
-            session=session,
-            verify_certificate=False,
-        )
-        result = await client.call_get("/")
-        assert result.content
+    client = KanidmClient(
+        uri="https://expired.badssl.com/",
+        verify_certificate=False,
+    )
+    result = await client.call_get("/")
+    assert result.content
 
 
 @pytest.mark.network
@@ -176,17 +155,15 @@ async def test_ssl_expired_ignore() -> None:
 async def test_ssl_untrusted_root_throws() -> None:
     """tests with an untrusted root, which should throw an error"""
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://untrusted-root.badssl.com/",
-            session=session,
-        )
-        with pytest.raises(
-            aiohttp.client_exceptions.ClientConnectorCertificateError,
-            match="certificate verify failed: self signed certificate in certificate chain",
-        ):
-            result = await client.call_get("/")
-            assert result.content
+    client = KanidmClient(
+        uri="https://untrusted-root.badssl.com/",
+    )
+    with pytest.raises(
+        aiohttp.client_exceptions.ClientConnectorCertificateError,
+        match="certificate verify failed: self signed certificate in certificate chain",
+    ):
+        result = await client.call_get("/")
+        assert result.content
 
 
 @pytest.mark.network
@@ -199,15 +176,13 @@ async def test_ssl_untrusted_root_configured() -> None:
     if not testcert.exists():
         pytest.skip(f"The trusted cert is missing from {testcert}")
 
-    async with aiohttp.ClientSession() as session:
-        client = KanidmClient(
-            uri="https://untrusted-root.badssl.com/",
-            session=session,
-            ca_path=testcert.resolve().as_posix(),
-        )
-        with pytest.raises(
-            aiohttp.client_exceptions.ClientConnectorCertificateError,
-            match="certificate verify failed: self signed certificate in certificate chain",
-        ):
-            result = await client.call_get("/")
-            assert result.content
+    client = KanidmClient(
+        uri="https://untrusted-root.badssl.com/",
+        ca_path=testcert.resolve().as_posix(),
+    )
+    with pytest.raises(
+        aiohttp.client_exceptions.ClientConnectorCertificateError,
+        match="certificate verify failed: self signed certificate in certificate chain",
+    ):
+        result = await client.call_get("/")
+        assert result.content
