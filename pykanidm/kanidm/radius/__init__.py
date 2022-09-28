@@ -28,6 +28,7 @@ config_paths = [
     os.getenv("KANIDM_RLM_CONFIG", "/data/kanidm"),  # container goodness
     "~/.config/kanidm",  # for a user
     "/etc/kanidm/kanidm",  # system-wide
+    "../examples/kanidm",  # test mode
 ]
 
 CONFIG_PATH = None
