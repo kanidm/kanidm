@@ -1,4 +1,4 @@
-""" Testing JWT things """
+""" Testing JWS things things """
 
 from datetime import datetime, timezone
 

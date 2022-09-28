@@ -45,6 +45,7 @@ class KanidmClient:
     verify_hostnames: verify the hostname is correct
     verify_certificate: verify the validity of the certificate and its CA
     ca_path: set this to a trusted CA certificate (PEM format)
+    token: a JWS from an authentication session
     """
 
     # pylint: disable=too-many-instance-attributes,too-many-arguments
@@ -263,7 +264,7 @@ class KanidmClient:
         return response
 
     async def authenticate_with_token(self, token: str) -> ClientResponse:
-        """ Authenticate your session with a JWT, get the response back so you can pull out the cookies """
+        """ Authenticate your session with a JWS """
         response = await self.call_get(
             "/v1/self",
             headers = {
