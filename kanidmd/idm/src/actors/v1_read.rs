@@ -1,6 +1,5 @@
 use tracing::{error, info, instrument, trace};
 
-use chrono::{DateTime, SecondsFormat, Utc};
 use std::sync::Arc;
 
 use crate::prelude::*;
@@ -184,8 +183,9 @@ impl QueryServerReadV1 {
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
-        let now: DateTime<Utc> = Utc::now();
-        let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
+        #[allow(deprecated)]
+        let now = time::OffsetDateTime::now_local();
+        let timestamp = now.format(time::Format::Rfc3339);
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
         match Path::new(&dest_file).exists() {

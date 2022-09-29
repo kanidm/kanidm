@@ -45,7 +45,7 @@ base64urlsafedata = "0.1.0"
 bytes = "^1.1.0"
 clap = { version = "^3.2", features = ["derive"] }
 clap_complete = "^3.2.5"
-# Try to remove this.
+# Forced by saffron
 chrono = "^0.4.20"
 compact_jwt = "^0.2.3"
 # compact_jwt = { path = "../compact_jwt" }
@@ -79,7 +79,6 @@ ldap3_proto = "^0.2.3"
 libc = "^0.2.127"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
-# Remove this!
 lru = "^0.8.0"
 mathru = "^0.13.0"
 num_enum = "^0.5.7"
