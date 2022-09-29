@@ -19,8 +19,9 @@ macro_rules! setup_test {
     (
         $preload_entries:expr
     ) => {{
-        use crate::utils::duration_from_epoch_now;
         use async_std::task;
+
+        use crate::utils::duration_from_epoch_now;
 
         let _ = sketching::test_init();
 
@@ -105,10 +106,11 @@ macro_rules! run_test {
 #[cfg(test)]
 macro_rules! entry_str_to_account {
     ($entry_str:expr) => {{
+        use std::iter::once;
+
         use crate::entry::{Entry, EntryInvalid, EntryNew};
         use crate::idm::account::Account;
         use crate::value::Value;
-        use std::iter::once;
 
         let mut e: Entry<EntryInvalid, EntryNew> =
             unsafe { Entry::unsafe_from_entry_str($entry_str).into_invalid_new() };

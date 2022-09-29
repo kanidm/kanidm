@@ -1,10 +1,9 @@
 #![allow(dead_code)]
 use std::env;
+use std::path::PathBuf;
 
 use clap::{IntoApp, Parser};
 use clap_complete::{generate_to, Shell};
-
-use std::path::PathBuf;
 
 include!("src/opt/ssh_authorizedkeys.rs");
 include!("src/opt/cache_invalidate.rs");

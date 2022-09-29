@@ -3,12 +3,14 @@
 //! helps to ensure that data is always in specific known states within the
 //! `QueryServer`
 
+use std::sync::Arc;
+
+use kanidm_proto::v1::{ConsistencyError, OperationError};
+use tracing::trace_span;
+
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::prelude::*;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
-use std::sync::Arc;
-use tracing::trace_span;
 
 mod attrunique;
 mod base;

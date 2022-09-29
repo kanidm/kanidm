@@ -1,26 +1,23 @@
-use hashbrown::HashSet;
-use std::io::ErrorKind;
-use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
-
-use filetime::FileTime;
-use touch::file as touch_file;
-use uuid::{Builder, Uuid};
-
-use rand::distributions::Distribution;
-use rand::{thread_rng, Rng};
-
 #[cfg(not(target_family = "windows"))]
 use std::fs::Metadata;
+use std::io::ErrorKind;
 #[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
 #[cfg(target_os = "macos")]
 use std::os::macos::fs::MetadataExt;
+use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
+
+use filetime::FileTime;
+use hashbrown::HashSet;
+use rand::distributions::Distribution;
+use rand::{thread_rng, Rng};
+use touch::file as touch_file;
 // #[cfg(target_os = "windows")]
 // use std::os::windows::fs::MetadataExt;
-
 #[cfg(target_family = "unix")]
 use users::{get_current_gid, get_current_uid};
+use uuid::{Builder, Uuid};
 
 #[derive(Debug)]
 pub struct DistinctAlpha;
@@ -188,9 +185,11 @@ pub fn file_permissions_readonly(meta: &Metadata) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::{uuid_from_duration, uuid_to_gid_u32};
     use std::time::Duration;
+
     use uuid::Uuid;
+
+    use crate::utils::{uuid_from_duration, uuid_to_gid_u32};
 
     #[test]
     fn test_utils_uuid_from_duration() {

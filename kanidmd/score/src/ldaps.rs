@@ -1,18 +1,19 @@
-use kanidm::actors::v1_read::QueryServerReadV1;
-use kanidm::ldap::{LdapBoundToken, LdapResponseState};
-use kanidm::prelude::*;
-use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
+use std::marker::Unpin;
+use std::net;
 use std::pin::Pin;
-use tokio_openssl::SslStream;
+use std::str::FromStr;
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use ldap3_proto::{proto::LdapMsg, LdapCodec};
-use std::marker::Unpin;
-use std::net;
-use std::str::FromStr;
+use kanidm::actors::v1_read::QueryServerReadV1;
+use kanidm::ldap::{LdapBoundToken, LdapResponseState};
+use kanidm::prelude::*;
+use ldap3_proto::proto::LdapMsg;
+use ldap3_proto::LdapCodec;
+use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
+use tokio_openssl::SslStream;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 struct LdapSession {

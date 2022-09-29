@@ -1,8 +1,9 @@
-use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_CELL, CSS_PAGE_HEADER, CSS_TABLE};
 #[cfg(debug)]
 use gloo::console;
 use yew::prelude::*;
+
+use crate::components::alpha_warning_banner;
+use crate::constants::{CSS_CELL, CSS_PAGE_HEADER, CSS_TABLE};
 
 pub enum Msg {
     // Nothing

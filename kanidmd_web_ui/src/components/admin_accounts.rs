@@ -1,3 +1,9 @@
+use std::collections::BTreeMap;
+
+use gloo::console;
+use yew::{html, Component, Context, Html, Properties};
+use yew_router::prelude::Link;
+
 use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{
@@ -6,10 +12,6 @@ use crate::constants::{
 use crate::models;
 use crate::utils::{do_alert_error, do_page_header, init_request};
 use crate::views::AdminRoute;
-use gloo::console;
-use std::collections::BTreeMap;
-use yew::{html, Component, Context, Html, Properties};
-use yew_router::prelude::Link;
 
 impl From<GetError> for AdminListAccountsMsg {
     fn from(ge: GetError) -> Self {

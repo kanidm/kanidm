@@ -1,9 +1,6 @@
 use std::error::Error;
-use std::io::Error as IoError;
-use std::io::ErrorKind;
-use std::io::{Read, Write};
+use std::io::{Error as IoError, ErrorKind, Read, Write};
 use std::os::unix::net::UnixStream;
-
 use std::time::{Duration, SystemTime};
 
 use crate::unix_proto::{ClientRequest, ClientResponse};

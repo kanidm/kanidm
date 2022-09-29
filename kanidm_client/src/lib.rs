@@ -13,32 +13,26 @@
 #[macro_use]
 extern crate tracing;
 
-use reqwest::header::CONTENT_TYPE;
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_json::error::Error as SerdeJsonError;
+use std::collections::{BTreeMap, BTreeSet as Set};
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::fs::{metadata, Metadata};
-use std::io::ErrorKind;
-use std::io::Read;
-
+use std::io::{ErrorKind, Read};
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::os::unix::fs::MetadataExt;
-
-use std::collections::BTreeMap;
-use std::collections::BTreeSet as Set;
 use std::path::Path;
 use std::time::Duration;
+
+use kanidm_proto::v1::*;
+use reqwest::header::CONTENT_TYPE;
+pub use reqwest::StatusCode;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use serde_json::error::Error as SerdeJsonError;
 use tokio::sync::RwLock;
 use url::Url;
 use uuid::Uuid;
-
-pub use reqwest::StatusCode;
-
-use kanidm_proto::v1::*;
 use webauthn_rs_proto::{
     PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse,
 };

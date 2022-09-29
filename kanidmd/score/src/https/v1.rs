@@ -1,23 +1,21 @@
+use std::str::FromStr;
+use std::time::Duration;
+
+use async_std::task;
+use compact_jwt::Jws;
 use kanidm::event::AuthResult;
 use kanidm::filter::{Filter, FilterInvalid};
 use kanidm::idm::AuthState;
 use kanidm::prelude::*;
 use kanidm::status::StatusRequestEvent;
-
-use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
-    CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, OperationError, SearchRequest, SingleStringRequest,
+    CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, Entry as ProtoEntry,
+    GroupUnixExtend, ModifyRequest, OperationError, SearchRequest, SingleStringRequest,
 };
+use serde::{Deserialize, Serialize};
 
 use super::{to_tide_response, AppState, RequestExtensions, RouteMap};
-use async_std::task;
-use compact_jwt::Jws;
-use std::str::FromStr;
-use std::time::Duration;
-
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct SessionId {

@@ -1,8 +1,10 @@
-use crate::value::IndexType;
-use smartstring::alias::String as AttrString;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+
+use smartstring::alias::String as AttrString;
+
+use crate::value::IndexType;
 
 pub type IdxSlope = u8;
 

@@ -1,7 +1,3 @@
-use crate::data::*;
-use rand::seq::SliceRandom;
-use rand::Rng;
-use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
@@ -10,7 +6,13 @@ use std::io::BufReader;
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
+
+use rand::seq::SliceRandom;
+use rand::Rng;
+use serde::Deserialize;
 use uuid::Uuid;
+
+use crate::data::*;
 
 #[derive(Debug, Deserialize)]
 struct RawRecord {

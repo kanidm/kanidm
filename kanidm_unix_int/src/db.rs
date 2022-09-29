@@ -1,17 +1,17 @@
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
-use libc::umask;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
 use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
-use crate::cache::Id;
-use tokio::sync::{Mutex, MutexGuard};
-
 use kanidm::be::dbvalue::DbPasswordV1;
 use kanidm::credential::policy::CryptoPolicy;
 use kanidm::credential::Password;
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use libc::umask;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
+use tokio::sync::{Mutex, MutexGuard};
+
+use crate::cache::Id;
 
 pub struct Db {
     pool: Pool<SqliteConnectionManager>,
@@ -732,9 +732,10 @@ impl<'a> Drop for DbTxn<'a> {
 
 #[cfg(test)]
 mod tests {
+    use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+
     use super::Db;
     use crate::cache::Id;
-    use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";

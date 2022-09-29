@@ -3,11 +3,13 @@
 //! and this provides the set of `Limits` to confine how many resources that the
 //! identity may consume during operations to prevent denial-of-service.
 
-use crate::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 /// Limits on the resources a single event can consume. These are defined per-event

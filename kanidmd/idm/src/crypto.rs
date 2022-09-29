@@ -1,9 +1,10 @@
 //! This module contains cryptographic setup code, a long with what policy
 //! and ciphers we accept.
 
-use crate::config::Configuration;
 use openssl::error::ErrorStack;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
+
+use crate::config::Configuration;
 
 /// From the server configuration, generate an OpenSSL acceptor that we can use
 /// to build our sockets for https/ldaps.

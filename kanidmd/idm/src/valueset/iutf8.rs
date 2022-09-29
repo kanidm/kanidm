@@ -1,10 +1,9 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
 use std::collections::BTreeSet;
 
 use super::iname::ValueSetIname;
+use crate::prelude::*;
+use crate::schema::SchemaAttribute;
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetIutf8 {

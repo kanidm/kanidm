@@ -1,36 +1,28 @@
-use crate::access::AccessControlsTransaction;
-use crate::credential::{BackupCodes, Credential};
-use crate::idm::account::Account;
-use crate::idm::server::IdmServerCredUpdateTransaction;
-use crate::idm::server::IdmServerProxyWriteTransaction;
-use crate::prelude::*;
-use crate::value::IntentTokenState;
-use hashbrown::HashSet;
+use core::ops::Deref;
 use std::collections::BTreeMap;
+use std::fmt;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-
+use hashbrown::HashSet;
 use kanidm_proto::v1::{
     CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback, TotpSecret,
 };
-
-use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
-
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use webauthn_rs::prelude::{
-    CreationChallengeResponse, PasskeyRegistration, RegisterPublicKeyCredential,
+    CreationChallengeResponse, DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, PasskeyRegistration,
+    RegisterPublicKeyCredential,
 };
 
-use serde::{Deserialize, Serialize};
-
-use std::fmt;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Duration;
-use time::OffsetDateTime;
-
-use core::ops::Deref;
+use crate::access::AccessControlsTransaction;
+use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
+use crate::credential::{BackupCodes, Credential};
+use crate::idm::account::Account;
+use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction};
+use crate::prelude::*;
+use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
+use crate::value::IntentTokenState;
 
 const MAXIMUM_CRED_UPDATE_TTL: Duration = Duration::from_secs(900);
 const MAXIMUM_INTENT_TTL: Duration = Duration::from_secs(86400);
@@ -1472,6 +1464,14 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use async_std::task;
+    use kanidm_proto::v1::{AuthAllowed, AuthMech, CredentialDetailType};
+    use uuid::uuid;
+    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+
     use super::{
         CredentialUpdateSessionStatus, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
         InitCredentialUpdateIntentEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
@@ -1481,16 +1481,8 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent};
     use crate::idm::delayed::DelayedAction;
     use crate::idm::server::IdmServer;
-    use crate::prelude::*;
-    use std::time::Duration;
-
-    use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
-
     use crate::idm::AuthState;
-    use kanidm_proto::v1::{AuthAllowed, AuthMech, CredentialDetailType};
-    use uuid::uuid;
-
-    use async_std::task;
+    use crate::prelude::*;
 
     const TEST_CURRENT_TIME: u64 = 6000;
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");

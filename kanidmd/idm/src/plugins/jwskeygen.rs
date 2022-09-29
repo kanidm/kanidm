@@ -1,8 +1,9 @@
+use compact_jwt::JwsSigner;
+
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::password_from_random;
-use compact_jwt::JwsSigner;
 
 lazy_static! {
     static ref CLASS_OAUTH2_BASIC: PartialValue =

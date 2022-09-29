@@ -1,7 +1,8 @@
 //! An actor that shows the servers current status and statistics. (TODO).
 
-use crate::prelude::*;
 use uuid::Uuid;
+
+use crate::prelude::*;
 
 pub struct StatusRequestEvent {
     pub eventid: Uuid,

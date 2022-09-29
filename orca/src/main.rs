@@ -15,13 +15,15 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[macro_use]
 extern crate tracing;
 
-use crate::ds::DirectoryServer;
-use crate::kani::{KaniHttpServer, KaniLdapServer};
-use clap::{Parser, Subcommand};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
+
+use clap::{Parser, Subcommand};
 use uuid::Uuid;
+
+use crate::ds::DirectoryServer;
+use crate::kani::{KaniHttpServer, KaniLdapServer};
 
 mod data;
 mod ds;

@@ -15,9 +15,9 @@ pub mod server;
 pub(crate) mod serviceaccount;
 pub(crate) mod unix;
 
-use kanidm_proto::v1::{AuthAllowed, AuthMech};
-
 use std::fmt;
+
+use kanidm_proto::v1::{AuthAllowed, AuthMech};
 
 pub enum AuthState {
     Choose(Vec<AuthMech>),

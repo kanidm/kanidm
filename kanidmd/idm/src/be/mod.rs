@@ -4,35 +4,32 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
-use std::fs;
-
-use crate::prelude::*;
-use crate::value::IndexType;
-use hashbrown::HashMap as Map;
-use hashbrown::HashSet;
 use std::cell::UnsafeCell;
+use std::fs;
+use std::ops::DerefMut;
 use std::sync::Arc;
+use std::time::Duration;
+
+use concread::cowcell::*;
+use hashbrown::{HashMap as Map, HashSet};
+use idlset::v2::IDLBitRange;
+use idlset::AndNot;
+use kanidm_proto::v1::{ConsistencyError, OperationError};
+use smartstring::alias::String as AttrString;
 use tracing::{trace, trace_span};
+use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::identity::Limits;
-use crate::value::Value;
-use concread::cowcell::*;
-use idlset::v2::IDLBitRange;
-use idlset::AndNot;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
-use smartstring::alias::String as AttrString;
-use std::ops::DerefMut;
-use std::time::Duration;
-use uuid::Uuid;
-
+use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::ruv::{
     ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
     ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
 };
+use crate::value::{IndexType, Value};
 
 pub mod dbentry;
 pub mod dbvalue;
@@ -41,12 +38,10 @@ mod idl_sqlite;
 pub(crate) mod idxkey;
 
 pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope};
-
 use crate::be::idl_arc_sqlite::{
     IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
     IdlArcSqliteWriteTransaction,
 };
-
 // Re-export this
 pub use crate::be::idl_sqlite::FsType;
 
@@ -1762,22 +1757,23 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use idlset::v2::IDLBitRange;
     use std::fs;
     use std::iter::FromIterator;
     use std::sync::Arc;
+    use std::time::Duration;
+
+    use idlset::v2::IDLBitRange;
     use uuid::Uuid;
 
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::{
-        Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, IdList, OperationError,
+        Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, DbBackup, IdList,
+        IdxKey, OperationError,
     };
-    use super::{DbBackup, IdxKey};
     use crate::identity::Limits;
     use crate::prelude::*;
     use crate::repl::cid::Cid;
     use crate::value::{IndexType, PartialValue, Value};
-    use std::time::Duration;
 
     lazy_static! {
         static ref CID_ZERO: Cid = unsafe { Cid::new_zero() };

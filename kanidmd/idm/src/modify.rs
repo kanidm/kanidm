@@ -2,19 +2,19 @@
 //! express the series of Modifications that should be applied. These are expressed
 //! as "states" on what attribute-values should appear as within the `Entry`
 
-use crate::prelude::*;
-use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidm_proto::v1::Modify as ProtoModify;
-use kanidm_proto::v1::ModifyList as ProtoModifyList;
+use std::slice;
 
-use crate::schema::SchemaTransaction;
-use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{OperationError, SchemaError};
-
+use kanidm_proto::v1::{
+    Entry as ProtoEntry, Modify as ProtoModify, ModifyList as ProtoModifyList, OperationError,
+    SchemaError,
+};
 // Should this be std?
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;
-use std::slice;
+
+use crate::prelude::*;
+use crate::schema::SchemaTransaction;
+use crate::value::{PartialValue, Value};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ModifyValid;

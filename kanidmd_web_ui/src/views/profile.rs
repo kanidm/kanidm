@@ -1,9 +1,9 @@
-use crate::constants::CSS_PAGE_HEADER;
-use crate::views::ViewProps;
-
 use gloo::console;
 use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
+
+use crate::constants::CSS_PAGE_HEADER;
+use crate::views::ViewProps;
 
 // User Profile UI
 pub struct ProfileApp {}

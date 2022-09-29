@@ -1,14 +1,14 @@
-use hashbrown::HashSet;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::Duration;
+
+use hashbrown::HashSet;
+use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
+use webauthn_rs::prelude::{
+    DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
+};
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
-
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
-use webauthn_rs::prelude::SecurityKey as SecurityKeyV4;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
@@ -556,10 +556,10 @@ impl DbValueSetV2 {
 
 #[cfg(test)]
 mod tests {
-    use super::DbCred;
-    use super::{DbBackupCodeV1, DbPasswordV1, DbTotpV1, DbWebauthnV1};
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
+
+    use super::{DbBackupCodeV1, DbCred, DbPasswordV1, DbTotpV1, DbWebauthnV1};
 
     fn dbcred_type_default_pw() -> DbCredTypeV1 {
         DbCredTypeV1::Pw

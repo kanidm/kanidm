@@ -1,15 +1,15 @@
+use std::collections::BTreeMap;
+use std::time::Duration;
+
+use compact_jwt::{Jws, JwsSigner};
+use kanidm_proto::v1::ApiToken;
+use time::OffsetDateTime;
+
 use crate::event::SearchEvent;
 use crate::idm::account::Account;
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
 use crate::value::Session;
-
-use compact_jwt::{Jws, JwsSigner};
-use std::collections::BTreeMap;
-use std::time::Duration;
-use time::OffsetDateTime;
-
-use kanidm_proto::v1::ApiToken;
 
 // Need to add KID to es256 der for lookups ✅
 
@@ -354,15 +354,16 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DestroyApiTokenEvent, GenerateApiTokenEvent, GRACE_WINDOW};
-    use crate::idm::server::IdmServerTransaction;
-    // use crate::prelude::*;
-
-    use crate::event::CreateEvent;
-    use compact_jwt::{Jws, JwsUnverified};
-    use kanidm_proto::v1::ApiToken;
     use std::str::FromStr;
     use std::time::Duration;
+
+    use compact_jwt::{Jws, JwsUnverified};
+    use kanidm_proto::v1::ApiToken;
+
+    use super::{DestroyApiTokenEvent, GenerateApiTokenEvent, GRACE_WINDOW};
+    // use crate::prelude::*;
+    use crate::event::CreateEvent;
+    use crate::idm::server::IdmServerTransaction;
 
     const TEST_CURRENT_TIME: u64 = 6000;
 

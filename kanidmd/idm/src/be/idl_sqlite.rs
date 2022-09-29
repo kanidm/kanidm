@@ -1,23 +1,22 @@
-use crate::be::dbentry::DbEntry;
-use crate::be::dbentry::DbIdentSpn;
-use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
-use crate::entry::{Entry, EntryCommitted, EntrySealed};
-use crate::prelude::*;
-use crate::value::{IndexType, Value};
+use std::convert::{TryFrom, TryInto};
+use std::sync::Arc;
+use std::time::Duration;
+
 // use crate::valueset;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::Connection;
-use rusqlite::OpenFlags;
-use rusqlite::OptionalExtension;
-use std::convert::{TryFrom, TryInto};
-use std::sync::Arc;
-use std::time::Duration;
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::trace;
 use uuid::Uuid;
+
+use crate::be::dbentry::{DbEntry, DbIdentSpn};
+use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
+use crate::entry::{Entry, EntryCommitted, EntrySealed};
+use crate::prelude::*;
+use crate::value::{IndexType, Value};
 
 // use uuid::Uuid;
 

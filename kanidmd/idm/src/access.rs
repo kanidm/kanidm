@@ -15,27 +15,25 @@
 //!
 
 // use concread::collections::bptree::*;
-use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
-use concread::cowcell::*;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::OperationError;
-use std::collections::BTreeSet;
 // use hashbrown::HashSet;
 use std::cell::Cell;
+use std::collections::BTreeSet;
 use std::ops::DerefMut;
 use std::sync::Arc;
+
+use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
+use concread::cowcell::*;
+use kanidm_proto::v1::{Filter as ProtoFilter, OperationError};
+use tracing::trace;
 use uuid::Uuid;
 
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
+use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::filter::{Filter, FilterValid, FilterValidResolved};
+use crate::identity::{IdentType, IdentityId};
 use crate::modify::Modify;
 use crate::prelude::*;
 use crate::value::PartialValue;
-
-use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
-use crate::identity::{IdentType, IdentityId};
-
-use tracing::trace;
 
 // const ACP_RELATED_SEARCH_CACHE_MAX: usize = 2048;
 // const ACP_RELATED_SEARCH_CACHE_LOCAL: usize = 16;
@@ -1522,15 +1520,17 @@ impl AccessControls {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+    use std::sync::Arc;
+
+    use uuid::uuid;
+
     use crate::access::{
         AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
         AccessControlSearch, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use crate::prelude::*;
-    use std::collections::BTreeSet;
-    use std::sync::Arc;
-    use uuid::uuid;
 
     macro_rules! acp_from_entry_err {
         (

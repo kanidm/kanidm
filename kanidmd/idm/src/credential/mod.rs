@@ -1,20 +1,17 @@
-use crate::be::dbvalue::DbBackupCodeV1;
-use crate::be::dbvalue::{DbCred, DbPasswordV1};
-use hashbrown::HashMap as Map;
-use hashbrown::HashSet;
+use std::convert::TryFrom;
+use std::time::{Duration, Instant};
+
+use hashbrown::{HashMap as Map, HashSet};
 use kanidm_proto::v1::{BackupCodesView, CredentialDetail, CredentialDetailType, OperationError};
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
 use rand::prelude::*;
-use std::convert::TryFrom;
-use std::time::{Duration, Instant};
 use uuid::Uuid;
-
-use webauthn_rs_core::proto::Credential as WebauthnCredential;
-use webauthn_rs_core::proto::CredentialV3;
-
 use webauthn_rs::prelude::{AuthenticationResult, Passkey, SecurityKey};
+use webauthn_rs_core::proto::{Credential as WebauthnCredential, CredentialV3};
+
+use crate::be::dbvalue::{DbBackupCodeV1, DbCred, DbPasswordV1};
 
 pub mod policy;
 pub mod softlock;
@@ -892,9 +889,10 @@ impl CredentialType {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::*;
-    use std::convert::TryFrom;
 
     #[test]
     fn test_credential_simple() {

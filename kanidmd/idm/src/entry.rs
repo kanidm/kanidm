@@ -24,6 +24,26 @@
 //! [`filter`]: ../filter/index.html
 //! [`schema`]: ../schema/index.html
 
+use std::cmp::Ordering;
+pub use std::collections::BTreeSet as Set;
+use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
+use std::sync::Arc;
+
+use compact_jwt::JwsSigner;
+use hashbrown::HashMap;
+use kanidm_proto::v1::{
+    ConsistencyError, Entry as ProtoEntry, Filter as ProtoFilter, OperationError, SchemaError,
+};
+use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
+use smartstring::alias::String as AttrString;
+use time::OffsetDateTime;
+use tracing::trace;
+use uuid::Uuid;
+use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
+
+use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
+use crate::be::dbvalue::DbValueSetV2;
+use crate::be::{IdxKey, IdxSlope};
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::ldap::ldap_vattr_map;
@@ -32,33 +52,8 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::entry::EntryChangelog;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::value::{IndexType, SyntaxType};
-use crate::value::{IntentTokenState, PartialValue, Session, Value};
+use crate::value::{IndexType, IntentTokenState, PartialValue, Session, SyntaxType, Value};
 use crate::valueset::{self, ValueSet};
-use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
-use tracing::trace;
-
-use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
-use crate::be::dbvalue::DbValueSetV2;
-use crate::be::{IdxKey, IdxSlope};
-
-use compact_jwt::JwsSigner;
-use hashbrown::HashMap;
-use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use smartstring::alias::String as AttrString;
-use std::cmp::Ordering;
-use std::collections::BTreeMap as Map;
-pub use std::collections::BTreeSet as Set;
-use std::collections::BTreeSet;
-use std::sync::Arc;
-use time::OffsetDateTime;
-use uuid::Uuid;
-
-use std::collections::BTreeMap;
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 // use std::convert::TryFrom;
 // use std::str::FromStr;
@@ -2471,13 +2466,15 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet as Set;
+
+    use hashbrown::HashMap;
+    use smartstring::alias::String as AttrString;
+
     use crate::be::{IdxKey, IdxSlope};
     use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{IndexType, PartialValue, Value};
-    use hashbrown::HashMap;
-    use smartstring::alias::String as AttrString;
-    use std::collections::BTreeSet as Set;
 
     #[test]
     fn test_entry_basic() {

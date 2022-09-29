@@ -1,9 +1,8 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-use yew_agent::{Agent, AgentLink, Context, HandlerId};
-
 use kanidm_proto::v1::CUStatus;
+use serde::{Deserialize, Serialize};
+use yew_agent::{Agent, AgentLink, Context, HandlerId};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]

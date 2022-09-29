@@ -2,14 +2,13 @@
 #![warn(unused_extern_crates)]
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use tracing_forest::{util::*, Tag};
+use tracing_forest::util::*;
+use tracing_forest::Tag;
 
 pub mod macros;
 pub mod middleware;
 
-pub use tracing;
-pub use tracing_forest;
-pub use tracing_subscriber;
+pub use {tracing, tracing_forest, tracing_subscriber};
 
 pub fn test_init() {
     // tracing_subscriber::fmt::try_init()

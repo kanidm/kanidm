@@ -5,6 +5,7 @@
 //! will allow you to proceed with the oauth flow.
 
 use gloo::console;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew::functional::*;
 use yew::prelude::*;
@@ -14,7 +15,6 @@ use crate::credential::reset::CredentialResetApp;
 use crate::login::LoginApp;
 use crate::oauth2::Oauth2App;
 use crate::views::{ViewRoute, ViewsApp};
-use serde::{Deserialize, Serialize};
 
 // router to decide on state.
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]

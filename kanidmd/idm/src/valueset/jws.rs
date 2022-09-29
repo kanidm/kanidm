@@ -1,10 +1,9 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
+use compact_jwt::{JwaAlg, JwsSigner};
 use hashbrown::HashSet;
 
-use compact_jwt::{JwaAlg, JwsSigner};
+use crate::prelude::*;
+use crate::schema::SchemaAttribute;
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetJwsKeyEs256 {

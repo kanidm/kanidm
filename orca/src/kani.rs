@@ -1,12 +1,14 @@
+use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant};
+
+use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
+use kanidm_proto::v1::*;
+use uuid::Uuid;
+
 use crate::data::*;
 use crate::ldap::{LdapClient, LdapSchema};
 use crate::profile::{KaniHttpConfig, KaniLdapConfig};
 use crate::{TargetServer, TargetServerBuilder};
-use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
-use kanidm_proto::v1::*;
-use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
-use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct KaniHttpServer {

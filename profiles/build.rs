@@ -1,6 +1,5 @@
-use std::env;
-use std::fs;
 use std::path::PathBuf;
+use std::{env, fs};
 
 fn main() {
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");

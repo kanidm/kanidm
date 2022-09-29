@@ -1,18 +1,20 @@
 //! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
-use crate::event::SearchEvent;
-use crate::idm::event::{LdapAuthEvent, LdapTokenAuthEvent};
-use crate::idm::server::{IdmServer, IdmServerTransaction};
-use crate::prelude::*;
+use std::collections::BTreeSet;
+use std::iter;
+
 use async_std::task;
 use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
-use std::collections::BTreeSet;
-use std::iter;
 use tracing::trace;
 use uuid::Uuid;
+
+use crate::event::SearchEvent;
+use crate::idm::event::{LdapAuthEvent, LdapTokenAuthEvent};
+use crate::idm::server::{IdmServer, IdmServerTransaction};
+use crate::prelude::*;
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
 // and ldapboundtoken is moved. Really, it's not too bad, every message here is pretty sucky.
@@ -550,18 +552,19 @@ pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
 #[cfg(test)]
 mod tests {
     // use crate::prelude::*;
-    use crate::event::{CreateEvent, ModifyEvent};
-    use crate::idm::event::UnixPasswordChangeEvent;
-    use crate::idm::serviceaccount::GenerateApiTokenEvent;
-    use crate::ldap::{LdapServer, LdapSession};
+    use std::str::FromStr;
+
     use async_std::task;
+    use compact_jwt::{Jws, JwsUnverified};
     use hashbrown::HashSet;
     use kanidm_proto::v1::ApiToken;
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_proto::simple::*;
-    use std::str::FromStr;
 
-    use compact_jwt::{Jws, JwsUnverified};
+    use crate::event::{CreateEvent, ModifyEvent};
+    use crate::idm::event::UnixPasswordChangeEvent;
+    use crate::idm::serviceaccount::GenerateApiTokenEvent;
+    use crate::ldap::{LdapServer, LdapSession};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 

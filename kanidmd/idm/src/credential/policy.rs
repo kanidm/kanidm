@@ -1,5 +1,6 @@
-use super::Password;
 use std::time::Duration;
+
+use super::Password;
 
 const PBKDF2_MIN_NIST_COST: u64 = 10000;
 

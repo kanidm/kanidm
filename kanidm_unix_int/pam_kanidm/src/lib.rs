@@ -14,18 +14,19 @@
 // extern crate libc;
 
 mod pam;
-use crate::pam::constants::*;
-use crate::pam::conv::PamConv;
-use crate::pam::module::{PamHandle, PamHooks};
-
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
+
 // use std::os::raw::c_char;
 use kanidm_unix_common::client_sync::call_daemon_blocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
+
+use crate::pam::constants::*;
+use crate::pam::conv::PamConv;
+use crate::pam::module::{PamHandle, PamHooks};
 
 #[derive(Debug)]
 struct Options {

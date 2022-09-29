@@ -1,6 +1,8 @@
 #![deny(warnings)]
 mod common;
-use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::str::FromStr;
 
 use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
 use kanidm_proto::oauth2::{
@@ -8,10 +10,9 @@ use kanidm_proto::oauth2::{
     AccessTokenResponse, AuthorisationResponse, OidcDiscoveryResponse,
 };
 use oauth2_ext::PkceCodeChallenge;
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::str::FromStr;
 use url::Url;
+
+use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
 
 macro_rules! assert_no_cache {
     ($response:expr) => {{

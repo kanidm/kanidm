@@ -1,9 +1,11 @@
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use kanidm_proto::v1::Filter as ProtoFilter;
+
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::FilterInvalid;
 use crate::prelude::*;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use std::collections::BTreeMap;
-use std::sync::Arc;
 
 lazy_static! {
     static ref CLASS_DYNGROUP: PartialValue = PartialValue::new_class("dyngroup");
@@ -361,8 +363,9 @@ impl DynGroup {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use kanidm_proto::v1::Filter as ProtoFilter;
+
+    use crate::prelude::*;
 
     const UUID_TEST_GROUP: Uuid = uuid::uuid!("7bfd9931-06c2-4608-8a46-78719bb746fe");
 

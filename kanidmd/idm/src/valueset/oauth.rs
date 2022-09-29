@@ -1,15 +1,11 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
-use std::collections::BTreeSet;
+use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::be::dbvalue::DbValueOauthScopeMapV1;
-use crate::valueset::uuid_to_proto_string;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
-
+use crate::prelude::*;
+use crate::schema::SchemaAttribute;
 use crate::value::OAUTHSCOPE_RE;
+use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {

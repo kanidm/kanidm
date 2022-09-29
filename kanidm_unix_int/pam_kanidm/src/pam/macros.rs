@@ -36,6 +36,7 @@ macro_rules! pam_hooks {
         mod pam_hooks_scope {
             use std::ffi::CStr;
             use std::os::raw::{c_char, c_int};
+
             use $crate::pam::constants::{PamFlag, PamResultCode};
             use $crate::pam::module::{PamHandle, PamHooks};
 

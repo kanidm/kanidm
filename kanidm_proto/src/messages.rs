@@ -1,8 +1,9 @@
 // User-facing output things
 
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
 
 /// This is used in user-facing CLIs to set the formatting for output,
 /// and defaults to text.

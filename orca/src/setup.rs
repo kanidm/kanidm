@@ -1,14 +1,14 @@
+use std::fs::File;
+use std::io::{BufReader, Read};
+use std::path::{Path, PathBuf};
+
+use uuid::Uuid;
+
 use crate::data::TestData;
 use crate::ds::DirectoryServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
 use crate::profile::Profile;
-use crate::TargetOpt;
-use crate::TargetServer;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::Read;
-use std::path::{Path, PathBuf};
-use uuid::Uuid;
+use crate::{TargetOpt, TargetServer};
 
 pub(crate) fn config(
     target: &TargetOpt,

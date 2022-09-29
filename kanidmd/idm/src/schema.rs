@@ -16,17 +16,17 @@
 //! [`Attributes`]: struct.SchemaAttribute.html
 //! [`Classes`]: struct.SchemaClass.html
 
+use std::collections::BTreeSet;
+
+use concread::cowcell::*;
+use hashbrown::{HashMap, HashSet};
+use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
+use tracing::trace;
+use uuid::Uuid;
+
 use crate::be::IdxKey;
 use crate::prelude::*;
 use crate::valueset::ValueSet;
-use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
-use tracing::trace;
-
-use hashbrown::{HashMap, HashSet};
-use std::collections::BTreeSet;
-use uuid::Uuid;
-
-use concread::cowcell::*;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -1624,11 +1624,13 @@ impl Schema {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
-    use crate::schema::SchemaTransaction;
-    use crate::schema::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
     use kanidm_proto::v1::{ConsistencyError, SchemaError};
     use uuid::Uuid;
+
+    use crate::prelude::*;
+    use crate::schema::{
+        IndexType, Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType,
+    };
 
     // use crate::proto_v1::Filter as ProtoFilter;
 

@@ -19,7 +19,6 @@ use kanidm_unix_common::client_sync::call_daemon_blocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
-
 use libnss::group::{Group, GroupHooks};
 use libnss::interop::Response;
 use libnss::passwd::{Passwd, PasswdHooks};

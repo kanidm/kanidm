@@ -1,19 +1,14 @@
-use crate::error::*;
-use crate::models;
-use crate::utils;
-
 use gloo::console;
-use yew::prelude::*;
-use yew_agent::{Bridge, Bridged};
-use yew_router::prelude::*;
-
 use kanidm_proto::v1::{
     CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType,
 };
-
+use uuid::Uuid;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
+use yew::prelude::*;
+use yew_agent::{Bridge, Bridged};
+use yew_router::prelude::*;
 
 use super::delete::DeleteApp;
 use super::eventbus::{EventBus, EventBusMsg};
@@ -21,8 +16,8 @@ use super::passkey::PasskeyModalApp;
 use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
-
-use uuid::Uuid;
+use crate::error::*;
+use crate::{models, utils};
 
 #[derive(PartialEq, Eq, Properties)]
 pub struct ModalProps {

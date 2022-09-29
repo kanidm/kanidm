@@ -10,10 +10,18 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+use std::error::Error;
+use std::fs::metadata;
+use std::io;
+use std::io::{Error as IoError, ErrorKind};
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Duration;
+
 use bytes::{BufMut, BytesMut};
 use clap::{Arg, ArgAction, Command};
-use futures::SinkExt;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use kanidm::utils::file_permissions_readonly;
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
@@ -22,22 +30,14 @@ use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 use libc::umask;
-use sketching::tracing_forest::{self, traits::*, util::*};
-use std::error::Error;
-use std::fs::metadata;
-use std::io;
-use std::io::Error as IoError;
-use std::io::ErrorKind;
-use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Duration;
+use sketching::tracing_forest::traits::*;
+use sketching::tracing_forest::util::*;
+use sketching::tracing_forest::{self};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::time;
-use tokio_util::codec::Framed;
-use tokio_util::codec::{Decoder, Encoder};
+use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 //=== the codec

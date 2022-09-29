@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -1068,8 +1068,7 @@ impl SingleStringRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::v1::Filter as ProtoFilter;
-    use crate::v1::{TotpAlgo, TotpSecret};
+    use crate::v1::{Filter as ProtoFilter, TotpAlgo, TotpSecret};
 
     #[test]
     fn test_protofilter_simple() {

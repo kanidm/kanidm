@@ -1,5 +1,3 @@
-use super::v1::{json_rest_event_get, json_rest_event_post};
-use super::{to_tide_response, AppState, RequestExtensions};
 use kanidm::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error,
@@ -8,6 +6,9 @@ use kanidm::prelude::*;
 use kanidm_proto::oauth2::AuthorisationResponse;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use serde::{Deserialize, Serialize};
+
+use super::v1::{json_rest_event_get, json_rest_event_post};
+use super::{to_tide_response, AppState, RequestExtensions};
 
 // == Oauth2 Configuration Endpoints ==
 

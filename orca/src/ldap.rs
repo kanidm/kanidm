@@ -1,18 +1,17 @@
+use core::pin::Pin;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
 
-use core::pin::Pin;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
+use ldap3_proto::proto::*;
+use ldap3_proto::LdapCodec;
 use openssl::ssl::{Ssl, SslConnector, SslMethod, SslVerifyMode};
 // use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_openssl::SslStream;
 use tokio_util::codec::Framed;
-
-use ldap3_proto::proto::*;
-use ldap3_proto::LdapCodec;
 
 struct LdapInner {
     pub framed: Framed<SslStream<TcpStream>, LdapCodec>,

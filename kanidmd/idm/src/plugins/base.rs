@@ -1,12 +1,13 @@
-use crate::plugins::Plugin;
-use hashbrown::HashSet;
 use std::collections::BTreeSet;
 use std::iter::once;
 
+use hashbrown::HashSet;
+use kanidm_proto::v1::{ConsistencyError, PluginError};
+
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::modify::Modify;
+use crate::plugins::Plugin;
 use crate::prelude::*;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
 
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
@@ -224,8 +225,9 @@ impl Plugin for Base {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use kanidm_proto::v1::PluginError;
+
+    use crate::prelude::*;
 
     const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "attrs": {

@@ -1,23 +1,22 @@
-use crate::common::prompt_for_username_get_username;
-use crate::{LoginOpt, LogoutOpt, SessionOpt};
+use std::collections::BTreeMap;
+use std::fs::{create_dir, File};
+use std::io::{self, BufReader, BufWriter, ErrorKind, Write};
+use std::path::PathBuf;
+use std::str::FromStr;
 
+use compact_jwt::JwsUnverified;
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
 #[cfg(target_family = "unix")]
 use libc::umask;
-use std::collections::BTreeMap;
-use std::fs::{create_dir, File};
-use std::io::ErrorKind;
-use std::io::{self, BufReader, BufWriter, Write};
-use std::path::PathBuf;
-use std::str::FromStr;
-use webauthn_authenticator_rs::{
-    prelude::RequestChallengeResponse, u2fhid::U2FHid, WebauthnAuthenticator,
-};
+use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
+use webauthn_authenticator_rs::u2fhid::U2FHid;
+use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-use dialoguer::{theme::ColorfulTheme, Select};
-
-use compact_jwt::JwsUnverified;
+use crate::common::prompt_for_username_get_username;
+use crate::{LoginOpt, LogoutOpt, SessionOpt};
 
 static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";

@@ -1,22 +1,28 @@
-use tracing::{error, info, instrument, trace};
-
+use std::convert::TryFrom;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::prelude::*;
+use kanidm_proto::v1::{
+    ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
+    Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse,
+    UnixGroupToken, UnixUserToken, WhoamiResponse,
+};
+use ldap3_proto::simple::*;
+use regex::Regex;
+use tracing::{error, info, instrument, trace};
+use uuid::Uuid;
 
 use crate::be::BackendTransaction;
-
 use crate::event::{
     AuthEvent, AuthResult, OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult,
 };
+use crate::filter::{Filter, FilterInvalid};
 use crate::idm::credupdatesession::CredentialUpdateSessionToken;
 use crate::idm::event::{
     CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
     UnixUserAuthEvent, UnixUserTokenEvent,
 };
-use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
-
-use crate::filter::{Filter, FilterInvalid};
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
@@ -25,20 +31,7 @@ use crate::idm::oauth2::{
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::idm::serviceaccount::ListApiTokenEvent;
 use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
-
-use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidm_proto::v1::{
-    ApiToken, AuthRequest, CURequest, CUSessionToken, CUStatus, CredentialStatus, SearchRequest,
-    SearchResponse, UnixGroupToken, UnixUserToken, WhoamiResponse,
-};
-
-use regex::Regex;
-use std::fs;
-use std::path::{Path, PathBuf};
-use uuid::Uuid;
-
-use ldap3_proto::simple::*;
-use std::convert::TryFrom;
+use crate::prelude::*;
 
 // ===========================================================
 

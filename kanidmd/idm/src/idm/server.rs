@@ -1,3 +1,36 @@
+// #[cfg(any(test,bench))]
+use core::task::{Context, Poll};
+use std::convert::TryFrom;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+
+use async_std::task;
+use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
+use concread::hashmap::HashMap;
+use concread::CowCell;
+use fernet::Fernet;
+// #[cfg(any(test,bench))]
+use futures::task as futures_task;
+use hashbrown::HashSet;
+use kanidm_proto::v1::{
+    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UnixGroupToken,
+    UnixUserToken, UserAuthToken,
+};
+use rand::prelude::*;
+use tokio::sync::mpsc::{
+    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
+};
+use tokio::sync::{Mutex, Semaphore};
+use tracing::trace;
+use url::Url;
+use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
+
+use super::delayed::BackupCodeRemoval;
+use super::event::ReadBackupCodeEvent;
+use crate::actors::v1_write::QueryServerWriteV1;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
@@ -5,6 +38,10 @@ use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
+use crate::idm::delayed::{
+    DelayedAction, Oauth2ConsentGrant, PasswordUpgrade, UnixPasswordUpgrade,
+    WebauthnCounterIncrement,
+};
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{
@@ -25,54 +62,6 @@ use crate::idm::AuthState;
 use crate::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-
-use crate::actors::v1_write::QueryServerWriteV1;
-use crate::idm::delayed::{
-    DelayedAction, Oauth2ConsentGrant, PasswordUpgrade, UnixPasswordUpgrade,
-    WebauthnCounterIncrement,
-};
-
-use hashbrown::HashSet;
-use kanidm_proto::v1::{
-    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UnixGroupToken,
-    UnixUserToken, UserAuthToken,
-};
-
-use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
-use fernet::Fernet;
-
-use tokio::sync::mpsc::{
-    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
-};
-use tokio::sync::Semaphore;
-
-use async_std::task;
-
-// #[cfg(any(test,bench))]
-use core::task::{Context, Poll};
-// #[cfg(any(test,bench))]
-use futures::task as futures_task;
-
-use concread::{
-    bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn},
-    cowcell::{CowCellReadTxn, CowCellWriteTxn},
-    hashmap::HashMap,
-    CowCell,
-};
-
-use rand::prelude::*;
-use std::convert::TryFrom;
-use std::str::FromStr;
-use std::{sync::Arc, time::Duration};
-use tokio::sync::Mutex;
-use url::Url;
-
-use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
-
-use super::delayed::BackupCodeRemoval;
-use super::event::ReadBackupCodeEvent;
-
-use tracing::trace;
 
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -2100,6 +2089,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+    use std::time::Duration;
+
+    use async_std::task;
+    use kanidm_proto::v1::{AuthAllowed, AuthMech, AuthType, OperationError};
+    use smartstring::alias::String as AttrString;
+    use uuid::Uuid;
+
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::{Credential, Password};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
@@ -2107,20 +2104,12 @@ mod tests {
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
+    use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
-    use kanidm_proto::v1::OperationError;
-    use kanidm_proto::v1::{AuthAllowed, AuthMech, AuthType};
-
-    use crate::idm::server::{IdmServer, IdmServerTransaction};
     // , IdmServerDelayed;
     use crate::utils::duration_from_epoch_now;
-    use async_std::task;
-    use smartstring::alias::String as AttrString;
-    use std::convert::TryFrom;
-    use std::time::Duration;
-    use uuid::Uuid;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";

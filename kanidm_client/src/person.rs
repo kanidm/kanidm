@@ -1,10 +1,8 @@
-use crate::ClientError;
-use crate::KanidmClient;
-use kanidm_proto::v1::AccountUnixExtend;
-use kanidm_proto::v1::CredentialStatus;
-use kanidm_proto::v1::Entry;
-use kanidm_proto::v1::SingleStringRequest;
 use std::collections::BTreeMap;
+
+use kanidm_proto::v1::{AccountUnixExtend, CredentialStatus, Entry, SingleStringRequest};
+
+use crate::{ClientError, KanidmClient};
 
 impl KanidmClient {
     pub async fn idm_person_account_list(&self) -> Result<Vec<Entry>, ClientError> {

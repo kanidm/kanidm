@@ -1,18 +1,15 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
+
+use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbvalue::{
     DbValueCredV1, DbValueDeviceKeyV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
 };
 use crate::credential::Credential;
-use crate::valueset::IntentTokenState;
-
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use crate::prelude::*;
+use crate::schema::SchemaAttribute;
+use crate::valueset::{DbValueSetV2, IntentTokenState, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {

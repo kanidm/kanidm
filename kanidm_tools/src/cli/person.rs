@@ -1,22 +1,25 @@
-use crate::password_prompt;
-use crate::{
-    AccountCredential, AccountRadius, AccountSsh, AccountValidity, PersonOpt, PersonPosix,
-};
-use dialoguer::{theme::ColorfulTheme, Select};
-use dialoguer::{Confirm, Input, Password};
+use std::fmt::{self, Debug};
+use std::str::FromStr;
+
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
-use qrcode::{render::unicode, QrCode};
-use std::fmt::{self, Debug};
-use std::str::FromStr;
+use qrcode::render::unicode;
+use qrcode::QrCode;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
+use webauthn_authenticator_rs::u2fhid::U2FHid;
+use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
+use crate::{
+    password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountValidity, PersonOpt,
+    PersonPosix,
+};
 
 impl PersonOpt {
     pub fn debug(&self) -> bool {

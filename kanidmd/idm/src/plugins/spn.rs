@@ -1,16 +1,17 @@
 // Generate and manage spn's for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use std::iter::once;
+use std::sync::Arc;
+
+// use crate::value::{PartialValue, Value};
+use kanidm_proto::v1::{ConsistencyError, OperationError};
 
 use crate::constants::UUID_DOMAIN_INFO;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, ModifyEvent};
+use crate::plugins::Plugin;
+use crate::prelude::*;
 use crate::value::PartialValue;
-// use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError};
-use std::iter::once;
-use std::sync::Arc;
 
 pub struct Spn {}
 

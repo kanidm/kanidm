@@ -1,11 +1,14 @@
-use crate::session::read_tokens;
-use crate::CommonOpt;
+use std::str::FromStr;
+
 use compact_jwt::{Jws, JwsUnverified};
-use dialoguer::{theme::ColorfulTheme, Select};
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Select;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::v1::UserAuthToken;
-use std::str::FromStr;
+
+use crate::session::read_tokens;
+use crate::CommonOpt;
 
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {

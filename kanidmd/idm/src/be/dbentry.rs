@@ -1,10 +1,12 @@
-use crate::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
-use crate::prelude::OperationError;
-use serde::{Deserialize, Serialize};
-use smartstring::alias::String as AttrString;
 use std::collections::BTreeMap;
 use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
+use smartstring::alias::String as AttrString;
 use uuid::Uuid;
+
+use crate::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
+use crate::prelude::OperationError;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbEntryV1 {

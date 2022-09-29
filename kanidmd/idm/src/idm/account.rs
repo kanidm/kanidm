@@ -1,29 +1,26 @@
-use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
+use std::collections::{BTreeMap, BTreeSet};
+use std::time::Duration;
 
-use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::UiHint;
-use kanidm_proto::v1::{AuthType, UserAuthToken};
-use kanidm_proto::v1::{BackupCodesView, CredentialStatus};
-
-use webauthn_rs::prelude::CredentialID;
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use kanidm_proto::v1::{
+    AuthType, BackupCodesView, CredentialStatus, OperationError, UiHint, UserAuthToken,
+};
+use time::OffsetDateTime;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    AuthenticationResult, CredentialID, DeviceKey as DeviceKeyV4, Passkey as PasskeyV4,
+};
 
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
-use crate::credential::{softlock::CredSoftLockPolicy, Credential};
+use crate::credential::softlock::CredSoftLockPolicy;
+use crate::credential::Credential;
+use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::idm::group::Group;
 use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::modify::{ModifyInvalid, ModifyList};
+use crate::prelude::*;
+use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, Value};
-
-use std::collections::{BTreeMap, BTreeSet};
-use std::time::Duration;
-use time::OffsetDateTime;
-use uuid::Uuid;
-use webauthn_rs::prelude::AuthenticationResult;
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
