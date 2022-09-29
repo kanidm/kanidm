@@ -7,7 +7,7 @@ import pytest
 from kanidm import KanidmClient
 from kanidm.types import KanidmClientConfig, RadiusTokenGroup
 
-from kanidm.radius import check_vlan
+from kanidm.radius.utils import check_vlan
 
 
 @pytest.mark.asyncio
