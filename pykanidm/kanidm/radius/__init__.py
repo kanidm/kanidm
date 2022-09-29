@@ -102,13 +102,13 @@ def check_vlan(
         # raise ValueError("Need to pass this a kanidm_client")
 
     for radius_group in kanidm_client.config.radius_groups:
-        group_name = group.spn.split("@")[0]
         logging.debug(
-            "Checking '%s' radius_group against group %s", radius_group, group_name
+            "Checking vlan group '%s' against user group %s", radius_group.spn, group.spn
         )
-        if radius_group.name == group_name:
+        if radius_group.spn == group.spn:
+            logging.info("returning new vlan: %s", radius_group.vlan)
             return radius_group.vlan
-    logging.debug("returning default vlan: %s", acc)
+    logging.debug("returning already set vlan: %s", acc)
     return acc
 
 

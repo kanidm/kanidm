@@ -93,7 +93,7 @@ class AuthStepPasswordResponse(BaseModel):
 class RadiusGroup(BaseModel):
     """group for kanidm radius"""
 
-    name: str
+    spn: str
     vlan: int
 
     @validator("vlan")
