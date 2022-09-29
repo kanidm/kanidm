@@ -45,7 +45,12 @@ if (CONFIG_PATH is None) or (not CONFIG_PATH.exists()):
 config = load_config(str(CONFIG_PATH))
 
 KANIDM_CLIENT = KanidmClient(config_file=CONFIG_PATH)
-
+if KANIDM_CLIENT.config.auth_token is None:
+    logging.error("You need to specify auth_token in the configuration file!")
+    sys.exit(1)
+if not KANIDM_CLIENT.check_token_valid():
+    logging.error("The authentication token was invalid, please ensure it's correct!")
+    sys.exit(1)
 
 def authenticate(
     acct: str,
