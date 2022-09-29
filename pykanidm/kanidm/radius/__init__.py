@@ -9,14 +9,13 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, Optional, Union
 
-import aiohttp
-
 from kanidm import KanidmClient
-from kanidm.types import AuthStepPasswordResponse, RadiusTokenGroup, RadiusTokenResponse
+from kanidm.types import AuthStepPasswordResponse, RadiusTokenResponse
 from kanidm.utils import load_config
 from kanidm.exceptions import NoMatchingEntries
 
 from . import radiusd
+from .utils import check_vlan
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -87,29 +86,6 @@ async def _get_radius_token(
     return response.data
 
 
-def check_vlan(
-    acc: int,
-    group: RadiusTokenGroup,
-    kanidm_client: Optional[KanidmClient] = None,
-) -> int:
-    """checks if a vlan is in the config,
-
-    acc is the default vlan
-    """
-    logging.debug("acc=%s", acc)
-    if kanidm_client is None:
-        kanidm_client = KANIDM_CLIENT
-        # raise ValueError("Need to pass this a kanidm_client")
-
-    for radius_group in kanidm_client.config.radius_groups:
-        logging.debug(
-            "Checking vlan group '%s' against user group %s", radius_group.spn, group.spn
-        )
-        if radius_group.spn == group.spn:
-            logging.info("returning new vlan: %s", radius_group.vlan)
-            return radius_group.vlan
-    logging.debug("returning already set vlan: %s", acc)
-    return acc
 
 
 def instantiate(_: Any) -> Any:
