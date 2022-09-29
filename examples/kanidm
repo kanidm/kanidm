@@ -15,8 +15,7 @@ uri = "https://idm.example.com"
 # ca_path = "/etc/kanidm/cacert.pem"
 
 # when configuring the FreeRADIUS server, set the service account details here
-username = "radius_service_account"
-password = "cr4bzr0ol"
+auth_token = "putyourtokenhere"
 
 radius_cert_path = "/certs/cert.pem" # the TLS certificate
 radius_key_path = "/certs/key.pem"   # the signing key for radius TLS

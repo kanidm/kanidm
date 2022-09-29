@@ -1,7 +1,8 @@
 """ type objects """
 # pylint: disable=too-few-public-methods
+# ^ disabling this because pydantic models don't have public methods
 
-from ipaddress import IPv4Address,IPv6Address, IPv6Network, IPv4Network
+from ipaddress import IPv4Address, IPv6Address, IPv6Network, IPv4Network
 import socket
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -9,13 +10,24 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field, validator
 import toml
 
+
 class ClientResponse(BaseModel):
-    """response from an API call"""
+    """response from an API call, includes the following fields:
+    content: Optional[str]
+    data: Optional[Dict[str, Any]]
+    headers: Dict[str, Any]
+    status_code: int
+    """
 
     content: Optional[str]
     data: Optional[Dict[str, Any]]
     headers: Dict[str, Any]
     status_code: int
+
+    class Config:
+        """Configuration"""
+
+        arbitrary_types_allowed = True
 
 
 class AuthInitResponse(BaseModel):
@@ -38,9 +50,7 @@ class AuthInitResponse(BaseModel):
 
 
 class AuthBeginResponse(BaseModel):
-    """Helps parse the response from the Auth 'begin' stage
-
-    """
+    """Helps parse the response from the Auth 'begin' stage"""
 
     class _AuthBeginState(BaseModel):
         """Helps parse the response from the Auth 'begin' stage
@@ -67,6 +77,7 @@ class AuthStepPasswordResponse(BaseModel):
 
     class _AuthStepPasswordState(BaseModel):
         """subclass to help parse the response from the auth 'step password' stage"""
+
         success: Optional[str]
 
     sessionid: str
@@ -93,6 +104,29 @@ class RadiusGroup(BaseModel):
         return value
 
 
+class RadiusTokenGroup(BaseModel):
+    """A single group"""
+
+    spn: str
+    uuid: str
+
+
+class RadiusTokenResponse(BaseModel):
+    """model capturing the groups in a response from a token request for a user"""
+
+    name: str
+    secret: str
+    displayname: Optional[str] = None
+    uuid: str
+
+    groups: List[RadiusTokenGroup]
+
+    class Config:
+        """config for RadiusTokenGroupList"""
+
+        arbitrary_types_allowed = True
+
+
 class RadiusClient(BaseModel):
     """Client config for Kanidm FreeRADIUS integration,
     this is a pydantic model.
@@ -110,7 +144,7 @@ class RadiusClient(BaseModel):
 
     name: str
     ipaddr: str
-    secret: str
+    secret: str  # TODO: this should probably be renamed to token
 
     @validator("ipaddr")
     def validate_ipaddr(cls, value: str) -> str:
@@ -125,7 +159,10 @@ class RadiusClient(BaseModel):
             socket.gethostbyname(value)
             return value
         except socket.gaierror as error:
-            raise ValueError(f"ipaddr value ({value}) wasn't an IP Address, Network or valid hostname: {error}")
+            raise ValueError(
+                f"ipaddr value ({value}) wasn't an IP Address, Network or valid hostname: {error}"
+            )
+
 
 class KanidmClientConfig(BaseModel):
     """Configuration file definition for Kanidm client config
@@ -135,6 +172,8 @@ class KanidmClientConfig(BaseModel):
     """
 
     uri: Optional[str] = None
+
+    auth_token: Optional[str] = None
 
     verify_hostnames: bool = True
     verify_certificate: bool = True

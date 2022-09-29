@@ -19,6 +19,7 @@ echo "Starting the dev container..."
 docker run --rm -it \
     --network host \
     --name radiusd \
-    -v /tmp/kanidm/:/certs/ \
+    -v /tmp/kanidm/:/data/ \
+    -v /tmp/kanidm/:/tmp/kanidm/ \
     -v "${CONFIG_FILE}:/data/kanidm" \
     ${IMAGE} $@

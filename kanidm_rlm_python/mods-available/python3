@@ -15,7 +15,7 @@ python3 {
 	#
 	python_path="/usr/lib64/python3.8:/usr/lib/python3.8:/usr/lib/python3.8/site-packages:/usr/lib64/python3.8/site-packages:/usr/lib64/python3.8/lib-dynload:/usr/local/lib/python3.8/site-packages:/etc/raddb/mods-config/python3/"
 
-	module = kanidmradius
+	module = "kanidm.radius"
 	# python_path = ${modconfdir}/${.:name}
 
 	# Pass all VPS lists as a 6-tuple to the callbacks
