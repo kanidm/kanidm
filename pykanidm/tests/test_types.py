@@ -33,13 +33,13 @@ def test_radiusgroup_vlan_zero() -> None:
 
 def test_radiusgroup_vlan_4096() -> None:
     """tests RadiusGroup's vlan validator"""
-    assert RadiusGroup(vlan=4096, name="crabzrool")
+    assert RadiusGroup(vlan=4096, spn="crabzrool@foo")
 
 
 def test_radiusgroup_vlan_no_name() -> None:
     """tests RadiusGroup's vlan validator"""
     with pytest.raises(
-        pydantic.error_wrappers.ValidationError, match="name\n.*field required"
+        pydantic.error_wrappers.ValidationError, match="spn\n.*field required"
     ):
         RadiusGroup(
             vlan=4096,

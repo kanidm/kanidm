@@ -18,8 +18,8 @@ async def test_check_vlan(event_loop: Any) -> None:
         """
     uri='https://kanidm.example.com'
     radius_groups = [
-        { name = "crabz", "vlan" = 1234 },
-        { name = "hello world", "vlan" = 12345 },
+        { spn = "crabz@example.com", "vlan" = 1234 },
+        { spn = "hello@world", "vlan" = 12345 },
     ]
     """
     )
@@ -34,7 +34,7 @@ async def test_check_vlan(event_loop: Any) -> None:
     assert (
         check_vlan(
             acc=12345678,
-            group=RadiusTokenGroup(spn="crabz@domain.com", uuid="crabz"),
+            group=RadiusTokenGroup(spn="crabz@example.com", uuid="crabz"),
             kanidm_client=kanidm_client,
         )
         == 1234
