@@ -165,6 +165,7 @@ class KanidmClient:
                 elif "authorization" not in headers:
                     logging.debug("Setting auth headers as Authorization not in keys")
                     headers.update(self._token_headers)
+            logging.debug("headers --> %s" % headers)
             logging.debug("_call method=%s to %s", method, self.get_path_uri(path))
             async with session.request(
                 method=method,

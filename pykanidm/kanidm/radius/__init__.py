@@ -153,7 +153,7 @@ def authorize(
         tok = RadiusTokenResponse.parse_obj(
             loop.run_until_complete(_get_radius_token(username=user_id))
         )
-        logging.debug("radius_token: %s", tok)
+        logging.debug("radius information token: %s", tok)
     except NoMatchingEntries as error_message:
         logging.info(
             "kanidm RLM_MODULE_NOTFOUND after NoMatchingEntries for user_id %s: %s",
@@ -164,8 +164,8 @@ def authorize(
     except Exception as error_message:  # pylint: disable=broad-except
         logging.error("kanidm exception: %s, %s", type(error_message), error_message)
     if tok is None:
-        logging.info("kanidm RLM_MODULE_NOTFOUND due to no auth token")
-        return radiusd.RLM_MODULE_NOTFOUND
+        logging.info("kanidm RLM_MODULE_REJECT - unable to retrieve radius information token")
+        return radiusd.RLM_MODULE_REJECT
 
     # Get values out of the token
     name = tok.name
@@ -175,13 +175,12 @@ def authorize(
     # Are they in the required group?
     req_sat = False
     for group in tok.groups:
-        group_name = group.spn.split("@")[0]
-        if group_name in kanidm_client.config.radius_required_groups:
+        if group.uuid in kanidm_client.config.radius_required_groups or group.spn in kanidm_client.config.radius_required_groups:
             req_sat = True
-            logging.info("User %s has a required group (%s)", name, group_name)
+            logging.info("User %s has a required group (%s)", name, group.spn)
     if req_sat is not True:
         logging.info("User %s doesn't have a group from the required list.", name)
-        return radiusd.RLM_MODULE_NOTFOUND
+        return radiusd.RLM_MODULE_REJECT
 
     # look up them in config for group vlan if possible.
     # TODO: work out the typing on this, WTF.
