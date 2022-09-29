@@ -45,6 +45,9 @@ if (CONFIG_PATH is None) or (not CONFIG_PATH.exists()):
 config = load_config(str(CONFIG_PATH))
 
 KANIDM_CLIENT = KanidmClient(config_file=CONFIG_PATH)
+if KANIDM_CLIENT.config.auth_token is None:
+    logging.error("You need to specify auth_token in the configuration file!")
+    sys.exit(1)
 
 
 def authenticate(
@@ -59,7 +62,7 @@ def authenticate(
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(kanidm_client.check_token_valid())
     except Exception as error_message:  # pylint: disable=broad-except
-        logging.error("Failed to run kanidm.authenticate_password: %s", error_message)
+        logging.error("Failed to run kanidm.check_token_valid: %s", error_message)
     return radiusd.RLM_MODULE_FAIL
 
 
