@@ -33,8 +33,8 @@ use users::{get_effective_gid, get_effective_uid};
 struct TaskCodec;
 
 impl Decoder for TaskCodec {
-    type Item = TaskRequest;
     type Error = io::Error;
+    type Item = TaskRequest;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match serde_json::from_slice::<TaskRequest>(&src) {

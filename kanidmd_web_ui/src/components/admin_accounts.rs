@@ -478,6 +478,7 @@ pub enum AdminViewServiceAccountMsg {
 impl Component for AdminViewServiceAccount {
     type Message = AdminViewServiceAccountMsg;
     type Properties = AdminViewAccountProps;
+
     fn create(ctx: &Context<Self>) -> Self {
         let token = match models::get_bearer_token() {
             Some(value) => value,

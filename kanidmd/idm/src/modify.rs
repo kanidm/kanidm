@@ -69,8 +69,8 @@ pub struct ModifyList<VALID> {
 }
 
 impl<'a> IntoIterator for &'a ModifyList<ModifyValid> {
-    type Item = &'a Modify;
     type IntoIter = slice::Iter<'a, Modify>;
+    type Item = &'a Modify;
 
     fn into_iter(self) -> Self::IntoIter {
         self.mods.iter()

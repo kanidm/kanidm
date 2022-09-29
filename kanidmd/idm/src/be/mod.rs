@@ -873,6 +873,7 @@ pub trait BackendTransaction {
 
 impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     type IdlLayerType = IdlArcSqliteReadTransaction<'a>;
+    type RuvType = ReplicationUpdateVectorReadTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut IdlArcSqliteReadTransaction<'a> {
@@ -889,8 +890,6 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
         // conflicting during this cache operation.
         unsafe { &mut (*self.idlayer.get()) }
     }
-
-    type RuvType = ReplicationUpdateVectorReadTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_ruv(&self) -> &mut ReplicationUpdateVectorReadTransaction<'a> {
@@ -925,13 +924,12 @@ impl<'a> BackendReadTransaction<'a> {
 
 impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
     type IdlLayerType = IdlArcSqliteWriteTransaction<'a>;
+    type RuvType = ReplicationUpdateVectorWriteTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut IdlArcSqliteWriteTransaction<'a> {
         unsafe { &mut (*self.idlayer.get()) }
     }
-
-    type RuvType = ReplicationUpdateVectorWriteTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_ruv(&self) -> &mut ReplicationUpdateVectorWriteTransaction<'a> {

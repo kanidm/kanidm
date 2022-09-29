@@ -343,7 +343,7 @@ impl QueryServerReadV1 {
                 Some(e) if entries.is_empty() => {
                     WhoamiResult::new(&idms_prox_read.qs_read, &e).map(WhoamiResult::response)
                 }
-                Some(_) => Err(OperationError::InvalidState), // Somehow matched multiple entries...
+                Some(_) => Err(OperationError::InvalidState), /* Somehow matched multiple entries... */
                 _ => Err(OperationError::NoMatchingEntries),
             }
         });

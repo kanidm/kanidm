@@ -17,10 +17,10 @@ pub struct EventBus {
 }
 
 impl Agent for EventBus {
-    type Reach = Context<Self>;
-    type Message = ();
     type Input = EventBusMsg;
+    type Message = ();
     type Output = EventBusMsg;
+    type Reach = Context<Self>;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {

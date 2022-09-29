@@ -403,7 +403,9 @@ impl CredHandler {
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
         }
-    } // end CredHandler::PasswordMfa
+    }
+
+    // end CredHandler::PasswordMfa
 
     /// Validate a webauthn authentication attempt
     pub fn validate_webauthn(

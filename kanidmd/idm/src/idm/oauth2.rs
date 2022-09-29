@@ -3,7 +3,6 @@
 //! This contains the in memory and loaded set of active oauth2 resource server
 //! integrations, which are then able to be used an accessed from the IDM layer
 //! for operations involving oauth2 authentication processing.
-//!
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;

@@ -217,7 +217,6 @@ pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
 /// [`schema`]: ../schema/index.html
 /// [`access`]: ../access/index.html
 /// [`event`]: ../event/index.html
-///
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,

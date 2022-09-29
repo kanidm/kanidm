@@ -12,7 +12,6 @@
 //!   search.
 //! - the ability to turn an entry into a partial-entry for results send
 //!   requirements (also search).
-//!
 
 // use concread::collections::bptree::*;
 // use hashbrown::HashSet;

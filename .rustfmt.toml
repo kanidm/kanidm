@@ -1,6 +1,11 @@
 
 reorder_imports = true
+
+## Requires nightly
 # imports_granularity = "Module"
 # group_imports = "StdExternalCrate"
+# format_code_in_doc_comments = true
+# format_macro_bodies = true
+# reorder_impl_items = true
 
 

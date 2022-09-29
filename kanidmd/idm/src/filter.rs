@@ -948,7 +948,6 @@ impl PartialOrd for FilterResolved {
 
 impl Ord for FilterResolved {
     /// Ordering of filters for optimisation and subsequent dead term elimination.
-    ///
     fn cmp(&self, rhs: &FilterResolved) -> Ordering {
         let left_slopey = self.get_slopeyness_factor();
         let right_slopey = rhs.get_slopeyness_factor();

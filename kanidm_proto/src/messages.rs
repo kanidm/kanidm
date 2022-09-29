@@ -22,6 +22,7 @@ impl Default for ConsoleOutputMode {
 
 impl FromStr for ConsoleOutputMode {
     type Err = &'static str;
+
     /// This can be safely unwrap'd because it'll always return a default of text
     /// ```
     /// use kanidm_proto::messages::ConsoleOutputMode;
@@ -142,7 +143,6 @@ impl Default for AccountChangeMessage {
 /// msg.output_mode = ConsoleOutputMode::JSON;
 /// let expected_result = "{\"action\":\"cake_eating\",\"result\":\"It was amazing\",\"status\":\"success\",\"src_user\":\"Kani\",\"dest_user\":\"Krabby\"}";
 /// assert_eq!(format!("{}", msg), expected_result);
-///
 /// ```
 impl fmt::Display for AccountChangeMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -150,7 +150,7 @@ impl fmt::Display for AccountChangeMessage {
             ConsoleOutputMode::JSON => write!(
                 f,
                 "{}",
-                serde_json::to_string(self).unwrap_or(format!("{:?}", self)) // if it fails to JSON serialize, just debug-dump it
+                serde_json::to_string(self).unwrap_or(format!("{:?}", self)) /* if it fails to JSON serialize, just debug-dump it */
             ),
             ConsoleOutputMode::Text => write!(
                 f,
@@ -183,20 +183,20 @@ impl Default for BasicMessage {
 
 /// This outputs in either JSON or Text depending on the output_mode setting
 /// ```
-/// use std::fmt::format;
 /// use kanidm_proto::messages::*;
+/// use std::fmt::format;
 /// let mut msg = BasicMessage::default();
-/// msg.action=String::from("cake_eating");
-/// msg.result=String::from("It was amazing");
+/// msg.action = String::from("cake_eating");
+/// msg.result = String::from("It was amazing");
 /// assert_eq!(msg.status, MessageStatus::Success);
 ///
 /// let expected_result = "success - cake_eating: It was amazing";
 /// assert_eq!(format!("{}", msg), expected_result);
 ///
 /// msg.output_mode = ConsoleOutputMode::JSON;
-/// let expected_result = "{\"action\":\"cake_eating\",\"result\":\"It was amazing\",\"status\":\"success\"}";
+/// let expected_result =
+///     "{\"action\":\"cake_eating\",\"result\":\"It was amazing\",\"status\":\"success\"}";
 /// assert_eq!(format!("{}", msg), expected_result);
-///
 /// ```
 impl fmt::Display for BasicMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -204,7 +204,7 @@ impl fmt::Display for BasicMessage {
             ConsoleOutputMode::JSON => write!(
                 f,
                 "{}",
-                serde_json::to_string(self).unwrap_or(format!("{:?}", self)) // if it fails to JSON serialize, just debug-dump it
+                serde_json::to_string(self).unwrap_or(format!("{:?}", self)) /* if it fails to JSON serialize, just debug-dump it */
             ),
             ConsoleOutputMode::Text => {
                 write!(f, "{} - {}: {}", self.status, self.action, self.result,)

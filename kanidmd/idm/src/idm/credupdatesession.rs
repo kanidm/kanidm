@@ -147,7 +147,6 @@ pub struct CredentialUpdateSessionStatus {
     // The target user's display name
     displayname: String,
     // ttl: Duration,
-    //
     can_commit: bool,
     primary: Option<CredentialDetail>,
     passkeys: Vec<PasskeyDetail>,

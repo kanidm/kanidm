@@ -231,12 +231,15 @@ impl BackupCodes {
     pub fn new(code_set: HashSet<String>) -> Self {
         BackupCodes { code_set }
     }
+
     pub fn verify(&self, code_chal: &str) -> bool {
         self.code_set.contains(code_chal)
     }
+
     pub fn remove(&mut self, code_chal: &str) -> bool {
         self.code_set.remove(code_chal)
     }
+
     pub fn to_dbbackupcodev1(&self) -> DbBackupCodeV1 {
         DbBackupCodeV1 {
             code_set: self.code_set.clone(),

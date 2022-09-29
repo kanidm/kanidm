@@ -47,8 +47,8 @@ type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
 struct ClientCodec;
 
 impl Decoder for ClientCodec {
-    type Item = ClientRequest;
     type Error = io::Error;
+    type Item = ClientRequest;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match serde_json::from_slice::<ClientRequest>(&src) {
@@ -85,8 +85,8 @@ impl ClientCodec {
 struct TaskCodec;
 
 impl Decoder for TaskCodec {
-    type Item = TaskResponse;
     type Error = io::Error;
+    type Item = TaskResponse;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match serde_json::from_slice::<TaskResponse>(&src) {

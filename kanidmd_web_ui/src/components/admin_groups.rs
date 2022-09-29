@@ -283,7 +283,6 @@ pub struct AdminViewGroup {
 
 impl Component for AdminViewGroup {
     type Message = AdminViewGroupMsg;
-
     type Properties = AdminViewGroupProps;
 
     fn create(ctx: &Context<Self>) -> Self {

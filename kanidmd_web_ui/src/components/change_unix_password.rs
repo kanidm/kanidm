@@ -84,6 +84,7 @@ impl Component for ChangeUnixPassword {
             pw_check_val: "".to_string(),
         }
     }
+
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Submit(data) => {
@@ -302,6 +303,7 @@ impl ChangeUnixPassword {
             Ok(Msg::Error { emsg, kopid })
         }
     }
+
     fn reset(&mut self) {
         self.pw_val = "".to_string();
         self.pw_check_val = "".to_string();

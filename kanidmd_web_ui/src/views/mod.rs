@@ -340,6 +340,7 @@ impl ViewsApp {
         </>
           }
     }
+
     async fn check_token_valid(token: String) -> Result<ViewsMsg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");

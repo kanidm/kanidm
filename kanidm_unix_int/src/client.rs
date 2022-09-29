@@ -13,8 +13,8 @@ use crate::unix_proto::{ClientRequest, ClientResponse};
 struct ClientCodec;
 
 impl Decoder for ClientCodec {
-    type Item = ClientResponse;
     type Error = IoError;
+    type Item = ClientResponse;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match serde_json::from_slice::<ClientResponse>(&src) {

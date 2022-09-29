@@ -808,19 +808,17 @@ pub trait QueryServerTransaction<'a> {
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
 impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
+    type AccessControlsTransactionType = AccessControlsReadTransaction<'a>;
     type BackendTransactionType = BackendReadTransaction<'a>;
+    type SchemaTransactionType = SchemaReadTransaction;
 
     fn get_be_txn(&self) -> &BackendReadTransaction<'a> {
         &self.be_txn
     }
 
-    type SchemaTransactionType = SchemaReadTransaction;
-
     fn get_schema(&self) -> &SchemaReadTransaction {
         &self.schema
     }
-
-    type AccessControlsTransactionType = AccessControlsReadTransaction<'a>;
 
     fn get_accesscontrols(&self) -> &AccessControlsReadTransaction<'a> {
         &self.accesscontrols
@@ -919,19 +917,17 @@ impl<'a> QueryServerReadTransaction<'a> {
 }
 
 impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
+    type AccessControlsTransactionType = AccessControlsWriteTransaction<'a>;
     type BackendTransactionType = BackendWriteTransaction<'a>;
+    type SchemaTransactionType = SchemaWriteTransaction<'a>;
 
     fn get_be_txn(&self) -> &BackendWriteTransaction<'a> {
         &self.be_txn
     }
 
-    type SchemaTransactionType = SchemaWriteTransaction<'a>;
-
     fn get_schema(&self) -> &SchemaWriteTransaction<'a> {
         &self.schema
     }
-
-    type AccessControlsTransactionType = AccessControlsWriteTransaction<'a>;
 
     fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
         &self.accesscontrols

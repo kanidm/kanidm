@@ -1761,6 +1761,7 @@ impl KanidmClient {
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
     }
+
     pub async fn idm_oauth2_rs_prefer_spn_username(&self, id: &str) -> Result<(), ClientError> {
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),
