@@ -286,6 +286,7 @@ impl IdmServer {
     }
 
     /// Read from the database, in a transaction.
+    #[instrument(level = "debug", skip_all)]
     pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
@@ -300,6 +301,7 @@ impl IdmServer {
         task::block_on(self.proxy_write_async(ts))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn proxy_write_async(&self, ts: Duration) -> IdmServerProxyWriteTransaction<'_> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
