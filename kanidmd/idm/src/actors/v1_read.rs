@@ -86,35 +86,25 @@ impl QueryServerReadV1 {
         // Begin a read
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        // ! NOTICE: The inner function contains a short-circuiting `return`, which is only exits the closure.
-        // ! If we removed the `lperf_op_segment` and kept the inside, this would short circuit before logging `audit`.
-        // ! However, since we immediately return `res` after logging `audit`, and we should be removing the lperf stuff
-        // ! and the logging of `audit` at the same time, it is ok if the inner code short circuits the whole function because
-        // ! there is no work to be done afterwards.
-        // ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block
-        // ! in order to not short-circuit the entire function.
-        let res = spanned!("actors::v1_read::handle<SearchMessage>", {
-            let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                .map_err(|e| {
-                    admin_error!(?e, "Invalid identity");
-                    e
-                })?;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(?e, "Invalid identity");
+                e
+            })?;
 
-            // Make an event from the request
-            let search =
-                SearchEvent::from_message(ident, &req, &idms_prox_read.qs_read).map_err(|e| {
-                    admin_error!(?e, "Failed to begin search");
-                    e
-                })?;
+        // Make an event from the request
+        let search =
+            SearchEvent::from_message(ident, &req, &idms_prox_read.qs_read).map_err(|e| {
+                admin_error!(?e, "Failed to begin search");
+                e
+            })?;
 
-            trace!(?search, "Begin event");
+        trace!(?search, "Begin event");
 
-            let entries = idms_prox_read.qs_read.search_ext(&search)?;
+        let entries = idms_prox_read.qs_read.search_ext(&search)?;
 
-            SearchResult::new(&idms_prox_read.qs_read, &entries).map(SearchResult::response)
-        });
-        res
+        SearchResult::new(&idms_prox_read.qs_read, &entries).map(SearchResult::response)
     }
 
     #[instrument(
@@ -181,30 +171,28 @@ impl QueryServerReadV1 {
         let timestamp = now.format(time::Format::Rfc3339);
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
-        match Path::new(&dest_file).exists() {
-            true => {
-                error!(
-                    "Online backup file {} already exists, will not owerwrite it.",
-                    dest_file
-                );
-                return Err(OperationError::InvalidState);
-            }
-            false => {
-                let idms_prox_read = self.idms.proxy_read_async().await;
-                spanned!("actors::v1_read::handle<OnlineBackupEvent>", {
-                    idms_prox_read
-                        .qs_read
-                        .get_be_txn()
-                        .backup(&dest_file)
-                        .map(|()| {
-                            info!("Online backup created {} successfully", dest_file);
-                        })
-                        .map_err(|e| {
-                            error!("Online backup failed to create {}: {:?}", dest_file, e);
-                            OperationError::InvalidState
-                        })?;
-                });
-            }
+        if Path::new(&dest_file).exists() {
+            error!(
+                "Online backup file {} already exists, will not overwrite it.",
+                dest_file
+            );
+            return Err(OperationError::InvalidState);
+        }
+
+        // Scope to limit the read txn.
+        {
+            let idms_prox_read = self.idms.proxy_read_async().await;
+            idms_prox_read
+                .qs_read
+                .get_be_txn()
+                .backup(&dest_file)
+                .map(|()| {
+                    info!("Online backup created {} successfully", dest_file);
+                })
+                .map_err(|e| {
+                    error!("Online backup failed to create {}: {:?}", dest_file, e);
+                    OperationError::InvalidState
+                })?;
         }
 
         // pattern to find automatically generated backup files
@@ -307,53 +295,42 @@ impl QueryServerReadV1 {
         // Begin a read
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        // ! NOTICE: The inner function contains a short-circuiting `return`, which is only exits the closure.
-        // ! If we removed the `lperf_op_segment` and kept the inside, this would short circuit before logging `audit`.
-        // ! However, since we immediately return `res` after logging `audit`, and we should be removing the lperf stuff
-        // ! and the logging of `audit` at the same time, it is ok if the inner code short circuits the whole function because
-        // ! there is no work to be done afterwards.
-        // ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block
-        // ! in order to not short-circuit the entire function.
-        let res = spanned!("actors::v1_read::handle<WhoamiMessage>", {
-            // Make an event from the whoami request. This will process the event and
-            // generate a selfuuid search.
-            //
-            // This current handles the unauthenticated check, and will
-            // trigger the failure, but if we can manage to work out async
-            // then move this to core.rs, and don't allow Option<UAT> to get
-            // this far.
-            let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                .map_err(|e| {
-                    admin_error!(?e, "Invalid identity");
-                    e
-                })?;
+        // Make an event from the whoami request. This will process the event and
+        // generate a selfuuid search.
+        //
+        // This current handles the unauthenticated check, and will
+        // trigger the failure, but if we can manage to work out async
+        // then move this to core.rs, and don't allow Option<UAT> to get
+        // this far.
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(?e, "Invalid identity");
+                e
+            })?;
 
-            let srch =
-                SearchEvent::from_whoami_request(ident, &idms_prox_read.qs_read).map_err(|e| {
-                    admin_error!(?e, "Failed to begin whoami");
-                    e
-                })?;
+        let srch =
+            SearchEvent::from_whoami_request(ident, &idms_prox_read.qs_read).map_err(|e| {
+                admin_error!(?e, "Failed to begin whoami");
+                e
+            })?;
 
-            trace!(search = ?srch, "Begin event");
+        trace!(search = ?srch, "Begin event");
 
-            let mut entries = idms_prox_read.qs_read.search_ext(&srch)?;
+        let mut entries = idms_prox_read.qs_read.search_ext(&srch)?;
 
-            match entries.pop() {
-                Some(e) if entries.is_empty() => {
-                    WhoamiResult::new(&idms_prox_read.qs_read, &e).map(WhoamiResult::response)
-                }
-                Some(_) => Err(OperationError::InvalidState), /* Somehow matched multiple entries... */
-                _ => Err(OperationError::NoMatchingEntries),
+        match entries.pop() {
+            Some(e) if entries.is_empty() => {
+                WhoamiResult::new(&idms_prox_read.qs_read, &e).map(WhoamiResult::response)
             }
-        });
-        res
+            Some(_) => Err(OperationError::InvalidState), /* Somehow matched multiple entries... */
+            _ => Err(OperationError::NoMatchingEntries),
+        }
     }
 
     #[instrument(
         level = "info",
-        name = "search2",
-        skip(self, uat, filter, attrs, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_internalsearch(
@@ -365,42 +342,38 @@ impl QueryServerReadV1 {
     ) -> Result<Vec<ProtoEntry>, OperationError> {
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = spanned!("actors::v1_read::handle<InternalSearchMessage>", {
-            let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                .map_err(|e| {
-                    admin_error!("Invalid identity: {:?}", e);
-                    e
-                })?;
-            // Make an event from the request
-            let srch = match SearchEvent::from_internal_message(
-                ident,
-                &filter,
-                attrs.as_deref(),
-                &idms_prox_read.qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    admin_error!("Failed to begin internal api search: {:?}", e);
-                    return Err(e);
-                }
-            };
-
-            trace!(?srch, "Begin event");
-
-            match idms_prox_read.qs_read.search_ext(&srch) {
-                Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
-                    .map(|ok_sr| ok_sr.into_proto_array()),
-                Err(e) => Err(e),
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+        // Make an event from the request
+        let srch = match SearchEvent::from_internal_message(
+            ident,
+            &filter,
+            attrs.as_deref(),
+            &idms_prox_read.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin internal api search: {:?}", e);
+                return Err(e);
             }
-        });
-        res
+        };
+
+        trace!(?srch, "Begin event");
+
+        match idms_prox_read.qs_read.search_ext(&srch) {
+            Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
+                .map(|ok_sr| ok_sr.into_proto_array()),
+            Err(e) => Err(e),
+        }
     }
 
     #[instrument(
         level = "info",
-        name = "search_recycled",
-        skip(self, uat, filter, attrs, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_internalsearchrecycled(
@@ -413,42 +386,38 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = spanned!("actors::v1_read::handle<InternalSearchRecycledMessage>", {
-            let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                .map_err(|e| {
-                    admin_error!("Invalid identity: {:?}", e);
-                    e
-                })?;
-            // Make an event from the request
-            let srch = match SearchEvent::from_internal_recycle_message(
-                ident,
-                &filter,
-                attrs.as_deref(),
-                &idms_prox_read.qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    admin_error!("Failed to begin recycled search: {:?}", e);
-                    return Err(e);
-                }
-            };
-
-            trace!(?srch, "Begin event");
-
-            match idms_prox_read.qs_read.search_ext(&srch) {
-                Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
-                    .map(|ok_sr| ok_sr.into_proto_array()),
-                Err(e) => Err(e),
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+        // Make an event from the request
+        let srch = match SearchEvent::from_internal_recycle_message(
+            ident,
+            &filter,
+            attrs.as_deref(),
+            &idms_prox_read.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin recycled search: {:?}", e);
+                return Err(e);
             }
-        });
-        res
+        };
+
+        trace!(?srch, "Begin event");
+
+        match idms_prox_read.qs_read.search_ext(&srch) {
+            Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
+                .map(|ok_sr| ok_sr.into_proto_array()),
+            Err(e) => Err(e),
+        }
     }
 
     #[instrument(
         level = "info",
-        name = "radius_read",
-        skip(self, uat, uuid_or_name, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_internalradiusread(
@@ -459,60 +428,56 @@ impl QueryServerReadV1 {
     ) -> Result<Option<String>, OperationError> {
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = spanned!("actors::v1_read::handle<InternalRadiusReadMessage>", {
-            let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                .map_err(|e| {
-                    admin_error!("Invalid identity: {:?}", e);
-                    e
-                })?;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
 
-            let target_uuid = idms_prox_read
-                .qs_read
-                .name_to_uuid(uuid_or_name.as_str())
-                .map_err(|e| {
-                    admin_error!("Error resolving id to target");
-                    e
-                })?;
+        let target_uuid = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!("Error resolving id to target");
+                e
+            })?;
 
-            // Make an event from the request
-            let srch = match SearchEvent::from_target_uuid_request(
-                ident,
-                target_uuid,
-                &idms_prox_read.qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    admin_error!("Failed to begin radius read: {:?}", e);
-                    return Err(e);
-                }
-            };
-
-            trace!(?srch, "Begin event");
-
-            // We have to use search_ext to guarantee acs was applied.
-            match idms_prox_read.qs_read.search_ext(&srch) {
-                Ok(mut entries) => {
-                    let r = entries
-                        .pop()
-                        // From the entry, turn it into the value
-                        .and_then(|entry| {
-                            entry
-                                .get_ava_single("radius_secret")
-                                .and_then(|v| v.get_secret_str().map(str::to_string))
-                        });
-                    Ok(r)
-                }
-                Err(e) => Err(e),
+        // Make an event from the request
+        let srch = match SearchEvent::from_target_uuid_request(
+            ident,
+            target_uuid,
+            &idms_prox_read.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin radius read: {:?}", e);
+                return Err(e);
             }
-        });
-        res
+        };
+
+        trace!(?srch, "Begin event");
+
+        // We have to use search_ext to guarantee acs was applied.
+        match idms_prox_read.qs_read.search_ext(&srch) {
+            Ok(mut entries) => {
+                let r = entries
+                    .pop()
+                    // From the entry, turn it into the value
+                    .and_then(|entry| {
+                        entry
+                            .get_ava_single("radius_secret")
+                            .and_then(|v| v.get_secret_str().map(str::to_string))
+                    });
+                Ok(r)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     #[instrument(
         level = "info",
-        name = "radius_token_read",
-        skip(self, uat, uuid_or_name, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_internalradiustokenread(
@@ -524,46 +489,42 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = spanned!("actors::v1_read::handle<InternalRadiusTokenReadMessage>", {
-            let ident = idms_prox_read
-                .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                .map_err(|e| {
-                    admin_error!("Invalid identity: {:?}", e);
-                    e
-                })?;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
 
-            let target_uuid = idms_prox_read
-                .qs_read
-                .name_to_uuid(uuid_or_name.as_str())
-                .map_err(|e| {
-                    admin_error!("Error resolving id to target");
-                    e
-                })?;
+        let target_uuid = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!("Error resolving id to target");
+                e
+            })?;
 
-            // Make an event from the request
-            let rate = match RadiusAuthTokenEvent::from_parts(
-                // &idms_prox_read.qs_read,
-                ident,
-                target_uuid,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    admin_error!("Failed to begin radius token read: {:?}", e);
-                    return Err(e);
-                }
-            };
+        // Make an event from the request
+        let rate = match RadiusAuthTokenEvent::from_parts(
+            // &idms_prox_read.qs_read,
+            ident,
+            target_uuid,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin radius token read: {:?}", e);
+                return Err(e);
+            }
+        };
 
-            trace!(?rate, "Begin event");
+        trace!(?rate, "Begin event");
 
-            idms_prox_read.get_radiusauthtoken(&rate, ct)
-        });
-        res
+        idms_prox_read.get_radiusauthtoken(&rate, ct)
     }
 
     #[instrument(
         level = "info",
-        name = "unix_user_token_read",
-        skip(self, uat, uuid_or_name, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_internalunixusertokenread(
@@ -575,43 +536,37 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = spanned!(
-            "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
-            {
-                let ident = idms_prox_read
-                    .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-                    .map_err(|e| {
-                        admin_error!("Invalid identity: {:?}", e);
-                        e
-                    })?;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
 
-                let target_uuid = idms_prox_read
-                    .qs_read
-                    .name_to_uuid(uuid_or_name.as_str())
-                    .map_err(|e| {
-                        admin_info!(
-                            err = ?e,
-                            "Error resolving {} as gidnumber continuing ...",
-                            uuid_or_name
-                        );
-                        e
-                    })?;
+        let target_uuid = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_info!(
+                    err = ?e,
+                    "Error resolving {} as gidnumber continuing ...",
+                    uuid_or_name
+                );
+                e
+            })?;
 
-                // Make an event from the request
-                let rate = match UnixUserTokenEvent::from_parts(ident, target_uuid) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        admin_error!("Failed to begin unix token read: {:?}", e);
-                        return Err(e);
-                    }
-                };
-
-                trace!(?rate, "Begin event");
-
-                idms_prox_read.get_unixusertoken(&rate, ct)
+        // Make an event from the request
+        let rate = match UnixUserTokenEvent::from_parts(ident, target_uuid) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin unix token read: {:?}", e);
+                return Err(e);
             }
-        );
-        res
+        };
+
+        trace!(?rate, "Begin event");
+
+        idms_prox_read.get_unixusertoken(&rate, ct)
     }
 
     #[instrument(
