@@ -125,21 +125,22 @@ verify_hostnames = true     # verify the hostname of the Kanidm server
 
 verify_ca = false           # Strict CA verification
 ca = /data/ca.pem           # Path to the kanidm ca
-username =                  # Username of the RADIUS service account
-password =                  # Generated secret for the service account
+
+auth_token = "ABC..."       # Auth token for the service account
+                            # See: kanidm service-account api-token generate
 
 # Default vlans for groups that don't specify one.
-radius_default_vlan = 1 
+radius_default_vlan = 1
 
 # A list of Kanidm groups which must be a member
 # before they can authenticate via RADIUS.
 radius_required_groups = [
-	"radius_access_allowed",
+    "radius_access_allowed@idm.example.com",
 ]
 
 # A mapping between Kanidm groups and VLANS
 radius_groups = [
-    { name = "radius_access_allowed", vlan = 10 },
+    { spn = "radius_access_allowed@idm.example.com", vlan = 10 },
 ]
 
 # A mapping of clients and their authentication tokens
@@ -150,11 +151,11 @@ radius_clients = [
 
 # radius_cert_path = "/etc/raddb/certs/cert.pem"
 # the signing key for radius TLS
-# radius_key_path = "/etc/raddb/certs/key.pem"   
+# radius_key_path = "/etc/raddb/certs/key.pem"
 # the diffie-hellman output
-# radius_dh_path = "/etc/raddb/certs/dh.pem"     
+# radius_dh_path = "/etc/raddb/certs/dh.pem"
 # the CA certificate
-# radius_ca_path = "/etc/raddb/certs/ca.pem"     
+# radius_ca_path = "/etc/raddb/certs/ca.pem"
 
 ```
 
@@ -164,21 +165,20 @@ radius_clients = [
 ```toml
 url = "https://example.com"
 
-username = "radius_service_account"
-# The generated password from above
-password = "cr4bzr0ol" 
+# The auth token for the service account
+auth_token = "ABC..."
 
 # default vlan for groups that don't specify one.
-radius_default_vlan = 99 
+radius_default_vlan = 99
 
-# if the user is in one of these Kanidm groups, 
+# if the user is in one of these Kanidm groups,
 # then they're allowed to authenticate
 radius_required_groups = [
-    "radius_access_allowed",
+    "radius_access_allowed@idm.example.com",
 ]
 
 radius_groups = [
-    { name = "radius_access_allowed", vlan = 10 }
+    { spn = "radius_access_allowed@idm.example.com", vlan = 10 }
 ]
 
 radius_clients = [
@@ -196,11 +196,11 @@ radius_clients = [
 ]
 ```
 
-Then re-create/run your docker instance and expose the ports by adding 
+Then re-create/run your docker instance and expose the ports by adding
 `-p 1812:1812 -p 1812:1812/udp` to the command.
 
-If you have any issues, check the logs from the RADIUS output, as they tend 
-to indicate the cause of the problem. To increase the logging level you can 
+If you have any issues, check the logs from the RADIUS output, as they tend
+to indicate the cause of the problem. To increase the logging level you can
 re-run your environment with debug enabled:
 
 ```shell
@@ -215,7 +215,7 @@ docker run --name radiusd \
 ```
 
 Note: the RADIUS container *is* configured to provide 
-[Tunnel-Private-Group-ID](https://freeradius.org/rfc/rfc2868.html#Tunnel-Private-Group-ID), 
+[Tunnel-Private-Group-ID](https://freeradius.org/rfc/rfc2868.html#Tunnel-Private-Group-ID),
 so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
 assign these by groups in the configuration file as shown in the above examples.
 
