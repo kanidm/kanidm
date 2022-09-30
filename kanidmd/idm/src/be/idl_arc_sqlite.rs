@@ -81,58 +81,56 @@ macro_rules! get_identry {
         $idl:expr,
         $is_read_op:expr
     ) => {{
-        spanned!("be::idl_arc_sqlite::get_identry", {
-            let mut result: Vec<Arc<EntrySealedCommitted>> = Vec::new();
-            match $idl {
-                IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
-                    let mut nidl = IDLBitRange::new();
+        let mut result: Vec<Arc<EntrySealedCommitted>> = Vec::new();
+        match $idl {
+            IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
+                let mut nidl = IDLBitRange::new();
 
-                    idli.into_iter().for_each(|i| {
-                        // For all the id's in idl.
-                        // is it in the cache?
-                        match $self.entry_cache.get(&i) {
-                            Some(eref) => result.push(eref.clone()),
-                            None => unsafe { nidl.push_id(i) },
-                        }
+                idli.into_iter().for_each(|i| {
+                    // For all the id's in idl.
+                    // is it in the cache?
+                    match $self.entry_cache.get(&i) {
+                        Some(eref) => result.push(eref.clone()),
+                        None => unsafe { nidl.push_id(i) },
+                    }
+                });
+
+                if !nidl.is_empty() {
+                    // Now, get anything from nidl that is needed.
+                    let mut db_result = $self.db.get_identry(&IdList::Partial(nidl))?;
+                    // Clone everything from db_result into the cache.
+                    if $is_read_op {
+                        db_result.iter().for_each(|e| {
+                            $self.entry_cache.insert(e.get_id(), e.clone());
+                        });
+                    }
+                    // Merge the two vecs
+                    result.append(&mut db_result);
+                }
+            }
+            IdList::AllIds => {
+                // VERY similar to above, but we skip adding the entries to the cache
+                // on miss to prevent scan/invalidation attacks.
+                let idli = (*$self.allids).clone();
+                let mut nidl = IDLBitRange::new();
+
+                (&idli)
+                    .into_iter()
+                    .for_each(|i| match $self.entry_cache.get(&i) {
+                        Some(eref) => result.push(eref.clone()),
+                        None => unsafe { nidl.push_id(i) },
                     });
 
-                    if !nidl.is_empty() {
-                        // Now, get anything from nidl that is needed.
-                        let mut db_result = $self.db.get_identry(&IdList::Partial(nidl))?;
-                        // Clone everything from db_result into the cache.
-                        if $is_read_op {
-                            db_result.iter().for_each(|e| {
-                                $self.entry_cache.insert(e.get_id(), e.clone());
-                            });
-                        }
-                        // Merge the two vecs
-                        result.append(&mut db_result);
-                    }
+                if !nidl.is_empty() {
+                    // Now, get anything from nidl that is needed.
+                    let mut db_result = $self.db.get_identry(&IdList::Partial(nidl))?;
+                    // Merge the two vecs
+                    result.append(&mut db_result);
                 }
-                IdList::AllIds => {
-                    // VERY similar to above, but we skip adding the entries to the cache
-                    // on miss to prevent scan/invalidation attacks.
-                    let idli = (*$self.allids).clone();
-                    let mut nidl = IDLBitRange::new();
-
-                    (&idli)
-                        .into_iter()
-                        .for_each(|i| match $self.entry_cache.get(&i) {
-                            Some(eref) => result.push(eref.clone()),
-                            None => unsafe { nidl.push_id(i) },
-                        });
-
-                    if !nidl.is_empty() {
-                        // Now, get anything from nidl that is needed.
-                        let mut db_result = $self.db.get_identry(&IdList::Partial(nidl))?;
-                        // Merge the two vecs
-                        result.append(&mut db_result);
-                    }
-                }
-            };
-            // Return
-            Ok(result)
-        })
+            }
+        };
+        // Return
+        Ok(result)
     }};
 }
 
@@ -164,7 +162,6 @@ macro_rules! get_idl {
         $itype:expr,
         $idx_key:expr
     ) => {{
-        spanned!("be::idl_arc_sqlite::get_idl", {
                 // SEE ALSO #259: Find a way to implement borrow for this properly.
                 // I don't think this is possible. When we make this dyn, the arc
                 // needs the dyn trait to be sized so that it *could* claim a clone
@@ -187,10 +184,9 @@ macro_rules! get_idl {
                 // If hit, continue.
                 if let Some(ref data) = cache_r {
                     trace!(
-                        %data,
-                        "Got cached idl for index {:?} {:?}",
-                        $itype,
-                        $attr,
+                        cached_index = ?$itype,
+                        attr = ?$attr,
+                        idl = %data,
                     );
                     return Ok(Some(data.as_ref().clone()));
                 }
@@ -205,7 +201,6 @@ macro_rules! get_idl {
                     $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
                 }
                 Ok(db_r)
-        })
     }};
 }
 
@@ -214,24 +209,22 @@ macro_rules! name2uuid {
         $self:expr,
         $name:expr
     ) => {{
-        spanned!("be::idl_arc_sqlite::name2uuid", {
-            let cache_key = NameCacheKey::Name2Uuid($name.to_string());
-            let cache_r = $self.name_cache.get(&cache_key);
-            if let Some(NameCacheValue::U(uuid)) = cache_r {
-                trace!(?uuid, "Got cached name2uuid");
-                return Ok(Some(uuid.clone()));
-            } else {
-                trace!("Cache miss uuid for name2uuid");
-            }
+        let cache_key = NameCacheKey::Name2Uuid($name.to_string());
+        let cache_r = $self.name_cache.get(&cache_key);
+        if let Some(NameCacheValue::U(uuid)) = cache_r {
+            trace!(?uuid, "Got cached name2uuid");
+            return Ok(Some(uuid.clone()));
+        } else {
+            trace!("Cache miss uuid for name2uuid");
+        }
 
-            let db_r = $self.db.name2uuid($name)?;
-            if let Some(uuid) = db_r {
-                $self
-                    .name_cache
-                    .insert(cache_key, NameCacheValue::U(uuid.clone()))
-            }
-            Ok(db_r)
-        })
+        let db_r = $self.db.name2uuid($name)?;
+        if let Some(uuid) = db_r {
+            $self
+                .name_cache
+                .insert(cache_key, NameCacheValue::U(uuid.clone()))
+        }
+        Ok(db_r)
     }};
 }
 
@@ -240,24 +233,22 @@ macro_rules! uuid2spn {
         $self:expr,
         $uuid:expr
     ) => {{
-        spanned!("be::idl_arc_sqlite::uuid2spn", {
-            let cache_key = NameCacheKey::Uuid2Spn($uuid);
-            let cache_r = $self.name_cache.get(&cache_key);
-            if let Some(NameCacheValue::S(ref spn)) = cache_r {
-                trace!(?spn, "Got cached uuid2spn");
-                return Ok(Some(spn.as_ref().clone()));
-            } else {
-                trace!("Cache miss spn for uuid2spn");
-            }
+        let cache_key = NameCacheKey::Uuid2Spn($uuid);
+        let cache_r = $self.name_cache.get(&cache_key);
+        if let Some(NameCacheValue::S(ref spn)) = cache_r {
+            trace!(?spn, "Got cached uuid2spn");
+            return Ok(Some(spn.as_ref().clone()));
+        } else {
+            trace!("Cache miss spn for uuid2spn");
+        }
 
-            let db_r = $self.db.uuid2spn($uuid)?;
-            if let Some(ref data) = db_r {
-                $self
-                    .name_cache
-                    .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
-            }
-            Ok(db_r)
-        })
+        let db_r = $self.db.uuid2spn($uuid)?;
+        if let Some(ref data) = db_r {
+            $self
+                .name_cache
+                .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
+        }
+        Ok(db_r)
     }};
 }
 
@@ -266,23 +257,21 @@ macro_rules! uuid2rdn {
         $self:expr,
         $uuid:expr
     ) => {{
-        spanned!("be::idl_arc_sqlite::uuid2rdn", {
-            let cache_key = NameCacheKey::Uuid2Rdn($uuid);
-            let cache_r = $self.name_cache.get(&cache_key);
-            if let Some(NameCacheValue::R(ref rdn)) = cache_r {
-                return Ok(Some(rdn.clone()));
-            } else {
-                trace!("Cache miss rdn for uuid2rdn");
-            }
+        let cache_key = NameCacheKey::Uuid2Rdn($uuid);
+        let cache_r = $self.name_cache.get(&cache_key);
+        if let Some(NameCacheValue::R(ref rdn)) = cache_r {
+            return Ok(Some(rdn.clone()));
+        } else {
+            trace!("Cache miss rdn for uuid2rdn");
+        }
 
-            let db_r = $self.db.uuid2rdn($uuid)?;
-            if let Some(ref data) = db_r {
-                $self
-                    .name_cache
-                    .insert(cache_key, NameCacheValue::R(data.clone()))
-            }
-            Ok(db_r)
-        })
+        let db_r = $self.db.uuid2rdn($uuid)?;
+        if let Some(ref data) = db_r {
+            $self
+                .name_cache
+                .insert(cache_key, NameCacheValue::R(data.clone()))
+        }
+        Ok(db_r)
     }};
 }
 
@@ -527,88 +516,83 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 }
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
+    #[instrument(level = "debug", name = "idl_arc_sqlite::commit", skip_all)]
     pub fn commit(self) -> Result<(), OperationError> {
-        spanned!("be::idl_arc_sqlite::commit", {
-            let IdlArcSqliteWriteTransaction {
-                db,
-                mut entry_cache,
-                mut idl_cache,
-                mut name_cache,
-                op_ts_max,
-                allids,
-                maxid,
-            } = self;
+        let IdlArcSqliteWriteTransaction {
+            db,
+            mut entry_cache,
+            mut idl_cache,
+            mut name_cache,
+            op_ts_max,
+            allids,
+            maxid,
+        } = self;
 
-            // Write any dirty items to the disk.
-            spanned!("be::idl_arc_sqlite::commit<entry>", {
-                entry_cache
-                    .iter_mut_mark_clean()
-                    .try_for_each(|(k, v)| match v {
-                        Some(e) => db.write_identry(e),
-                        None => db.delete_identry(*k),
-                    })
+        // Write any dirty items to the disk.
+        entry_cache
+            .iter_mut_mark_clean()
+            .try_for_each(|(k, v)| match v {
+                Some(e) => db.write_identry(e),
+                None => db.delete_identry(*k),
             })
             .map_err(|e| {
                 admin_error!(?e, "Failed to sync entry cache to sqlite");
                 e
             })?;
 
-            spanned!("be::idl_arc_sqlite::commit<idl>", {
-                idl_cache.iter_mut_mark_clean().try_for_each(|(k, v)| {
-                    match v {
-                        Some(idl) => db.write_idl(k.a.as_str(), k.i, k.k.as_str(), idl),
-                        #[allow(clippy::unreachable)]
-                        None => {
-                            // Due to how we remove items, we always write an empty idl
-                            // to the cache, so this should never be none.
-                            //
-                            // If it is none, this means we have memory corruption so we MUST
-                            // panic.
-                            // Why is `v` the `Option` type then?
-                            unreachable!();
-                        }
+        idl_cache
+            .iter_mut_mark_clean()
+            .try_for_each(|(k, v)| {
+                match v {
+                    Some(idl) => db.write_idl(k.a.as_str(), k.i, k.k.as_str(), idl),
+                    #[allow(clippy::unreachable)]
+                    None => {
+                        // Due to how we remove items, we always write an empty idl
+                        // to the cache, so this should never be none.
+                        //
+                        // If it is none, this means we have memory corruption so we MUST
+                        // panic.
+                        // Why is `v` the `Option` type then?
+                        unreachable!();
                     }
-                })
+                }
             })
             .map_err(|e| {
                 admin_error!(?e, "Failed to sync idl cache to sqlite");
                 e
             })?;
 
-            spanned!("be::idl_arc_sqlite::commit<names>", {
-                name_cache
-                    .iter_mut_mark_clean()
-                    .try_for_each(|(k, v)| match (k, v) {
-                        (NameCacheKey::Name2Uuid(k), Some(NameCacheValue::U(v))) => {
-                            db.write_name2uuid_add(k, *v)
-                        }
-                        (NameCacheKey::Name2Uuid(k), None) => db.write_name2uuid_rem(k),
-                        (NameCacheKey::Uuid2Spn(uuid), Some(NameCacheValue::S(v))) => {
-                            db.write_uuid2spn(*uuid, Some(v))
-                        }
-                        (NameCacheKey::Uuid2Spn(uuid), None) => db.write_uuid2spn(*uuid, None),
-                        (NameCacheKey::Uuid2Rdn(uuid), Some(NameCacheValue::R(v))) => {
-                            db.write_uuid2rdn(*uuid, Some(v))
-                        }
-                        (NameCacheKey::Uuid2Rdn(uuid), None) => db.write_uuid2rdn(*uuid, None),
+        name_cache
+            .iter_mut_mark_clean()
+            .try_for_each(|(k, v)| match (k, v) {
+                (NameCacheKey::Name2Uuid(k), Some(NameCacheValue::U(v))) => {
+                    db.write_name2uuid_add(k, *v)
+                }
+                (NameCacheKey::Name2Uuid(k), None) => db.write_name2uuid_rem(k),
+                (NameCacheKey::Uuid2Spn(uuid), Some(NameCacheValue::S(v))) => {
+                    db.write_uuid2spn(*uuid, Some(v))
+                }
+                (NameCacheKey::Uuid2Spn(uuid), None) => db.write_uuid2spn(*uuid, None),
+                (NameCacheKey::Uuid2Rdn(uuid), Some(NameCacheValue::R(v))) => {
+                    db.write_uuid2rdn(*uuid, Some(v))
+                }
+                (NameCacheKey::Uuid2Rdn(uuid), None) => db.write_uuid2rdn(*uuid, None),
 
-                        _ => Err(OperationError::InvalidCacheState),
-                    })
+                _ => Err(OperationError::InvalidCacheState),
             })
             .map_err(|e| {
                 admin_error!(?e, "Failed to sync name cache to sqlite");
                 e
             })?;
 
-            // Undo the caches in the reverse order.
-            db.commit().map(|()| {
-                op_ts_max.commit();
-                name_cache.commit();
-                idl_cache.commit();
-                entry_cache.commit();
-                allids.commit();
-                maxid.commit();
-            })
+        // Undo the caches in the reverse order.
+        db.commit().map(|()| {
+            op_ts_max.commit();
+            name_cache.commit();
+            idl_cache.commit();
+            entry_cache.commit();
+            allids.commit();
+            maxid.commit();
         })
     }
 
@@ -625,18 +609,16 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
     {
-        spanned!("be::idl_arc_sqlite::write_identries", {
-            entries.try_for_each(|e| {
-                trace!("Inserting {:?} to cache", e.get_id());
-                if e.get_id() == 0 {
-                    Err(OperationError::InvalidEntryId)
-                } else {
-                    (*self.allids).insert_id(e.get_id());
-                    self.entry_cache
-                        .insert_dirty(e.get_id(), Arc::new(e.clone()));
-                    Ok(())
-                }
-            })
+        entries.try_for_each(|e| {
+            trace!("Inserting {:?} to cache", e.get_id());
+            if e.get_id() == 0 {
+                Err(OperationError::InvalidEntryId)
+            } else {
+                (*self.allids).insert_id(e.get_id());
+                self.entry_cache
+                    .insert_dirty(e.get_id(), Arc::new(e.clone()));
+                Ok(())
+            }
         })
     }
 
@@ -660,17 +642,15 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = u64>,
     {
-        spanned!("be::idl_arc_sqlite::delete_identry", {
-            idl.try_for_each(|i| {
-                trace!("Removing {:?} from cache", i);
-                if i == 0 {
-                    Err(OperationError::InvalidEntryId)
-                } else {
-                    (*self.allids).remove_id(i);
-                    self.entry_cache.remove_dirty(i);
-                    Ok(())
-                }
-            })
+        idl.try_for_each(|i| {
+            trace!("Removing {:?} from cache", i);
+            if i == 0 {
+                Err(OperationError::InvalidEntryId)
+            } else {
+                (*self.allids).remove_id(i);
+                self.entry_cache.remove_dirty(i);
+                Ok(())
+            }
         })
     }
 
@@ -681,32 +661,30 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        spanned!("be::idl_arc_sqlite::write_idl", {
-            let cache_key = IdlCacheKey {
-                a: attr.into(),
-                i: itype,
-                k: idx_key.into(),
-            };
-            // On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
-            // but we can cache this as a new empty IdList instead, so that we can avoid the
-            // db lookup on this idl.
-            if idl.is_empty() {
-                self.idl_cache
-                    .insert_dirty(cache_key, Box::new(IDLBitRange::new()));
-            } else {
-                self.idl_cache
-                    .insert_dirty(cache_key, Box::new(idl.clone()));
-            }
-            // self.db.write_idl(audit, attr, itype, idx_key, idl)
-            Ok(())
-        })
+        let cache_key = IdlCacheKey {
+            a: attr.into(),
+            i: itype,
+            k: idx_key.into(),
+        };
+        // On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
+        // but we can cache this as a new empty IdList instead, so that we can avoid the
+        // db lookup on this idl.
+        if idl.is_empty() {
+            self.idl_cache
+                .insert_dirty(cache_key, Box::new(IDLBitRange::new()));
+        } else {
+            self.idl_cache
+                .insert_dirty(cache_key, Box::new(idl.clone()));
+        }
+        // self.db.write_idl(audit, attr, itype, idx_key, idl)
+        Ok(())
     }
 
     pub fn optimise_dirty_idls(&mut self) {
         self.idl_cache.iter_mut_dirty().for_each(|(k, maybe_idl)| {
             if let Some(idl) = maybe_idl {
                 if idl.maybe_compress() {
-                    filter_trace!(?k, "Compressed idl");
+                    trace!(?k, "Compressed idl");
                 }
             }
         })
@@ -970,27 +948,21 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         uuid: Uuid,
         add: BTreeSet<String>,
     ) -> Result<(), OperationError> {
-        spanned!("be::idl_arc_sqlite::write_name2uuid_add", {
-            add.into_iter().for_each(|k| {
-                let cache_key = NameCacheKey::Name2Uuid(k);
-                let cache_value = NameCacheValue::U(uuid);
-                self.name_cache.insert_dirty(cache_key, cache_value)
-            });
-            Ok(())
-        })
+        add.into_iter().for_each(|k| {
+            let cache_key = NameCacheKey::Name2Uuid(k);
+            let cache_value = NameCacheValue::U(uuid);
+            self.name_cache.insert_dirty(cache_key, cache_value)
+        });
+        Ok(())
     }
 
     pub fn write_name2uuid_rem(&mut self, rem: BTreeSet<String>) -> Result<(), OperationError> {
-        spanned!("be::idl_arc_sqlite::write_name2uuid_rem", {
-            // self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
-            rem.into_iter().for_each(|k| {
-                // why not just a for loop here...
-                let cache_key = NameCacheKey::Name2Uuid(k);
-                self.name_cache.remove_dirty(cache_key)
-            });
-            Ok(())
-            // })
-        })
+        rem.into_iter().for_each(|k| {
+            // why not just a for loop here...
+            let cache_key = NameCacheKey::Name2Uuid(k);
+            self.name_cache.remove_dirty(cache_key)
+        });
+        Ok(())
     }
 
     pub fn create_uuid2spn(&self) -> Result<(), OperationError> {
@@ -998,16 +970,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub fn write_uuid2spn(&mut self, uuid: Uuid, k: Option<Value>) -> Result<(), OperationError> {
-        spanned!("be::idl_arc_sqlite::write_uuid2spn", {
-            let cache_key = NameCacheKey::Uuid2Spn(uuid);
-            match k {
-                Some(v) => self
-                    .name_cache
-                    .insert_dirty(cache_key, NameCacheValue::S(Box::new(v))),
-                None => self.name_cache.remove_dirty(cache_key),
-            }
-            Ok(())
-        })
+        let cache_key = NameCacheKey::Uuid2Spn(uuid);
+        match k {
+            Some(v) => self
+                .name_cache
+                .insert_dirty(cache_key, NameCacheValue::S(Box::new(v))),
+            None => self.name_cache.remove_dirty(cache_key),
+        }
+        Ok(())
     }
 
     pub fn create_uuid2rdn(&self) -> Result<(), OperationError> {
@@ -1015,16 +985,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub fn write_uuid2rdn(&mut self, uuid: Uuid, k: Option<String>) -> Result<(), OperationError> {
-        spanned!("be::idl_arc_sqlite::write_uuid2rdn", {
-            let cache_key = NameCacheKey::Uuid2Rdn(uuid);
-            match k {
-                Some(s) => self
-                    .name_cache
-                    .insert_dirty(cache_key, NameCacheValue::R(s)),
-                None => self.name_cache.remove_dirty(cache_key),
-            }
-            Ok(())
-        })
+        let cache_key = NameCacheKey::Uuid2Rdn(uuid);
+        match k {
+            Some(s) => self
+                .name_cache
+                .insert_dirty(cache_key, NameCacheValue::R(s)),
+            None => self.name_cache.remove_dirty(cache_key),
+        }
+        Ok(())
     }
 
     pub fn create_idx(&self, attr: &str, itype: IndexType) -> Result<(), OperationError> {

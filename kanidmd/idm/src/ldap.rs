@@ -123,6 +123,7 @@ impl LdapServer {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn do_search(
         &self,
         idms: &IdmServer,
@@ -254,93 +255,82 @@ impl LdapServer {
 
             let ct = duration_from_epoch_now();
             let idm_read = idms.proxy_read_async().await;
-            spanned!("ldap::do_search<core>", {
-                // Now start the txn - we need it for resolving filter components.
+            // Now start the txn - we need it for resolving filter components.
 
-                // join the filter, with ext_filter
-                let lfilter = match ext_filter {
-                    Some(ext) => LdapFilter::And(vec![
-                        sr.filter.clone(),
-                        ext,
-                        LdapFilter::Not(Box::new(LdapFilter::Or(vec![
-                            LdapFilter::Equality("class".to_string(), "classtype".to_string()),
-                            LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
-                            LdapFilter::Equality(
-                                "class".to_string(),
-                                "access_control_profile".to_string(),
-                            ),
-                        ]))),
-                    ]),
-                    None => LdapFilter::And(vec![
-                        sr.filter.clone(),
-                        LdapFilter::Not(Box::new(LdapFilter::Or(vec![
-                            LdapFilter::Equality("class".to_string(), "classtype".to_string()),
-                            LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
-                            LdapFilter::Equality(
-                                "class".to_string(),
-                                "access_control_profile".to_string(),
-                            ),
-                        ]))),
-                    ]),
-                };
+            // join the filter, with ext_filter
+            let lfilter = match ext_filter {
+                Some(ext) => LdapFilter::And(vec![
+                    sr.filter.clone(),
+                    ext,
+                    LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                        LdapFilter::Equality("class".to_string(), "classtype".to_string()),
+                        LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
+                        LdapFilter::Equality(
+                            "class".to_string(),
+                            "access_control_profile".to_string(),
+                        ),
+                    ]))),
+                ]),
+                None => LdapFilter::And(vec![
+                    sr.filter.clone(),
+                    LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                        LdapFilter::Equality("class".to_string(), "classtype".to_string()),
+                        LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
+                        LdapFilter::Equality(
+                            "class".to_string(),
+                            "access_control_profile".to_string(),
+                        ),
+                    ]))),
+                ]),
+            };
 
-                admin_info!(filter = ?lfilter, "LDAP Search Filter");
+            admin_info!(filter = ?lfilter, "LDAP Search Filter");
 
-                // Build the event, with the permissions from effective_session
-                //
-                // ! Remember, searchEvent wraps to ignore hidden for us.
-                let se = spanned!("ldap::do_search<core><prepare_se>", {
-                    let ident = idm_read
-                        .validate_ldap_session(&uat.effective_session, ct)
-                        .map_err(|e| {
-                            admin_error!("Invalid identity: {:?}", e);
-                            e
-                        })?;
-                    SearchEvent::new_ext_impersonate_uuid(
-                        &idm_read.qs_read,
-                        ident,
-                        &lfilter,
-                        k_attrs,
-                    )
-                })
+            // Build the event, with the permissions from effective_session
+            //
+            // ! Remember, searchEvent wraps to ignore hidden for us.
+            let ident = idm_read
+                .validate_ldap_session(&uat.effective_session, ct)
                 .map_err(|e| {
-                    admin_error!("failed to create search event -> {:?}", e);
+                    admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
+            let se =
+                SearchEvent::new_ext_impersonate_uuid(&idm_read.qs_read, ident, &lfilter, k_attrs)
+                    .map_err(|e| {
+                        admin_error!("failed to create search event -> {:?}", e);
+                        e
+                    })?;
 
-                let res = idm_read.qs_read.search_ext(&se).map_err(|e| {
-                    admin_error!("search failure {:?}", e);
-                    e
-                })?;
+            let res = idm_read.qs_read.search_ext(&se).map_err(|e| {
+                admin_error!("search failure {:?}", e);
+                e
+            })?;
 
-                // These have already been fully reduced (access controls applied),
-                // so we can just transform the values and open palm slam them into
-                // the result structure.
-                let lres = spanned!("ldap::do_search<core><prepare results>", {
-                    let lres: Result<Vec<_>, _> = res
-                        .into_iter()
-                        .map(|e| {
-                            e.to_ldap(&idm_read.qs_read, self.basedn.as_str(), all_attrs, &l_attrs)
-                                // if okay, wrap in a ldap msg.
-                                .map(|r| sr.gen_result_entry(r))
-                        })
-                        .chain(iter::once(Ok(sr.gen_success())))
-                        .collect();
-                    lres
-                });
+            // These have already been fully reduced (access controls applied),
+            // so we can just transform the values and open palm slam them into
+            // the result structure.
+            let lres: Result<Vec<_>, _> = res
+                .into_iter()
+                .map(|e| {
+                    e.to_ldap(&idm_read.qs_read, self.basedn.as_str(), all_attrs, &l_attrs)
+                        // if okay, wrap in a ldap msg.
+                        .map(|r| sr.gen_result_entry(r))
+                })
+                .chain(iter::once(Ok(sr.gen_success())))
+                .collect();
 
-                let lres = lres.map_err(|e| {
-                    admin_error!("entry resolve failure {:?}", e);
-                    e
-                })?;
+            let lres = lres.map_err(|e| {
+                admin_error!("entry resolve failure {:?}", e);
+                e
+            })?;
 
-                admin_info!(
-                    nentries = %lres.len(),
-                    "LDAP Search Success -> number of entries"
-                );
+            admin_info!(
+                nentries = %lres.len(),
+                "LDAP Search Success -> number of entries"
+            );
 
-                Ok(lres)
-            })
+            Ok(lres)
         }
     }
 

@@ -9,7 +9,6 @@ use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
-use tracing::trace;
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbEntry, DbIdentSpn};
@@ -116,12 +115,10 @@ pub trait IdlSqliteTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
     fn get_identry(&self, idl: &IdList) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        spanned!("be::idl_sqlite::get_identry", {
-            self.get_identry_raw(idl)?
-                .into_iter()
-                .map(|ide| ide.into_entry().map(Arc::new))
-                .collect()
-        })
+        self.get_identry_raw(idl)?
+            .into_iter()
+            .map(|ide| ide.into_entry().map(Arc::new))
+            .collect()
     }
 
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError> {
@@ -219,112 +216,104 @@ pub trait IdlSqliteTransaction {
         itype: IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        spanned!("be::idl_sqlite::get_idl", {
-            if !(self.exists_idx(attr, itype)?) {
-                filter_error!(
-                    "IdlSqliteTransaction: Index {:?} {:?} not found",
-                    itype,
-                    attr
-                );
-                return Ok(None);
-            }
-            // The table exists - lets now get the actual index itself.
-
-            let query = format!(
-                "SELECT idl FROM idx_{}_{} WHERE key = :idx_key",
-                itype.as_idx_str(),
+        if !(self.exists_idx(attr, itype)?) {
+            filter_error!(
+                "IdlSqliteTransaction: Index {:?} {:?} not found",
+                itype,
                 attr
             );
-            let mut stmt = self
-                .get_conn()
-                .prepare(query.as_str())
-                .map_err(sqlite_error)?;
-            let idl_raw: Option<Vec<u8>> = stmt
-                .query_row(&[(":idx_key", &idx_key)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+            return Ok(None);
+        }
+        // The table exists - lets now get the actual index itself.
 
-            let idl = match idl_raw {
-                Some(d) => serde_json::from_slice(d.as_slice()).map_err(serde_json_error)?,
-                // We don't have this value, it must be empty (or we
-                // have a corrupted index .....
-                None => IDLBitRange::new(),
-            };
-            trace!(%idl, "Got idl for index {:?} {:?}", itype, attr);
+        let query = format!(
+            "SELECT idl FROM idx_{}_{} WHERE key = :idx_key",
+            itype.as_idx_str(),
+            attr
+        );
+        let mut stmt = self
+            .get_conn()
+            .prepare(query.as_str())
+            .map_err(sqlite_error)?;
+        let idl_raw: Option<Vec<u8>> = stmt
+            .query_row(&[(":idx_key", &idx_key)], |row| row.get(0))
+            // We don't mind if it doesn't exist
+            .optional()
+            .map_err(sqlite_error)?;
 
-            Ok(Some(idl))
-        })
+        let idl = match idl_raw {
+            Some(d) => serde_json::from_slice(d.as_slice()).map_err(serde_json_error)?,
+            // We don't have this value, it must be empty (or we
+            // have a corrupted index .....
+            None => IDLBitRange::new(),
+        };
+
+        trace!(
+            miss_index = ?itype,
+            attr = ?attr,
+            idl = %idl,
+        );
+
+        Ok(Some(idl))
     }
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
-        spanned!("be::idl_sqlite::name2uuid", {
-            // The table exists - lets now get the actual index itself.
-            let mut stmt = self
-                .get_conn()
-                .prepare("SELECT uuid FROM idx_name2uuid WHERE name = :name")
-                .map_err(sqlite_error)?;
-            let uuid_raw: Option<String> = stmt
-                .query_row(&[(":name", &name)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+        // The table exists - lets now get the actual index itself.
+        let mut stmt = self
+            .get_conn()
+            .prepare("SELECT uuid FROM idx_name2uuid WHERE name = :name")
+            .map_err(sqlite_error)?;
+        let uuid_raw: Option<String> = stmt
+            .query_row(&[(":name", &name)], |row| row.get(0))
+            // We don't mind if it doesn't exist
+            .optional()
+            .map_err(sqlite_error)?;
 
-            let uuid = uuid_raw.as_ref().and_then(|u| Uuid::parse_str(u).ok());
-            trace!(%name, ?uuid, "Got uuid for index");
+        let uuid = uuid_raw.as_ref().and_then(|u| Uuid::parse_str(u).ok());
 
-            Ok(uuid)
-        })
+        Ok(uuid)
     }
 
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
-        spanned!("be::idl_sqlite::uuid2spn", {
-            let uuids = uuid.as_hyphenated().to_string();
-            // The table exists - lets now get the actual index itself.
-            let mut stmt = self
-                .get_conn()
-                .prepare("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid")
-                .map_err(sqlite_error)?;
-            let spn_raw: Option<Vec<u8>> = stmt
-                .query_row(&[(":uuid", &uuids)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+        let uuids = uuid.as_hyphenated().to_string();
+        // The table exists - lets now get the actual index itself.
+        let mut stmt = self
+            .get_conn()
+            .prepare("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid")
+            .map_err(sqlite_error)?;
+        let spn_raw: Option<Vec<u8>> = stmt
+            .query_row(&[(":uuid", &uuids)], |row| row.get(0))
+            // We don't mind if it doesn't exist
+            .optional()
+            .map_err(sqlite_error)?;
 
-            let spn: Option<Value> = match spn_raw {
-                Some(d) => {
-                    let dbv: DbIdentSpn =
-                        serde_json::from_slice(d.as_slice()).map_err(serde_json_error)?;
+        let spn: Option<Value> = match spn_raw {
+            Some(d) => {
+                let dbv: DbIdentSpn =
+                    serde_json::from_slice(d.as_slice()).map_err(serde_json_error)?;
 
-                    Some(Value::from(dbv))
-                }
-                None => None,
-            };
+                Some(Value::from(dbv))
+            }
+            None => None,
+        };
 
-            trace!(?uuid, ?spn, "Got spn for uuid");
-
-            Ok(spn)
-        })
+        Ok(spn)
     }
 
     fn uuid2rdn(&mut self, uuid: Uuid) -> Result<Option<String>, OperationError> {
-        spanned!("be::idl_sqlite::uuid2rdn", {
-            let uuids = uuid.as_hyphenated().to_string();
-            // The table exists - lets now get the actual index itself.
-            let mut stmt = self
-                .get_conn()
-                .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
-                .map_err(sqlite_error)?;
-            let rdn: Option<String> = stmt
-                .query_row(&[(":uuid", &uuids)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+        let uuids = uuid.as_hyphenated().to_string();
+        // The table exists - lets now get the actual index itself.
+        let mut stmt = self
+            .get_conn()
+            .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
+            .map_err(sqlite_error)?;
+        let rdn: Option<String> = stmt
+            .query_row(&[(":uuid", &uuids)], |row| row.get(0))
+            // We don't mind if it doesn't exist
+            .optional()
+            .map_err(sqlite_error)?;
 
-            trace!(?uuid, ?rdn, "Got rdn for uuid");
-
-            Ok(rdn)
-        })
+        Ok(rdn)
     }
 
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
@@ -421,8 +410,8 @@ pub trait IdlSqliteTransaction {
         })
     }
 
+    #[instrument(level = "debug", name = "idl_sqlite::get_allids", skip_all)]
     fn get_allids(&self) -> Result<IDLBitRange, OperationError> {
-        trace!("Building allids...");
         let mut stmt = self
             .get_conn()
             .prepare("SELECT id FROM id2entry")
@@ -603,20 +592,18 @@ impl IdlSqliteWriteTransaction {
         }
     }
 
+    #[instrument(level = "debug", name = "idl_sqlite::commit", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        spanned!("be::idl_sqlite::commit", {
-            trace!("Commiting BE WR txn");
-            assert!(!self.committed);
-            self.committed = true;
+        assert!(!self.committed);
+        self.committed = true;
 
-            self.conn
-                .execute("COMMIT TRANSACTION", [])
-                .map(|_| ())
-                .map_err(|e| {
-                    admin_error!(?e, "CRITICAL: failed to commit sqlite txn");
-                    OperationError::BackendEngine
-                })
-        })
+        self.conn
+            .execute("COMMIT TRANSACTION", [])
+            .map(|_| ())
+            .map_err(|e| {
+                admin_error!(?e, "CRITICAL: failed to commit sqlite txn");
+                OperationError::BackendEngine
+            })
     }
 
     pub fn get_id2entry_max_id(&self) -> Result<u64, OperationError> {
@@ -769,46 +756,42 @@ impl IdlSqliteWriteTransaction {
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        spanned!("be::idl_sqlite::write_idl", {
-            if idl.is_empty() {
-                trace!(?idl, "purging idl");
-                // delete it
-                // Delete this idx_key from the table.
-                let query = format!(
-                    "DELETE FROM idx_{}_{} WHERE key = :key",
-                    itype.as_idx_str(),
-                    attr
-                );
+        if idl.is_empty() {
+            // delete it
+            // Delete this idx_key from the table.
+            let query = format!(
+                "DELETE FROM idx_{}_{} WHERE key = :key",
+                itype.as_idx_str(),
+                attr
+            );
 
-                self.conn
-                    .prepare(query.as_str())
-                    .and_then(|mut stmt| stmt.execute(&[(":key", &idx_key)]))
-                    .map_err(sqlite_error)
-            } else {
-                trace!(?idl, "writing idl");
-                // Serialise the IdList to Vec<u8>
-                let idl_raw = serde_json::to_vec(idl).map_err(serde_json_error)?;
+            self.conn
+                .prepare(query.as_str())
+                .and_then(|mut stmt| stmt.execute(&[(":key", &idx_key)]))
+                .map_err(sqlite_error)
+        } else {
+            // Serialise the IdList to Vec<u8>
+            let idl_raw = serde_json::to_vec(idl).map_err(serde_json_error)?;
 
-                // update or create it.
-                let query = format!(
-                    "INSERT OR REPLACE INTO idx_{}_{} (key, idl) VALUES(:key, :idl)",
-                    itype.as_idx_str(),
-                    attr
-                );
+            // update or create it.
+            let query = format!(
+                "INSERT OR REPLACE INTO idx_{}_{} (key, idl) VALUES(:key, :idl)",
+                itype.as_idx_str(),
+                attr
+            );
 
-                self.conn
-                    .prepare(query.as_str())
-                    .and_then(|mut stmt| {
-                        stmt.execute(named_params! {
-                            ":key": &idx_key,
-                            ":idl": &idl_raw
-                        })
+            self.conn
+                .prepare(query.as_str())
+                .and_then(|mut stmt| {
+                    stmt.execute(named_params! {
+                        ":key": &idx_key,
+                        ":idl": &idl_raw
                     })
-                    .map_err(sqlite_error)
-            }
-            // Get rid of the sqlite rows usize
-            .map(|_| ())
-        })
+                })
+                .map_err(sqlite_error)
+        }
+        // Get rid of the sqlite rows usize
+        .map(|_| ())
     }
 
     pub fn create_name2uuid(&self) -> Result<(), OperationError> {
@@ -943,7 +926,7 @@ impl IdlSqliteWriteTransaction {
             itype.as_idx_str(),
             attr
         );
-        trace!(idx = %idx_stmt, "Creating index");
+        trace!(idx = %idx_stmt, "creating index");
 
         self.conn
             .execute(idx_stmt.as_str(), [])
@@ -1033,7 +1016,6 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub unsafe fn purge_id2entry(&self) -> Result<(), OperationError> {
-        trace!("purge id2entry ...");
         self.conn
             .execute("DELETE FROM id2entry", [])
             .map(|_| ())
@@ -1174,7 +1156,6 @@ impl IdlSqliteWriteTransaction {
 
         // If the table is empty, populate the versions as 0.
         let mut dbv_id2entry = self.get_db_version_key(DBV_ID2ENTRY);
-        trace!(initial = %dbv_id2entry, "dbv_id2entry");
 
         // Check db_version here.
         //   * if 0 -> create v1.
@@ -1373,13 +1354,12 @@ impl IdlSqlite {
     }
 
     pub(crate) fn get_allids_count(&self) -> Result<u64, OperationError> {
-        trace!("Counting allids...");
         #[allow(clippy::expect_used)]
         self.pool
             .try_get()
             .expect("Unable to get connection from pool!!!")
             .query_row("select count(id) from id2entry", [], |row| row.get(0))
-            .map_err(sqlite_error) // this was initially `ltrace`, but I think that was a mistake so I replaced it anyways.
+            .map_err(sqlite_error)
     }
 
     pub fn read(&self) -> IdlSqliteReadTransaction {

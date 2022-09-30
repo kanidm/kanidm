@@ -67,8 +67,7 @@ pub mod prelude {
     pub use sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
         filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
-        security_access, security_critical, security_error, security_info, spanned, tagged_event,
-        EventTag,
+        security_access, security_critical, security_error, security_info, tagged_event, EventTag,
     };
     pub use smartstring::alias::String as AttrString;
     pub use url::Url;

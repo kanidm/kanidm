@@ -491,51 +491,48 @@ impl Filter<FilterInvalid> {
     // This has to have two versions to account for ro/rw traits, because RS can't
     // monomorphise on the trait to call clone_value. An option is to make a fn that
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
+    #[instrument(level = "debug", skip_all)]
     pub fn from_ro(
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("filer::from_ro", {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_ro(f, qs, depth, &mut elems)?,
-                },
-            })
+        let depth = FILTER_DEPTH_MAX;
+        let mut elems = ev.limits.filter_max_elements;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_ro(f, qs, depth, &mut elems)?,
+            },
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn from_rw(
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("filter::from_rw", {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_rw(f, qs, depth, &mut elems)?,
-                },
-            })
+        let depth = FILTER_DEPTH_MAX;
+        let mut elems = ev.limits.filter_max_elements;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_rw(f, qs, depth, &mut elems)?,
+            },
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn from_ldap_ro(
         ev: &Identity,
         f: &LdapFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("filter::from_ldap_ro", {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_ldap_ro(f, qs, depth, &mut elems)?,
-                },
-            })
+        let depth = FILTER_DEPTH_MAX;
+        let mut elems = ev.limits.filter_max_elements;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_ldap_ro(f, qs, depth, &mut elems)?,
+            },
         })
     }
 }

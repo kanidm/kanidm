@@ -150,34 +150,31 @@ pub(crate) struct Account {
 }
 
 impl Account {
+    #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("idm::account::try_from_entry_ro", {
-            let groups = Group::try_from_account_entry_ro(value, qs)?;
-            try_from_entry!(value, groups)
-        })
+        let groups = Group::try_from_account_entry_ro(value, qs)?;
+        try_from_entry!(value, groups)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("idm::account::try_from_entry_rw", {
-            let groups = Group::try_from_account_entry_rw(value, qs)?;
-            try_from_entry!(value, groups)
-        })
+        let groups = Group::try_from_account_entry_rw(value, qs)?;
+        try_from_entry!(value, groups)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_reduced(
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("idm::account::try_from_entry_reduced", {
-            let groups = Group::try_from_account_entry_red_ro(value, qs)?;
-            try_from_entry!(value, groups)
-        })
+        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
+        try_from_entry!(value, groups)
     }
 
     pub(crate) fn try_from_entry_no_groups(

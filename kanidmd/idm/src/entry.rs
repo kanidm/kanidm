@@ -317,29 +317,28 @@ impl Entry<EntryInit, EntryNew> {
 
     /// Given a proto entry in JSON formed as a serialised string, processed that string
     /// into an Entry.
+    #[instrument(level = "debug", skip_all)]
     pub fn from_proto_entry_str(
         es: &str,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("from_proto_entry_str", {
-            if cfg!(test) {
-                if es.len() > 256 {
-                    let (dsp_es, _) = es.split_at(255);
-                    trace!("Parsing -> {}...", dsp_es);
-                } else {
-                    trace!("Parsing -> {}", es);
-                }
+        if cfg!(test) {
+            if es.len() > 256 {
+                let (dsp_es, _) = es.split_at(255);
+                trace!("Parsing -> {}...", dsp_es);
+            } else {
+                trace!("Parsing -> {}", es);
             }
-            // str -> Proto entry
-            let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
-                // We probably shouldn't print ES here because that would allow users
-                // to inject content into our logs :)
-                admin_error!(?e, "SerdeJson Failure");
-                OperationError::SerdeJsonError
-            })?;
-            // now call from_proto_entry
-            Self::from_proto_entry(&pe, qs)
-        })
+        }
+        // str -> Proto entry
+        let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
+            // We probably shouldn't print ES here because that would allow users
+            // to inject content into our logs :)
+            admin_error!(?e, "SerdeJson Failure");
+            OperationError::SerdeJsonError
+        })?;
+        // now call from_proto_entry
+        Self::from_proto_entry(&pe, qs)
     }
 
     #[cfg(test)]

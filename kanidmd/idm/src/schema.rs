@@ -642,124 +642,124 @@ impl<'a> SchemaWriteTransaction<'a> {
             .collect()
     }
 
+    #[instrument(level = "debug", name = "schema::generate_in_memory", skip_all)]
     pub fn generate_in_memory(&mut self) -> Result<(), OperationError> {
-        spanned!("schema::generate_in_memory", {
-            //
-            self.classes.clear();
-            self.attributes.clear();
-            // Bootstrap in definitions of our own schema types
-            // First, add all the needed core attributes for schema parsing
-            self.attributes.insert(
-                AttrString::from("class"),
-                SchemaAttribute {
-                    name: AttrString::from("class"),
-                    uuid: UUID_SCHEMA_ATTR_CLASS,
-                    description: String::from("The set of classes defining an object"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality, IndexType::Presence],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("uuid"),
-                SchemaAttribute {
-                    name: AttrString::from("uuid"),
-                    uuid: UUID_SCHEMA_ATTR_UUID,
-                    description: String::from("The universal unique id of the object"),
-                    multivalue: false,
-                    // Uniqueness is handled by base.rs, not attrunique here due to
-                    // needing to check recycled objects too.
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality, IndexType::Presence],
-                    syntax: SyntaxType::Uuid,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("last_modified_cid"),
-                SchemaAttribute {
-                    name: AttrString::from("last_modified_cid"),
-                    uuid: UUID_SCHEMA_ATTR_LAST_MOD_CID,
-                    description: String::from("The cid of the last change to this object"),
-                    multivalue: false,
-                    // Uniqueness is handled by base.rs, not attrunique here due to
-                    // needing to check recycled objects too.
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Cid,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("name"),
-                SchemaAttribute {
-                    name: AttrString::from("name"),
-                    uuid: UUID_SCHEMA_ATTR_NAME,
-                    description: String::from("The shortform name of an object"),
-                    multivalue: false,
-                    unique: true,
-                    phantom: false,
-                    index: vec![IndexType::Equality, IndexType::Presence],
-                    syntax: SyntaxType::Utf8StringIname,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("spn"),
-                SchemaAttribute {
-                    name: AttrString::from("spn"),
-                    uuid: UUID_SCHEMA_ATTR_SPN,
-                    description: String::from(
-                        "The Security Principal Name of an object, unique across all domain trusts",
-                    ),
-                    multivalue: false,
-                    unique: true,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::SecurityPrincipalName,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("attributename"),
-                SchemaAttribute {
-                    name: AttrString::from("attributename"),
-                    uuid: UUID_SCHEMA_ATTR_ATTRIBUTENAME,
-                    description: String::from("The name of a schema attribute"),
-                    multivalue: false,
-                    unique: true,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("classname"),
-                SchemaAttribute {
-                    name: AttrString::from("classname"),
-                    uuid: UUID_SCHEMA_ATTR_CLASSNAME,
-                    description: String::from("The name of a schema class"),
-                    multivalue: false,
-                    unique: true,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("description"),
-                SchemaAttribute {
-                    name: AttrString::from("description"),
-                    uuid: UUID_SCHEMA_ATTR_DESCRIPTION,
-                    description: String::from("A description of an attribute, object or class"),
-                    multivalue: false,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8String,
-                },
-            );
-            self.attributes.insert(AttrString::from("multivalue"), SchemaAttribute {
+        //
+        self.classes.clear();
+        self.attributes.clear();
+        // Bootstrap in definitions of our own schema types
+        // First, add all the needed core attributes for schema parsing
+        self.attributes.insert(
+            AttrString::from("class"),
+            SchemaAttribute {
+                name: AttrString::from("class"),
+                uuid: UUID_SCHEMA_ATTR_CLASS,
+                description: String::from("The set of classes defining an object"),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality, IndexType::Presence],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("uuid"),
+            SchemaAttribute {
+                name: AttrString::from("uuid"),
+                uuid: UUID_SCHEMA_ATTR_UUID,
+                description: String::from("The universal unique id of the object"),
+                multivalue: false,
+                // Uniqueness is handled by base.rs, not attrunique here due to
+                // needing to check recycled objects too.
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality, IndexType::Presence],
+                syntax: SyntaxType::Uuid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("last_modified_cid"),
+            SchemaAttribute {
+                name: AttrString::from("last_modified_cid"),
+                uuid: UUID_SCHEMA_ATTR_LAST_MOD_CID,
+                description: String::from("The cid of the last change to this object"),
+                multivalue: false,
+                // Uniqueness is handled by base.rs, not attrunique here due to
+                // needing to check recycled objects too.
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Cid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("name"),
+            SchemaAttribute {
+                name: AttrString::from("name"),
+                uuid: UUID_SCHEMA_ATTR_NAME,
+                description: String::from("The shortform name of an object"),
+                multivalue: false,
+                unique: true,
+                phantom: false,
+                index: vec![IndexType::Equality, IndexType::Presence],
+                syntax: SyntaxType::Utf8StringIname,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("spn"),
+            SchemaAttribute {
+                name: AttrString::from("spn"),
+                uuid: UUID_SCHEMA_ATTR_SPN,
+                description: String::from(
+                    "The Security Principal Name of an object, unique across all domain trusts",
+                ),
+                multivalue: false,
+                unique: true,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::SecurityPrincipalName,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("attributename"),
+            SchemaAttribute {
+                name: AttrString::from("attributename"),
+                uuid: UUID_SCHEMA_ATTR_ATTRIBUTENAME,
+                description: String::from("The name of a schema attribute"),
+                multivalue: false,
+                unique: true,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("classname"),
+            SchemaAttribute {
+                name: AttrString::from("classname"),
+                uuid: UUID_SCHEMA_ATTR_CLASSNAME,
+                description: String::from("The name of a schema class"),
+                multivalue: false,
+                unique: true,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("description"),
+            SchemaAttribute {
+                name: AttrString::from("description"),
+                uuid: UUID_SCHEMA_ATTR_DESCRIPTION,
+                description: String::from("A description of an attribute, object or class"),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8String,
+            },
+        );
+        self.attributes.insert(AttrString::from("multivalue"), SchemaAttribute {
                 name: AttrString::from("multivalue"),
                 uuid: UUID_SCHEMA_ATTR_MULTIVALUE,
                 description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
@@ -769,7 +769,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 index: vec![],
                 syntax: SyntaxType::Boolean,
             });
-            self.attributes.insert(AttrString::from("phantom"), SchemaAttribute {
+        self.attributes.insert(AttrString::from("phantom"), SchemaAttribute {
                 name: AttrString::from("phantom"),
                 uuid: UUID_SCHEMA_ATTR_PHANTOM,
                 description: String::from("If true, this attribute must NOT be present in any may/must sets of a class as. This represents generated attributes."),
@@ -779,107 +779,112 @@ impl<'a> SchemaWriteTransaction<'a> {
                 index: vec![],
                 syntax: SyntaxType::Boolean,
             });
-            self.attributes.insert(AttrString::from("unique"), SchemaAttribute {
+        self.attributes.insert(
+            AttrString::from("unique"),
+            SchemaAttribute {
                 name: AttrString::from("unique"),
                 uuid: UUID_SCHEMA_ATTR_UNIQUE,
-                description: String::from("If true, this attribute must store a unique value through out the database."),
+                description: String::from(
+                    "If true, this attribute must store a unique value through out the database.",
+                ),
                 multivalue: false,
                 unique: false,
                 phantom: false,
                 index: vec![],
                 syntax: SyntaxType::Boolean,
-            });
-            self.attributes.insert(
-                AttrString::from("index"),
-                SchemaAttribute {
-                    name: AttrString::from("index"),
-                    uuid: UUID_SCHEMA_ATTR_INDEX,
-                    description: String::from(
-                        "Describe the indexes to apply to instances of this attribute.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::IndexId,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("syntax"),
-                SchemaAttribute {
-                    name: AttrString::from("syntax"),
-                    uuid: UUID_SCHEMA_ATTR_SYNTAX,
-                    description: String::from(
-                        "Describe the syntax of this attribute. This affects indexing and sorting.",
-                    ),
-                    multivalue: false,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::SyntaxId,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("systemmay"),
-                SchemaAttribute {
-                    name: AttrString::from("systemmay"),
-                    uuid: UUID_SCHEMA_ATTR_SYSTEMMAY,
-                    description: String::from(
-                        "A list of system provided optional attributes this class can store.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("may"),
-                SchemaAttribute {
-                    name: AttrString::from("may"),
-                    uuid: UUID_SCHEMA_ATTR_MAY,
-                    description: String::from(
-                        "A user modifiable list of optional attributes this class can store.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("systemmust"),
-                SchemaAttribute {
-                    name: AttrString::from("systemmust"),
-                    uuid: UUID_SCHEMA_ATTR_SYSTEMMUST,
-                    description: String::from(
-                        "A list of system provided required attributes this class must store.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("must"),
-                SchemaAttribute {
-                    name: AttrString::from("must"),
-                    uuid: UUID_SCHEMA_ATTR_MUST,
-                    description: String::from(
-                        "A user modifiable list of required attributes this class must store.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("index"),
+            SchemaAttribute {
+                name: AttrString::from("index"),
+                uuid: UUID_SCHEMA_ATTR_INDEX,
+                description: String::from(
+                    "Describe the indexes to apply to instances of this attribute.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::IndexId,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("syntax"),
+            SchemaAttribute {
+                name: AttrString::from("syntax"),
+                uuid: UUID_SCHEMA_ATTR_SYNTAX,
+                description: String::from(
+                    "Describe the syntax of this attribute. This affects indexing and sorting.",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::SyntaxId,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("systemmay"),
+            SchemaAttribute {
+                name: AttrString::from("systemmay"),
+                uuid: UUID_SCHEMA_ATTR_SYSTEMMAY,
+                description: String::from(
+                    "A list of system provided optional attributes this class can store.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("may"),
+            SchemaAttribute {
+                name: AttrString::from("may"),
+                uuid: UUID_SCHEMA_ATTR_MAY,
+                description: String::from(
+                    "A user modifiable list of optional attributes this class can store.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("systemmust"),
+            SchemaAttribute {
+                name: AttrString::from("systemmust"),
+                uuid: UUID_SCHEMA_ATTR_SYSTEMMUST,
+                description: String::from(
+                    "A list of system provided required attributes this class must store.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("must"),
+            SchemaAttribute {
+                name: AttrString::from("must"),
+                uuid: UUID_SCHEMA_ATTR_MUST,
+                description: String::from(
+                    "A user modifiable list of required attributes this class must store.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
                 AttrString::from("systemsupplements"),
                 SchemaAttribute {
                     name: AttrString::from("systemsupplements"),
@@ -894,7 +899,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
-            self.attributes.insert(
+        self.attributes.insert(
                 AttrString::from("supplements"),
                 SchemaAttribute {
                     name: AttrString::from("supplements"),
@@ -909,22 +914,22 @@ impl<'a> SchemaWriteTransaction<'a> {
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
-            self.attributes.insert(
-                AttrString::from("systemexcludes"),
-                SchemaAttribute {
-                    name: AttrString::from("systemexcludes"),
-                    uuid: UUID_SCHEMA_ATTR_SYSTEMEXCLUDES,
-                    description: String::from(
-                        "A set of classes that are denied presence in connection to this class",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
+        self.attributes.insert(
+            AttrString::from("systemexcludes"),
+            SchemaAttribute {
+                name: AttrString::from("systemexcludes"),
+                uuid: UUID_SCHEMA_ATTR_SYSTEMEXCLUDES,
+                description: String::from(
+                    "A set of classes that are denied presence in connection to this class",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
                 AttrString::from("excludes"),
                 SchemaAttribute {
                     name: AttrString::from("excludes"),
@@ -940,9 +945,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
 
-            // SYSINFO attrs
-            // ACP attributes.
-            self.attributes.insert(
+        // SYSINFO attrs
+        // ACP attributes.
+        self.attributes.insert(
                 AttrString::from("acp_enable"),
                 SchemaAttribute {
                     name: AttrString::from("acp_enable"),
@@ -956,107 +961,111 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
 
-            self.attributes.insert(
-                AttrString::from("acp_receiver"),
-                SchemaAttribute {
-                    name: AttrString::from("acp_receiver"),
-                    uuid: UUID_SCHEMA_ATTR_ACP_RECEIVER,
-                    description: String::from(
-                        "Who the ACP applies to, constraining or allowing operations.",
-                    ),
-                    multivalue: false,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality, IndexType::SubString],
-                    syntax: SyntaxType::JsonFilter,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("acp_targetscope"),
-                SchemaAttribute {
-                    name: AttrString::from("acp_targetscope"),
-                    uuid: UUID_SCHEMA_ATTR_ACP_TARGETSCOPE,
-                    description: String::from(
-                        "The effective targets of the ACP, IE what will be acted upon.",
-                    ),
-                    multivalue: false,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality, IndexType::SubString],
-                    syntax: SyntaxType::JsonFilter,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("acp_search_attr"),
-                SchemaAttribute {
-                    name: AttrString::from("acp_search_attr"),
-                    uuid: UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR,
-                    description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("acp_create_class"),
-                SchemaAttribute {
-                    name: AttrString::from("acp_create_class"),
-                    uuid: UUID_SCHEMA_ATTR_ACP_CREATE_CLASS,
-                    description: String::from(
-                        "The set of classes that can be created on a new entry.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("acp_create_attr"),
-                SchemaAttribute {
-                    name: AttrString::from("acp_create_attr"),
-                    uuid: UUID_SCHEMA_ATTR_ACP_CREATE_ATTR,
-                    description: String::from(
-                        "The set of attribute types that can be created on an entry.",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
+        self.attributes.insert(
+            AttrString::from("acp_receiver"),
+            SchemaAttribute {
+                name: AttrString::from("acp_receiver"),
+                uuid: UUID_SCHEMA_ATTR_ACP_RECEIVER,
+                description: String::from(
+                    "Who the ACP applies to, constraining or allowing operations.",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality, IndexType::SubString],
+                syntax: SyntaxType::JsonFilter,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("acp_targetscope"),
+            SchemaAttribute {
+                name: AttrString::from("acp_targetscope"),
+                uuid: UUID_SCHEMA_ATTR_ACP_TARGETSCOPE,
+                description: String::from(
+                    "The effective targets of the ACP, IE what will be acted upon.",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality, IndexType::SubString],
+                syntax: SyntaxType::JsonFilter,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("acp_search_attr"),
+            SchemaAttribute {
+                name: AttrString::from("acp_search_attr"),
+                uuid: UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR,
+                description: String::from(
+                    "The attributes that may be viewed or searched by the reciever on targetscope.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("acp_create_class"),
+            SchemaAttribute {
+                name: AttrString::from("acp_create_class"),
+                uuid: UUID_SCHEMA_ATTR_ACP_CREATE_CLASS,
+                description: String::from("The set of classes that can be created on a new entry."),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("acp_create_attr"),
+            SchemaAttribute {
+                name: AttrString::from("acp_create_attr"),
+                uuid: UUID_SCHEMA_ATTR_ACP_CREATE_ATTR,
+                description: String::from(
+                    "The set of attribute types that can be created on an entry.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
 
-            self.attributes.insert(
-                AttrString::from("acp_modify_removedattr"),
-                SchemaAttribute {
-                    name: AttrString::from("acp_modify_removedattr"),
-                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR,
-                    description: String::from("The set of attribute types that could be removed or purged in a modification."),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("acp_modify_presentattr"),
-                SchemaAttribute {
-                    name: AttrString::from("acp_modify_presentattr"),
-                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR,
-                    description: String::from("The set of attribute types that could be added or asserted in a modification."),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
+        self.attributes.insert(
+            AttrString::from("acp_modify_removedattr"),
+            SchemaAttribute {
+                name: AttrString::from("acp_modify_removedattr"),
+                uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR,
+                description: String::from(
+                    "The set of attribute types that could be removed or purged in a modification.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("acp_modify_presentattr"),
+            SchemaAttribute {
+                name: AttrString::from("acp_modify_presentattr"),
+                uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR,
+                description: String::from(
+                    "The set of attribute types that could be added or asserted in a modification.",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
                 AttrString::from("acp_modify_class"),
                 SchemaAttribute {
                     name: AttrString::from("acp_modify_class"),
@@ -1069,341 +1078,341 @@ impl<'a> SchemaWriteTransaction<'a> {
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
-            // MO/Member
-            self.attributes.insert(
-                AttrString::from("memberof"),
-                SchemaAttribute {
-                    name: AttrString::from("memberof"),
-                    uuid: UUID_SCHEMA_ATTR_MEMBEROF,
-                    description: String::from("reverse group membership of the object"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::ReferenceUuid,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("directmemberof"),
-                SchemaAttribute {
-                    name: AttrString::from("directmemberof"),
-                    uuid: UUID_SCHEMA_ATTR_DIRECTMEMBEROF,
-                    description: String::from("reverse direct group membership of the object"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::ReferenceUuid,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("member"),
-                SchemaAttribute {
-                    name: AttrString::from("member"),
-                    uuid: UUID_SCHEMA_ATTR_MEMBER,
-                    description: String::from("List of members of the group"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::ReferenceUuid,
-                },
-            );
-            // Migration related
-            self.attributes.insert(
-                AttrString::from("version"),
-                SchemaAttribute {
-                    name: AttrString::from("version"),
-                    uuid: UUID_SCHEMA_ATTR_VERSION,
-                    description: String::from(
-                        "The systems internal migration version for provided objects",
-                    ),
-                    multivalue: false,
-                    unique: false,
-                    phantom: false,
-                    index: vec![],
-                    syntax: SyntaxType::Uint32,
-                },
-            );
-            // Domain for sysinfo
-            self.attributes.insert(
-                AttrString::from("domain"),
-                SchemaAttribute {
-                    name: AttrString::from("domain"),
-                    uuid: UUID_SCHEMA_ATTR_DOMAIN,
-                    description: String::from("A DNS Domain name entry."),
-                    multivalue: true,
-                    unique: false,
-                    phantom: false,
-                    index: vec![IndexType::Equality],
-                    syntax: SyntaxType::Utf8StringIname,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("claim"),
-                SchemaAttribute {
-                    name: AttrString::from("claim"),
-                    uuid: UUID_SCHEMA_ATTR_CLAIM,
-                    description: String::from(
-                        "The string identifier of an extracted claim that can be filtered",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("scope"),
-                SchemaAttribute {
-                    name: AttrString::from("scope"),
-                    uuid: UUID_SCHEMA_ATTR_SCOPE,
-                    description: String::from(
-                        "The string identifier of a permission scope in a session",
-                    ),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
+        // MO/Member
+        self.attributes.insert(
+            AttrString::from("memberof"),
+            SchemaAttribute {
+                name: AttrString::from("memberof"),
+                uuid: UUID_SCHEMA_ATTR_MEMBEROF,
+                description: String::from("reverse group membership of the object"),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("directmemberof"),
+            SchemaAttribute {
+                name: AttrString::from("directmemberof"),
+                uuid: UUID_SCHEMA_ATTR_DIRECTMEMBEROF,
+                description: String::from("reverse direct group membership of the object"),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("member"),
+            SchemaAttribute {
+                name: AttrString::from("member"),
+                uuid: UUID_SCHEMA_ATTR_MEMBER,
+                description: String::from("List of members of the group"),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+        // Migration related
+        self.attributes.insert(
+            AttrString::from("version"),
+            SchemaAttribute {
+                name: AttrString::from("version"),
+                uuid: UUID_SCHEMA_ATTR_VERSION,
+                description: String::from(
+                    "The systems internal migration version for provided objects",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::Uint32,
+            },
+        );
+        // Domain for sysinfo
+        self.attributes.insert(
+            AttrString::from("domain"),
+            SchemaAttribute {
+                name: AttrString::from("domain"),
+                uuid: UUID_SCHEMA_ATTR_DOMAIN,
+                description: String::from("A DNS Domain name entry."),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringIname,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("claim"),
+            SchemaAttribute {
+                name: AttrString::from("claim"),
+                uuid: UUID_SCHEMA_ATTR_CLAIM,
+                description: String::from(
+                    "The string identifier of an extracted claim that can be filtered",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("scope"),
+            SchemaAttribute {
+                name: AttrString::from("scope"),
+                uuid: UUID_SCHEMA_ATTR_SCOPE,
+                description: String::from(
+                    "The string identifier of a permission scope in a session",
+                ),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
 
-            self.attributes.insert(
-                AttrString::from("password_import"),
-                SchemaAttribute {
-                    name: AttrString::from("password_import"),
-                    uuid: UUID_SCHEMA_ATTR_PASSWORD_IMPORT,
-                    description: String::from("An imported password hash from an external system."),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8String,
-                },
-            );
+        self.attributes.insert(
+            AttrString::from("password_import"),
+            SchemaAttribute {
+                name: AttrString::from("password_import"),
+                uuid: UUID_SCHEMA_ATTR_PASSWORD_IMPORT,
+                description: String::from("An imported password hash from an external system."),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Utf8String,
+            },
+        );
 
-            // LDAP Masking Phantoms
-            self.attributes.insert(
-                AttrString::from("dn"),
-                SchemaAttribute {
-                    name: AttrString::from("dn"),
-                    uuid: UUID_SCHEMA_ATTR_DN,
-                    description: String::from("An LDAP Compatible DN"),
-                    multivalue: false,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("entrydn"),
-                SchemaAttribute {
-                    name: AttrString::from("entrydn"),
-                    uuid: UUID_SCHEMA_ATTR_ENTRYDN,
-                    description: String::from("An LDAP Compatible EntryDN"),
-                    multivalue: false,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("entryuuid"),
-                SchemaAttribute {
-                    name: AttrString::from("entryuuid"),
-                    uuid: UUID_SCHEMA_ATTR_ENTRYUUID,
-                    description: String::from("An LDAP Compatible entryUUID"),
-                    multivalue: false,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Uuid,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("objectclass"),
-                SchemaAttribute {
-                    name: AttrString::from("objectclass"),
-                    uuid: UUID_SCHEMA_ATTR_OBJECTCLASS,
-                    description: String::from("An LDAP Compatible objectClass"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringInsensitive,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("cn"),
-                SchemaAttribute {
-                    name: AttrString::from("cn"),
-                    uuid: UUID_SCHEMA_ATTR_CN,
-                    description: String::from("An LDAP Compatible objectClass"),
-                    multivalue: false,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Utf8StringIname,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("keys"),
-                SchemaAttribute {
-                    name: AttrString::from("keys"),
-                    uuid: UUID_SCHEMA_ATTR_KEYS,
-                    description: String::from("An LDAP Compatible keys (ssh)"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::SshKey,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("sshpublickey"),
-                SchemaAttribute {
-                    name: AttrString::from("sshpublickey"),
-                    uuid: UUID_SCHEMA_ATTR_SSHPUBLICKEY,
-                    description: String::from("An LDAP Compatible sshPublicKey"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::SshKey,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("email"),
-                SchemaAttribute {
-                    name: AttrString::from("email"),
-                    uuid: UUID_SCHEMA_ATTR_EMAIL,
-                    description: String::from("An LDAP Compatible email"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::EmailAddress,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("emailaddress"),
-                SchemaAttribute {
-                    name: AttrString::from("emailaddress"),
-                    uuid: UUID_SCHEMA_ATTR_EMAILADDRESS,
-                    description: String::from("An LDAP Compatible emailAddress"),
-                    multivalue: true,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::EmailAddress,
-                },
-            );
-            self.attributes.insert(
-                AttrString::from("uidnumber"),
-                SchemaAttribute {
-                    name: AttrString::from("uidnumber"),
-                    uuid: UUID_SCHEMA_ATTR_UIDNUMBER,
-                    description: String::from("An LDAP Compatible uidNumber"),
-                    multivalue: false,
-                    unique: false,
-                    phantom: true,
-                    index: vec![],
-                    syntax: SyntaxType::Uint32,
-                },
-            );
-            // end LDAP masking phantoms
+        // LDAP Masking Phantoms
+        self.attributes.insert(
+            AttrString::from("dn"),
+            SchemaAttribute {
+                name: AttrString::from("dn"),
+                uuid: UUID_SCHEMA_ATTR_DN,
+                description: String::from("An LDAP Compatible DN"),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("entrydn"),
+            SchemaAttribute {
+                name: AttrString::from("entrydn"),
+                uuid: UUID_SCHEMA_ATTR_ENTRYDN,
+                description: String::from("An LDAP Compatible EntryDN"),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("entryuuid"),
+            SchemaAttribute {
+                name: AttrString::from("entryuuid"),
+                uuid: UUID_SCHEMA_ATTR_ENTRYUUID,
+                description: String::from("An LDAP Compatible entryUUID"),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Uuid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("objectclass"),
+            SchemaAttribute {
+                name: AttrString::from("objectclass"),
+                uuid: UUID_SCHEMA_ATTR_OBJECTCLASS,
+                description: String::from("An LDAP Compatible objectClass"),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("cn"),
+            SchemaAttribute {
+                name: AttrString::from("cn"),
+                uuid: UUID_SCHEMA_ATTR_CN,
+                description: String::from("An LDAP Compatible objectClass"),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringIname,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("keys"),
+            SchemaAttribute {
+                name: AttrString::from("keys"),
+                uuid: UUID_SCHEMA_ATTR_KEYS,
+                description: String::from("An LDAP Compatible keys (ssh)"),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::SshKey,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("sshpublickey"),
+            SchemaAttribute {
+                name: AttrString::from("sshpublickey"),
+                uuid: UUID_SCHEMA_ATTR_SSHPUBLICKEY,
+                description: String::from("An LDAP Compatible sshPublicKey"),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::SshKey,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("email"),
+            SchemaAttribute {
+                name: AttrString::from("email"),
+                uuid: UUID_SCHEMA_ATTR_EMAIL,
+                description: String::from("An LDAP Compatible email"),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::EmailAddress,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("emailaddress"),
+            SchemaAttribute {
+                name: AttrString::from("emailaddress"),
+                uuid: UUID_SCHEMA_ATTR_EMAILADDRESS,
+                description: String::from("An LDAP Compatible emailAddress"),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::EmailAddress,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("uidnumber"),
+            SchemaAttribute {
+                name: AttrString::from("uidnumber"),
+                uuid: UUID_SCHEMA_ATTR_UIDNUMBER,
+                description: String::from("An LDAP Compatible uidNumber"),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                index: vec![],
+                syntax: SyntaxType::Uint32,
+            },
+        );
+        // end LDAP masking phantoms
 
-            self.classes.insert(
-                AttrString::from("attributetype"),
-                SchemaClass {
-                    name: AttrString::from("attributetype"),
-                    uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
-                    description: String::from("Definition of a schema attribute"),
-                    systemmay: vec![AttrString::from("phantom"), AttrString::from("index")],
-                    systemmust: vec![
-                        AttrString::from("class"),
-                        AttrString::from("attributename"),
-                        AttrString::from("multivalue"),
-                        AttrString::from("unique"),
-                        AttrString::from("syntax"),
-                        AttrString::from("description"),
-                    ],
-                    systemexcludes: vec![AttrString::from("classtype")],
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("classtype"),
-                SchemaClass {
-                    name: AttrString::from("classtype"),
-                    uuid: UUID_SCHEMA_CLASS_CLASSTYPE,
-                    description: String::from("Definition of a schema classtype"),
-                    systemmay: vec![
-                        AttrString::from("systemmay"),
-                        AttrString::from("may"),
-                        AttrString::from("systemmust"),
-                        AttrString::from("must"),
-                        AttrString::from("systemsupplements"),
-                        AttrString::from("supplements"),
-                        AttrString::from("systemexcludes"),
-                        AttrString::from("excludes"),
-                    ],
-                    systemmust: vec![
-                        AttrString::from("class"),
-                        AttrString::from("classname"),
-                        AttrString::from("description"),
-                    ],
-                    systemexcludes: vec![AttrString::from("attributetype")],
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("object"),
-                SchemaClass {
-                    name: AttrString::from("object"),
-                    uuid: UUID_SCHEMA_CLASS_OBJECT,
-                    description: String::from(
-                        "A system created class that all objects must contain",
-                    ),
-                    systemmay: vec![AttrString::from("description")],
-                    systemmust: vec![
-                        AttrString::from("class"),
-                        AttrString::from("uuid"),
-                        AttrString::from("last_modified_cid"),
-                    ],
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("memberof"),
-                SchemaClass {
-                    name: AttrString::from("memberof"),
-                    uuid: UUID_SCHEMA_CLASS_MEMBEROF,
-                    description: String::from("Class that is dynamically added to recepients of memberof or directmemberof"),
-                    systemmay: vec![
-                        AttrString::from("memberof"),
-                        AttrString::from("directmemberof")
-                    ],
-                    .. Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("extensibleobject"),
-                SchemaClass {
-                    name: AttrString::from("extensibleobject"),
-                    uuid: UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT,
-                    description: String::from(
-                        "A class type that has green hair and turns off all rules ...",
-                    ),
-                    ..Default::default()
-                },
-            );
-            /* These two classes are core to the entry lifecycle for recycling and tombstoning */
-            self.classes.insert(
+        self.classes.insert(
+            AttrString::from("attributetype"),
+            SchemaClass {
+                name: AttrString::from("attributetype"),
+                uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
+                description: String::from("Definition of a schema attribute"),
+                systemmay: vec![AttrString::from("phantom"), AttrString::from("index")],
+                systemmust: vec![
+                    AttrString::from("class"),
+                    AttrString::from("attributename"),
+                    AttrString::from("multivalue"),
+                    AttrString::from("unique"),
+                    AttrString::from("syntax"),
+                    AttrString::from("description"),
+                ],
+                systemexcludes: vec![AttrString::from("classtype")],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("classtype"),
+            SchemaClass {
+                name: AttrString::from("classtype"),
+                uuid: UUID_SCHEMA_CLASS_CLASSTYPE,
+                description: String::from("Definition of a schema classtype"),
+                systemmay: vec![
+                    AttrString::from("systemmay"),
+                    AttrString::from("may"),
+                    AttrString::from("systemmust"),
+                    AttrString::from("must"),
+                    AttrString::from("systemsupplements"),
+                    AttrString::from("supplements"),
+                    AttrString::from("systemexcludes"),
+                    AttrString::from("excludes"),
+                ],
+                systemmust: vec![
+                    AttrString::from("class"),
+                    AttrString::from("classname"),
+                    AttrString::from("description"),
+                ],
+                systemexcludes: vec![AttrString::from("attributetype")],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("object"),
+            SchemaClass {
+                name: AttrString::from("object"),
+                uuid: UUID_SCHEMA_CLASS_OBJECT,
+                description: String::from("A system created class that all objects must contain"),
+                systemmay: vec![AttrString::from("description")],
+                systemmust: vec![
+                    AttrString::from("class"),
+                    AttrString::from("uuid"),
+                    AttrString::from("last_modified_cid"),
+                ],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("memberof"),
+            SchemaClass {
+                name: AttrString::from("memberof"),
+                uuid: UUID_SCHEMA_CLASS_MEMBEROF,
+                description: String::from(
+                    "Class that is dynamically added to recepients of memberof or directmemberof",
+                ),
+                systemmay: vec![
+                    AttrString::from("memberof"),
+                    AttrString::from("directmemberof"),
+                ],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("extensibleobject"),
+            SchemaClass {
+                name: AttrString::from("extensibleobject"),
+                uuid: UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT,
+                description: String::from(
+                    "A class type that has green hair and turns off all rules ...",
+                ),
+                ..Default::default()
+            },
+        );
+        /* These two classes are core to the entry lifecycle for recycling and tombstoning */
+        self.classes.insert(
                 AttrString::from("recycled"),
                 SchemaClass {
                     name: AttrString::from("recycled"),
@@ -1412,7 +1421,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     .. Default::default()
                 },
             );
-            self.classes.insert(
+        self.classes.insert(
                 AttrString::from("tombstone"),
                 SchemaClass {
                     name: AttrString::from("tombstone"),
@@ -1425,89 +1434,89 @@ impl<'a> SchemaWriteTransaction<'a> {
                     .. Default::default()
                 },
             );
-            // sysinfo
-            self.classes.insert(
-                AttrString::from("system_info"),
-                SchemaClass {
-                    name: AttrString::from("system_info"),
-                    uuid: UUID_SCHEMA_CLASS_SYSTEM_INFO,
-                    description: String::from("System metadata object class"),
-                    systemmust: vec![AttrString::from("version")],
-                    ..Default::default()
-                },
-            );
-            // ACP
-            self.classes.insert(
-                AttrString::from("access_control_profile"),
-                SchemaClass {
-                    name: AttrString::from("access_control_profile"),
-                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE,
-                    description: String::from("System Access Control Profile Class"),
-                    systemmay: vec![
-                        AttrString::from("acp_enable"),
-                        AttrString::from("description"),
-                    ],
-                    systemmust: vec![
-                        AttrString::from("acp_receiver"),
-                        AttrString::from("acp_targetscope"),
-                        AttrString::from("name"),
-                    ],
-                    systemsupplements: vec![
-                        AttrString::from("access_control_search"),
-                        AttrString::from("access_control_delete"),
-                        AttrString::from("access_control_modify"),
-                        AttrString::from("access_control_create"),
-                    ],
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("access_control_search"),
-                SchemaClass {
-                    name: AttrString::from("access_control_search"),
-                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
-                    description: String::from("System Access Control Search Class"),
-                    systemmust: vec![AttrString::from("acp_search_attr")],
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("access_control_delete"),
-                SchemaClass {
-                    name: AttrString::from("access_control_delete"),
-                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE,
-                    description: String::from("System Access Control DELETE Class"),
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("access_control_modify"),
-                SchemaClass {
-                    name: AttrString::from("access_control_modify"),
-                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY,
-                    description: String::from("System Access Control Modify Class"),
-                    systemmay: vec![
-                        AttrString::from("acp_modify_removedattr"),
-                        AttrString::from("acp_modify_presentattr"),
-                        AttrString::from("acp_modify_class"),
-                    ],
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
-                AttrString::from("access_control_create"),
-                SchemaClass {
-                    name: AttrString::from("access_control_create"),
-                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE,
-                    description: String::from("System Access Control Create Class"),
-                    systemmay: vec![
-                        AttrString::from("acp_create_class"),
-                        AttrString::from("acp_create_attr"),
-                    ],
-                    ..Default::default()
-                },
-            );
-            self.classes.insert(
+        // sysinfo
+        self.classes.insert(
+            AttrString::from("system_info"),
+            SchemaClass {
+                name: AttrString::from("system_info"),
+                uuid: UUID_SCHEMA_CLASS_SYSTEM_INFO,
+                description: String::from("System metadata object class"),
+                systemmust: vec![AttrString::from("version")],
+                ..Default::default()
+            },
+        );
+        // ACP
+        self.classes.insert(
+            AttrString::from("access_control_profile"),
+            SchemaClass {
+                name: AttrString::from("access_control_profile"),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE,
+                description: String::from("System Access Control Profile Class"),
+                systemmay: vec![
+                    AttrString::from("acp_enable"),
+                    AttrString::from("description"),
+                ],
+                systemmust: vec![
+                    AttrString::from("acp_receiver"),
+                    AttrString::from("acp_targetscope"),
+                    AttrString::from("name"),
+                ],
+                systemsupplements: vec![
+                    AttrString::from("access_control_search"),
+                    AttrString::from("access_control_delete"),
+                    AttrString::from("access_control_modify"),
+                    AttrString::from("access_control_create"),
+                ],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("access_control_search"),
+            SchemaClass {
+                name: AttrString::from("access_control_search"),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
+                description: String::from("System Access Control Search Class"),
+                systemmust: vec![AttrString::from("acp_search_attr")],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("access_control_delete"),
+            SchemaClass {
+                name: AttrString::from("access_control_delete"),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE,
+                description: String::from("System Access Control DELETE Class"),
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("access_control_modify"),
+            SchemaClass {
+                name: AttrString::from("access_control_modify"),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY,
+                description: String::from("System Access Control Modify Class"),
+                systemmay: vec![
+                    AttrString::from("acp_modify_removedattr"),
+                    AttrString::from("acp_modify_presentattr"),
+                    AttrString::from("acp_modify_class"),
+                ],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("access_control_create"),
+            SchemaClass {
+                name: AttrString::from("access_control_create"),
+                uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE,
+                description: String::from("System Access Control Create Class"),
+                systemmay: vec![
+                    AttrString::from("acp_create_class"),
+                    AttrString::from("acp_create_attr"),
+                ],
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
                 AttrString::from("system"),
                 SchemaClass {
                     name: AttrString::from("system"),
@@ -1517,15 +1526,14 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
 
-            let r = self.validate();
-            if r.is_empty() {
-                admin_debug!("schema validate -> passed");
-                Ok(())
-            } else {
-                admin_error!(err = ?r, "schema validate -> errors");
-                Err(OperationError::ConsistencyError(r))
-            }
-        })
+        let r = self.validate();
+        if r.is_empty() {
+            admin_debug!("schema validate -> passed");
+            Ok(())
+        } else {
+            admin_error!(err = ?r, "schema validate -> errors");
+            Err(OperationError::ConsistencyError(r))
+        }
     }
 }
 

@@ -411,6 +411,7 @@ pub(crate) trait IdmServerTransaction<'a> {
     /// The primary method of verification selection is the use of the KID parameter
     /// that we internally sign with. We can use this to select the appropriate token type
     /// and validation method.
+    #[instrument(level = "info", skip_all)]
     fn validate_and_parse_token_to_ident(
         &self,
         token: Option<&str>,
@@ -522,6 +523,7 @@ pub(crate) trait IdmServerTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn validate_and_parse_uat(
         &self,
         token: Option<&str>,
@@ -588,6 +590,7 @@ pub(crate) trait IdmServerTransaction<'a> {
     /// something we can pin access controls and other limits and references to.
     /// This is why it is the location where validity windows are checked and other
     /// relevant session information is injected.
+    #[instrument(level = "debug", skip_all)]
     fn process_uat_to_identity(
         &self,
         uat: &UserAuthToken,
@@ -653,6 +656,7 @@ pub(crate) trait IdmServerTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_apit_to_identity(
         &self,
         apit: &ApiToken,
@@ -673,6 +677,7 @@ pub(crate) trait IdmServerTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
         &self,
         session: &LdapSession,
@@ -873,16 +878,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 match auth_session {
                     Some(auth_session) => {
                         let mut session_write = self.sessions.write();
-                        spanned!("idm::server::auth<Init> -> sessions", {
-                            if session_write.contains_key(&sessionid) {
-                                Err(OperationError::InvalidSessionState)
-                            } else {
-                                session_write.insert(sessionid, Arc::new(Mutex::new(auth_session)));
-                                // Debugging: ensure we really inserted ...
-                                debug_assert!(session_write.get(&sessionid).is_some());
-                                Ok(())
-                            }
-                        })?;
+                        if session_write.contains_key(&sessionid) {
+                            Err(OperationError::InvalidSessionState)
+                        } else {
+                            session_write.insert(sessionid, Arc::new(Mutex::new(auth_session)));
+                            // Debugging: ensure we really inserted ...
+                            debug_assert!(session_write.get(&sessionid).is_some());
+                            Ok(())
+                        }?;
                         session_write.commit();
                     }
                     None => {
@@ -2014,65 +2017,64 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        spanned!("idm::server::IdmServerProxyWriteTransaction::commit", {
-            if self
-                .qs_write
-                .get_changed_uuids()
-                .contains(&UUID_SYSTEM_CONFIG)
-            {
-                self.reload_password_badlist()?;
-            };
-            if self.qs_write.get_changed_ouath2() {
-                self.qs_write
-                    .get_oauth2rs_set()
-                    .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
-            }
-            if self.qs_write.get_changed_domain() {
-                // reload token_key?
-                self.qs_write
-                    .get_domain_fernet_private_key()
-                    .and_then(|token_key| {
-                        Fernet::new(&token_key).ok_or_else(|| {
-                            admin_error!("Failed to generate token_enc_key");
+        if self
+            .qs_write
+            .get_changed_uuids()
+            .contains(&UUID_SYSTEM_CONFIG)
+        {
+            self.reload_password_badlist()?;
+        };
+        if self.qs_write.get_changed_ouath2() {
+            self.qs_write
+                .get_oauth2rs_set()
+                .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
+        }
+        if self.qs_write.get_changed_domain() {
+            // reload token_key?
+            self.qs_write
+                .get_domain_fernet_private_key()
+                .and_then(|token_key| {
+                    Fernet::new(&token_key).ok_or_else(|| {
+                        admin_error!("Failed to generate token_enc_key");
+                        OperationError::InvalidState
+                    })
+                })
+                .map(|new_handle| {
+                    *self.token_enc_key = new_handle;
+                })?;
+            self.qs_write
+                .get_domain_es256_private_key()
+                .and_then(|key_der| {
+                    JwsSigner::from_es256_der(&key_der).map_err(|e| {
+                        admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
+                        OperationError::InvalidState
+                    })
+                })
+                .and_then(|signer| {
+                    signer
+                        .get_validator()
+                        .map_err(|e| {
+                            admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
                             OperationError::InvalidState
                         })
-                    })
-                    .map(|new_handle| {
-                        *self.token_enc_key = new_handle;
-                    })?;
-                self.qs_write
-                    .get_domain_es256_private_key()
-                    .and_then(|key_der| {
-                        JwsSigner::from_es256_der(&key_der).map_err(|e| {
-                            admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
-                            OperationError::InvalidState
-                        })
-                    })
-                    .and_then(|signer| {
-                        signer
-                            .get_validator()
-                            .map_err(|e| {
-                                admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
-                                OperationError::InvalidState
-                            })
-                            .map(|validator| (signer, validator))
-                    })
-                    .map(|(new_signer, new_validator)| {
-                        *self.uat_jwt_signer = new_signer;
-                        *self.uat_jwt_validator = new_validator;
-                    })?;
-            }
-            // Commit everything.
-            self.oauth2rs.commit();
-            self.uat_jwt_signer.commit();
-            self.uat_jwt_validator.commit();
-            self.token_enc_key.commit();
-            self.pw_badlist_cache.commit();
-            self.cred_update_sessions.commit();
-            trace!("cred_update_session.commit");
-            self.qs_write.commit()
-        })
+                        .map(|validator| (signer, validator))
+                })
+                .map(|(new_signer, new_validator)| {
+                    *self.uat_jwt_signer = new_signer;
+                    *self.uat_jwt_validator = new_validator;
+                })?;
+        }
+        // Commit everything.
+        self.oauth2rs.commit();
+        self.uat_jwt_signer.commit();
+        self.uat_jwt_validator.commit();
+        self.token_enc_key.commit();
+        self.pw_badlist_cache.commit();
+        self.cred_update_sessions.commit();
+        trace!("cred_update_session.commit");
+        self.qs_write.commit()
     }
 
     fn reload_password_badlist(&mut self) -> Result<(), OperationError> {

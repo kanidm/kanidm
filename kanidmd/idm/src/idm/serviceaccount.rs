@@ -87,14 +87,13 @@ pub struct ServiceAccount {
 }
 
 impl ServiceAccount {
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn try_from_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         // qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("idm::serviceaccount::try_from_entry_rw", {
-            // let groups = Group::try_from_account_entry_rw(value, qs)?;
-            try_from_entry!(value)
-        })
+        // let groups = Group::try_from_account_entry_rw(value, qs)?;
+        try_from_entry!(value)
     }
 
     pub(crate) fn check_api_token_valid(

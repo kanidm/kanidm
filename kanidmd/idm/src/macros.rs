@@ -197,37 +197,35 @@ macro_rules! run_create_test {
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
 
-        spanned!("plugins::macros::run_create_test", {
-            let qs = setup_test!($preload_entries);
+        let qs = setup_test!($preload_entries);
 
-            let ce = match $internal {
-                None => CreateEvent::new_internal($create_entries.clone()),
-                Some(e_str) => unsafe {
-                    CreateEvent::new_impersonate_entry_ser(e_str, $create_entries.clone())
-                },
-            };
+        let ce = match $internal {
+            None => CreateEvent::new_internal($create_entries.clone()),
+            Some(e_str) => unsafe {
+                CreateEvent::new_impersonate_entry_ser(e_str, $create_entries.clone())
+            },
+        };
 
-            {
-                let qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.create(&ce);
-                trace!("test result: {:?}", r);
-                assert!(r == $expect);
-                $check(&qs_write);
-                match r {
-                    Ok(_) => {
-                        qs_write.commit().expect("commit failure!");
-                    }
-                    Err(e) => {
-                        admin_error!("Rolling back => {:?}", e);
-                    }
+        {
+            let qs_write = qs.write(duration_from_epoch_now());
+            let r = qs_write.create(&ce);
+            trace!("test result: {:?}", r);
+            assert!(r == $expect);
+            $check(&qs_write);
+            match r {
+                Ok(_) => {
+                    qs_write.commit().expect("commit failure!");
+                }
+                Err(e) => {
+                    admin_error!("Rolling back => {:?}", e);
                 }
             }
-            // Make sure there are no errors.
-            trace!("starting verification");
-            let ver = qs.verify();
-            trace!("verification -> {:?}", ver);
-            assert!(ver.len() == 0);
-        });
+        }
+        // Make sure there are no errors.
+        trace!("starting verification");
+        let ver = qs.verify();
+        trace!("verification -> {:?}", ver);
+        assert!(ver.len() == 0);
     }};
 }
 
@@ -248,49 +246,41 @@ macro_rules! run_modify_test {
         use crate::prelude::*;
         use crate::schema::Schema;
 
-        spanned!("plugins::macros::run_modify_test", {
-            let qs = setup_test!($preload_entries);
+        let qs = setup_test!($preload_entries);
 
-            {
-                let qs_write = qs.write(duration_from_epoch_now());
-                spanned!("plugins::macros::run_modify_test -> pre_test hook", {
-                    $pre_hook(&qs_write)
-                });
-                qs_write.commit().expect("commit failure!");
-            }
+        {
+            let qs_write = qs.write(duration_from_epoch_now());
+            $pre_hook(&qs_write);
+            qs_write.commit().expect("commit failure!");
+        }
 
-            let me = match $internal {
-                None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
-                Some(e_str) => unsafe {
-                    ModifyEvent::new_impersonate_entry_ser(e_str, $modify_filter, $modify_list)
-                },
-            };
+        let me = match $internal {
+            None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
+            Some(e_str) => unsafe {
+                ModifyEvent::new_impersonate_entry_ser(e_str, $modify_filter, $modify_list)
+            },
+        };
 
-            {
-                let qs_write = qs.write(duration_from_epoch_now());
-                let r = spanned!("plugins::macros::run_modify_test -> main_test", {
-                    qs_write.modify(&me)
-                });
-                spanned!("plugins::macros::run_modify_test -> post_test check", {
-                    $check(&qs_write)
-                });
-                trace!("test result: {:?}", r);
-                assert!(r == $expect);
-                match r {
-                    Ok(_) => {
-                        qs_write.commit().expect("commit failure!");
-                    }
-                    Err(e) => {
-                        admin_error!("Rolling back => {:?}", e);
-                    }
+        {
+            let qs_write = qs.write(duration_from_epoch_now());
+            let r = qs_write.modify(&me);
+            $check(&qs_write);
+            trace!("test result: {:?}", r);
+            assert!(r == $expect);
+            match r {
+                Ok(_) => {
+                    qs_write.commit().expect("commit failure!");
+                }
+                Err(e) => {
+                    admin_error!("Rolling back => {:?}", e);
                 }
             }
-            // Make sure there are no errors.
-            trace!("starting verification");
-            let ver = qs.verify();
-            trace!("verification -> {:?}", ver);
-            assert!(ver.len() == 0);
-        });
+        }
+        // Make sure there are no errors.
+        trace!("starting verification");
+        let ver = qs.verify();
+        trace!("verification -> {:?}", ver);
+        assert!(ver.len() == 0);
     }};
 }
 
@@ -310,37 +300,35 @@ macro_rules! run_delete_test {
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
 
-        spanned!("plugins::macros::run_delete_test", {
-            let qs = setup_test!($preload_entries);
+        let qs = setup_test!($preload_entries);
 
-            let de = match $internal {
-                Some(e_str) => unsafe {
-                    DeleteEvent::new_impersonate_entry_ser(e_str, $delete_filter.clone())
-                },
-                None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
-            };
+        let de = match $internal {
+            Some(e_str) => unsafe {
+                DeleteEvent::new_impersonate_entry_ser(e_str, $delete_filter.clone())
+            },
+            None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
+        };
 
-            {
-                let qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.delete(&de);
-                trace!("test result: {:?}", r);
-                $check(&qs_write);
-                assert!(r == $expect);
-                match r {
-                    Ok(_) => {
-                        qs_write.commit().expect("commit failure!");
-                    }
-                    Err(e) => {
-                        admin_error!("Rolling back => {:?}", e);
-                    }
+        {
+            let qs_write = qs.write(duration_from_epoch_now());
+            let r = qs_write.delete(&de);
+            trace!("test result: {:?}", r);
+            $check(&qs_write);
+            assert!(r == $expect);
+            match r {
+                Ok(_) => {
+                    qs_write.commit().expect("commit failure!");
+                }
+                Err(e) => {
+                    admin_error!("Rolling back => {:?}", e);
                 }
             }
-            // Make sure there are no errors.
-            trace!("starting verification");
-            let ver = qs.verify();
-            trace!("verification -> {:?}", ver);
-            assert!(ver.len() == 0);
-        });
+        }
+        // Make sure there are no errors.
+        trace!("starting verification");
+        let ver = qs.verify();
+        trace!("verification -> {:?}", ver);
+        assert!(ver.len() == 0);
     }};
 }
 
