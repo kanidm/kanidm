@@ -1,3 +1,4 @@
+/*
 #[macro_export]
 macro_rules! spanned {
     ($name:expr, $code:block) => {{
@@ -13,6 +14,7 @@ macro_rules! spanned {
         (|| $code)()
     }};
 }
+*/
 
 #[macro_export]
 macro_rules! tagged_event {
