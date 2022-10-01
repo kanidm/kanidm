@@ -4,11 +4,12 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
+use std::fmt;
+use std::str::FromStr;
+
 use kanidm_proto::messages::ConsoleOutputMode;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationTestConfig {

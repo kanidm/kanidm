@@ -4,14 +4,15 @@
 // The primary point of this is to generate a unique domain UUID on startup
 // which is importart for management of the replication topo and trust
 // relationships.
-use crate::plugins::Plugin;
+use std::iter::once;
 
-use crate::event::{CreateEvent, ModifyEvent};
-use crate::prelude::*;
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
-use std::iter::once;
 use tracing::trace;
+
+use crate::event::{CreateEvent, ModifyEvent};
+use crate::plugins::Plugin;
+use crate::prelude::*;
 
 lazy_static! {
     static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");

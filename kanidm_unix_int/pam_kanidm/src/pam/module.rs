@@ -1,8 +1,9 @@
 //! Functions for use in pam modules.
 
-use libc::c_char;
 use std::ffi::{CStr, CString};
 use std::{mem, ptr};
+
+use libc::c_char;
 
 use crate::pam::constants::{PamFlag, PamItemType, PamResultCode, PAM_AUTHTOK};
 

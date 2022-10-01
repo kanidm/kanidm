@@ -1,11 +1,10 @@
+use smolset::SmolSet;
+
 use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
-
-use smolset::SmolSet;
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCid {

@@ -1,11 +1,13 @@
 // Transform password import requests into proper kanidm credentials.
+use std::convert::TryFrom;
+use std::iter::once;
+
+use kanidm_proto::v1::PluginError;
+
 use crate::credential::{Credential, Password};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
-use kanidm_proto::v1::PluginError;
-use std::convert::TryFrom;
-use std::iter::once;
 
 pub struct PasswordImport {}
 

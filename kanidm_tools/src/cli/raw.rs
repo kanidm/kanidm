@@ -1,13 +1,13 @@
-use crate::RawOpt;
-use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
 use std::collections::BTreeMap;
-
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
+use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
 use serde::de::DeserializeOwned;
+
+use crate::RawOpt;
 
 fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn Error>> {
     let f = File::open(path)?;

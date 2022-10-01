@@ -1,11 +1,11 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
-use smolset::SmolSet;
-
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
+
+use smolset::SmolSet;
+
+use crate::prelude::*;
+use crate::schema::SchemaAttribute;
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetPrivateBinary {

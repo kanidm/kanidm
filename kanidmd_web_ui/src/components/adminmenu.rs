@@ -1,12 +1,11 @@
+use serde::{Deserialize, Serialize};
+use yew::{html, Component, Context, Html, Properties};
+use yew_router::prelude::Link;
+
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
 // use crate::error::FetchError;
 use crate::views::AdminRoute;
-
-use serde::{Deserialize, Serialize};
-
-use yew::{html, Component, Context, Html, Properties};
-use yew_router::prelude::Link;
 
 const CSS_CARD: &str = "card text-center";
 const CSS_CARD_BODY: &str = "card-body text-center";

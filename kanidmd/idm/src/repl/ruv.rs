@@ -1,12 +1,14 @@
-use crate::prelude::*;
-use crate::repl::cid::Cid;
-use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
-use idlset::v2::IDLBitRange;
-use kanidm_proto::v1::ConsistencyError;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::ops::Bound::*;
 use std::sync::Arc;
+
+use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+use idlset::v2::IDLBitRange;
+use kanidm_proto::v1::ConsistencyError;
+
+use crate::prelude::*;
+use crate::repl::cid::Cid;
 
 pub struct ReplicationUpdateVector {
     // This sorts by time. Should we look up by IDL or by UUID?

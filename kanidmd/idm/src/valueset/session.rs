@@ -1,15 +1,14 @@
+use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::BTreeMap;
+
+use time::OffsetDateTime;
+
 use crate::be::dbvalue::{DbValueIdentityId, DbValueSession};
 use crate::identity::IdentityId;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::value::Session;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
-use time::OffsetDateTime;
-
-use crate::valueset::uuid_to_proto_string;
+use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSession {

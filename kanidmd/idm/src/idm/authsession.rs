@@ -2,34 +2,32 @@
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
-use crate::credential::BackupCodes;
-use crate::idm::account::Account;
-use crate::idm::delayed::BackupCodeRemoval;
-use crate::idm::AuthState;
-use crate::prelude::*;
-use hashbrown::HashSet;
-use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech, AuthType};
-
-use crate::credential::{totp::Totp, Credential, CredentialType, Password};
-
-use crate::idm::delayed::{DelayedAction, PasswordUpgrade, WebauthnCounterIncrement};
-// use crossbeam::channel::Sender;
-use tokio::sync::mpsc::UnboundedSender as Sender;
-
-use std::time::Duration;
-use uuid::Uuid;
-// use webauthn_rs::proto::Credential as WebauthnCredential;
-use compact_jwt::{Jws, JwsSigner};
 use std::collections::BTreeMap;
 pub use std::collections::BTreeSet as Set;
 use std::convert::TryFrom;
+use std::time::Duration;
 
+// use webauthn_rs::proto::Credential as WebauthnCredential;
+use compact_jwt::{Jws, JwsSigner};
+use hashbrown::HashSet;
+use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech, AuthType, OperationError};
+// use crossbeam::channel::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
+use uuid::Uuid;
+// use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
 use webauthn_rs::prelude::{
     PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication, Webauthn,
 };
-// use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+
+use crate::credential::totp::Totp;
+use crate::credential::{BackupCodes, Credential, CredentialType, Password};
+use crate::idm::account::Account;
+use crate::idm::delayed::{
+    BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
+};
+use crate::idm::AuthState;
+use crate::prelude::*;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fufilled. This is where MFA or other
@@ -405,7 +403,9 @@ impl CredHandler {
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
         }
-    } // end CredHandler::PasswordMfa
+    }
+
+    // end CredHandler::PasswordMfa
 
     /// Validate a webauthn authentication attempt
     pub fn validate_webauthn(
@@ -832,6 +832,16 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
+    pub use std::collections::BTreeSet as Set;
+    use std::time::Duration;
+
+    use compact_jwt::JwsSigner;
+    use hashbrown::HashSet;
+    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
+    use tokio::sync::mpsc::unbounded_channel as unbounded;
+    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
@@ -842,17 +852,7 @@ mod tests {
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
-    use hashbrown::HashSet;
-    pub use std::collections::BTreeSet as Set;
-
     use crate::utils::{duration_from_epoch_now, readable_password_from_random};
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
-    use std::time::Duration;
-
-    use tokio::sync::mpsc::unbounded_channel as unbounded;
-    use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
-
-    use compact_jwt::JwsSigner;
 
     fn create_pw_badlist_cache() -> HashSet<String> {
         let mut s = HashSet::new();

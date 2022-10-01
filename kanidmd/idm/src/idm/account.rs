@@ -1,29 +1,26 @@
-use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
-use crate::prelude::*;
-use crate::schema::SchemaTransaction;
+use std::collections::{BTreeMap, BTreeSet};
+use std::time::Duration;
 
-use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::UiHint;
-use kanidm_proto::v1::{AuthType, UserAuthToken};
-use kanidm_proto::v1::{BackupCodesView, CredentialStatus};
-
-use webauthn_rs::prelude::CredentialID;
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use kanidm_proto::v1::{
+    AuthType, BackupCodesView, CredentialStatus, OperationError, UiHint, UserAuthToken,
+};
+use time::OffsetDateTime;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    AuthenticationResult, CredentialID, DeviceKey as DeviceKeyV4, Passkey as PasskeyV4,
+};
 
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
-use crate::credential::{softlock::CredSoftLockPolicy, Credential};
+use crate::credential::softlock::CredSoftLockPolicy;
+use crate::credential::Credential;
+use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::idm::group::Group;
 use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::modify::{ModifyInvalid, ModifyList};
+use crate::prelude::*;
+use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, Value};
-
-use std::collections::{BTreeMap, BTreeSet};
-use std::time::Duration;
-use time::OffsetDateTime;
-use uuid::Uuid;
-use webauthn_rs::prelude::AuthenticationResult;
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
@@ -153,34 +150,31 @@ pub(crate) struct Account {
 }
 
 impl Account {
+    #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("idm::account::try_from_entry_ro", {
-            let groups = Group::try_from_account_entry_ro(value, qs)?;
-            try_from_entry!(value, groups)
-        })
+        let groups = Group::try_from_account_entry_ro(value, qs)?;
+        try_from_entry!(value, groups)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("idm::account::try_from_entry_rw", {
-            let groups = Group::try_from_account_entry_rw(value, qs)?;
-            try_from_entry!(value, groups)
-        })
+        let groups = Group::try_from_account_entry_rw(value, qs)?;
+        try_from_entry!(value, groups)
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_reduced(
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("idm::account::try_from_entry_reduced", {
-            let groups = Group::try_from_account_entry_red_ro(value, qs)?;
-            try_from_entry!(value, groups)
-        })
+        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
+        try_from_entry!(value, groups)
     }
 
     pub(crate) fn try_from_entry_no_groups(

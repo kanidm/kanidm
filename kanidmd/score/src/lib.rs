@@ -29,12 +29,10 @@ pub mod https;
 mod ldaps;
 
 // use crossbeam::channel::unbounded;
+use std::sync::Arc;
+
 use async_std::task;
 use compact_jwt::JwsSigner;
-use kanidm::prelude::*;
-#[cfg(not(target_family = "windows"))]
-use libc::umask;
-
 use kanidm::actors::v1_read::QueryServerReadV1;
 use kanidm::actors::v1_write::QueryServerWriteV1;
 use kanidm::be::{Backend, BackendConfig, BackendTransaction, FsType};
@@ -43,13 +41,14 @@ use kanidm::crypto::setup_tls;
 use kanidm::idm::server::{IdmServer, IdmServerDelayed};
 use kanidm::interval::IntervalActor;
 use kanidm::ldap::LdapServer;
+use kanidm::prelude::*;
 use kanidm::schema::Schema;
 use kanidm::status::StatusActor;
 use kanidm::utils::{duration_from_epoch_now, touch_file_or_quit};
 use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
-
-use std::sync::Arc;
+#[cfg(not(target_family = "windows"))]
+use libc::umask;
 
 // === internal setup helpers
 

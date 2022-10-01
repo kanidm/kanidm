@@ -3,29 +3,26 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-use crate::be::dbentry::DbIdentSpn;
-use crate::credential::Credential;
-use crate::identity::IdentityId;
-use crate::repl::cid::Cid;
-use kanidm_proto::v1::Filter as ProtoFilter;
-
-use compact_jwt::JwsSigner;
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
+
+use compact_jwt::JwsSigner;
+use kanidm_proto::v1::Filter as ProtoFilter;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use sshkeys::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
+use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
-use sshkeys::PublicKey as SshPublicKey;
-
-use regex::Regex;
-
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use crate::be::dbentry::DbIdentSpn;
+use crate::credential::Credential;
+use crate::identity::IdentityId;
+use crate::repl::cid::Cid;
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {

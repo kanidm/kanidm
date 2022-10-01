@@ -1,14 +1,15 @@
 [package]
 name = "kanidm_unix_int"
-version = "1.1.0-alpha.9"
-authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.64"
-edition = "2021"
-license = "MPL-2.0"
 description = "Kanidm Unix Integration Clients"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
-homepage = "https://github.com/kanidm/kanidm/"
-repository = "https://github.com/kanidm/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [lib]
 name = "kanidm_unix_common"
@@ -43,46 +44,42 @@ name = "kanidm_test_auth"
 path =  "src/test_auth.rs"
 
 [dependencies]
-kanidm_client = { path = "../kanidm_client" }
-kanidm_proto = { path = "../kanidm_proto" }
-kanidm = { path = "../kanidmd/idm" }
+bytes.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+futures.workspace = true
+libc.workspace = true
+libsqlite3-sys.workspace = true
+lru.workspace = true
+kanidm_client.workspace = true
+kanidm_proto.workspace = true
+# This is just used for password hashing and tests, so we could
+# clean this up
+kanidm.workspace = true
 
-tracing = "^0.1.35"
-sketching = { path = "../sketching" }
+r2d2.workspace = true
+r2d2_sqlite.workspace = true
+rpassword.workspace = true
+rusqlite.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sketching.workspace = true
 
-toml = "^0.5.9"
-rpassword = "^7.0.0"
-tokio = { version = "^1.21.1", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
-tokio-util = { version = "^0.7.4", features = ["codec"] }
-
-futures = "^0.3.21"
-bytes = "^1.1.0"
-
-libc = "^0.2.127"
-serde = { version = "^1.0.142", features = ["derive"] }
-serde_json = "^1.0.83"
-clap = { version = "^3.2", features = ["derive", "env"] }
-
-libsqlite3-sys = "0.25.0"
-rusqlite = "^0.28.0"
-r2d2 = "^0.8.10"
-r2d2_sqlite = "^0.21.0"
-
-reqwest = "^0.11.11"
-
-users = "^0.11.0"
-
-lru = "^0.8.0"
+toml.workspace = true
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "net", "io-util"] }
+tokio-util = { workspace = true, features = ["codec"] }
+tracing.workspace = true
+reqwest.workspace = true
+users.workspace = true
 
 [features]
 # default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
 # kanidm = { path = "../kanidmd/idm" }
-score = { path = "../kanidmd/score" }
+score.workspace = true
 
 [build-dependencies]
-clap = { version = "^3.2", features = ["derive"] }
-clap_complete = "^3.2.5"
-profiles = { path = "../profiles" }
+clap = { workspace = true, features = ["derive"] }
+clap_complete.workspace = true
+profiles.workspace = true
 

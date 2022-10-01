@@ -4,14 +4,15 @@
 // both change approaches.
 //
 //
+use std::collections::BTreeMap;
+
+use kanidm_proto::v1::{ConsistencyError, PluginError};
+use tracing::trace;
+
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
-use tracing::trace;
-
-use std::collections::BTreeMap;
 
 pub struct AttrUnique;
 
@@ -192,8 +193,9 @@ impl Plugin for AttrUnique {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use kanidm_proto::v1::PluginError;
+
+    use crate::prelude::*;
 
     // Test entry in db, and same name, reject.
     #[test]

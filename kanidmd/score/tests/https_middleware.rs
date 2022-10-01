@@ -1,14 +1,12 @@
 use std::sync::atomic::Ordering;
 
 mod common;
-use crate::common::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, PORT_ALLOC};
-
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
 use score::create_server_core;
 use tokio::task;
 
-use crate::common::is_free_port;
+use crate::common::{is_free_port, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, PORT_ALLOC};
 
 #[tokio::test]
 async fn test_https_middleware_headers() {

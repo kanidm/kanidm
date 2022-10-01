@@ -12,7 +12,6 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use kanidm_client::{ClientError, KanidmClientBuilder};
-
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use tracing::{debug, error};
 

@@ -15,6 +15,21 @@
 //! with the operation, and a clear path to know how to transform events between
 //! various types.
 
+use std::collections::BTreeSet;
+#[cfg(test)]
+use std::sync::Arc;
+use std::time::Duration;
+
+use kanidm_proto::v1::{
+    AuthCredential, AuthMech, AuthRequest, AuthStep, CreateRequest, DeleteRequest,
+    Entry as ProtoEntry, ModifyList as ProtoModifyList, ModifyRequest, OperationError,
+    SearchRequest, SearchResponse, WhoamiResponse,
+};
+use ldap3_proto::simple::LdapFilter;
+use uuid::Uuid;
+#[cfg(test)]
+use webauthn_rs::prelude::PublicKeyCredential;
+
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::identity::Limits;
@@ -23,24 +38,6 @@ use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
-use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidm_proto::v1::ModifyList as ProtoModifyList;
-use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{
-    AuthCredential, AuthMech, AuthRequest, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
-    SearchRequest, SearchResponse, WhoamiResponse,
-};
-
-use ldap3_proto::simple::LdapFilter;
-use std::collections::BTreeSet;
-use std::time::Duration;
-use uuid::Uuid;
-
-#[cfg(test)]
-use std::sync::Arc;
-
-#[cfg(test)]
-use webauthn_rs::prelude::PublicKeyCredential;
 
 #[derive(Debug)]
 pub struct SearchResult {

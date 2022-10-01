@@ -13,7 +13,8 @@
 
 use clap::Parser;
 use kanidm_cli::KanidmClientParser;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, EnvFilter};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {

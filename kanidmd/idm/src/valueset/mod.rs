@@ -1,27 +1,21 @@
+use std::collections::{BTreeMap, BTreeSet};
+
+use compact_jwt::JwsSigner;
+use dyn_clone::DynClone;
+use hashbrown::HashSet;
+use kanidm_proto::v1::Filter as ProtoFilter;
+use smolset::SmolSet;
+use time::OffsetDateTime;
+// use std::fmt::Debug;
+use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
+
+use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::Credential;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
-
-use crate::be::dbvalue::DbValueSetV2;
-use crate::value::Address;
-use crate::value::IntentTokenState;
-use crate::value::Session;
-use compact_jwt::JwsSigner;
-
-use kanidm_proto::v1::Filter as ProtoFilter;
-
-use std::collections::{BTreeMap, BTreeSet};
-
-use dyn_clone::DynClone;
-use hashbrown::HashSet;
-use smolset::SmolSet;
-// use std::fmt::Debug;
-
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
-
-use time::OffsetDateTime;
+use crate::value::{Address, IntentTokenState, Session};
 
 mod address;
 mod binary;
@@ -69,8 +63,7 @@ pub use self::syntax::ValueSetSyntax;
 pub use self::uint32::ValueSetUint32;
 pub use self::url::ValueSetUrl;
 pub use self::utf8::ValueSetUtf8;
-pub use self::uuid::ValueSetRefer;
-pub use self::uuid::ValueSetUuid;
+pub use self::uuid::{ValueSetRefer, ValueSetUuid};
 
 pub type ValueSet = Box<dyn ValueSetT + Send + Sync + 'static>;
 

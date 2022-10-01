@@ -1,9 +1,13 @@
 [package]
 name = "nss_kanidm"
-version = "1.1.0-alpha.9"
-authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.59"
-edition = "2021"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [lib]
 name = "nss_kanidm"
@@ -11,9 +15,9 @@ crate-type = [ "cdylib" ]
 path =  "src/lib.rs"
 
 [dependencies]
-kanidm_unix_int = { path = "../" }
-libnss = "^0.4.0"
-libc = "^0.2.127"
-paste = "^1.0.9"
-lazy_static = "^1.4.0"
+kanidm_unix_int.workspace = true
+libnss.workspace = true
+libc.workspace = true
+paste.workspace = true
+lazy_static.workspace = true
 

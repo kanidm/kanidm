@@ -1,9 +1,9 @@
-use libc::{c_char, c_int};
 use std::ffi::{CStr, CString};
 use std::ptr;
 
-use crate::pam::constants::PamResultCode;
-use crate::pam::constants::*;
+use libc::{c_char, c_int};
+
+use crate::pam::constants::{PamResultCode, *};
 use crate::pam::module::{PamItem, PamResult};
 
 #[allow(missing_copy_implementations)]

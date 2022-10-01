@@ -3,30 +3,19 @@
 //! This contains the in memory and loaded set of active oauth2 resource server
 //! integrations, which are then able to be used an accessed from the IDM layer
 //! for operations involving oauth2 authentication processing.
-//!
 
-use crate::identity::IdentityId;
-use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant};
-use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
-use crate::prelude::*;
-use crate::value::OAUTHSCOPE_RE;
+use std::collections::{BTreeMap, BTreeSet};
+use std::convert::TryFrom;
+use std::fmt;
+use std::sync::Arc;
+use std::time::Duration;
+
 use base64urlsafedata::Base64UrlSafeData;
 pub use compact_jwt::{JwkKeySet, OidcToken};
 use compact_jwt::{JwsSigner, OidcClaims, OidcSubject};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
-use kanidm_proto::v1::{AuthType, UserAuthToken};
-use openssl::sha;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
-use std::sync::Arc;
-use time::OffsetDateTime;
-use tokio::sync::mpsc::UnboundedSender as Sender;
-use tracing::trace;
-use url::{Origin, Url};
-
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse,
@@ -36,9 +25,19 @@ use kanidm_proto::oauth2::{
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
     TokenEndpointAuthMethod,
 };
+use kanidm_proto::v1::{AuthType, UserAuthToken};
+use openssl::sha;
+use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
+use tokio::sync::mpsc::UnboundedSender as Sender;
+use tracing::trace;
+use url::{Origin, Url};
 
-use std::convert::TryFrom;
-use std::time::Duration;
+use crate::identity::IdentityId;
+use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant};
+use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
+use crate::prelude::*;
+use crate::value::OAUTHSCOPE_RE;
 
 lazy_static! {
     static ref CLASS_OAUTH2: PartialValue = PartialValue::new_class("oauth2_resource_server");
@@ -1351,25 +1350,21 @@ fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error
 
 #[cfg(test)]
 mod tests {
-    use crate::event::CreateEvent;
+    use std::convert::TryFrom;
+    use std::str::FromStr;
+    use std::time::Duration;
+
+    use base64urlsafedata::Base64UrlSafeData;
+    use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
+    use kanidm_proto::oauth2::*;
+    use kanidm_proto::v1::{AuthType, UserAuthToken};
+    use openssl::sha;
+
+    use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
     use crate::idm::delayed::DelayedAction;
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
-
-    use crate::event::{DeleteEvent, ModifyEvent};
-
-    use base64urlsafedata::Base64UrlSafeData;
-    use kanidm_proto::oauth2::*;
-    use kanidm_proto::v1::{AuthType, UserAuthToken};
-
-    use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
-
-    use openssl::sha;
-
-    use std::convert::TryFrom;
-    use std::str::FromStr;
-    use std::time::Duration;
 
     const TEST_CURRENT_TIME: u64 = 6000;
     const UAT_EXPIRE: u64 = 5;

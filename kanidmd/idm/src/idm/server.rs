@@ -1,3 +1,35 @@
+use core::task::{Context, Poll};
+use std::convert::TryFrom;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::time::Duration;
+
+use async_std::task;
+use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
+use concread::hashmap::HashMap;
+use concread::CowCell;
+use fernet::Fernet;
+// #[cfg(any(test,bench))]
+use futures::task as futures_task;
+use hashbrown::HashSet;
+use kanidm_proto::v1::{
+    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UnixGroupToken,
+    UnixUserToken, UserAuthToken,
+};
+use rand::prelude::*;
+use tokio::sync::mpsc::{
+    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
+};
+use tokio::sync::{Mutex, Semaphore};
+use tracing::trace;
+use url::Url;
+use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
+
+use super::delayed::BackupCodeRemoval;
+use super::event::ReadBackupCodeEvent;
+use crate::actors::v1_write::QueryServerWriteV1;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
@@ -5,6 +37,10 @@ use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
+use crate::idm::delayed::{
+    DelayedAction, Oauth2ConsentGrant, PasswordUpgrade, UnixPasswordUpgrade,
+    WebauthnCounterIncrement,
+};
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{
@@ -25,54 +61,6 @@ use crate::idm::AuthState;
 use crate::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-
-use crate::actors::v1_write::QueryServerWriteV1;
-use crate::idm::delayed::{
-    DelayedAction, Oauth2ConsentGrant, PasswordUpgrade, UnixPasswordUpgrade,
-    WebauthnCounterIncrement,
-};
-
-use hashbrown::HashSet;
-use kanidm_proto::v1::{
-    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UnixGroupToken,
-    UnixUserToken, UserAuthToken,
-};
-
-use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
-use fernet::Fernet;
-
-use tokio::sync::mpsc::{
-    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
-};
-use tokio::sync::Semaphore;
-
-use async_std::task;
-
-// #[cfg(any(test,bench))]
-use core::task::{Context, Poll};
-// #[cfg(any(test,bench))]
-use futures::task as futures_task;
-
-use concread::{
-    bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn},
-    cowcell::{CowCellReadTxn, CowCellWriteTxn},
-    hashmap::HashMap,
-    CowCell,
-};
-
-use rand::prelude::*;
-use std::convert::TryFrom;
-use std::str::FromStr;
-use std::{sync::Arc, time::Duration};
-use tokio::sync::Mutex;
-use url::Url;
-
-use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
-
-use super::delayed::BackupCodeRemoval;
-use super::event::ReadBackupCodeEvent;
-
-use tracing::trace;
 
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -298,6 +286,7 @@ impl IdmServer {
     }
 
     /// Read from the database, in a transaction.
+    #[instrument(level = "debug", skip_all)]
     pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
@@ -312,6 +301,7 @@ impl IdmServer {
         task::block_on(self.proxy_write_async(ts))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn proxy_write_async(&self, ts: Duration) -> IdmServerProxyWriteTransaction<'_> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
@@ -421,6 +411,7 @@ pub(crate) trait IdmServerTransaction<'a> {
     /// The primary method of verification selection is the use of the KID parameter
     /// that we internally sign with. We can use this to select the appropriate token type
     /// and validation method.
+    #[instrument(level = "info", skip_all)]
     fn validate_and_parse_token_to_ident(
         &self,
         token: Option<&str>,
@@ -532,6 +523,7 @@ pub(crate) trait IdmServerTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn validate_and_parse_uat(
         &self,
         token: Option<&str>,
@@ -598,6 +590,7 @@ pub(crate) trait IdmServerTransaction<'a> {
     /// something we can pin access controls and other limits and references to.
     /// This is why it is the location where validity windows are checked and other
     /// relevant session information is injected.
+    #[instrument(level = "debug", skip_all)]
     fn process_uat_to_identity(
         &self,
         uat: &UserAuthToken,
@@ -663,6 +656,7 @@ pub(crate) trait IdmServerTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn process_apit_to_identity(
         &self,
         apit: &ApiToken,
@@ -683,6 +677,7 @@ pub(crate) trait IdmServerTransaction<'a> {
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
         &self,
         session: &LdapSession,
@@ -883,16 +878,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 match auth_session {
                     Some(auth_session) => {
                         let mut session_write = self.sessions.write();
-                        spanned!("idm::server::auth<Init> -> sessions", {
-                            if session_write.contains_key(&sessionid) {
-                                Err(OperationError::InvalidSessionState)
-                            } else {
-                                session_write.insert(sessionid, Arc::new(Mutex::new(auth_session)));
-                                // Debugging: ensure we really inserted ...
-                                debug_assert!(session_write.get(&sessionid).is_some());
-                                Ok(())
-                            }
-                        })?;
+                        if session_write.contains_key(&sessionid) {
+                            Err(OperationError::InvalidSessionState)
+                        } else {
+                            session_write.insert(sessionid, Arc::new(Mutex::new(auth_session)));
+                            // Debugging: ensure we really inserted ...
+                            debug_assert!(session_write.get(&sessionid).is_some());
+                            Ok(())
+                        }?;
                         session_write.commit();
                     }
                     None => {
@@ -2024,65 +2017,64 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        spanned!("idm::server::IdmServerProxyWriteTransaction::commit", {
-            if self
-                .qs_write
-                .get_changed_uuids()
-                .contains(&UUID_SYSTEM_CONFIG)
-            {
-                self.reload_password_badlist()?;
-            };
-            if self.qs_write.get_changed_ouath2() {
-                self.qs_write
-                    .get_oauth2rs_set()
-                    .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
-            }
-            if self.qs_write.get_changed_domain() {
-                // reload token_key?
-                self.qs_write
-                    .get_domain_fernet_private_key()
-                    .and_then(|token_key| {
-                        Fernet::new(&token_key).ok_or_else(|| {
-                            admin_error!("Failed to generate token_enc_key");
+        if self
+            .qs_write
+            .get_changed_uuids()
+            .contains(&UUID_SYSTEM_CONFIG)
+        {
+            self.reload_password_badlist()?;
+        };
+        if self.qs_write.get_changed_ouath2() {
+            self.qs_write
+                .get_oauth2rs_set()
+                .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
+        }
+        if self.qs_write.get_changed_domain() {
+            // reload token_key?
+            self.qs_write
+                .get_domain_fernet_private_key()
+                .and_then(|token_key| {
+                    Fernet::new(&token_key).ok_or_else(|| {
+                        admin_error!("Failed to generate token_enc_key");
+                        OperationError::InvalidState
+                    })
+                })
+                .map(|new_handle| {
+                    *self.token_enc_key = new_handle;
+                })?;
+            self.qs_write
+                .get_domain_es256_private_key()
+                .and_then(|key_der| {
+                    JwsSigner::from_es256_der(&key_der).map_err(|e| {
+                        admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
+                        OperationError::InvalidState
+                    })
+                })
+                .and_then(|signer| {
+                    signer
+                        .get_validator()
+                        .map_err(|e| {
+                            admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
                             OperationError::InvalidState
                         })
-                    })
-                    .map(|new_handle| {
-                        *self.token_enc_key = new_handle;
-                    })?;
-                self.qs_write
-                    .get_domain_es256_private_key()
-                    .and_then(|key_der| {
-                        JwsSigner::from_es256_der(&key_der).map_err(|e| {
-                            admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
-                            OperationError::InvalidState
-                        })
-                    })
-                    .and_then(|signer| {
-                        signer
-                            .get_validator()
-                            .map_err(|e| {
-                                admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
-                                OperationError::InvalidState
-                            })
-                            .map(|validator| (signer, validator))
-                    })
-                    .map(|(new_signer, new_validator)| {
-                        *self.uat_jwt_signer = new_signer;
-                        *self.uat_jwt_validator = new_validator;
-                    })?;
-            }
-            // Commit everything.
-            self.oauth2rs.commit();
-            self.uat_jwt_signer.commit();
-            self.uat_jwt_validator.commit();
-            self.token_enc_key.commit();
-            self.pw_badlist_cache.commit();
-            self.cred_update_sessions.commit();
-            trace!("cred_update_session.commit");
-            self.qs_write.commit()
-        })
+                        .map(|validator| (signer, validator))
+                })
+                .map(|(new_signer, new_validator)| {
+                    *self.uat_jwt_signer = new_signer;
+                    *self.uat_jwt_validator = new_validator;
+                })?;
+        }
+        // Commit everything.
+        self.oauth2rs.commit();
+        self.uat_jwt_signer.commit();
+        self.uat_jwt_validator.commit();
+        self.token_enc_key.commit();
+        self.pw_badlist_cache.commit();
+        self.cred_update_sessions.commit();
+        trace!("cred_update_session.commit");
+        self.qs_write.commit()
     }
 
     fn reload_password_badlist(&mut self) -> Result<(), OperationError> {
@@ -2100,6 +2092,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+    use std::time::Duration;
+
+    use async_std::task;
+    use kanidm_proto::v1::{AuthAllowed, AuthMech, AuthType, OperationError};
+    use smartstring::alias::String as AttrString;
+    use uuid::Uuid;
+
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::{Credential, Password};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
@@ -2107,20 +2107,12 @@ mod tests {
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
+    use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
-    use kanidm_proto::v1::OperationError;
-    use kanidm_proto::v1::{AuthAllowed, AuthMech, AuthType};
-
-    use crate::idm::server::{IdmServer, IdmServerTransaction};
     // , IdmServerDelayed;
     use crate::utils::duration_from_epoch_now;
-    use async_std::task;
-    use smartstring::alias::String as AttrString;
-    use std::convert::TryFrom;
-    use std::time::Duration;
-    use uuid::Uuid;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";

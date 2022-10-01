@@ -13,12 +13,10 @@
 #[macro_use]
 extern crate tracing;
 
-use clap::Parser;
-
 use std::path::PathBuf;
 
+use clap::Parser;
 // use futures::executor::block_on;
-
 use kanidm_unix_common::client_sync::call_daemon_blocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;

@@ -1,11 +1,10 @@
+use std::str::FromStr;
+
 use compact_jwt::{Jws, JwsUnverified};
 use kanidm_proto::v1::{SingleStringRequest, UserAuthToken};
-use std::str::FromStr;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{FormData, HtmlFormElement};
-
-use web_sys::{Request, RequestInit, RequestMode, Response};
+use web_sys::{FormData, HtmlFormElement, Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 
 use crate::error::*;
@@ -85,6 +84,7 @@ impl Component for ChangeUnixPassword {
             pw_check_val: "".to_string(),
         }
     }
+
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Submit(data) => {
@@ -303,6 +303,7 @@ impl ChangeUnixPassword {
             Ok(Msg::Error { emsg, kopid })
         }
     }
+
     fn reset(&mut self) {
         self.pw_val = "".to_string();
         self.pw_check_val = "".to_string();

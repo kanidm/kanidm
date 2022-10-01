@@ -1,10 +1,9 @@
+use kanidm_proto::v1::{Group as ProtoGroup, OperationError};
+use uuid::Uuid;
+
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
 use crate::value::PartialValue;
-use kanidm_proto::v1::Group as ProtoGroup;
-use kanidm_proto::v1::OperationError;
-
-use uuid::Uuid;
 
 lazy_static! {
     static ref PVCLASS_GROUP: PartialValue = PartialValue::new_class("group");

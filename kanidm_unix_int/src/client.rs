@@ -1,9 +1,8 @@
-use bytes::{BufMut, BytesMut};
-use futures::SinkExt;
-use futures::StreamExt;
 use std::error::Error;
-use std::io::Error as IoError;
-use std::io::ErrorKind;
+use std::io::{Error as IoError, ErrorKind};
+
+use bytes::{BufMut, BytesMut};
+use futures::{SinkExt, StreamExt};
 use tokio::net::UnixStream;
 // use tokio::runtime::Builder;
 use tokio_util::codec::Framed;
@@ -14,8 +13,8 @@ use crate::unix_proto::{ClientRequest, ClientResponse};
 struct ClientCodec;
 
 impl Decoder for ClientCodec {
-    type Item = ClientResponse;
     type Error = IoError;
+    type Item = ClientResponse;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match serde_json::from_slice::<ClientResponse>(&src) {

@@ -14,25 +14,15 @@
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-#[cfg(not(target_family = "windows"))] // not needed for windows builds
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
-#[cfg(target_family = "windows")] // for windows builds
-use whoami;
-
-use serde::Deserialize;
 use std::fs::{metadata, File, Metadata};
-
+use std::io::Read;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
-
-use std::io::Read;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::str::FromStr;
 
-use sketching::tracing_forest::{self, traits::*, util::*};
-
+use clap::{Args, Parser, Subcommand};
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, OnlineBackup, ServerRole};
 #[cfg(not(target_family = "windows"))]
@@ -43,8 +33,14 @@ use score::{
     domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
-
-use clap::{Args, Parser, Subcommand};
+use serde::Deserialize;
+use sketching::tracing_forest::traits::*;
+use sketching::tracing_forest::util::*;
+use sketching::tracing_forest::{self};
+#[cfg(not(target_family = "windows"))] // not needed for windows builds
+use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+#[cfg(target_family = "windows")] // for windows builds
+use whoami;
 
 include!("./opt.rs");
 

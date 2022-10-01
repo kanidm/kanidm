@@ -1,9 +1,9 @@
+use smolset::SmolSet;
+
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::value::NSUNIQUEID_RE;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
-use smolset::SmolSet;
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetNsUniqueId {

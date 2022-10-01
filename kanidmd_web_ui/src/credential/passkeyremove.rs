@@ -1,21 +1,17 @@
-use crate::error::*;
-use crate::utils;
-
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::PasskeyRemoveModalProps;
-
 #[cfg(debug)]
 use gloo::console;
-use yew::prelude::*;
-use yew_agent::Dispatched;
-
+use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
+use uuid::Uuid;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
+use yew::prelude::*;
+use yew_agent::Dispatched;
 
-use uuid::Uuid;
-
-use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
+use super::eventbus::{EventBus, EventBusMsg};
+use super::reset::PasskeyRemoveModalProps;
+use crate::error::*;
+use crate::utils;
 
 pub struct PasskeyRemoveModalApp {
     state: State,

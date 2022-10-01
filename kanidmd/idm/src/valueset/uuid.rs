@@ -1,11 +1,10 @@
-use crate::prelude::*;
-use crate::schema::SchemaAttribute;
-use crate::valueset::uuid_to_proto_string;
-use crate::valueset::DbValueSetV2;
-use crate::valueset::ValueSet;
 use std::collections::BTreeSet;
 
 use smolset::SmolSet;
+
+use crate::prelude::*;
+use crate::schema::SchemaAttribute;
+use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUuid {

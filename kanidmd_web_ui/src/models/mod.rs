@@ -1,18 +1,16 @@
-use kanidm_proto::oauth2::AuthorisationRequest;
-
 #[cfg(debug)]
 use gloo::console;
-use gloo::storage::LocalStorage as PersistentStorage;
-use gloo::storage::SessionStorage as TemporaryStorage;
-use gloo::storage::Storage;
+use gloo::storage::{
+    LocalStorage as PersistentStorage, SessionStorage as TemporaryStorage, Storage,
+};
+use kanidm_proto::oauth2::AuthorisationRequest;
+use kanidm_proto::v1::{CUSessionToken, CUStatus};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use yew_router::prelude::{AnyHistory, History};
 
 use crate::manager::Route;
 use crate::views::ViewRoute;
-use serde::{Deserialize, Serialize};
-
-use kanidm_proto::v1::{CUSessionToken, CUStatus};
 
 pub fn get_bearer_token() -> Option<String> {
     let prev_session: Result<String, _> = PersistentStorage::get("kanidm_bearer_token");

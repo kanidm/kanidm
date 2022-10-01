@@ -1,17 +1,16 @@
-use super::cid::Cid;
-use crate::prelude::*;
-use crate::valueset;
-use kanidm_proto::v1::ConsistencyError;
-
-use crate::entry::{compare_attrs, Eattrs};
-use crate::schema::SchemaTransaction;
-
 use std::collections::btree_map::Keys;
 use std::collections::BTreeMap;
-
 use std::fmt;
 use std::ops::Bound;
 use std::ops::Bound::*;
+
+use kanidm_proto::v1::ConsistencyError;
+
+use super::cid::Cid;
+use crate::entry::{compare_attrs, Eattrs};
+use crate::prelude::*;
+use crate::schema::SchemaTransaction;
+use crate::valueset;
 
 lazy_static! {
     static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
@@ -518,12 +517,13 @@ impl EntryChangelog {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crate::entry::Eattrs;
     // use crate::prelude::*;
     use crate::repl::cid::Cid;
     use crate::repl::entry::{Change, EntryChangelog, State, Transition};
     use crate::schema::{Schema, SchemaTransaction};
-    use std::time::Duration;
 
     #[test]
     fn test_entrychangelog_basic() {

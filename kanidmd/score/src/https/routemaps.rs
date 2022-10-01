@@ -1,10 +1,10 @@
-use crate::https::AppState;
 ///! Route-mapping magic for tide
 ///
 /// Instead of adding routes with (for example) the .post method you add them with .mapped_post, pasing an instance of [RouteMap] and it'll do the rest...
-///
 use serde::{Deserialize, Serialize};
 use tide::{Endpoint, Route};
+
+use crate::https::AppState;
 
 // Extends the tide::Route for RouteMaps, this would really be nice if it was generic :(
 pub trait RouteMaps {
@@ -43,21 +43,27 @@ impl RouteMaps for Route<'_, AppState> {
         routemap.routelist.push(RouteInfo { path, method });
         self.method(method, ep)
     }
+
     fn mapped_delete(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
         self.mapped_method(routemap, http_types::Method::Delete, ep)
     }
+
     fn mapped_get(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
         self.mapped_method(routemap, http_types::Method::Get, ep)
     }
+
     fn mapped_patch(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
         self.mapped_method(routemap, http_types::Method::Patch, ep)
     }
+
     fn mapped_post(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
         self.mapped_method(routemap, http_types::Method::Post, ep)
     }
+
     fn mapped_put(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
         self.mapped_method(routemap, http_types::Method::Put, ep)
     }
+
     fn mapped_update(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
         self.mapped_method(routemap, http_types::Method::Update, ep)
     }
@@ -88,6 +94,7 @@ impl RouteMap {
     pub fn do_map(&self) -> String {
         serde_json::to_string_pretty(self).unwrap()
     }
+
     // Inject the route for the routemap endpoint
     pub fn push_self(&mut self, path: String, method: http_types::Method) {
         self.routelist.push(RouteInfo { path, method });

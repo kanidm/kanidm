@@ -1,17 +1,18 @@
-use crate::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
-use crate::error::*;
-use crate::manager::Route;
-use crate::models;
-use crate::utils;
+use std::str::FromStr;
+
 use compact_jwt::{Jws, JwsUnverified};
 use kanidm_proto::v1::UserAuthToken;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
+
+use crate::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
+use crate::error::*;
+use crate::manager::Route;
+use crate::{models, utils};
 
 mod apps;
 mod components;
@@ -339,6 +340,7 @@ impl ViewsApp {
         </>
           }
     }
+
     async fn check_token_valid(token: String) -> Result<ViewsMsg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");

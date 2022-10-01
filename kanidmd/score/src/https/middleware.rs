@@ -1,6 +1,7 @@
+use regex::Regex;
+
 ///! Custom tide middleware for Kanidm
 use crate::https::JavaScriptFile;
-use regex::Regex;
 
 /// This is for the tide_compression middleware so that we only compress certain content types.
 ///

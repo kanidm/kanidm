@@ -1,7 +1,8 @@
-use kanidm_proto::v1::OperationError;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::Duration;
+
+use kanidm_proto::v1::OperationError;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
@@ -73,10 +74,12 @@ impl Cid {
 
 #[cfg(test)]
 mod tests {
-    use crate::repl::cid::Cid;
     use std::cmp::Ordering;
     use std::time::Duration;
+
     use uuid::Uuid;
+
+    use crate::repl::cid::Cid;
 
     #[test]
     fn test_cid_ordering() {

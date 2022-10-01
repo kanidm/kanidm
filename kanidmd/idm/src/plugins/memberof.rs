@@ -10,16 +10,17 @@
 // As a result, we first need to run refint to clean up all dangling references, then memberof
 // fixes the graph of memberships
 
+use std::collections::BTreeSet;
+use std::sync::Arc;
+
+use hashbrown::HashMap;
+use kanidm_proto::v1::{ConsistencyError, OperationError};
+
 use crate::entry::{Entry, EntryCommitted, EntrySealed, EntryTuple};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError};
-use std::collections::BTreeSet;
-
-use hashbrown::HashMap;
-use std::sync::Arc;
 
 lazy_static! {
     static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");

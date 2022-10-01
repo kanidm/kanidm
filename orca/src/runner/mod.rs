@@ -1,8 +1,10 @@
-use crate::setup::config;
-use crate::{TargetOpt, TestTypeOpt};
-use dialoguer::Confirm;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
+
+use dialoguer::Confirm;
+
+use crate::setup::config;
+use crate::{TargetOpt, TestTypeOpt};
 mod search;
 
 pub(crate) async fn doit(

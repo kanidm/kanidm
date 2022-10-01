@@ -1,8 +1,10 @@
 // use anyhow::Error;
 use gloo::console;
-use wasm_bindgen::JsCast;
-use wasm_bindgen::JsValue;
-use wasm_bindgen::UnwrapThrowExt;
+pub use kanidm_proto::oauth2::{
+    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
+    CodeChallengeMethod, ErrorResponse,
+};
+use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
 use yew::prelude::*;
@@ -10,13 +12,7 @@ use yew_router::prelude::*;
 
 use crate::error::*;
 use crate::manager::Route;
-use crate::models;
-use crate::utils;
-
-pub use kanidm_proto::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
-    CodeChallengeMethod, ErrorResponse,
-};
+use crate::{models, utils};
 
 enum State {
     // We don't have a token, or something is invalid.

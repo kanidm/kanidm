@@ -8,28 +8,28 @@
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html
 
+use std::cmp::{Ordering, PartialOrd};
+use std::collections::BTreeSet;
+use std::hash::Hash;
+use std::iter;
+use std::num::NonZeroU8;
+
+use concread::arcache::ARCacheReadTxn;
+use hashbrown::HashMap;
+#[cfg(test)]
+use hashbrown::HashSet;
+use kanidm_proto::v1::{Filter as ProtoFilter, OperationError, SchemaError};
+use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
+// use smartstring::alias::String as AttrString;
+use serde::Deserialize;
+use uuid::Uuid;
+
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope};
 use crate::identity::IdentityId;
 use crate::ldap::ldap_attr_filter_map;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IndexType, PartialValue};
-use concread::arcache::ARCacheReadTxn;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::{OperationError, SchemaError};
-use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
-// use smartstring::alias::String as AttrString;
-use serde::Deserialize;
-use std::cmp::{Ordering, PartialOrd};
-use std::collections::BTreeSet;
-use std::hash::Hash;
-use std::iter;
-use std::num::NonZeroU8;
-use uuid::Uuid;
-
-use hashbrown::HashMap;
-#[cfg(test)]
-use hashbrown::HashSet;
 
 const FILTER_DEPTH_MAX: usize = 16;
 
@@ -491,51 +491,48 @@ impl Filter<FilterInvalid> {
     // This has to have two versions to account for ro/rw traits, because RS can't
     // monomorphise on the trait to call clone_value. An option is to make a fn that
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
+    #[instrument(level = "debug", skip_all)]
     pub fn from_ro(
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("filer::from_ro", {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_ro(f, qs, depth, &mut elems)?,
-                },
-            })
+        let depth = FILTER_DEPTH_MAX;
+        let mut elems = ev.limits.filter_max_elements;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_ro(f, qs, depth, &mut elems)?,
+            },
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn from_rw(
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("filter::from_rw", {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_rw(f, qs, depth, &mut elems)?,
-                },
-            })
+        let depth = FILTER_DEPTH_MAX;
+        let mut elems = ev.limits.filter_max_elements;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_rw(f, qs, depth, &mut elems)?,
+            },
         })
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn from_ldap_ro(
         ev: &Identity,
         f: &LdapFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        spanned!("filter::from_ldap_ro", {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_ldap_ro(f, qs, depth, &mut elems)?,
-                },
-            })
+        let depth = FILTER_DEPTH_MAX;
+        let mut elems = ev.limits.filter_max_elements;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_ldap_ro(f, qs, depth, &mut elems)?,
+            },
         })
     }
 }
@@ -948,7 +945,6 @@ impl PartialOrd for FilterResolved {
 
 impl Ord for FilterResolved {
     /// Ordering of filters for optimisation and subsequent dead term elimination.
-    ///
     fn cmp(&self, rhs: &FilterResolved) -> Ordering {
         let left_slopey = self.get_slopeyness_factor();
         let right_slopey = rhs.get_slopeyness_factor();
@@ -1330,16 +1326,16 @@ impl FilterResolved {
 
 #[cfg(test)]
 mod tests {
-    use crate::event::CreateEvent;
-    use crate::event::DeleteEvent;
-    use crate::filter::{Filter, FilterInvalid, FILTER_DEPTH_MAX};
-    use crate::prelude::*;
     use std::cmp::{Ordering, PartialOrd};
     use std::collections::BTreeSet;
     use std::time::Duration;
 
     use kanidm_proto::v1::Filter as ProtoFilter;
     use ldap3_proto::simple::LdapFilter;
+
+    use crate::event::{CreateEvent, DeleteEvent};
+    use crate::filter::{Filter, FilterInvalid, FILTER_DEPTH_MAX};
+    use crate::prelude::*;
 
     #[test]
     fn test_filter_simple() {

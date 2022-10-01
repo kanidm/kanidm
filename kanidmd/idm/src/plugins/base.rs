@@ -1,12 +1,13 @@
-use crate::plugins::Plugin;
-use hashbrown::HashSet;
 use std::collections::BTreeSet;
 use std::iter::once;
 
+use hashbrown::HashSet;
+use kanidm_proto::v1::{ConsistencyError, PluginError};
+
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::modify::Modify;
+use crate::plugins::Plugin;
 use crate::prelude::*;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
 
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
@@ -43,14 +44,8 @@ impl Plugin for Base {
         // debug!("Entering base pre_create_transform");
         // For each candidate
         for entry in cand.iter_mut() {
-            trace!("Base check on entry: {:?}", entry);
-
             // First, ensure we have the 'object', class in the class set.
             entry.add_ava("class", CLASS_OBJECT.clone());
-
-            trace!("Object should now be in entry: {:?}", entry);
-
-            // If they have a name, but no principal name, derive it.
 
             // if they don't have uuid, create it.
             match entry.get_ava_set("uuid").map(|s| s.len()) {
@@ -85,7 +80,6 @@ impl Plugin for Base {
             let uuid_ref: Uuid = entry
                 .get_ava_single_uuid("uuid")
                 .ok_or_else(|| OperationError::InvalidAttribute("uuid".to_string()))?;
-            trace!("Entry valid UUID: {:?}", entry);
             if !cand_uuid.insert(uuid_ref) {
                 trace!("uuid duplicate found in create set! {:?}", uuid_ref);
                 return Err(OperationError::Plugin(PluginError::Base(
@@ -224,8 +218,9 @@ impl Plugin for Base {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use kanidm_proto::v1::PluginError;
+
+    use crate::prelude::*;
 
     const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "attrs": {

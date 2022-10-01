@@ -1,12 +1,12 @@
 // System protected objects. Items matching specific requirements
 // may only have certain modifications performed.
 
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use hashbrown::HashSet;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
-use hashbrown::HashSet;
+use crate::plugins::Plugin;
+use crate::prelude::*;
 
 pub struct Protected {}
 

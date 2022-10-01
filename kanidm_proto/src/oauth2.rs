@@ -1,6 +1,7 @@
+use std::collections::BTreeMap;
+
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use url::Url;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]

@@ -2,10 +2,10 @@
 
 use std::env;
 use std::path::PathBuf;
-use uuid::Uuid;
 
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate_to, Shell};
+use uuid::Uuid;
 
 include!("src/opt/ssh_authorizedkeys.rs");
 include!("src/opt/badlist_preprocess.rs");

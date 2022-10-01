@@ -1,5 +1,9 @@
 // use anyhow::Error;
 use gloo::console;
+use kanidm_proto::v1::{
+    AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
+};
+use kanidm_proto::webauthn::PublicKeyCredential;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
@@ -10,13 +14,7 @@ use yew_router::prelude::*;
 
 use crate::constants::{CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
 use crate::error::FetchError;
-use crate::models;
-use crate::utils;
-
-use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
-};
-use kanidm_proto::webauthn::PublicKeyCredential;
+use crate::{models, utils};
 
 pub struct LoginApp {
     inputvalue: String,

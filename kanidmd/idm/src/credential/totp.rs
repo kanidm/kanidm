@@ -1,14 +1,13 @@
-use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
+use std::convert::{TryFrom, TryInto};
+use std::time::{Duration, SystemTime};
+
+use kanidm_proto::v1::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Signer;
 use rand::prelude::*;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::time::{Duration, SystemTime};
 
-use kanidm_proto::v1::TotpAlgo as ProtoTotpAlgo;
-use kanidm_proto::v1::TotpSecret as ProtoTotp;
+use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 
 // This is 64 bits of entropy, as the examples in https://tools.ietf.org/html/rfc6238 show.
 const SECRET_SIZE_BYTES: usize = 8;
@@ -192,8 +191,9 @@ impl Totp {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::totp::{Totp, TotpAlgo, TotpError, TOTP_DEFAULT_STEP};
     use std::time::Duration;
+
+    use crate::credential::totp::{Totp, TotpAlgo, TotpError, TOTP_DEFAULT_STEP};
 
     #[test]
     fn hotp_basic() {

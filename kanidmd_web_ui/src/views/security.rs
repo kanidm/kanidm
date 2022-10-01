@@ -1,24 +1,21 @@
-use crate::constants::CSS_PAGE_HEADER;
-use crate::error::*;
-use crate::models;
-use crate::utils;
-
-use crate::components::change_unix_password::ChangeUnixPassword;
-use crate::manager::Route;
-use crate::views::{ViewProps, ViewRoute};
+use std::str::FromStr;
 
 use compact_jwt::{Jws, JwsUnverified};
 #[cfg(debug)]
 use gloo::console;
-use std::str::FromStr;
-use yew::prelude::*;
-use yew_router::prelude::*;
-
 use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
-
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
+use yew::prelude::*;
+use yew_router::prelude::*;
+
+use crate::components::change_unix_password::ChangeUnixPassword;
+use crate::constants::CSS_PAGE_HEADER;
+use crate::error::*;
+use crate::manager::Route;
+use crate::views::{ViewProps, ViewRoute};
+use crate::{models, utils};
 
 #[allow(clippy::large_enum_variant)]
 // Page state

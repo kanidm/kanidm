@@ -1,7 +1,9 @@
+use std::time::{Duration, Instant};
+
+use async_std::task;
 use criterion::{
     criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode, Throughput,
 };
-
 use kanidm;
 use kanidm::entry::{Entry, EntryInit, EntryNew};
 use kanidm::entry_init;
@@ -10,9 +12,6 @@ use kanidm::macros::run_idm_test_no_logging;
 use kanidm::server::QueryServer;
 use kanidm::utils::duration_from_epoch_now;
 use kanidm::value::Value;
-
-use async_std::task;
-use std::time::{Duration, Instant};
 
 pub fn scaling_user_create_single(c: &mut Criterion) {
     let mut group = c.benchmark_group("user_create_single");

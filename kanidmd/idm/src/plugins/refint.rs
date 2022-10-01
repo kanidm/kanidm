@@ -9,19 +9,19 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use hashbrown::HashSet as Set;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
-use crate::plugins::Plugin;
-use crate::prelude::*;
+use hashbrown::HashSet as Set;
+use kanidm_proto::v1::{ConsistencyError, PluginError};
+use tracing::trace;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::f_eq;
 use crate::modify::Modify;
+use crate::plugins::Plugin;
+use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
-use std::sync::Arc;
-use tracing::trace;
 
 // NOTE: This *must* be after base.rs!!!
 
@@ -265,8 +265,9 @@ impl Plugin for ReferentialIntegrity {
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use kanidm_proto::v1::PluginError;
+
+    use crate::prelude::*;
 
     // The create references a uuid that doesn't exist - reject
     #[test]

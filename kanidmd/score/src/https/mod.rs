@@ -4,11 +4,9 @@ mod oauth2;
 mod routemaps;
 mod v1;
 
-use self::manifest::manifest;
-use self::middleware::*;
-use self::oauth2::*;
-use self::routemaps::{RouteMap, RouteMaps};
-use self::v1::*;
+use std::fs::canonicalize;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
 use kanidm::actors::v1_read::QueryServerReadV1;
@@ -17,13 +15,16 @@ use kanidm::config::{ServerRole, TlsConfiguration};
 use kanidm::prelude::*;
 use kanidm::status::StatusActor;
 use serde::Serialize;
-use std::fs::canonicalize;
-use std::path::PathBuf;
-use std::str::FromStr;
 use tide_compress::CompressMiddleware;
 use tide_openssl::TlsListener;
 use tracing::{error, info};
 use uuid::Uuid;
+
+use self::manifest::manifest;
+use self::middleware::*;
+use self::oauth2::*;
+use self::routemaps::{RouteMap, RouteMaps};
+use self::v1::*;
 
 #[derive(Clone)]
 pub struct JavaScriptFile {

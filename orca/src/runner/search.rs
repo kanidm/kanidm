@@ -1,19 +1,19 @@
-use crate::data::{Entity, OpType, TestData};
-use crate::profile::Profile;
-use crate::{TargetServer, TargetServerBuilder};
-use crossbeam::channel::{unbounded, RecvTimeoutError};
-use mathru::statistics::distrib::Continuous;
-use mathru::statistics::distrib::Normal;
-use rand::seq::IteratorRandom;
-use rand::seq::SliceRandom;
-use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use crossbeam::channel::{unbounded, RecvTimeoutError};
+use mathru::statistics::distrib::{Continuous, Normal};
+use rand::seq::{IteratorRandom, SliceRandom};
+use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tokio::task;
+
+use crate::data::{Entity, OpType, TestData};
+use crate::profile::Profile;
+use crate::{TargetServer, TargetServerBuilder};
 
 #[derive(Debug, Clone)]
 enum TestPhase {

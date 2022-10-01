@@ -1,5 +1,6 @@
-use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
+
+use crate::prelude::*;
 
 #[cfg(test)]
 pub(crate) struct PasswordChangeEvent {

@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 ///! Builds a Progressive Web App Manifest page.
 // Thanks to the webmanifest crate for a lot of this code
 use crate::https::{AppState, RequestExtensions};
-use serde::{Deserialize, Serialize};
 
 /// The MIME type for `.webmanifest` files.
 const MIME_TYPE_MANIFEST: &str = "application/manifest+json;charset=utf-8";

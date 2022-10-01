@@ -1,52 +1,52 @@
 [package]
 name = "score"
-version = "1.1.0-alpha.9"
-authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.59"
-edition = "2021"
-license = "MPL-2.0"
 description = "Kanidm Server Library and Binary"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
-homepage = "https://github.com/kanidm/kanidm/"
-repository = "https://github.com/kanidm/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std = { version = "^1.12.0", features = ["tokio1"] }
-async-trait = "^0.1.57"
-compact_jwt = "^0.2.3"
-futures-util = "^0.3.21"
-http-types = "^2.12.0"
-kanidm = { path = "../idm" }
-kanidm_proto = { path = "../../kanidm_proto" }
-ldap3_proto = "^0.2.3"
-libc = "^0.2.127"
-openssl = "^0.10.41"
-regex = "1.5.6"
-serde = { version = "^1.0.142", features = ["derive"] }
-serde_json = "^1.0.83"
-sketching = { path = "../../sketching" }
-tide = "^0.16.0"
+async-std = { workspace = true, features = ["tokio1"] }
+async-trait.workspace = true
+compact_jwt.workspace = true
+futures-util.workspace = true
+http-types.workspace = true
+kanidm.workspace = true
+kanidm_proto.workspace = true
+ldap3_proto.workspace = true
+libc.workspace = true
+openssl.workspace = true
+regex.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sketching.workspace = true
+tide.workspace = true
 # I tried including brotli and it didn't work, including "default" pulls a mime-type list from the internet on build
-tide-compress = { version = "0.10.6", default-features = false, features = [ "deflate", "gzip", "regex-check" ] }
-tide-openssl = "^0.1.1"
-tokio = { version = "^1.21.1", features = ["net", "sync", "io-util", "macros"] }
-tokio-openssl = "^0.6.3"
-tokio-util = { version = "^0.7.4", features = ["codec"] }
-tracing = { version = "^0.1.35", features = ["attributes"] }
-uuid = { version = "^1.1.2", features = ["serde", "v4" ] }
+tide-compress = { workspace = true, default-features = false, features = [ "deflate", "gzip", "regex-check" ] }
+tide-openssl.workspace = true
+tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
+tokio-openssl.workspace = true
+tokio-util = { workspace = true, features = ["codec"] }
+tracing = { workspace = true, features = ["attributes"] }
+uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [build-dependencies]
-profiles = { path = "../../profiles" }
+profiles.workspace = true
 
 [dev-dependencies]
-kanidm_client = { path = "../../kanidm_client" }
-futures = "^0.3.21"
+kanidm_client.workspace = true
+futures.workspace = true
 
 webauthn-authenticator-rs.workspace = true
-oauth2_ext = { package = "oauth2", version = "^4.1.0", default-features = false }
-base64 = "^0.13.0"
+oauth2_ext = { workspace = true, default-features = false }
 
-url = { version = "^2.3.1", features = ["serde"] }
-reqwest = { version = "0.11.11", features=["cookies", "json", "native-tls"] }
+url = { workspace = true, features = ["serde"] }
+reqwest = { workspace = true, features=["cookies", "json", "native-tls"] }

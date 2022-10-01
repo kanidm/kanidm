@@ -7,10 +7,11 @@
 /// Here is full example of a PAM module that would authenticate and authorize everybody:
 ///
 /// ```
-/// #[macro_use] extern crate pam;
+/// #[macro_use]
+/// extern crate pam;
 ///
-/// use pam::module::{PamHooks, PamHandle};
-/// use pam::constants::{PamResultCode, PamFlag};
+/// use pam::constants::{PamFlag, PamResultCode};
+/// use pam::module::{PamHandle, PamHooks};
 /// use std::ffi::CStr;
 ///
 /// # fn main() {}
@@ -18,15 +19,15 @@
 /// pam_hooks!(MyPamModule);
 ///
 /// impl PamHooks for MyPamModule {
-///    fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-///        println!("Everybody is authenticated!");
-///        PamResultCode::PAM_SUCCESS
-///    }
+///     fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+///         println!("Everybody is authenticated!");
+///         PamResultCode::PAM_SUCCESS
+///     }
 ///
-///    fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-///        println!("Everybody is authorized!");
-///        PamResultCode::PAM_SUCCESS
-///    }
+///     fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+///         println!("Everybody is authorized!");
+///         PamResultCode::PAM_SUCCESS
+///     }
 /// }
 /// ```
 #[macro_export]
@@ -36,6 +37,7 @@ macro_rules! pam_hooks {
         mod pam_hooks_scope {
             use std::ffi::CStr;
             use std::os::raw::{c_char, c_int};
+
             use $crate::pam::constants::{PamFlag, PamResultCode};
             use $crate::pam::module::{PamHandle, PamHooks};
 

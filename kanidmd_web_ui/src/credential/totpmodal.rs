@@ -1,21 +1,18 @@
-use crate::error::*;
-use crate::utils;
-
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::ModalProps;
-
 #[cfg(debug)]
 use gloo::console;
-use web_sys::Node;
+use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
+use qrcode::render::svg;
+use qrcode::QrCode;
+use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Node, Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_agent::Dispatched;
 
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
-
-use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
-use qrcode::{render::svg, QrCode};
+use super::eventbus::{EventBus, EventBusMsg};
+use super::reset::ModalProps;
+use crate::error::*;
+use crate::utils;
 
 enum TotpState {
     Init,

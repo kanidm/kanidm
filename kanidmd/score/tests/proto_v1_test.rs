@@ -1,19 +1,20 @@
 #![deny(warnings)]
 use std::time::SystemTime;
 
-use tracing::debug;
-
 use kanidm::credential::totp::Totp;
 use kanidm_proto::v1::{
     ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList,
 };
+use tracing::debug;
 
 mod common;
-use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
-use compact_jwt::JwsUnverified;
 use std::str::FromStr;
 
-use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
+use compact_jwt::JwsUnverified;
+use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+use webauthn_authenticator_rs::WebauthnAuthenticator;
+
+use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 

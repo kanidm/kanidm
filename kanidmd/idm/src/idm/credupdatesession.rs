@@ -1,36 +1,28 @@
-use crate::access::AccessControlsTransaction;
-use crate::credential::{BackupCodes, Credential};
-use crate::idm::account::Account;
-use crate::idm::server::IdmServerCredUpdateTransaction;
-use crate::idm::server::IdmServerProxyWriteTransaction;
-use crate::prelude::*;
-use crate::value::IntentTokenState;
-use hashbrown::HashSet;
+use core::ops::Deref;
 use std::collections::BTreeMap;
+use std::fmt;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
-
+use hashbrown::HashSet;
 use kanidm_proto::v1::{
     CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback, TotpSecret,
 };
-
-use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
-
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-use webauthn_rs::prelude::Passkey as PasskeyV4;
+use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use webauthn_rs::prelude::{
-    CreationChallengeResponse, PasskeyRegistration, RegisterPublicKeyCredential,
+    CreationChallengeResponse, DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, PasskeyRegistration,
+    RegisterPublicKeyCredential,
 };
 
-use serde::{Deserialize, Serialize};
-
-use std::fmt;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Duration;
-use time::OffsetDateTime;
-
-use core::ops::Deref;
+use crate::access::AccessControlsTransaction;
+use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
+use crate::credential::{BackupCodes, Credential};
+use crate::idm::account::Account;
+use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction};
+use crate::prelude::*;
+use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
+use crate::value::IntentTokenState;
 
 const MAXIMUM_CRED_UPDATE_TTL: Duration = Duration::from_secs(900);
 const MAXIMUM_INTENT_TTL: Duration = Duration::from_secs(86400);
@@ -155,7 +147,6 @@ pub struct CredentialUpdateSessionStatus {
     // The target user's display name
     displayname: String,
     // ttl: Duration,
-    //
     can_commit: bool,
     primary: Option<CredentialDetail>,
     passkeys: Vec<PasskeyDetail>,
@@ -384,85 +375,85 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok((CredentialUpdateSessionToken { token_enc }, status))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn init_credential_update_intent(
         &mut self,
         event: &InitCredentialUpdateIntentEvent,
         ct: Duration,
     ) -> Result<CredentialUpdateIntentToken, OperationError> {
-        spanned!("idm::server::credupdatesession<Init>", {
-            let account = self.validate_init_credential_update(event.target, &event.ident)?;
+        let account = self.validate_init_credential_update(event.target, &event.ident)?;
 
-            // ==== AUTHORISATION CHECKED ===
+        // ==== AUTHORISATION CHECKED ===
 
-            // Build the intent token.
-            let mttl = event.max_ttl.unwrap_or_else(|| Duration::new(0, 0));
-            let max_ttl = ct + mttl.clamp(MINIMUM_INTENT_TTL, MAXIMUM_INTENT_TTL);
-            // let sessionid = uuid_from_duration(max_ttl, self.sid);
-            let intent_id = readable_password_from_random();
+        // Build the intent token.
+        let mttl = event.max_ttl.unwrap_or_else(|| Duration::new(0, 0));
+        let max_ttl = ct + mttl.clamp(MINIMUM_INTENT_TTL, MAXIMUM_INTENT_TTL);
+        // let sessionid = uuid_from_duration(max_ttl, self.sid);
+        let intent_id = readable_password_from_random();
 
-            /*
-            let token = CredentialUpdateIntentTokenInner {
-                sessionid,
-                target,
-                intent_id,
-                max_ttl,
-            };
+        /*
+        let token = CredentialUpdateIntentTokenInner {
+            sessionid,
+            target,
+            intent_id,
+            max_ttl,
+        };
 
-            let token_data = serde_json::to_vec(&token).map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode token data");
-                OperationError::SerdeJsonError
+        let token_data = serde_json::to_vec(&token).map_err(|e| {
+            admin_error!(err = ?e, "Unable to encode token data");
+            OperationError::SerdeJsonError
+        })?;
+
+        let token_enc = self
+            .token_enc_key
+            .encrypt_at_time(&token_data, ct.as_secs());
+        */
+
+        // Mark that we have created an intent token on the user.
+        // ⚠️   -- remember, there is a risk, very low, but still a risk of collision of the intent_id.
+        //        instead of enforcing unique, which would divulge that the collision occured, we
+        //        write anyway, and instead on the intent access path we invalidate IF the collision
+        //        occurs.
+        let mut modlist = ModifyList::new_append(
+            "credential_update_intent_token",
+            Value::IntentToken(intent_id.clone(), IntentTokenState::Valid { max_ttl }),
+        );
+
+        // Remove any old credential update intents
+        account
+            .credential_update_intent_tokens
+            .iter()
+            .for_each(|(existing_intent_id, state)| {
+                let max_ttl = match state {
+                    IntentTokenState::Valid { max_ttl }
+                    | IntentTokenState::InProgress {
+                        max_ttl,
+                        session_id: _,
+                        session_ttl: _,
+                    }
+                    | IntentTokenState::Consumed { max_ttl } => *max_ttl,
+                };
+
+                if ct >= max_ttl {
+                    modlist.push_mod(Modify::Removed(
+                        AttrString::from("credential_update_intent_token"),
+                        PartialValue::IntentToken(existing_intent_id.clone()),
+                    ));
+                }
+            });
+
+        self.qs_write
+            .internal_modify(
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &modlist,
+            )
+            .map_err(|e| {
+                request_error!(error = ?e);
+                e
             })?;
 
-            let token_enc = self
-                .token_enc_key
-                .encrypt_at_time(&token_data, ct.as_secs());
-            */
-
-            // Mark that we have created an intent token on the user.
-            // ⚠️   -- remember, there is a risk, very low, but still a risk of collision of the intent_id.
-            //        instead of enforcing unique, which would divulge that the collision occured, we
-            //        write anyway, and instead on the intent access path we invalidate IF the collision
-            //        occurs.
-            let mut modlist = ModifyList::new_append(
-                "credential_update_intent_token",
-                Value::IntentToken(intent_id.clone(), IntentTokenState::Valid { max_ttl }),
-            );
-
-            // Remove any old credential update intents
-            account.credential_update_intent_tokens.iter().for_each(
-                |(existing_intent_id, state)| {
-                    let max_ttl = match state {
-                        IntentTokenState::Valid { max_ttl }
-                        | IntentTokenState::InProgress {
-                            max_ttl,
-                            session_id: _,
-                            session_ttl: _,
-                        }
-                        | IntentTokenState::Consumed { max_ttl } => *max_ttl,
-                    };
-
-                    if ct >= max_ttl {
-                        modlist.push_mod(Modify::Removed(
-                            AttrString::from("credential_update_intent_token"),
-                            PartialValue::IntentToken(existing_intent_id.clone()),
-                        ));
-                    }
-                },
-            );
-
-            self.qs_write
-                .internal_modify(
-                    // Filter as executed
-                    &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
-                    &modlist,
-                )
-                .map_err(|e| {
-                    request_error!(error = ?e);
-                    e
-                })?;
-
-            Ok(CredentialUpdateIntentToken { intent_id })
-        })
+        Ok(CredentialUpdateIntentToken { intent_id })
     }
 
     pub fn exchange_intent_credential_update(
@@ -642,21 +633,20 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.create_credupdate_session(session_id, Some(intent_id), account, current_time)
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub fn init_credential_update(
         &mut self,
         event: &InitCredentialUpdateEvent,
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
-        spanned!("idm::server::credupdatesession<Init>", {
-            let account = self.validate_init_credential_update(event.target, &event.ident)?;
-            // ==== AUTHORISATION CHECKED ===
-            // This is the expiry time, so that our cleanup task can "purge up to now" rather
-            // than needing to do calculations.
-            let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
+        let account = self.validate_init_credential_update(event.target, &event.ident)?;
+        // ==== AUTHORISATION CHECKED ===
+        // This is the expiry time, so that our cleanup task can "purge up to now" rather
+        // than needing to do calculations.
+        let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
-            // Build the cred update session.
-            self.create_credupdate_session(sessionid, None, account, ct)
-        })
+        // Build the cred update session.
+        self.create_credupdate_session(sessionid, None, account, ct)
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -1472,6 +1462,14 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use async_std::task;
+    use kanidm_proto::v1::{AuthAllowed, AuthMech, CredentialDetailType};
+    use uuid::uuid;
+    use webauthn_authenticator_rs::softpasskey::SoftPasskey;
+    use webauthn_authenticator_rs::WebauthnAuthenticator;
+
     use super::{
         CredentialUpdateSessionStatus, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
         InitCredentialUpdateIntentEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
@@ -1481,16 +1479,8 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent};
     use crate::idm::delayed::DelayedAction;
     use crate::idm::server::IdmServer;
-    use crate::prelude::*;
-    use std::time::Duration;
-
-    use webauthn_authenticator_rs::{softpasskey::SoftPasskey, WebauthnAuthenticator};
-
     use crate::idm::AuthState;
-    use kanidm_proto::v1::{AuthAllowed, AuthMech, CredentialDetailType};
-    use uuid::uuid;
-
-    use async_std::task;
+    use crate::prelude::*;
 
     const TEST_CURRENT_TIME: u64 = 6000;
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");

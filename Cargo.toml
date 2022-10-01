@@ -17,20 +17,131 @@ members = [
     "kanidmd/score",
     "orca",
     "profiles",
-    "sketching",
+    "sketching"
 ]
 
 exclude = [
     "kanidm_unix_int/pam_tester"
 ]
 
+[workspace.package]
+version = "1.1.0-alpha.9"
+authors = [
+    "William Brown <william@blackhats.net.au>",
+    "James Hodgkinson <james@terminaloutcomes.com>",
+    ]
+rust-version = "1.64"
+edition = "2021"
+license = "MPL-2.0"
+homepage = "https://github.com/kanidm/kanidm/"
+repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
+async-std = { version = "^1.12.0", features = ["tokio1"] }
+async-trait = "^0.1.57"
+base32 = "^0.4.0"
+base64 = "^0.13.0"
+base64urlsafedata = "0.1.0"
+bytes = "^1.1.0"
+clap = { version = "^3.2", features = ["derive"] }
+clap_complete = "^3.2.5"
+# Forced by saffron
+chrono = "^0.4.20"
+compact_jwt = "^0.2.3"
 # compact_jwt = { path = "../compact_jwt" }
+concread = "^0.4.0"
 # concread = { path = "../concread" }
+crossbeam = "0.8.1"
+criterion = "^0.4.0"
+csv = "1.1.6"
+dialoguer = "0.10.1"
+dyn-clone = "^1.0.9"
+fernet = "^0.2.0"
+filetime = "^0.2.17"
+futures = "^0.3.21"
+futures-util = "^0.3.21"
+gloo = "^0.8.0"
+gloo-net = "0.2.4"
+hashbrown = { version = "0.12.3", features = ["serde", "inline-more", "ahash"] }
+http-types = "^2.12.0"
+idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
-# ldap3_server = { path = "../ldap3_server" }
+js-sys = "^0.3.58"
+# RENAME THIS
+kanidm = { path = "./kanidmd/idm" }
+kanidm_client = { path = "./kanidm_client" }
+kanidm_proto = { path = "./kanidm_proto" }
+kanidm_unix_int = { path = "./kanidm_unix_int" }
+last-git-commit = "0.2.0"
+# REMOVE this
+lazy_static = "^1.4.0"
+ldap3_proto = "^0.2.3"
+libc = "^0.2.127"
+libnss = "^0.4.0"
+libsqlite3-sys = "^0.25.0"
+lru = "^0.8.0"
+mathru = "^0.13.0"
+num_enum = "^0.5.7"
+oauth2_ext = { version = "^4.1.0", package = "oauth2" }
+openssl = "^0.10.41"
+paste = "^1.0.9"
+pkg-config = "^0.3.25"
+profiles = { path = "./profiles" }
+qrcode = "^0.12.0"
+r2d2 = "^0.8.9"
+r2d2_sqlite = "^0.21.0"
+rand = "^0.8.5"
+# try to remove this
+rayon = "^1.5.3"
+regex = "1.5.6"
+reqwest = "0.11.11"
+rpassword = "^7.0.0"
+rusqlite = "^0.28.0"
+saffron = "^0.1.0"
+# Rename this!
+score = { path = "./kanidmd/score" }
+serde = "^1.0.142"
+serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
+serde_json = "^1.0.83"
+serde-wasm-bindgen = "0.4"
+shellexpand = "^2.1.2"
+sketching = { path = "./sketching" }
+smartstring = "^1.0.1"
+smolset = "^1.3.1"
+sshkeys = "^0.3.1"
 
+tide = "^0.16.0"
+tide-compress = "0.10.6"
+tide-openssl = "^0.1.1"
+
+# Unable to increase version due to removing ability to detect
+# local platform time.
+time = "=0.2.27"
+
+tikv-jemallocator = "0.5"
+
+tokio = "^1.21.1"
+tokio-openssl = "^0.6.3"
+tokio-util = "^0.7.4"
+
+toml = "^0.5.9"
+touch = "^0.0.1"
+tracing = { version = "^0.1.35", features = ["max_level_trace", "release_max_level_debug"] }
+tracing-subscriber = { version = "^0.3.14", features = ["env-filter"] }
+
+# tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }
+tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "48d78f7294ceee47a22eee5c80964143c4fb3fe1" }
+
+url = "^2.3.1"
+urlencoding = "2.1.2"
+users = "^0.11.0"
+uuid = "^1.1.2"
+
+validator = "^0.16.0"
+
+wasm-bindgen = "^0.2.81"
+wasm-bindgen-futures = "^0.4.30"
+wasm-bindgen-test = "0.3.33"
 
 webauthn-authenticator-rs = "0.4.7"
 webauthn-rs = "0.4.7"
@@ -40,6 +151,13 @@ webauthn-rs-proto = "0.4.7"
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
+web-sys = "^0.3.60"
+whoami = "^1.2.3"
+
+yew = "^0.19.3"
+yew-agent = "^0.1.0"
+yew-router = "^0.16.0"
+zxcvbn = "^2.2.1"
 
 # enshrinken the WASMs
 [profile.release.package.kanidmd_web_ui]

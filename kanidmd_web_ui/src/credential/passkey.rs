@@ -1,19 +1,16 @@
-use crate::error::*;
-use crate::utils;
-
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::ModalProps;
-
 use gloo::console;
-use yew::prelude::*;
-use yew_agent::Dispatched;
-
+use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
+use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
+use yew::prelude::*;
+use yew_agent::Dispatched;
 
-use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
-use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
+use super::eventbus::{EventBus, EventBusMsg};
+use super::reset::ModalProps;
+use crate::error::*;
+use crate::utils;
 
 pub struct PasskeyModalApp {
     state: State,

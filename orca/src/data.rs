@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
-use uuid::Uuid;
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub fn readable_password_from_random() -> String {
     let mut trng = thread_rng();

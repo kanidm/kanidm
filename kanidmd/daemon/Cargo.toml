@@ -1,14 +1,15 @@
 [package]
 name = "daemon"
-version = "1.1.0-alpha.9"
-authors = ["William Brown <william@blackhats.net.au>"]
-rust-version = "1.59"
-edition = "2021"
-license = "MPL-2.0"
 description = "Kanidm Server Daemon"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
-homepage = "https://github.com/kanidm/kanidm/"
-repository = "https://github.com/kanidm/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,25 +18,25 @@ name = "kanidmd"
 path = "src/main.rs"
 
 [dependencies]
-kanidm = { path = "../idm" }
-kanidm_proto = { path = "../../kanidm_proto" }
-score = { path = "../score" }
-sketching = { path = "../../sketching" }
+kanidm.workspace = true
+kanidm_proto.workspace = true
+score.workspace = true
+sketching.workspace = true
 
-clap = { version = "^3.2", features = ["derive", "env"] }
-serde = { version = "^1.0.142", features = ["derive"] }
-tokio = { version = "^1.21.1", features = ["rt-multi-thread", "macros", "signal"] }
-toml = "0.5.9"
+clap = { workspace = true, features = ["env"] }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+toml.workspace = true
 
 [target.'cfg(target_family = "windows")'.dependencies]
-whoami = "^1.2.3"
+whoami.workspace = true
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-users = "^0.11.0"
-tikv-jemallocator = "0.5"
+users.workspace = true
+tikv-jemallocator.workspace = true
 
 [build-dependencies]
-serde = { version = "1", features = ["derive"] }
-clap = { version = "^3.2", features = ["derive"] }
-clap_complete = "^3.2.5"
-profiles = { path = "../../profiles" }
+serde = { workspace = true, features = ["derive"] }
+clap = { workspace = true, features = ["derive"] }
+clap_complete.workspace = true
+profiles.workspace = true

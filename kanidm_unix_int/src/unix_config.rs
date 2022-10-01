@@ -1,14 +1,16 @@
-use crate::constants::{
-    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
-    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH,
-    DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
-};
-use serde::Deserialize;
 use std::env;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;
+
+use serde::Deserialize;
+
+use crate::constants::{
+    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
+    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH,
+    DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
+};
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {

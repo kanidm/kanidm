@@ -4,35 +4,32 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
-use std::fs;
-
-use crate::prelude::*;
-use crate::value::IndexType;
-use hashbrown::HashMap as Map;
-use hashbrown::HashSet;
 use std::cell::UnsafeCell;
+use std::fs;
+use std::ops::DerefMut;
 use std::sync::Arc;
+use std::time::Duration;
+
+use concread::cowcell::*;
+use hashbrown::{HashMap as Map, HashSet};
+use idlset::v2::IDLBitRange;
+use idlset::AndNot;
+use kanidm_proto::v1::{ConsistencyError, OperationError};
+use smartstring::alias::String as AttrString;
 use tracing::{trace, trace_span};
+use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::identity::Limits;
-use crate::value::Value;
-use concread::cowcell::*;
-use idlset::v2::IDLBitRange;
-use idlset::AndNot;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
-use smartstring::alias::String as AttrString;
-use std::ops::DerefMut;
-use std::time::Duration;
-use uuid::Uuid;
-
+use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::ruv::{
     ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
     ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
 };
+use crate::value::{IndexType, Value};
 
 pub mod dbentry;
 pub mod dbvalue;
@@ -41,12 +38,10 @@ mod idl_sqlite;
 pub(crate) mod idxkey;
 
 pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope};
-
 use crate::be::idl_arc_sqlite::{
     IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
     IdlArcSqliteWriteTransaction,
 };
-
 // Re-export this
 pub use crate::be::idl_sqlite::FsType;
 
@@ -175,6 +170,7 @@ pub trait BackendTransaction {
     /// Recursively apply a filter, transforming into IdList's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     #[allow(clippy::cognitive_complexity)]
+    #[instrument(level = "debug", name = "be::filter2idl", skip_all)]
     fn filter2idl(
         &self,
         filt: &FilterResolved,
@@ -534,6 +530,7 @@ pub trait BackendTransaction {
         })
     }
 
+    #[instrument(level = "debug", name = "be::search", skip_all)]
     fn search(
         &self,
         erl: &Limits,
@@ -543,165 +540,150 @@ pub trait BackendTransaction {
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
 
-        spanned!("be::search", {
-            filter_trace!(?filt, "filter optimized");
+        debug!(filter_optimised = ?filt);
 
-            let (idl, fplan) = trace_span!("be::search -> filter2idl").in_scope(|| {
-                spanned!("be::search -> filter2idl", {
-                    self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
-                })
-            })?;
+        let (idl, fplan) = trace_span!("be::search -> filter2idl")
+            .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
 
-            filter_trace!(?fplan, "filter executed plan");
+        debug!(filter_executed_plan = ?fplan);
 
-            match &idl {
-                IdList::AllIds => {
-                    if !erl.unindexed_allow {
-                        admin_error!(
-                            "filter (search) is fully unindexed, and not allowed by resource limits"
-                        );
-                        return Err(OperationError::ResourceLimit);
-                    }
+        match &idl {
+            IdList::AllIds => {
+                if !erl.unindexed_allow {
+                    admin_error!(
+                        "filter (search) is fully unindexed, and not allowed by resource limits"
+                    );
+                    return Err(OperationError::ResourceLimit);
                 }
-                IdList::Partial(idl_br) => {
-                    // if idl_br.len() > erl.search_max_filter_test {
-                    if !idl_br.below_threshold(erl.search_max_filter_test) {
-                        admin_error!("filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits");
-                        return Err(OperationError::ResourceLimit);
-                    }
-                }
-                IdList::PartialThreshold(_) => {
-                    // Since we opted for this, this is not the fault
-                    // of the user and we should not penalise them by limiting on partial.
-                }
-                IdList::Indexed(idl_br) => {
-                    // We know this is resolved here, so we can attempt the limit
-                    // check. This has to fold the whole index, but you know, class=pres is
-                    // indexed ...
-                    // if idl_br.len() > erl.search_max_results {
-                    if !idl_br.below_threshold(erl.search_max_results) {
-                        admin_error!("filter (search) is indexed and greater than search_max_results allowed by resource limits");
-                        return Err(OperationError::ResourceLimit);
-                    }
-                }
-            };
-
-            let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
-                admin_error!(?e, "get_identry failed");
-                e
-            })?;
-
-            let entries_filtered = match idl {
-                IdList::AllIds => trace_span!("be::search<entry::ftest::allids>").in_scope(|| {
-                    spanned!("be::search<entry::ftest::allids>", {
-                        entries
-                            .into_iter()
-                            .filter(|e| e.entry_match_no_index(filt))
-                            .collect()
-                    })
-                }),
-                IdList::Partial(_) => {
-                    trace_span!("be::search<entry::ftest::partial>").in_scope(|| {
-                        entries
-                            .into_iter()
-                            .filter(|e| e.entry_match_no_index(filt))
-                            .collect()
-                    })
-                }
-                IdList::PartialThreshold(_) => trace_span!("be::search<entry::ftest::thresh>")
-                    .in_scope(|| {
-                        spanned!("be::search<entry::ftest::thresh>", {
-                            entries
-                                .into_iter()
-                                .filter(|e| e.entry_match_no_index(filt))
-                                .collect()
-                        })
-                    }),
-                // Since the index fully resolved, we can shortcut the filter test step here!
-                IdList::Indexed(_) => {
-                    filter_trace!("filter (search) was fully indexed 👏");
-                    entries
-                }
-            };
-
-            // If the idl was not indexed, apply the resource limit now. Avoid the needless match since the
-            // if statement is quick.
-            if entries_filtered.len() > erl.search_max_results {
-                admin_error!("filter (search) is resolved and greater than search_max_results allowed by resource limits");
-                return Err(OperationError::ResourceLimit);
             }
+            IdList::Partial(idl_br) => {
+                // if idl_br.len() > erl.search_max_filter_test {
+                if !idl_br.below_threshold(erl.search_max_filter_test) {
+                    admin_error!("filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits");
+                    return Err(OperationError::ResourceLimit);
+                }
+            }
+            IdList::PartialThreshold(_) => {
+                // Since we opted for this, this is not the fault
+                // of the user and we should not penalise them by limiting on partial.
+            }
+            IdList::Indexed(idl_br) => {
+                // We know this is resolved here, so we can attempt the limit
+                // check. This has to fold the whole index, but you know, class=pres is
+                // indexed ...
+                // if idl_br.len() > erl.search_max_results {
+                if !idl_br.below_threshold(erl.search_max_results) {
+                    admin_error!("filter (search) is indexed and greater than search_max_results allowed by resource limits");
+                    return Err(OperationError::ResourceLimit);
+                }
+            }
+        };
 
-            Ok(entries_filtered)
-        })
+        let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
+            admin_error!(?e, "get_identry failed");
+            e
+        })?;
+
+        let entries_filtered = match idl {
+            IdList::AllIds => trace_span!("be::search<entry::ftest::allids>").in_scope(|| {
+                entries
+                    .into_iter()
+                    .filter(|e| e.entry_match_no_index(filt))
+                    .collect()
+            }),
+            IdList::Partial(_) => trace_span!("be::search<entry::ftest::partial>").in_scope(|| {
+                entries
+                    .into_iter()
+                    .filter(|e| e.entry_match_no_index(filt))
+                    .collect()
+            }),
+            IdList::PartialThreshold(_) => trace_span!("be::search<entry::ftest::thresh>")
+                .in_scope(|| {
+                    entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(filt))
+                        .collect()
+                }),
+            // Since the index fully resolved, we can shortcut the filter test step here!
+            IdList::Indexed(_) => {
+                filter_trace!("filter (search) was fully indexed 👏");
+                entries
+            }
+        };
+
+        // If the idl was not indexed, apply the resource limit now. Avoid the needless match since the
+        // if statement is quick.
+        if entries_filtered.len() > erl.search_max_results {
+            admin_error!("filter (search) is resolved and greater than search_max_results allowed by resource limits");
+            return Err(OperationError::ResourceLimit);
+        }
+
+        Ok(entries_filtered)
     }
 
     /// Given a filter, assert some condition exists.
     /// Basically, this is a specialised case of search, where we don't need to
     /// load any candidates if they match. This is heavily used in uuid
     /// refint and attr uniqueness.
+    #[instrument(level = "debug", name = "be::exists", skip_all)]
     fn exists(
         &self,
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
-        let _entered = trace_span!("be::exists").entered();
-        spanned!("be::exists", {
-            filter_trace!(?filt, "filter optimised");
+        debug!(filter_optimised = ?filt);
 
-            // Using the indexes, resolve the IdList here, or AllIds.
-            // Also get if the filter was 100% resolved or not.
-            let (idl, fplan) = spanned!("be::exists -> filter2idl", {
-                spanned!("be::exists -> filter2idl", {
-                    self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
-                })
-            })?;
+        // Using the indexes, resolve the IdList here, or AllIds.
+        // Also get if the filter was 100% resolved or not.
+        let (idl, fplan) = self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)?;
 
-            filter_trace!(?fplan, "filter executed plan");
+        debug!(filter_executed_plan = ?fplan);
 
-            // Apply limits to the IdList.
-            match &idl {
-                IdList::AllIds => {
-                    if !erl.unindexed_allow {
-                        admin_error!("filter (exists) is fully unindexed, and not allowed by resource limits");
-                        return Err(OperationError::ResourceLimit);
-                    }
+        // Apply limits to the IdList.
+        match &idl {
+            IdList::AllIds => {
+                if !erl.unindexed_allow {
+                    admin_error!(
+                        "filter (exists) is fully unindexed, and not allowed by resource limits"
+                    );
+                    return Err(OperationError::ResourceLimit);
                 }
-                IdList::Partial(idl_br) => {
-                    if !idl_br.below_threshold(erl.search_max_filter_test) {
-                        admin_error!("filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits");
-                        return Err(OperationError::ResourceLimit);
-                    }
-                }
-                IdList::PartialThreshold(_) => {
-                    // Since we opted for this, this is not the fault
-                    // of the user and we should not penalise them.
-                }
-                IdList::Indexed(_) => {}
             }
-
-            // Now, check the idl -- if it's fully resolved, we can skip this because the query
-            // was fully indexed.
-            match &idl {
-                IdList::Indexed(idl) => Ok(!idl.is_empty()),
-                _ => {
-                    let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
-                        admin_error!(?e, "get_identry failed");
-                        e
-                    })?;
-
-                    // if not 100% resolved query, apply the filter test.
-                    let entries_filtered: Vec<_> =
-                        spanned!("be::exists -> entry_match_no_index", {
-                            entries
-                                .into_iter()
-                                .filter(|e| e.entry_match_no_index(filt))
-                                .collect()
-                        });
-
-                    Ok(!entries_filtered.is_empty())
+            IdList::Partial(idl_br) => {
+                if !idl_br.below_threshold(erl.search_max_filter_test) {
+                    admin_error!("filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits");
+                    return Err(OperationError::ResourceLimit);
                 }
-            } // end match idl
-        }) // end spanned
+            }
+            IdList::PartialThreshold(_) => {
+                // Since we opted for this, this is not the fault
+                // of the user and we should not penalise them.
+            }
+            IdList::Indexed(_) => {}
+        }
+
+        // Now, check the idl -- if it's fully resolved, we can skip this because the query
+        // was fully indexed.
+        match &idl {
+            IdList::Indexed(idl) => Ok(!idl.is_empty()),
+            _ => {
+                let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
+                    admin_error!(?e, "get_identry failed");
+                    e
+                })?;
+
+                // if not 100% resolved query, apply the filter test.
+                let entries_filtered: Vec<_> =
+                    trace_span!("be::exists<entry::ftest>").in_scope(|| {
+                        entries
+                            .into_iter()
+                            .filter(|e| e.entry_match_no_index(filt))
+                            .collect()
+                    });
+
+                Ok(!entries_filtered.is_empty())
+            }
+        } // end match idl
     }
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
@@ -878,6 +860,7 @@ pub trait BackendTransaction {
 
 impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     type IdlLayerType = IdlArcSqliteReadTransaction<'a>;
+    type RuvType = ReplicationUpdateVectorReadTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut IdlArcSqliteReadTransaction<'a> {
@@ -894,8 +877,6 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
         // conflicting during this cache operation.
         unsafe { &mut (*self.idlayer.get()) }
     }
-
-    type RuvType = ReplicationUpdateVectorReadTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_ruv(&self) -> &mut ReplicationUpdateVectorReadTransaction<'a> {
@@ -930,13 +911,12 @@ impl<'a> BackendReadTransaction<'a> {
 
 impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
     type IdlLayerType = IdlArcSqliteWriteTransaction<'a>;
+    type RuvType = ReplicationUpdateVectorWriteTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut IdlArcSqliteWriteTransaction<'a> {
         unsafe { &mut (*self.idlayer.get()) }
     }
-
-    type RuvType = ReplicationUpdateVectorWriteTransaction<'a>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_ruv(&self) -> &mut ReplicationUpdateVectorWriteTransaction<'a> {
@@ -949,181 +929,179 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 }
 
 impl<'a> BackendWriteTransaction<'a> {
+    #[instrument(level = "debug", name = "be::create", skip_all)]
     pub fn create(
         &self,
         cid: &Cid,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        spanned!("be::create", {
-            if entries.is_empty() {
-                admin_error!("No entries provided to BE to create, invalid server call!");
-                return Err(OperationError::EmptyRequest);
+        if entries.is_empty() {
+            admin_error!("No entries provided to BE to create, invalid server call!");
+            return Err(OperationError::EmptyRequest);
+        }
+
+        // Check that every entry has a change associated
+        // that matches the cid?
+        entries.iter().try_for_each(|e| {
+            if e.get_changelog().contains_tail_cid(cid) {
+                Ok(())
+            } else {
+                admin_error!(
+                    "Entry changelog does not contain a change related to this transaction"
+                );
+                Err(OperationError::ReplEntryNotChanged)
             }
+        })?;
 
-            // Check that every entry has a change associated
-            // that matches the cid?
-            entries.iter().try_for_each(|e| {
-                if e.get_changelog().contains_tail_cid(cid) {
-                    Ok(())
-                } else {
-                    admin_error!(
-                        "Entry changelog does not contain a change related to this transaction"
-                    );
-                    Err(OperationError::ReplEntryNotChanged)
-                }
-            })?;
+        let idlayer = self.get_idlayer();
+        // Now, assign id's to all the new entries.
 
-            let idlayer = self.get_idlayer();
-            // Now, assign id's to all the new entries.
+        let mut id_max = idlayer.get_id2entry_max_id()?;
+        let c_entries: Vec<_> = entries
+            .into_iter()
+            .map(|e| {
+                id_max += 1;
+                e.into_sealed_committed_id(id_max)
+            })
+            .collect();
 
-            let mut id_max = idlayer.get_id2entry_max_id()?;
-            let c_entries: Vec<_> = entries
-                .into_iter()
-                .map(|e| {
-                    id_max += 1;
-                    e.into_sealed_committed_id(id_max)
-                })
-                .collect();
+        // All good, lets update the RUV.
+        // This auto compresses.
+        let ruv_idl = IDLBitRange::from_iter(c_entries.iter().map(|e| e.get_id()));
 
-            // All good, lets update the RUV.
-            // This auto compresses.
-            let ruv_idl = IDLBitRange::from_iter(c_entries.iter().map(|e| e.get_id()));
+        self.get_ruv().insert_change(cid, ruv_idl)?;
 
-            self.get_ruv().insert_change(cid, ruv_idl)?;
+        idlayer.write_identries(c_entries.iter())?;
 
-            idlayer.write_identries(c_entries.iter())?;
+        idlayer.set_id2entry_max_id(id_max);
 
-            idlayer.set_id2entry_max_id(id_max);
+        // Now update the indexes as required.
+        for e in c_entries.iter() {
+            self.entry_index(None, Some(e))?
+        }
 
-            // Now update the indexes as required.
-            for e in c_entries.iter() {
-                self.entry_index(None, Some(e))?
-            }
-
-            Ok(c_entries)
-        })
+        Ok(c_entries)
     }
 
+    #[instrument(level = "debug", name = "be::modify", skip_all)]
     pub fn modify(
         &self,
         cid: &Cid,
         pre_entries: &[Arc<EntrySealedCommitted>],
         post_entries: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
-        spanned!("be::modify", {
-            if post_entries.is_empty() || pre_entries.is_empty() {
-                admin_error!("No entries provided to BE to modify, invalid server call!");
-                return Err(OperationError::EmptyRequest);
+        if post_entries.is_empty() || pre_entries.is_empty() {
+            admin_error!("No entries provided to BE to modify, invalid server call!");
+            return Err(OperationError::EmptyRequest);
+        }
+
+        assert!(post_entries.len() == pre_entries.len());
+
+        post_entries.iter().try_for_each(|e| {
+            if e.get_changelog().contains_tail_cid(cid) {
+                Ok(())
+            } else {
+                admin_error!(
+                    "Entry changelog does not contain a change related to this transaction"
+                );
+                Err(OperationError::ReplEntryNotChanged)
             }
+        })?;
 
-            assert!(post_entries.len() == pre_entries.len());
+        // All good, lets update the RUV.
+        // This auto compresses.
+        let ruv_idl = IDLBitRange::from_iter(post_entries.iter().map(|e| e.get_id()));
+        self.get_ruv().insert_change(cid, ruv_idl)?;
 
-            post_entries.iter().try_for_each(|e| {
-                if e.get_changelog().contains_tail_cid(cid) {
-                    Ok(())
-                } else {
-                    admin_error!(
-                        "Entry changelog does not contain a change related to this transaction"
-                    );
-                    Err(OperationError::ReplEntryNotChanged)
-                }
-            })?;
+        // Now, given the list of id's, update them
+        self.get_idlayer().write_identries(post_entries.iter())?;
 
-            // All good, lets update the RUV.
-            // This auto compresses.
-            let ruv_idl = IDLBitRange::from_iter(post_entries.iter().map(|e| e.get_id()));
-            self.get_ruv().insert_change(cid, ruv_idl)?;
-
-            // Now, given the list of id's, update them
-            self.get_idlayer().write_identries(post_entries.iter())?;
-
-            // Finally, we now reindex all the changed entries. We do this by iterating and zipping
-            // over the set, because we know the list is in the same order.
-            pre_entries
-                .iter()
-                .zip(post_entries.iter())
-                .try_for_each(|(pre, post)| self.entry_index(Some(pre.as_ref()), Some(post)))
-        })
+        // Finally, we now reindex all the changed entries. We do this by iterating and zipping
+        // over the set, because we know the list is in the same order.
+        pre_entries
+            .iter()
+            .zip(post_entries.iter())
+            .try_for_each(|(pre, post)| self.entry_index(Some(pre.as_ref()), Some(post)))
     }
 
+    #[instrument(level = "debug", name = "be::reap_tombstones", skip_all)]
     pub fn reap_tombstones(&self, cid: &Cid) -> Result<usize, OperationError> {
-        spanned!("be::reap_tombstones", {
-            // We plan to clear the RUV up to this cid. So we need to build an IDL
-            // of all the entries we need to examine.
-            let idl = self.get_ruv().trim_up_to(cid).map_err(|e| {
-                admin_error!(?e, "failed to trim RUV to {:?}", cid);
+        // We plan to clear the RUV up to this cid. So we need to build an IDL
+        // of all the entries we need to examine.
+        let idl = self.get_ruv().trim_up_to(cid).map_err(|e| {
+            admin_error!(?e, "failed to trim RUV to {:?}", cid);
+            e
+        })?;
+
+        let entries = self
+            .get_idlayer()
+            .get_identry(&IdList::Indexed(idl))
+            .map_err(|e| {
+                admin_error!(?e, "get_identry failed");
                 e
             })?;
 
-            let entries = self
-                .get_idlayer()
-                .get_identry(&IdList::Indexed(idl))
-                .map_err(|e| {
-                    admin_error!(?e, "get_identry failed");
-                    e
-                })?;
+        if entries.is_empty() {
+            admin_info!("No entries affected - reap_tombstones operation success");
+            return Ok(0);
+        }
 
-            if entries.is_empty() {
-                admin_info!("No entries affected - reap_tombstones operation success");
-                return Ok(0);
-            }
+        // Now that we have a list of entries we need to partition them into
+        // two sets. The entries that are tombstoned and ready to reap_tombstones, and
+        // the entries that need to have their change logs trimmed.
 
-            // Now that we have a list of entries we need to partition them into
-            // two sets. The entries that are tombstoned and ready to reap_tombstones, and
-            // the entries that need to have their change logs trimmed.
+        // First we trim changelogs. Go through each entry, and trim the CL, and write it back.
+        let mut entries: Vec<_> = entries.iter().map(|er| er.as_ref().clone()).collect();
 
-            // First we trim changelogs. Go through each entry, and trim the CL, and write it back.
-            let mut entries: Vec<_> = entries.iter().map(|er| er.as_ref().clone()).collect();
+        entries
+            .iter_mut()
+            .try_for_each(|e| e.get_changelog_mut().trim_up_to(cid))?;
 
-            entries
-                .iter_mut()
-                .try_for_each(|e| e.get_changelog_mut().trim_up_to(cid))?;
+        // Write down the cl trims
+        self.get_idlayer().write_identries(entries.iter())?;
 
-            // Write down the cl trims
-            self.get_idlayer().write_identries(entries.iter())?;
+        let (tombstones, leftover): (Vec<_>, Vec<_>) = entries
+            .into_iter()
+            .partition(|e| e.get_changelog().can_delete());
 
-            let (tombstones, leftover): (Vec<_>, Vec<_>) = entries
-                .into_iter()
-                .partition(|e| e.get_changelog().can_delete());
+        // Assert that anything leftover still either is *alive* OR is a tombstone
+        // and has entries in the RUV!
+        let ruv_idls = self.get_ruv().ruv_idls();
 
-            // Assert that anything leftover still either is *alive* OR is a tombstone
-            // and has entries in the RUV!
-            let ruv_idls = self.get_ruv().ruv_idls();
+        if !leftover
+            .iter()
+            .all(|e| e.get_changelog().is_live() || ruv_idls.contains(e.get_id()))
+        {
+            admin_error!("Left over entries may be orphaned due to missing RUV entries");
+            return Err(OperationError::ReplInvalidRUVState);
+        }
 
-            if !leftover
-                .iter()
-                .all(|e| e.get_changelog().is_live() || ruv_idls.contains(e.get_id()))
-            {
-                admin_error!("Left over entries may be orphaned due to missing RUV entries");
-                return Err(OperationError::ReplInvalidRUVState);
-            }
+        // Now setup to reap_tombstones the tombstones. Remember, in the post cleanup, it's could
+        // now have been trimmed to a point we can purge them!
 
-            // Now setup to reap_tombstones the tombstones. Remember, in the post cleanup, it's could
-            // now have been trimmed to a point we can purge them!
+        // Assert the id's exist on the entry.
+        let id_list: IDLBitRange = tombstones.iter().map(|e| e.get_id()).collect();
 
-            // Assert the id's exist on the entry.
-            let id_list: IDLBitRange = tombstones.iter().map(|e| e.get_id()).collect();
+        // Ensure nothing here exists in the RUV index, else it means
+        // we didn't trim properly, or some other state violation has occured.
+        if !((&ruv_idls & &id_list).is_empty()) {
+            admin_error!("RUV still contains entries that are going to be removed.");
+            return Err(OperationError::ReplInvalidRUVState);
+        }
 
-            // Ensure nothing here exists in the RUV index, else it means
-            // we didn't trim properly, or some other state violation has occured.
-            if !((&ruv_idls & &id_list).is_empty()) {
-                admin_error!("RUV still contains entries that are going to be removed.");
-                return Err(OperationError::ReplInvalidRUVState);
-            }
+        // Now, given the list of id's, reap_tombstones them.
+        let sz = id_list.len();
+        self.get_idlayer().delete_identry(id_list.into_iter())?;
 
-            // Now, given the list of id's, reap_tombstones them.
-            let sz = id_list.len();
-            self.get_idlayer().delete_identry(id_list.into_iter())?;
+        // Finally, purge the indexes from the entries we removed.
+        tombstones
+            .iter()
+            .try_for_each(|e| self.entry_index(Some(e), None))?;
 
-            // Finally, purge the indexes from the entries we removed.
-            tombstones
-                .iter()
-                .try_for_each(|e| self.entry_index(Some(e), None))?;
-
-            Ok(sz)
-        })
+        Ok(sz)
     }
 
+    #[instrument(level = "debug", name = "be::update_idxmeta", skip_all)]
     pub fn update_idxmeta(&mut self, idxkeys: Vec<IdxKey>) -> Result<(), OperationError> {
         if self.is_idx_slopeyness_generated()? {
             trace!("Indexing slopes available");
@@ -1522,25 +1500,24 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
+    #[instrument(level = "debug", name = "be::ruv_rebuild", skip_all)]
     pub fn ruv_rebuild(&mut self) -> Result<(), OperationError> {
         // Rebuild the ruv!
-        spanned!("server::ruv_rebuild", {
-            // For now this has to read from all the entries in the DB, but in the future
-            // we'll actually store this properly (?). If it turns out this is really fast
-            // we may just rebuild this always on startup.
+        // For now this has to read from all the entries in the DB, but in the future
+        // we'll actually store this properly (?). If it turns out this is really fast
+        // we may just rebuild this always on startup.
 
-            // NOTE: An important detail is that we don't rely on indexes here!
+        // NOTE: An important detail is that we don't rely on indexes here!
 
-            let idl = IdList::AllIds;
-            let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
-                admin_error!(?e, "get_identry failed");
-                e
-            })?;
+        let idl = IdList::AllIds;
+        let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
+            admin_error!(?e, "get_identry failed");
+            e
+        })?;
 
-            self.get_ruv().rebuild(&entries)?;
+        self.get_ruv().rebuild(&entries)?;
 
-            Ok(())
-        })
+        Ok(())
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
@@ -1639,6 +1616,7 @@ fn get_idx_slope_default(ikey: &IdxKey) -> IdxSlope {
 
 // In the future this will do the routing between the chosen backends etc.
 impl Backend {
+    #[instrument(level = "debug", name = "be::new", skip_all)]
     pub fn new(
         mut cfg: BackendConfig,
         // path: &str,
@@ -1675,40 +1653,38 @@ impl Backend {
         let ruv = Arc::new(ReplicationUpdateVector::default());
 
         // this has a ::memory() type, but will path == "" work?
-        spanned!("be::new", {
-            let idlayer = Arc::new(IdlArcSqlite::new(&cfg, vacuum)?);
-            let be = Backend {
-                cfg,
-                idlayer,
-                ruv,
-                idxmeta: Arc::new(CowCell::new(IdxMeta::new(idxkeys))),
-            };
+        let idlayer = Arc::new(IdlArcSqlite::new(&cfg, vacuum)?);
+        let be = Backend {
+            cfg,
+            idlayer,
+            ruv,
+            idxmeta: Arc::new(CowCell::new(IdxMeta::new(idxkeys))),
+        };
 
-            // Now complete our setup with a txn
-            // In this case we can use an empty idx meta because we don't
-            // access any parts of
-            // the indexing subsystem here.
-            let mut idl_write = be.idlayer.write();
-            idl_write
-                .setup()
-                .and_then(|_| idl_write.commit())
-                .map_err(|e| {
-                    admin_error!(?e, "Failed to setup idlayer");
-                    e
-                })?;
+        // Now complete our setup with a txn
+        // In this case we can use an empty idx meta because we don't
+        // access any parts of
+        // the indexing subsystem here.
+        let mut idl_write = be.idlayer.write();
+        idl_write
+            .setup()
+            .and_then(|_| idl_write.commit())
+            .map_err(|e| {
+                admin_error!(?e, "Failed to setup idlayer");
+                e
+            })?;
 
-            // Now rebuild the ruv.
-            let mut be_write = be.write();
-            be_write
-                .ruv_rebuild()
-                .and_then(|_| be_write.commit())
-                .map_err(|e| {
-                    admin_error!(?e, "Failed to reload ruv");
-                    e
-                })?;
+        // Now rebuild the ruv.
+        let mut be_write = be.write();
+        be_write
+            .ruv_rebuild()
+            .and_then(|_| be_write.commit())
+            .map_err(|e| {
+                admin_error!(?e, "Failed to reload ruv");
+                e
+            })?;
 
-            Ok(be)
-        })
+        Ok(be)
     }
 
     pub fn get_pool_size(&self) -> u32 {
@@ -1762,22 +1738,23 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use idlset::v2::IDLBitRange;
     use std::fs;
     use std::iter::FromIterator;
     use std::sync::Arc;
+    use std::time::Duration;
+
+    use idlset::v2::IDLBitRange;
     use uuid::Uuid;
 
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::{
-        Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, IdList, OperationError,
+        Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, DbBackup, IdList,
+        IdxKey, OperationError,
     };
-    use super::{DbBackup, IdxKey};
     use crate::identity::Limits;
     use crate::prelude::*;
     use crate::repl::cid::Cid;
     use crate::value::{IndexType, PartialValue, Value};
-    use std::time::Duration;
 
     lazy_static! {
         static ref CID_ZERO: Cid = unsafe { Cid::new_zero() };

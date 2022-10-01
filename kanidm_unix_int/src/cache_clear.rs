@@ -14,9 +14,7 @@
 extern crate tracing;
 
 use clap::Parser;
-
 use futures::executor::block_on;
-
 use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
