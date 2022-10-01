@@ -1,5 +1,5 @@
-""" kanidm RADIUS module """
 
+""" kanidm RADIUS module """
 import asyncio
 from functools import reduce
 import json
@@ -9,67 +9,56 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, Optional, Union
 
-from kanidm import KanidmClient
-from kanidm.types import AuthStepPasswordResponse, RadiusTokenResponse
-from kanidm.utils import load_config
 from kanidm.exceptions import NoMatchingEntries
+from kanidm.types import AuthStepPasswordResponse, RadiusTokenResponse
 
+from .. import KanidmClient
 from . import radiusd
 from .utils import check_vlan
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    stream=sys.stderr,
-)
-
 # the list of places to try
-config_paths = [
+CONFIG_PATHS = [
     os.getenv("KANIDM_RLM_CONFIG", "/data/kanidm"),  # container goodness
     "~/.config/kanidm",  # for a user
     "/etc/kanidm/kanidm",  # system-wide
     "../examples/kanidm",  # test mode
 ]
 
-CONFIG_PATH = None
-for config_file_path in config_paths:
-    CONFIG_PATH = Path(config_file_path).expanduser().resolve()
-    if CONFIG_PATH.exists():
-        break
 
-if (CONFIG_PATH is None) or (not CONFIG_PATH.exists()):
-    logging.error(
-        "Failed to find configuration file, checked (%s), quitting!", config_paths
+def instantiate(_: Any) -> Any:
+    """start up radiusd"""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        stream=sys.stderr,
     )
-    sys.exit(1)
-config = load_config(str(CONFIG_PATH))
-
-KANIDM_CLIENT = KanidmClient(config_file=CONFIG_PATH)
-if KANIDM_CLIENT.config.auth_token is None:
-    logging.error("You need to specify auth_token in the configuration file!")
-    sys.exit(1)
+    logging.info("Starting up!")
 
 
-def authenticate(
-    acct: str,
-    password: str,
-    kanidm_client: KanidmClient = KANIDM_CLIENT,
-) -> Union[int, AuthStepPasswordResponse]:
-    """authenticate the RADIUS service account to Kanidm"""
-    logging.error("authenticate - %s:%s", acct, password)
+    config_path = None
+    for config_file_path in CONFIG_PATHS:
+        config_path = Path(config_file_path).expanduser().resolve()
+        if config_path.exists():
+            break
 
-    try:
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(kanidm_client.check_token_valid())
-    except Exception as error_message:  # pylint: disable=broad-except
-        logging.error("Failed to run kanidm.check_token_valid: %s", error_message)
-    return radiusd.RLM_MODULE_FAIL
+    if (config_path is None) or (not config_path.exists()):
+        logging.error(
+            "Failed to find configuration file, checked (%s), quitting!", CONFIG_PATHS
+        )
+        sys.exit(1)
 
+    kanidm_client = KanidmClient(config_file=config_path)
+    if kanidm_client.config.auth_token is None:
+        logging.error("You need to specify auth_token in the configuration file!")
+        sys.exit(1)
+    os.environ["KANIDM_CONFIG_FILE"] = config_path.as_posix()
+    logging.info("Config file: %s", config_path.as_posix())
+    return radiusd.RLM_MODULE_OK
 
 async def _get_radius_token(
     username: Optional[str] = None,
-    kanidm_client: KanidmClient = KANIDM_CLIENT,
 ) -> Optional[Dict[str, Any]]:
     """pulls the radius token for a client username"""
+    kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
     if username is None:
         raise ValueError("Didn't get a username for _get_radius_token")
     # authenticate as the radius service account
@@ -85,21 +74,12 @@ async def _get_radius_token(
     logging.debug(response.data)
     return response.data
 
-
-
-
-def instantiate(_: Any) -> Any:
-    """start up radiusd"""
-    logging.info("Starting up!")
-    return radiusd.RLM_MODULE_OK
-
-
 # pylint: disable=too-many-locals
 def authorize(
     args: Any = Dict[Any, Any],
-    kanidm_client: KanidmClient = KANIDM_CLIENT,
 ) -> Any:
     """does the kanidm authorize step"""
+    kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
     logging.info("kanidm python module called")
     # args comes in like this
     # (
@@ -150,8 +130,9 @@ def authorize(
 
     # Are they in the required group?
     req_sat = False
+    required_groups = kanidm_client.config.radius_required_groups
     for group in tok.groups:
-        if group.uuid in kanidm_client.config.radius_required_groups or group.spn in kanidm_client.config.radius_required_groups:
+        if group.uuid in required_groups or group.spn in required_groups:
             req_sat = True
             logging.info("User %s has a required group (%s)", name, group.spn)
     if req_sat is not True:
@@ -181,3 +162,21 @@ def authorize(
 
     logging.info("OK! Returning details to radius for %s ...", name)
     return (radiusd.RLM_MODULE_OK, reply, config_object)
+
+
+
+
+def authenticate(
+    acct: str,
+    password: str,
+) -> Union[int, AuthStepPasswordResponse]:
+    """authenticate the RADIUS service account to Kanidm"""
+    kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
+    logging.error("authenticate - %s:%s", acct, password)
+
+    try:
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(kanidm_client.check_token_valid())
+    except Exception as error_message:  # pylint: disable=broad-except
+        logging.error("Failed to run kanidm.check_token_valid: %s", error_message)
+    return radiusd.RLM_MODULE_FAIL
