@@ -2,6 +2,7 @@
 
 from typing import Optional
 import logging
+import os
 
 from .. import KanidmClient
 from ..types import RadiusTokenGroup
@@ -17,8 +18,10 @@ def check_vlan(
     """
     logging.debug("acc=%s", acc)
     if kanidm_client is None:
-        # kanidm_client = KANIDM_CLIENT
-        raise ValueError("Need to pass this a kanidm_client")
+        if "KANIDM_CONFIG_FILE" in os.environ:
+            kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
+        else:
+            raise ValueError("Need to pass this a kanidm_client")
 
     for radius_group in kanidm_client.config.radius_groups:
         logging.debug(

@@ -79,8 +79,8 @@ def authorize(
     args: Any = Dict[Any, Any],
 ) -> Any:
     """does the kanidm authorize step"""
-    kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
     logging.info("kanidm python module called")
+    kanidm_client = KanidmClient(config_file=os.environ["KANIDM_CONFIG_FILE"])
     # args comes in like this
     # (
     #   ('User-Name', '<username>'),
