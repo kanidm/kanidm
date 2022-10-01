@@ -1148,8 +1148,8 @@ dependencies = [
  "clap_complete",
  "kanidm",
  "kanidm_proto",
+ "kanidmd_core",
  "profiles",
- "score",
  "serde",
  "sketching",
  "tikv-jemallocator",
@@ -2346,6 +2346,7 @@ dependencies = [
  "kanidm",
  "kanidm_client",
  "kanidm_proto",
+ "kanidmd_core",
  "libc",
  "libsqlite3-sys",
  "lru 0.8.0",
@@ -2355,7 +2356,6 @@ dependencies = [
  "reqwest",
  "rpassword 7.0.0",
  "rusqlite",
- "score",
  "serde",
  "serde_json",
  "sketching",
@@ -2364,6 +2364,41 @@ dependencies = [
  "toml",
  "tracing",
  "users",
+]
+
+[[package]]
+name = "kanidmd_core"
+version = "1.1.0-alpha.9"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "compact_jwt",
+ "futures",
+ "futures-util",
+ "http-types",
+ "kanidm",
+ "kanidm_client",
+ "kanidm_proto",
+ "ldap3_proto",
+ "libc",
+ "oauth2",
+ "openssl",
+ "profiles",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sketching",
+ "tide",
+ "tide-compress",
+ "tide-openssl",
+ "tokio",
+ "tokio-openssl",
+ "tokio-util",
+ "tracing",
+ "url",
+ "uuid",
+ "webauthn-authenticator-rs",
 ]
 
 [[package]]
@@ -3663,41 +3698,6 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
-
-[[package]]
-name = "score"
-version = "1.1.0-alpha.9"
-dependencies = [
- "async-std",
- "async-trait",
- "compact_jwt",
- "futures",
- "futures-util",
- "http-types",
- "kanidm",
- "kanidm_client",
- "kanidm_proto",
- "ldap3_proto",
- "libc",
- "oauth2",
- "openssl",
- "profiles",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "sketching",
- "tide",
- "tide-compress",
- "tide-openssl",
- "tokio",
- "tokio-openssl",
- "tokio-util",
- "tracing",
- "url",
- "uuid",
- "webauthn-authenticator-rs",
-]
 
 [[package]]
 name = "sct"

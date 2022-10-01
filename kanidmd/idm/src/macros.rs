@@ -736,3 +736,10 @@ macro_rules! vs_cid {
         x
     });
 }
+
+macro_rules! limmediate_warning {
+    ($($arg:tt)*) => ({
+        eprint!($($arg)*)
+    })
+}
+

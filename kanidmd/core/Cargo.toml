@@ -1,6 +1,6 @@
 [package]
-name = "score"
-description = "Kanidm Server Library and Binary"
+name = "kanidmd_core"
+description = "Kanidm Server Core and Library"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
 version.workspace = true

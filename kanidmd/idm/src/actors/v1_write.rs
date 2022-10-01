@@ -32,24 +32,21 @@ use crate::utils::duration_from_epoch_now;
 use crate::value::{PartialValue, Value};
 
 pub struct QueryServerWriteV1 {
-    _log_level: Option<u32>,
     idms: Arc<IdmServer>,
 }
 
 impl QueryServerWriteV1 {
-    pub fn new(log_level: Option<u32>, idms: Arc<IdmServer>) -> Self {
+    pub fn new(idms: Arc<IdmServer>) -> Self {
         info!("Starting query server v1 worker ...");
         QueryServerWriteV1 {
-            _log_level: log_level,
             idms,
         }
     }
 
     pub fn start_static(
-        log_level: Option<u32>,
         idms: Arc<IdmServer>,
     ) -> &'static QueryServerWriteV1 {
-        let x = Box::new(QueryServerWriteV1::new(log_level, idms));
+        let x = Box::new(QueryServerWriteV1::new(idms));
 
         let x_ptr = Box::leak(x);
         &(*x_ptr)

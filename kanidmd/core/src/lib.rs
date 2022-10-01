@@ -569,7 +569,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
 
     // Similar, create a stats task which aggregates statistics from the
     // server as they come in.
-    let status_ref = StatusActor::start(config.log_level);
+    let status_ref = StatusActor::start();
 
     // Setup TLS (if any)
     let _opt_tls_params = match setup_tls(&config) {
@@ -656,10 +656,10 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
     // Pass it to the actor for threading.
     // Start the read query server with the given be path: future config
     let server_read_ref =
-        QueryServerReadV1::start_static(config.log_level, idms_arc.clone(), ldap_arc.clone());
+        QueryServerReadV1::start_static(idms_arc.clone(), ldap_arc.clone());
 
     // Create the server async write entry point.
-    let server_write_ref = QueryServerWriteV1::start_static(config.log_level, idms_arc.clone());
+    let server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());
 
     tokio::spawn(async move {
         idms_delayed.process_all(server_write_ref).await;

@@ -76,7 +76,7 @@ users.workspace = true
 
 [dev-dependencies]
 # kanidm = { path = "../kanidmd/idm" }
-score.workspace = true
+kanidmd_core.workspace = true
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }

@@ -5,7 +5,6 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 
-use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_unix_common::cache::{CacheLayer, Id};
@@ -13,7 +12,7 @@ use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
-use score::create_server_core;
+use kanidmd_core::create_server_core;
 use tokio::task;
 
 static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
@@ -66,7 +65,6 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
-    config.log_level = Some(LogLevel::Quiet as u32);
     config.role = ServerRole::WriteReplicaNoUI;
     // config.log_level = Some(LogLevel::Verbose as u32);
     config.threads = 1;

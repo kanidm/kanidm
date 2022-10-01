@@ -20,7 +20,7 @@ path = "src/main.rs"
 [dependencies]
 kanidm.workspace = true
 kanidm_proto.workspace = true
-score.workspace = true
+kanidmd_core.workspace = true
 sketching.workspace = true
 
 clap = { workspace = true, features = ["env"] }

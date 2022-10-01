@@ -90,7 +90,6 @@ pub struct Configuration {
     pub tls_config: Option<TlsConfiguration>,
     pub cookie_key: [u8; 32],
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
-    pub log_level: Option<u32>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
     pub origin: String,
@@ -115,10 +114,6 @@ impl fmt::Display for Configuration {
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
             .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
-            .and_then(|_| match self.log_level {
-                Some(u) => write!(f, "log_level: {:x}, ", u),
-                None => write!(f, "log_level: default, "),
-            })
             // TODO: include the backup timings
             .and_then(|_| match &self.online_backup {
                 Some(_) => write!(f, "online_backup: enabled, "),
@@ -151,14 +146,12 @@ impl Configuration {
             db_fs_type: None,
             db_arc_size: None,
             maximum_request: 256 * 1024, // 256k
-            // log type
-            // log path
+            // log path?
             // default true in prd
             secure_cookies: !cfg!(test),
             tls_config: None,
             cookie_key: [0; 32],
             integration_test_config: None,
-            log_level: None,
             online_backup: None,
             domain: "idm.example.com".to_string(),
             origin: "https://idm.example.com".to_string(),
@@ -168,10 +161,6 @@ impl Configuration {
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);
         c
-    }
-
-    pub fn update_log_level(&mut self, log_level: Option<u32>) {
-        self.log_level = log_level;
     }
 
     pub fn update_online_backup(&mut self, cfg: &Option<OnlineBackup>) {

@@ -1,10 +1,9 @@
 use std::net::TcpStream;
 use std::sync::atomic::{AtomicU16, Ordering};
 
-use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use score::create_server_core;
+use kanidmd_core::create_server_core;
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
@@ -51,7 +50,6 @@ pub async fn setup_async_test() -> KanidmClient {
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
-    config.log_level = Some(LogLevel::Quiet as u32);
     config.role = ServerRole::WriteReplicaNoUI;
     config.domain = "localhost".to_string();
     config.origin = addr.clone();

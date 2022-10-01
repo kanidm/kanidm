@@ -36,27 +36,24 @@ use crate::prelude::*;
 // ===========================================================
 
 pub struct QueryServerReadV1 {
-    pub log_level: Option<u32>,
     idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
 }
 
 impl QueryServerReadV1 {
-    pub fn new(log_level: Option<u32>, idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> Self {
+    pub fn new(idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> Self {
         info!("Starting query server v1 worker ...");
         QueryServerReadV1 {
-            log_level,
             idms,
             ldap,
         }
     }
 
     pub fn start_static(
-        log_level: Option<u32>,
         idms: Arc<IdmServer>,
         ldap: Arc<LdapServer>,
     ) -> &'static Self {
-        let x = Box::new(QueryServerReadV1::new(log_level, idms, ldap));
+        let x = Box::new(QueryServerReadV1::new(idms, ldap));
 
         let x_ref = Box::leak(x);
         &(*x_ref)

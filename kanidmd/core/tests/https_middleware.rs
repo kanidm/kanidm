@@ -1,9 +1,8 @@
 use std::sync::atomic::Ordering;
 
 mod common;
-use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
-use score::create_server_core;
+use kanidmd_core::create_server_core;
 use tokio::task;
 
 use crate::common::{is_free_port, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, PORT_ALLOC};
@@ -36,7 +35,6 @@ async fn test_https_middleware_headers() {
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
-    config.log_level = Some(LogLevel::Quiet as u32);
     config.role = ServerRole::WriteReplica;
     config.threads = 1;
 

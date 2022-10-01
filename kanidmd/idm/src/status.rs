@@ -8,15 +8,11 @@ pub struct StatusRequestEvent {
     pub eventid: Uuid,
 }
 
-pub struct StatusActor {
-    _log_level: Option<u32>,
-}
+pub struct StatusActor {}
 
 impl StatusActor {
-    pub fn start(log_level: Option<u32>) -> &'static Self {
-        let x = Box::new(StatusActor {
-            _log_level: log_level,
-        });
+    pub fn start() -> &'static Self {
+        let x = Box::new(StatusActor {});
 
         let x_ptr = Box::into_raw(x);
         unsafe { &(*x_ptr) }
