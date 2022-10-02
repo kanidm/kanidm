@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
 mod common;
-use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
+use kanidmd_lib::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use tokio::task;
 

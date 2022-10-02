@@ -22,7 +22,7 @@ use std::time::Duration;
 use bytes::{BufMut, BytesMut};
 use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
-use kanidm::utils::file_permissions_readonly;
+use kanidmd_lib::utils::file_permissions_readonly;
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::cache::CacheLayer;

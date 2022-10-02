@@ -54,7 +54,7 @@ kanidm_client.workspace = true
 kanidm_proto.workspace = true
 # This is just used for password hashing and tests, so we could
 # clean this up
-kanidm.workspace = true
+kanidmd_lib.workspace = true
 
 r2d2.workspace = true
 r2d2_sqlite.workspace = true
@@ -75,7 +75,6 @@ users.workspace = true
 # default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
-# kanidm = { path = "../kanidmd/idm" }
 kanidmd_core.workspace = true
 
 [build-dependencies]

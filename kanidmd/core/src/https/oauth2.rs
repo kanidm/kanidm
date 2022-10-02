@@ -1,8 +1,8 @@
-use kanidm::idm::oauth2::{
+use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error,
 };
-use kanidm::prelude::*;
+use kanidmd_lib::prelude::*;
 use kanidm_proto::oauth2::AuthorisationResponse;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use serde::{Deserialize, Serialize};

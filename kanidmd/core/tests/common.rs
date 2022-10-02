@@ -1,7 +1,7 @@
 use std::net::TcpStream;
 use std::sync::atomic::{AtomicU16, Ordering};
 
-use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
+use kanidmd_lib::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidmd_core::create_server_core;
 use tokio::task;

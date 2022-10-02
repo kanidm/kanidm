@@ -23,7 +23,7 @@
 #[macro_use]
 extern crate tracing;
 #[macro_use]
-extern crate kanidm;
+extern crate kanidmd_lib;
 
 pub mod https;
 mod ldaps;
@@ -33,18 +33,18 @@ use std::sync::Arc;
 
 use async_std::task;
 use compact_jwt::JwsSigner;
-use kanidm::actors::v1_read::QueryServerReadV1;
-use kanidm::actors::v1_write::QueryServerWriteV1;
-use kanidm::be::{Backend, BackendConfig, BackendTransaction, FsType};
-use kanidm::config::Configuration;
-use kanidm::crypto::setup_tls;
-use kanidm::idm::server::{IdmServer, IdmServerDelayed};
-use kanidm::interval::IntervalActor;
-use kanidm::ldap::LdapServer;
-use kanidm::prelude::*;
-use kanidm::schema::Schema;
-use kanidm::status::StatusActor;
-use kanidm::utils::{duration_from_epoch_now, touch_file_or_quit};
+use kanidmd_lib::actors::v1_read::QueryServerReadV1;
+use kanidmd_lib::actors::v1_write::QueryServerWriteV1;
+use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
+use kanidmd_lib::config::Configuration;
+use kanidmd_lib::crypto::setup_tls;
+use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
+use kanidmd_lib::interval::IntervalActor;
+use kanidmd_lib::ldap::LdapServer;
+use kanidmd_lib::prelude::*;
+use kanidmd_lib::schema::Schema;
+use kanidmd_lib::status::StatusActor;
+use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
 #[cfg(not(target_family = "windows"))]

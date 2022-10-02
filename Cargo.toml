@@ -13,7 +13,7 @@ members = [
     "kanidm_unix_int/pam_kanidm",
     "kanidmd_web_ui",
     "kanidmd/daemon",
-    "kanidmd/idm",
+    "kanidmd/lib",
     "kanidmd/core",
     "orca",
     "profiles",
@@ -67,8 +67,9 @@ http-types = "^2.12.0"
 idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
 js-sys = "^0.3.58"
+kanidmd_core = { path = "./kanidmd/core" }
 # RENAME THIS
-kanidm = { path = "./kanidmd/idm" }
+kanidmd_lib = { path = "./kanidmd/lib" }
 kanidm_client = { path = "./kanidm_client" }
 kanidm_proto = { path = "./kanidm_proto" }
 kanidm_unix_int = { path = "./kanidm_unix_int" }
@@ -98,8 +99,6 @@ reqwest = "0.11.11"
 rpassword = "^7.0.0"
 rusqlite = "^0.28.0"
 saffron = "^0.1.0"
-# Rename this!
-kanidmd_core = { path = "./kanidmd/core" }
 serde = "^1.0.142"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.83"

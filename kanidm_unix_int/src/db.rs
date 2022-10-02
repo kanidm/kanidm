@@ -2,9 +2,9 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
-use kanidm::be::dbvalue::DbPasswordV1;
-use kanidm::credential::policy::CryptoPolicy;
-use kanidm::credential::Password;
+use kanidmd_lib::be::dbvalue::DbPasswordV1;
+use kanidmd_lib::credential::policy::CryptoPolicy;
+use kanidmd_lib::credential::Password;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use libc::umask;
 use r2d2::Pool;

@@ -22,9 +22,9 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 
 use clap::{Args, Parser, Subcommand};
-use kanidm::config::{Configuration, OnlineBackup, ServerRole};
+use kanidmd_lib::config::{Configuration, OnlineBackup, ServerRole};
 #[cfg(not(target_family = "windows"))]
-use kanidm::utils::file_permissions_readonly;
+use kanidmd_lib::utils::file_permissions_readonly;
 use kanidmd_core::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,

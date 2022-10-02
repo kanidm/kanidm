@@ -3,11 +3,11 @@ use std::time::Duration;
 
 use async_std::task;
 use compact_jwt::Jws;
-use kanidm::event::AuthResult;
-use kanidm::filter::{Filter, FilterInvalid};
-use kanidm::idm::AuthState;
-use kanidm::prelude::*;
-use kanidm::status::StatusRequestEvent;
+use kanidmd_lib::event::AuthResult;
+use kanidmd_lib::filter::{Filter, FilterInvalid};
+use kanidmd_lib::idm::AuthState;
+use kanidmd_lib::prelude::*;
+use kanidmd_lib::status::StatusRequestEvent;
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
     CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, Entry as ProtoEntry,

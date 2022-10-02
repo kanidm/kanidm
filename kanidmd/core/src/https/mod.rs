@@ -9,11 +9,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
-use kanidm::actors::v1_read::QueryServerReadV1;
-use kanidm::actors::v1_write::QueryServerWriteV1;
-use kanidm::config::{ServerRole, TlsConfiguration};
-use kanidm::prelude::*;
-use kanidm::status::StatusActor;
+use kanidmd_lib::actors::v1_read::QueryServerReadV1;
+use kanidmd_lib::actors::v1_write::QueryServerWriteV1;
+use kanidmd_lib::config::{ServerRole, TlsConfiguration};
+use kanidmd_lib::prelude::*;
+use kanidmd_lib::status::StatusActor;
 use serde::Serialize;
 use tide_compress::CompressMiddleware;
 use tide_openssl::TlsListener;

@@ -1,5 +1,5 @@
 [package]
-name = "kanidm"
+name = "kanidmd_lib"
 description = "Kanidm Server Library and Binary"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
@@ -12,7 +12,7 @@ homepage.workspace = true
 repository.workspace = true
 
 [lib]
-name = "kanidm"
+name = "kanidmd_lib"
 path = "src/lib.rs"
 
 [[bench]]

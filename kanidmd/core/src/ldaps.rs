@@ -5,9 +5,9 @@ use std::str::FromStr;
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use kanidm::actors::v1_read::QueryServerReadV1;
-use kanidm::ldap::{LdapBoundToken, LdapResponseState};
-use kanidm::prelude::*;
+use kanidmd_lib::actors::v1_read::QueryServerReadV1;
+use kanidmd_lib::ldap::{LdapBoundToken, LdapResponseState};
+use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;
 use ldap3_proto::LdapCodec;
 use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
