@@ -6,7 +6,7 @@ use crate::https::JavaScriptFile;
 /// This is for the tide_compression middleware so that we only compress certain content types.
 ///
 /// ```
-/// use score::https::middleware::compression_content_type_checker;
+/// use kanidmd_core::https::middleware::compression_content_type_checker;
 /// let these_should_match = vec![
 ///     "application/wasm",
 ///     "application/x-javascript",
