@@ -44,7 +44,7 @@ To take the backup (assuming our docker environment) you first need to stop the 
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
-        kanidm/server:latest /sbin/kanidmd backup -c /data/server.toml \
+        kanidm/server:latest /sbin/kanidmd database backup -c /data/server.toml \
         /backup/kanidm.backup.json
     docker start <container name>
 
@@ -55,7 +55,7 @@ To restore from the backup:
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
-        kanidm/server:latest /sbin/kanidmd restore -c /data/server.toml \
+        kanidm/server:latest /sbin/kanidmd database restore -c /data/server.toml \
         /backup/kanidm.backup.json
     docker start <container name>
 
