@@ -10,7 +10,7 @@ from kanidm.types import KanidmClientConfig
 from kanidm.utils import load_config
 
 
-EXAMPLE_CONFIG_FILE = "../../kanidm_rlm_python/examples/config"
+EXAMPLE_CONFIG_FILE = "../examples/config"
 
 
 def test_load_config_file() -> None:
@@ -30,7 +30,7 @@ def test_radius_groups() -> None:
 
     config_toml = """
 radius_groups = [
-    { name = "hello world", "vlan" = 1234 },
+    { spn = "hello world", "vlan" = 1234 },
 ]
 
 """
@@ -38,8 +38,8 @@ radius_groups = [
     print(config_parsed)
     kanidm_config = KanidmClientConfig.parse_obj(config_parsed)
     for group in kanidm_config.radius_groups:
-        print(group.name)
-        assert group.name == "hello world"
+        print(group.spn)
+        assert group.spn == "hello world"
 
 
 def test_radius_clients() -> None:

@@ -210,6 +210,7 @@ pub trait IdlSqliteTransaction {
         self.exists_table(&tname)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn get_idl(
         &self,
         attr: &str,
@@ -247,7 +248,6 @@ pub trait IdlSqliteTransaction {
             // have a corrupted index .....
             None => IDLBitRange::new(),
         };
-
         trace!(
             miss_index = ?itype,
             attr = ?attr,

@@ -50,6 +50,7 @@ RUN rm -rf /pkg/*
 
 USER radiusd
 ENV LD_PRELOAD=/usr/lib64/libpython3.so
+ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 COPY kanidm_rlm_python/radius_entrypoint.py /radius_entrypoint.py
 CMD [ "/usr/bin/python3", "/radius_entrypoint.py" ]

@@ -155,7 +155,7 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         name = "online_backup",
-        skip(self, msg, outpath, versions)
+        skip_all,
         fields(uuid = ?msg.eventid)
     )]
     pub async fn handle_online_backup(

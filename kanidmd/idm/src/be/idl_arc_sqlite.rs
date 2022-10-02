@@ -162,45 +162,45 @@ macro_rules! get_idl {
         $itype:expr,
         $idx_key:expr
     ) => {{
-                // SEE ALSO #259: Find a way to implement borrow for this properly.
-                // I don't think this is possible. When we make this dyn, the arc
-                // needs the dyn trait to be sized so that it *could* claim a clone
-                // for hit tracking reasons. That also means that we need From and
-                // some other traits that just seem incompatible. And in the end,
-                // we clone a few times in arc, and if we miss we need to insert anyway
-                //
-                // So the best path could be to replace IdlCacheKey with a compressed
-                // or smaller type. Perhaps even a small cache of the IdlCacheKeys that
-                // are allocated to reduce some allocs? Probably over thinking it at
-                // this point.
-                //
-                // First attempt to get from this cache.
-                let cache_key = IdlCacheKeyRef {
-                    a: $attr,
-                    i: $itype,
-                    k: $idx_key,
-                };
-                let cache_r = $self.idl_cache.get(&cache_key as &dyn IdlCacheKeyToRef);
-                // If hit, continue.
-                if let Some(ref data) = cache_r {
-                    trace!(
-                        cached_index = ?$itype,
-                        attr = ?$attr,
-                        idl = %data,
-                    );
-                    return Ok(Some(data.as_ref().clone()));
-                }
-                // If miss, get from db *and* insert to the cache.
-                let db_r = $self.db.get_idl($attr, $itype, $idx_key)?;
-                if let Some(ref idl) = db_r {
-                    let ncache_key = IdlCacheKey {
-                        a: $attr.into(),
-                        i: $itype.clone(),
-                        k: $idx_key.into(),
-                    };
-                    $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
-                }
-                Ok(db_r)
+        // SEE ALSO #259: Find a way to implement borrow for this properly.
+        // I don't think this is possible. When we make this dyn, the arc
+        // needs the dyn trait to be sized so that it *could* claim a clone
+        // for hit tracking reasons. That also means that we need From and
+        // some other traits that just seem incompatible. And in the end,
+        // we clone a few times in arc, and if we miss we need to insert anyway
+        //
+        // So the best path could be to replace IdlCacheKey with a compressed
+        // or smaller type. Perhaps even a small cache of the IdlCacheKeys that
+        // are allocated to reduce some allocs? Probably over thinking it at
+        // this point.
+        //
+        // First attempt to get from this cache.
+        let cache_key = IdlCacheKeyRef {
+            a: $attr,
+            i: $itype,
+            k: $idx_key,
+        };
+        let cache_r = $self.idl_cache.get(&cache_key as &dyn IdlCacheKeyToRef);
+        // If hit, continue.
+        if let Some(ref data) = cache_r {
+            trace!(
+                cached_index = ?$itype,
+                attr = ?$attr,
+                idl = %data,
+            );
+            return Ok(Some(data.as_ref().clone()));
+        }
+        // If miss, get from db *and* insert to the cache.
+        let db_r = $self.db.get_idl($attr, $itype, $idx_key)?;
+        if let Some(ref idl) = db_r {
+            let ncache_key = IdlCacheKey {
+                a: $attr.into(),
+                i: $itype.clone(),
+                k: $idx_key.into(),
+            };
+            $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
+        }
+        Ok(db_r)
     }};
 }
 
@@ -366,6 +366,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         exists_idx!(self, attr, itype)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn get_idl(
         &mut self,
         attr: &str,
@@ -447,6 +448,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         exists_idx!(self, attr, itype)
     }
 
+    #[instrument(level = "trace", skip_all)]
     fn get_idl(
         &mut self,
         attr: &str,
