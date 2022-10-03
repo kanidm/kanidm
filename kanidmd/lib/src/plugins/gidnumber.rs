@@ -109,16 +109,16 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_generate() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "posixaccount"],
-                "name": ["testperson"],
-                "uuid": ["83a0927f-3de1-45ec-bea0-2f7b997ef244"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            (
+                "uuid",
+                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let create = vec![e.clone()];
@@ -140,17 +140,17 @@ mod tests {
     // test that gid is not altered if provided on create.
     #[test]
     fn test_gidnumber_create_noaction() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "posixaccount"],
-                "name": ["testperson"],
-                "uuid": ["83a0927f-3de1-45ec-bea0-2f7b997ef244"],
-                "gidnumber": ["10001"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            ("gidnumber", Value::Uint32(10001)),
+            (
+                "uuid",
+                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let create = vec![e.clone()];
@@ -172,16 +172,16 @@ mod tests {
     // Test generated if not on mod (ie adding posixaccount to something)
     #[test]
     fn test_gidnumber_modify_generate() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "service_account"],
-                "name": ["testperson"],
-                "uuid": ["83a0927f-3de1-45ec-bea0-2f7b997ef244"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            (
+                "uuid",
+                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -204,17 +204,16 @@ mod tests {
     // test generated if DELETED on mod
     #[test]
     fn test_gidnumber_modify_regenerate() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "posixaccount"],
-                "name": ["testperson"],
-                "gidnumber": ["2000"],
-                "uuid": ["83a0927f-3de1-45ec-bea0-2f7b997ef244"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            (
+                "uuid",
+                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -237,17 +236,16 @@ mod tests {
     // Test NOT regenerated if given on mod
     #[test]
     fn test_gidnumber_modify_noregen() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "posixaccount"],
-                "name": ["testperson"],
-                "uuid": ["83a0927f-3de1-45ec-bea0-2f7b997ef244"],
-                "gidnumber": ["3999"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            (
+                "uuid",
+                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let preload = vec![e];
@@ -272,16 +270,16 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_system_reject() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "posixaccount"],
-                "name": ["testperson"],
-                "uuid": ["83a0927f-3de1-45ec-bea0-2f7b00000244"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            (
+                "uuid",
+                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let create = vec![e.clone()];
@@ -300,16 +298,13 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_secure_reject() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "posixaccount"],
-                "name": ["testperson"],
-                "gidnumber": ["500"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            ("gidnumber", Value::Uint32(500)),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let create = vec![e.clone()];
@@ -328,16 +323,13 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_secure_root_reject() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "posixaccount"],
-                "name": ["testperson"],
-                "gidnumber": ["0"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("posixaccount")),
+            ("name", Value::new_iname("testperson")),
+            ("gidnumber", Value::Uint32(0)),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
         );
 
         let create = vec![e.clone()];

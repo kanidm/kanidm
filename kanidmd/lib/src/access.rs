@@ -1517,7 +1517,6 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            // let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { $e.into_sealed_committed() };
 
             let r1 = <$type>::try_from($qs, &ev1);

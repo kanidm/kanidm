@@ -2691,16 +2691,20 @@ mod tests {
                 };
                 assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
                 // Add a posix group that has the admin as a member.
-                let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                    r#"{
-                "attrs": {
-                    "class": ["object", "group", "posixgroup"],
-                    "name": ["testgroup"],
-                    "uuid": ["01609135-a1c4-43d5-966b-a28227644445"],
-                    "description": ["testgroup"],
-                    "member": ["00000000-0000-0000-0000-000000000000"]
-                }
-            }"#,
+                let e: Entry<EntryInit, EntryNew> = entry_init!(
+                    ("class", Value::new_class("object")),
+                    ("class", Value::new_class("group")),
+                    ("class", Value::new_class("posixgroup")),
+                    ("name", Value::new_iname("testgroup")),
+                    (
+                        "uuid",
+                        Value::new_uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
+                    ),
+                    ("description", Value::new_utf8s("testgroup")),
+                    (
+                        "member",
+                        Value::new_refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
+                    )
                 );
 
                 let ce = CreateEvent::new_internal(vec![e.clone()]);
