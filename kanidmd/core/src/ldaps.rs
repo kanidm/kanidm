@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use kanidmd_lib::actors::v1_read::QueryServerReadV1;
+use crate::actors::v1_read::QueryServerReadV1;
 use kanidmd_lib::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;

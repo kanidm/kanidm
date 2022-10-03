@@ -29,7 +29,6 @@ use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 use super::delayed::BackupCodeRemoval;
 use super::event::ReadBackupCodeEvent;
-use crate::actors::v1_write::QueryServerWriteV1;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
@@ -107,14 +106,14 @@ pub struct IdmServerAuthTransaction<'a> {
     uat_jwt_validator: CowCellReadTxn<JwsValidator>,
 }
 
-pub(crate) struct IdmServerCredUpdateTransaction<'a> {
-    pub _qs_read: QueryServerReadTransaction<'a>,
+pub struct IdmServerCredUpdateTransaction<'a> {
+    pub(crate) _qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
-    pub webauthn: &'a Webauthn,
-    pub pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
-    pub cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
-    pub token_enc_key: CowCellReadTxn<Fernet>,
-    pub crypto_policy: &'a CryptoPolicy,
+    pub(crate) webauthn: &'a Webauthn,
+    pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
+    pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
+    pub(crate) token_enc_key: CowCellReadTxn<Fernet>,
+    pub(crate) crypto_policy: &'a CryptoPolicy,
 }
 
 /// This contains read-only methods, like getting users, groups and other structured content.
@@ -323,11 +322,11 @@ impl IdmServer {
     }
 
     #[cfg(test)]
-    pub(crate) fn cred_update_transaction(&self) -> IdmServerCredUpdateTransaction<'_> {
+    pub fn cred_update_transaction(&self) -> IdmServerCredUpdateTransaction<'_> {
         task::block_on(self.cred_update_transaction_async())
     }
 
-    pub(crate) async fn cred_update_transaction_async(&self) -> IdmServerCredUpdateTransaction<'_> {
+    pub async fn cred_update_transaction_async(&self) -> IdmServerCredUpdateTransaction<'_> {
         IdmServerCredUpdateTransaction {
             _qs_read: self.qs.read_async().await,
             // sid: Sid,
@@ -379,24 +378,17 @@ impl IdmServerDelayed {
         }
     }
 
-    pub async fn process_all(&mut self, server: &'static QueryServerWriteV1) {
-        loop {
-            match self.async_rx.recv().await {
-                // process it.
-                Some(da) => server.handle_delayedaction(da).await,
-                // Channel has closed
-                None => return,
-            }
-        }
+    pub async fn next(&mut self) -> Option<DelayedAction> {
+        self.async_rx.recv().await
     }
 }
 
-pub(crate) enum Token {
+pub enum Token {
     UserAuthToken(UserAuthToken),
     ApiToken(ApiToken, Arc<EntrySealedCommitted>),
 }
 
-pub(crate) trait IdmServerTransaction<'a> {
+pub trait IdmServerTransaction<'a> {
     type QsTransactionType: QueryServerTransaction<'a>;
 
     fn get_qs_txn(&self) -> &Self::QsTransactionType;
@@ -2004,7 +1996,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
-    pub(crate) fn process_delayedaction(
+    pub fn process_delayedaction(
         &mut self,
         da: DelayedAction,
     ) -> Result<(), OperationError> {
@@ -2111,7 +2103,6 @@ mod tests {
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
-    // , IdmServerDelayed;
     use crate::utils::duration_from_epoch_now;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";

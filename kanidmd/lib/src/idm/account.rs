@@ -121,7 +121,7 @@ macro_rules! try_from_entry {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Account {
+pub struct Account {
     // Later these could be &str if we cache entry here too ...
     // They can't because if we mod the entry, we'll lose the ref.
     //

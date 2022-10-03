@@ -30,6 +30,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 sketching.workspace = true
 tide.workspace = true
+time = { workspace = true, features = ["serde", "std"] }
 # I tried including brotli and it didn't work, including "default" pulls a mime-type list from the internet on build
 tide-compress = { workspace = true, default-features = false, features = [ "deflate", "gzip", "regex-check" ] }
 tide-openssl.workspace = true

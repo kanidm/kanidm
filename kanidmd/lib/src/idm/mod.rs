@@ -3,17 +3,17 @@
 //! actions in the [QueryServer](crate::server::QueryServer). Generally this is where "Identity Management" policy and code
 //! is implemented.
 
-pub(crate) mod account;
-pub(crate) mod authsession;
-pub(crate) mod credupdatesession;
-pub(crate) mod delayed;
-pub(crate) mod event;
-pub(crate) mod group;
+pub mod account;
+pub mod authsession;
+pub mod credupdatesession;
+pub mod delayed;
+pub mod event;
+pub mod group;
 pub mod oauth2;
-pub(crate) mod radius;
+pub mod radius;
 pub mod server;
-pub(crate) mod serviceaccount;
-pub(crate) mod unix;
+pub mod serviceaccount;
+pub mod unix;
 
 use std::fmt;
 

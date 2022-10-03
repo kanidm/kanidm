@@ -25,6 +25,7 @@ extern crate tracing;
 #[macro_use]
 extern crate kanidmd_lib;
 
+pub mod actors;
 pub mod config;
 pub mod https;
 mod interval;
@@ -35,8 +36,6 @@ use std::sync::Arc;
 
 use async_std::task;
 use compact_jwt::JwsSigner;
-use kanidmd_lib::actors::v1_read::QueryServerReadV1;
-use kanidmd_lib::actors::v1_write::QueryServerWriteV1;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
 use kanidmd_lib::ldap::LdapServer;
@@ -49,6 +48,8 @@ use kanidm_proto::v1::OperationError;
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
+use crate::actors::v1_read::QueryServerReadV1;
+use crate::actors::v1_write::QueryServerWriteV1;
 use crate::crypto::setup_tls;
 use crate::config::Configuration;
 use crate::interval::IntervalActor;
@@ -665,7 +666,13 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
     let server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());
 
     tokio::spawn(async move {
-        idms_delayed.process_all(server_write_ref).await;
+        loop {
+            match idms_delayed.next().await {
+                Some(da) => server_write_ref.handle_delayedaction(da).await,
+                // Channel has closed, stop the task.
+                None => return,
+            }
+        }
     });
 
     // Setup timed events associated to the write thread

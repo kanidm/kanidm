@@ -11,8 +11,8 @@ use tokio::time::{interval, sleep, Duration};
 
 use crate::config::OnlineBackup;
 
-use kanidmd_lib::actors::v1_read::QueryServerReadV1;
-use kanidmd_lib::actors::v1_write::QueryServerWriteV1;
+use crate::actors::v1_read::QueryServerReadV1;
+use crate::actors::v1_write::QueryServerWriteV1;
 use kanidmd_lib::constants::PURGE_FREQUENCY;
 use kanidmd_lib::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
 
