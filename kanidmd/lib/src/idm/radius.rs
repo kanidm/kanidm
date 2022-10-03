@@ -7,11 +7,6 @@ use uuid::Uuid;
 use crate::entry::{Entry, EntryCommitted, EntryReduced};
 use crate::idm::group::Group;
 use crate::prelude::*;
-use crate::value::PartialValue;
-
-lazy_static! {
-    static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
-}
 
 #[derive(Debug, Clone)]
 pub(crate) struct RadiusAccount {

@@ -1996,10 +1996,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
-    pub fn process_delayedaction(
-        &mut self,
-        da: DelayedAction,
-    ) -> Result<(), OperationError> {
+    pub fn process_delayedaction(&mut self, da: DelayedAction) -> Result<(), OperationError> {
         match da {
             DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(&pwu),
             DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(&upwu),

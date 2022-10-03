@@ -28,10 +28,6 @@ use crate::value::Session;
 
 const GRACE_WINDOW: Duration = Duration::from_secs(600);
 
-lazy_static! {
-    static ref PVCLASS_SERVICE_ACCOUNT: PartialValue = PartialValue::new_class("service_account");
-}
-
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes

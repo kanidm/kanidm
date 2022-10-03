@@ -30,20 +30,6 @@ lazy_static! {
         m.insert("domain_display_name");
         m
     };
-    static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
-    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
-    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
-    static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");
-    static ref PVCLASS_SYSTEM_INFO: PartialValue = PartialValue::new_class("system_info");
-    static ref PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class("system_config");
-    static ref PVCLASS_DYNGROUP: PartialValue = PartialValue::new_class("dyngroup");
-    static ref VCLASS_SYSTEM: Value = Value::new_class("system");
-    static ref VCLASS_TOMBSTONE: Value = Value::new_class("tombstone");
-    static ref VCLASS_RECYCLED: Value = Value::new_class("recycled");
-    static ref VCLASS_DOMAIN_INFO: Value = Value::new_class("domain_info");
-    static ref VCLASS_SYSTEM_INFO: Value = Value::new_class("system_info");
-    static ref VCLASS_SYSTEM_CONFIG: Value = Value::new_class("system_config");
-    static ref VCLASS_DYNGROUP: Value = Value::new_class("dyngroup");
 }
 
 impl Plugin for Protected {
@@ -95,13 +81,13 @@ impl Plugin for Protected {
             Modify::Present(a, v) => {
                 // TODO: Can we avoid this clone?
                 if a == "class"
-                    && (v == &(*VCLASS_SYSTEM)
-                        || v == &(*VCLASS_DOMAIN_INFO)
-                        || v == &(*VCLASS_SYSTEM_INFO)
-                        || v == &(*VCLASS_SYSTEM_CONFIG)
-                        || v == &(*VCLASS_DYNGROUP)
-                        || v == &(*VCLASS_TOMBSTONE)
-                        || v == &(*VCLASS_RECYCLED))
+                    && (v == &(*CLASS_SYSTEM)
+                        || v == &(*CLASS_DOMAIN_INFO)
+                        || v == &(*CLASS_SYSTEM_INFO)
+                        || v == &(*CLASS_SYSTEM_CONFIG)
+                        || v == &(*CLASS_DYNGROUP)
+                        || v == &(*CLASS_TOMBSTONE)
+                        || v == &(*CLASS_RECYCLED))
                 {
                     Err(OperationError::SystemProtectedObject)
                 } else {

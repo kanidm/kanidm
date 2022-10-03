@@ -7,10 +7,6 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::FilterInvalid;
 use crate::prelude::*;
 
-lazy_static! {
-    static ref CLASS_DYNGROUP: PartialValue = PartialValue::new_class("dyngroup");
-}
-
 #[derive(Clone)]
 pub struct DynGroupCache {
     insts: BTreeMap<Uuid, Filter<FilterInvalid>>,
@@ -108,7 +104,7 @@ impl DynGroup {
     pub fn reload(qs: &QueryServerWriteTransaction) -> Result<(), OperationError> {
         let ident_internal = Identity::from_internal();
         // Internal search all our definitions.
-        let filt = filter!(f_eq("class", PartialValue::new_class("dyngroup")));
+        let filt = filter!(f_eq("class", PVCLASS_DYNGROUP.clone()));
         let entries = qs.internal_search(filt).map_err(|e| {
             admin_error!("internal search failure -> {:?}", e);
             e
@@ -155,7 +151,7 @@ impl DynGroup {
 
         let (n_dyn_groups, entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
             .iter()
-            .partition(|entry| entry.attribute_equality("class", &CLASS_DYNGROUP));
+            .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
 
         let dyn_groups = qs.get_dyngroup_cache();
 
@@ -259,11 +255,11 @@ impl DynGroup {
         // Probably should be filter here instead.
         let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) = pre_cand
             .iter()
-            .partition(|entry| entry.attribute_equality("class", &CLASS_DYNGROUP));
+            .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
 
         let (n_dyn_groups, post_entries): (Vec<&Entry<_, _>>, Vec<_>) = cand
             .iter()
-            .partition(|entry| entry.attribute_equality("class", &CLASS_DYNGROUP));
+            .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
 
         let dyn_groups = qs.get_dyngroup_cache();
 

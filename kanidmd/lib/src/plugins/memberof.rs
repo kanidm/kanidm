@@ -20,12 +20,7 @@ use crate::entry::{Entry, EntryCommitted, EntrySealed, EntryTuple};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
-use crate::value::{PartialValue, Value};
-
-lazy_static! {
-    static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
-    static ref CLASS_MEMBEROF: Value = Value::new_class("memberof");
-}
+use crate::value::PartialValue;
 
 pub struct MemberOf;
 
@@ -37,7 +32,7 @@ fn do_memberof(
     //  search where we are member
     let groups = qs
         .internal_search(filter!(f_and!([
-            f_eq("class", CLASS_GROUP.clone()),
+            f_eq("class", PVCLASS_GROUP.clone()),
             f_eq("member", PartialValue::new_refer(*uuid))
         ])))
         .map_err(|e| {
@@ -136,7 +131,7 @@ fn apply_memberof(
         while let Some((pre, mut tgte)) = work_set.pop() {
             let guuid = pre.get_uuid();
             // load the entry from the db.
-            if !tgte.attribute_equality("class", &CLASS_GROUP) {
+            if !tgte.attribute_equality("class", &PVCLASS_GROUP) {
                 // It's not a group, we'll deal with you later. We should NOT
                 // have seen this UUID before, as either we are on the first
                 // iteration OR the checks belowe should have filtered it out.
@@ -192,7 +187,7 @@ fn apply_memberof(
         .into_iter()
         .try_for_each(|(auuid, (pre, mut tgte))| {
             trace!("=> processing affected uuid {:?}", auuid);
-            debug_assert!(!tgte.attribute_equality("class", &CLASS_GROUP));
+            debug_assert!(!tgte.attribute_equality("class", &PVCLASS_GROUP));
             do_memberof(qs, &auuid, &mut tgte)?;
             // Only write if a change occured.
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
@@ -231,7 +226,7 @@ impl Plugin for MemberOf {
                 cand.iter()
                     .filter_map(|e| {
                         // Is it a group?
-                        if e.attribute_equality("class", &CLASS_GROUP) {
+                        if e.attribute_equality("class", &PVCLASS_GROUP) {
                             e.get_ava_as_refuuid("member")
                         } else {
                             None
@@ -266,7 +261,7 @@ impl Plugin for MemberOf {
                 pre_cand
                     .iter()
                     .filter_map(|pre| {
-                        if pre.attribute_equality("class", &CLASS_GROUP) {
+                        if pre.attribute_equality("class", &PVCLASS_GROUP) {
                             pre.get_ava_as_refuuid("member")
                         } else {
                             None
@@ -277,7 +272,7 @@ impl Plugin for MemberOf {
             .chain(
                 cand.iter()
                     .filter_map(|post| {
-                        if post.attribute_equality("class", &CLASS_GROUP) {
+                        if post.attribute_equality("class", &PVCLASS_GROUP) {
                             post.get_ava_as_refuuid("member")
                         } else {
                             None
@@ -325,7 +320,7 @@ impl Plugin for MemberOf {
             .iter()
             .filter_map(|e| {
                 // Is it a group?
-                if e.attribute_equality("class", &CLASS_GROUP) {
+                if e.attribute_equality("class", &PVCLASS_GROUP) {
                     e.get_ava_as_refuuid("member")
                 } else {
                     None
@@ -354,7 +349,7 @@ impl Plugin for MemberOf {
         // for each entry in the DB (live).
         for e in all_cand {
             let filt_in = filter!(f_and!([
-                f_eq("class", PartialValue::new_class("group")),
+                f_eq("class", PVCLASS_GROUP.clone()),
                 f_eq("member", PartialValue::new_refer(e.get_uuid()))
             ]));
 

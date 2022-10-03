@@ -13,7 +13,6 @@ members = [
     "kanidm_unix_int/pam_kanidm",
     "kanidmd_web_ui",
     "kanidmd/daemon",
-    "kanidmd/idm",
     "kanidmd/lib",
     "kanidmd/core",
     "orca",

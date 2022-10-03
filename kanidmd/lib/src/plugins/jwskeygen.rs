@@ -5,19 +5,13 @@ use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::password_from_random;
 
-lazy_static! {
-    static ref CLASS_OAUTH2_BASIC: PartialValue =
-        PartialValue::new_class("oauth2_resource_server_basic");
-    static ref CLASS_SERVICE_ACCOUNT: PartialValue = PartialValue::new_class("service_account");
-}
-
 pub struct JwsKeygen {}
 
 macro_rules! keygen_transform {
     (
         $e:expr
     ) => {{
-        if $e.attribute_equality("class", &CLASS_OAUTH2_BASIC) {
+        if $e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
             if !$e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::new_utf8(password_from_random());
@@ -55,7 +49,7 @@ macro_rules! keygen_transform {
             }
         }
 
-        if $e.attribute_equality("class", &CLASS_SERVICE_ACCOUNT) {
+        if $e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) {
             if !$e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()

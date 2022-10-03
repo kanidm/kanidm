@@ -9,10 +9,6 @@ use crate::modify::Modify;
 use crate::plugins::Plugin;
 use crate::prelude::*;
 
-lazy_static! {
-    static ref CLASS_OBJECT: Value = Value::new_class("object");
-}
-
 // This module has some special properties around it's operation, namely that it
 // has to make a certain number of assertions *early* in the entry lifecycle around
 // names and uuids since these have such signifigance to every other part of the
@@ -88,7 +84,6 @@ impl Plugin for Base {
             }
         }
 
-        //? [Quinn] Now that we have raw UUID constants, can we fix improve this part??
         // Setup UUIDS because lazy_static can't create a type valid for range.
         let uuid_admin = *UUID_ADMIN;
         let uuid_anonymous = UUID_ANONYMOUS;

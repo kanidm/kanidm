@@ -27,15 +27,17 @@ extern crate kanidmd_lib;
 
 pub mod actors;
 pub mod config;
+mod crypto;
 pub mod https;
 mod interval;
-mod crypto;
 mod ldaps;
 
 use std::sync::Arc;
 
 use async_std::task;
 use compact_jwt::JwsSigner;
+use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
+use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
 use kanidmd_lib::ldap::LdapServer;
@@ -43,15 +45,13 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
 use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
-use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
-use kanidm_proto::v1::OperationError;
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::crypto::setup_tls;
 use crate::config::Configuration;
+use crate::crypto::setup_tls;
 use crate::interval::IntervalActor;
 
 // === internal setup helpers
@@ -659,8 +659,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
 
     // Pass it to the actor for threading.
     // Start the read query server with the given be path: future config
-    let server_read_ref =
-        QueryServerReadV1::start_static(idms_arc.clone(), ldap_arc.clone());
+    let server_read_ref = QueryServerReadV1::start_static(idms_arc.clone(), ldap_arc.clone());
 
     // Create the server async write entry point.
     let server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());

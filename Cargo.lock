@@ -2347,13 +2347,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidmd_idm"
-version = "1.1.0-alpha.9"
-dependencies = [
- "profiles",
-]
-
-[[package]]
 name = "kanidmd_lib"
 version = "1.1.0-alpha.9"
 dependencies = [

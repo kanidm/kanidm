@@ -85,12 +85,6 @@ use crate::valueset::{self, ValueSet};
 // }
 //
 
-lazy_static! {
-    static ref CLASS_EXTENSIBLE: PartialValue = PartialValue::new_class("extensibleobject");
-    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
-    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
-}
-
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
@@ -655,7 +649,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             }
 
             // Do we have extensible?
-            let extensible = ne.attribute_equality("class", &CLASS_EXTENSIBLE);
+            let extensible = ne.attribute_equality("class", &PVCLASS_EXTENSIBLE);
 
             let entry_classes = ne.get_ava_set("class").ok_or_else(|| {
                 admin_debug!("Attribute 'class' missing from entry");

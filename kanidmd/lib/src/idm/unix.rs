@@ -31,13 +31,6 @@ pub(crate) struct UnixUserAccount {
     pub mail: Vec<String>,
 }
 
-lazy_static! {
-    static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
-    static ref PVCLASS_POSIXACCOUNT: PartialValue = PartialValue::new_class("posixaccount");
-    static ref PVCLASS_GROUP: PartialValue = PartialValue::new_class("group");
-    static ref PVCLASS_POSIXGROUP: PartialValue = PartialValue::new_class("posixgroup");
-}
-
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
@@ -375,8 +368,8 @@ macro_rules! try_from_account_group_e {
         match $value.get_ava_as_refuuid("memberof") {
             Some(riter) => {
                 let f = filter!(f_and!([
-                    f_eq("class", PartialValue::new_class("posixgroup")),
-                    f_eq("class", PartialValue::new_class("group")),
+                    f_eq("class", PVCLASS_POSIXGROUP.clone()),
+                    f_eq("class", PVCLASS_GROUP.clone()),
                     f_or(
                         riter
                             .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))

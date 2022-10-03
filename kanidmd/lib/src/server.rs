@@ -41,24 +41,6 @@ use crate::valueset::uuid_to_proto_string;
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 
-lazy_static! {
-    static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
-    static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
-    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
-    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
-    static ref PVCLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
-    static ref PVCLASS_ACD: PartialValue = PartialValue::new_class("access_control_delete");
-    static ref PVCLASS_ACM: PartialValue = PartialValue::new_class("access_control_modify");
-    static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
-    static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
-    static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
-    static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
-    static ref PVCLASS_PERSON: PartialValue = PartialValue::new_class("person");
-    static ref PVCLASS_SERVICE_ACCOUNT: PartialValue = PartialValue::new_class("service_account");
-    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
-    static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
-}
-
 #[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
 enum ServerPhase {
     Bootstrap,
@@ -785,10 +767,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn get_oauth2rs_set(&self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        self.internal_search(filter!(f_eq(
-            "class",
-            PartialValue::new_class("oauth2_resource_server")
-        )))
+        self.internal_search(filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone(),)))
     }
 }
 
@@ -2841,7 +2820,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACS.clone()),
-            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
+            f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -2871,7 +2850,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACC.clone()),
-            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
+            f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -2901,7 +2880,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACM.clone()),
-            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
+            f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -2928,7 +2907,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACD.clone()),
-            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
+            f_andnot(f_eq("acp_enable", PV_FALSE.clone())),
         ]));
 
         let res = self.internal_search(filt).map_err(|e| {

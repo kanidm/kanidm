@@ -23,14 +23,14 @@ use std::process::exit;
 
 use clap::{Args, Parser, Subcommand};
 use kanidmd_core::config::{Configuration, OnlineBackup, ServerRole};
-#[cfg(not(target_family = "windows"))]
-use kanidmd_lib::utils::file_permissions_readonly;
 use kanidmd_core::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
     domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
+#[cfg(not(target_family = "windows"))]
+use kanidmd_lib::utils::file_permissions_readonly;
 use serde::Deserialize;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;

@@ -3,9 +3,9 @@ use std::net;
 use std::pin::Pin;
 use std::str::FromStr;
 
+use crate::actors::v1_read::QueryServerReadV1;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use crate::actors::v1_read::QueryServerReadV1;
 use kanidmd_lib::ldap::{LdapBoundToken, LdapResponseState};
 use kanidmd_lib::prelude::*;
 use ldap3_proto::proto::LdapMsg;

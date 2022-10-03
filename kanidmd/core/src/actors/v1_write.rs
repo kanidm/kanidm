@@ -22,9 +22,7 @@ use kanidmd_lib::{
         InitCredentialUpdateIntentEvent,
     },
     idm::delayed::DelayedAction,
-    idm::event::{
-        GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent,
-    },
+    idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
@@ -41,14 +39,10 @@ pub struct QueryServerWriteV1 {
 impl QueryServerWriteV1 {
     pub fn new(idms: Arc<IdmServer>) -> Self {
         info!("Starting query server v1 worker ...");
-        QueryServerWriteV1 {
-            idms,
-        }
+        QueryServerWriteV1 { idms }
     }
 
-    pub fn start_static(
-        idms: Arc<IdmServer>,
-    ) -> &'static QueryServerWriteV1 {
+    pub fn start_static(idms: Arc<IdmServer>) -> &'static QueryServerWriteV1 {
         let x = Box::new(QueryServerWriteV1::new(idms));
 
         let x_ptr = Box::leak(x);

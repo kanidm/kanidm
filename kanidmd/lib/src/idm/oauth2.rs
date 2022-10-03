@@ -39,16 +39,6 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use crate::value::OAUTHSCOPE_RE;
 
-lazy_static! {
-    static ref CLASS_OAUTH2: PartialValue = PartialValue::new_class("oauth2_resource_server");
-    static ref CLASS_OAUTH2_BASIC: PartialValue =
-        PartialValue::new_class("oauth2_resource_server_basic");
-    static ref URL_SERVICE_DOCUMENTATION: Url =
-        #[allow(clippy::expect_used)]
-        Url::parse("https://kanidm.github.io/kanidm/master/integrations/oauth2.html")
-            .expect("Failed to parse oauth2 service documentation url");
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Oauth2Error {
@@ -283,11 +273,11 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
-                if !ent.attribute_equality("class", &CLASS_OAUTH2) {
+                if !ent.attribute_equality("class", &PVCLASS_OAUTH2_RS) {
                     admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     Err(OperationError::InvalidEntryState)
-                } else if ent.attribute_equality("class", &CLASS_OAUTH2_BASIC) {
+                } else if ent.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
                     // If we have oauth2_resource_server_basic
                     // Now we know we can load the attrs.
                     trace!("name");

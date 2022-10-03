@@ -17,14 +17,14 @@ use tide_openssl::TlsListener;
 use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_write::QueryServerWriteV1;
-use crate::config::{ServerRole, TlsConfiguration};
 use self::manifest::manifest;
 use self::middleware::*;
 use self::oauth2::*;
 use self::routemaps::{RouteMap, RouteMaps};
 use self::v1::*;
+use crate::actors::v1_read::QueryServerReadV1;
+use crate::actors::v1_write::QueryServerWriteV1;
+use crate::config::{ServerRole, TlsConfiguration};
 
 #[derive(Clone)]
 pub struct JavaScriptFile {

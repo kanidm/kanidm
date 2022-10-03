@@ -22,11 +22,6 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, Value};
 
-lazy_static! {
-    static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
-    static ref PVCLASS_POSIXACCOUNT: PartialValue = PartialValue::new_class("posixaccount");
-}
-
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes

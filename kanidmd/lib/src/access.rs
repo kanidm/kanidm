@@ -32,21 +32,12 @@ use crate::filter::{Filter, FilterValid, FilterValidResolved};
 use crate::identity::{IdentType, IdentityId};
 use crate::modify::Modify;
 use crate::prelude::*;
-use crate::value::PartialValue;
 
 // const ACP_RELATED_SEARCH_CACHE_MAX: usize = 2048;
 // const ACP_RELATED_SEARCH_CACHE_LOCAL: usize = 16;
 
 const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 2048;
 const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
-
-lazy_static! {
-    static ref CLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
-    static ref CLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
-    static ref CLASS_ACD: PartialValue = PartialValue::new_class("access_control_delete");
-    static ref CLASS_ACM: PartialValue = PartialValue::new_class("access_control_modify");
-    static ref CLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
-}
 
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
@@ -63,7 +54,7 @@ impl AccessControlSearch {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &CLASS_ACS) {
+        if !value.attribute_equality("class", &PVCLASS_ACS) {
             admin_error!("class access_control_search not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_search".to_string(),
@@ -117,7 +108,7 @@ impl AccessControlDelete {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &CLASS_ACD) {
+        if !value.attribute_equality("class", &PVCLASS_ACD) {
             admin_error!("class access_control_delete not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_delete".to_string(),
@@ -159,7 +150,7 @@ impl AccessControlCreate {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &CLASS_ACC) {
+        if !value.attribute_equality("class", &PVCLASS_ACC) {
             admin_error!("class access_control_create not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_create".to_string(),
@@ -218,7 +209,7 @@ impl AccessControlModify {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &CLASS_ACM) {
+        if !value.attribute_equality("class", &PVCLASS_ACM) {
             admin_error!("class access_control_modify not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_modify".to_string(),
@@ -298,7 +289,7 @@ impl AccessControlProfile {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
-        if !value.attribute_equality("class", &CLASS_ACP) {
+        if !value.attribute_equality("class", &PVCLASS_ACP) {
             admin_error!("class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),

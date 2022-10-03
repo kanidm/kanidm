@@ -5,10 +5,6 @@ use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
 use crate::value::PartialValue;
 
-lazy_static! {
-    static ref PVCLASS_GROUP: PartialValue = PartialValue::new_class("group");
-}
-
 #[derive(Debug, Clone)]
 pub struct Group {
     spn: String,

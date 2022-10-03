@@ -16,16 +16,11 @@ const GID_SYSTEM_NUMBER_MIN: u32 = 65536;
 /// This is the normal system range, we MUST NOT allow it to be allocated.
 const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 
-lazy_static! {
-    static ref CLASS_POSIXGROUP: PartialValue = PartialValue::new_class("posixgroup");
-    static ref CLASS_POSIXACCOUNT: PartialValue = PartialValue::new_class("posixaccount");
-}
-
 pub struct GidNumber {}
 
 fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
-    if (e.attribute_equality("class", &CLASS_POSIXGROUP)
-        || e.attribute_equality("class", &CLASS_POSIXACCOUNT))
+    if (e.attribute_equality("class", &PVCLASS_POSIXGROUP)
+        || e.attribute_equality("class", &PVCLASS_POSIXACCOUNT))
         && !e.attribute_pres("gidnumber")
     {
         let u_ref = e

@@ -1,10 +1,10 @@
 #![deny(warnings)]
 use std::time::SystemTime;
 
-use kanidmd_lib::credential::totp::Totp;
 use kanidm_proto::v1::{
     ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList,
 };
+use kanidmd_lib::credential::totp::Totp;
 use tracing::debug;
 
 mod common;

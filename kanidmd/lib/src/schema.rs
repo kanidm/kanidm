@@ -34,12 +34,6 @@ use crate::valueset::ValueSet;
 // In the future this will parse/read it's schema from the db
 // but we have to bootstrap with some core types.
 
-// TODO #72: prefix on all schema types that are system?
-lazy_static! {
-    static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
-    static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
-}
-
 /// Schema stores the set of [`Classes`] and [`Attributes`] that the server will
 /// use to validate [`Entries`], [`Filters`] and [`Modifications`]. Additionally the
 /// schema stores an extracted copy of the current attribute indexing metadata that

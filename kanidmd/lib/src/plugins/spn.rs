@@ -6,20 +6,12 @@ use std::sync::Arc;
 // use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
-use crate::constants::UUID_DOMAIN_INFO;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
-use crate::value::PartialValue;
 
 pub struct Spn {}
-
-lazy_static! {
-    static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
-    static ref CLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
-    static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
-}
 
 impl Plugin for Spn {
     fn id() -> &'static str {
@@ -46,8 +38,8 @@ impl Plugin for Spn {
         let domain_name = qs.get_domain_name();
 
         for e in cand.iter_mut() {
-            if e.attribute_equality("class", &CLASS_GROUP)
-                || e.attribute_equality("class", &CLASS_ACCOUNT)
+            if e.attribute_equality("class", &PVCLASS_GROUP)
+                || e.attribute_equality("class", &PVCLASS_ACCOUNT)
             {
                 let spn = e
                     .generate_spn(domain_name)
@@ -77,8 +69,8 @@ impl Plugin for Spn {
         let domain_name = qs.get_domain_name();
 
         for e in cand.iter_mut() {
-            if e.attribute_equality("class", &CLASS_GROUP)
-                || e.attribute_equality("class", &CLASS_ACCOUNT)
+            if e.attribute_equality("class", &PVCLASS_GROUP)
+                || e.attribute_equality("class", &PVCLASS_ACCOUNT)
             {
                 let spn = e
                     .generate_spn(domain_name)
@@ -115,7 +107,7 @@ impl Plugin for Spn {
 
         let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
             let domain_name = post.get_ava_single("domain_name");
-            if post.attribute_equality("uuid", &PV_UUID_DOMAIN_INFO)
+            if post.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
                 && domain_name != pre.get_ava_single("domain_name")
             {
                 domain_name
@@ -138,8 +130,8 @@ impl Plugin for Spn {
         // within the transaction, just incase!
         qs.internal_modify(
             &filter!(f_or!([
-                f_eq("class", PartialValue::new_class("group")),
-                f_eq("class", PartialValue::new_class("account"))
+                f_eq("class", PVCLASS_GROUP.clone()),
+                f_eq("class", PVCLASS_ACCOUNT.clone())
             ])),
             &modlist!([m_purge("spn")]),
         )
@@ -155,8 +147,8 @@ impl Plugin for Spn {
         let domain_name = qs.get_domain_name();
 
         let filt_in = filter!(f_or!([
-            f_eq("class", PartialValue::new_class("group")),
-            f_eq("class", PartialValue::new_class("account"))
+            f_eq("class", PVCLASS_GROUP.clone()),
+            f_eq("class", PVCLASS_ACCOUNT.clone())
         ]));
 
         let all_cand = match qs

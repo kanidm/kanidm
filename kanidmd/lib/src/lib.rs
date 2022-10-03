@@ -1,8 +1,7 @@
 //! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -33,7 +32,6 @@ extern crate lazy_static;
 #[macro_use]
 pub mod macros;
 
-pub mod utils;
 pub mod be;
 pub mod constants;
 pub mod credential;
@@ -43,6 +41,7 @@ pub mod filter;
 pub mod identity;
 pub mod ldap;
 pub mod modify;
+pub mod utils;
 pub mod value;
 pub mod valueset;
 #[macro_use]

@@ -14,10 +14,9 @@ use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
 
 use kanidmd_lib::be::BackendTransaction;
+use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
-    event::{
-        AuthEvent, AuthResult, OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult,
-    },
+    event::{AuthEvent, AuthResult, OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
@@ -33,7 +32,6 @@ use kanidmd_lib::{
     idm::serviceaccount::ListApiTokenEvent,
     ldap::{LdapBoundToken, LdapResponseState, LdapServer},
 };
-use kanidmd_lib::prelude::*;
 
 // ===========================================================
 
@@ -45,16 +43,10 @@ pub struct QueryServerReadV1 {
 impl QueryServerReadV1 {
     pub fn new(idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> Self {
         info!("Starting query server v1 worker ...");
-        QueryServerReadV1 {
-            idms,
-            ldap,
-        }
+        QueryServerReadV1 { idms, ldap }
     }
 
-    pub fn start_static(
-        idms: Arc<IdmServer>,
-        ldap: Arc<LdapServer>,
-    ) -> &'static Self {
+    pub fn start_static(idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> &'static Self {
         let x = Box::new(QueryServerReadV1::new(idms, ldap));
 
         let x_ref = Box::leak(x);

@@ -14,11 +14,6 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 
-lazy_static! {
-    static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");
-    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
-}
-
 pub struct Domain {}
 
 impl Plugin for Domain {

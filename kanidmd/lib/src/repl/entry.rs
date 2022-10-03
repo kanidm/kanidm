@@ -12,11 +12,6 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::valueset;
 
-lazy_static! {
-    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
-    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
-}
-
 #[derive(Debug, Clone)]
 pub struct EntryChangelog {
     /// The set of "entries as they existed at a point in time". This allows us to rewind
