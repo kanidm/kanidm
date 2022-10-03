@@ -31,7 +31,6 @@ use super::delayed::BackupCodeRemoval;
 use super::event::ReadBackupCodeEvent;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
-use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
@@ -42,6 +41,7 @@ use crate::idm::delayed::{
 };
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
+use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::event::{
     CredentialStatusEvent, GeneratePasswordEvent, LdapAuthEvent, LdapTokenAuthEvent,
     RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
@@ -2091,7 +2091,8 @@ mod tests {
 
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::{Credential, Password};
-    use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
+    use crate::event::{CreateEvent, ModifyEvent};
+    use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,

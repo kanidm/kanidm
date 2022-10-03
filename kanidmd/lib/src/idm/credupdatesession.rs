@@ -1476,8 +1476,9 @@ mod tests {
         MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
     use crate::credential::totp::Totp;
-    use crate::event::{AuthEvent, AuthResult, CreateEvent};
+    use crate::event::CreateEvent;
     use crate::idm::delayed::DelayedAction;
+    use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::server::IdmServer;
     use crate::idm::AuthState;
     use crate::prelude::*;

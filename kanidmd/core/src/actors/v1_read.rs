@@ -16,12 +16,12 @@ use uuid::Uuid;
 use kanidmd_lib::be::BackendTransaction;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
-    event::{AuthEvent, AuthResult, OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
+    event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
-        CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
-        UnixUserAuthEvent, UnixUserTokenEvent,
+        AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent,
+        UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     },
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,

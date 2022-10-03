@@ -8,8 +8,8 @@ use kanidm_proto::v1::{
     CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, Entry as ProtoEntry,
     GroupUnixExtend, ModifyRequest, OperationError, SearchRequest, SingleStringRequest,
 };
-use kanidmd_lib::event::AuthResult;
 use kanidmd_lib::filter::{Filter, FilterInvalid};
+use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::status::StatusRequestEvent;
