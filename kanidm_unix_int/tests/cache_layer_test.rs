@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 
-use kanidmd_lib::config::{Configuration, IntegrationTestConfig, ServerRole};
+use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_unix_common::cache::{CacheLayer, Id};
 use kanidm_unix_common::constants::{

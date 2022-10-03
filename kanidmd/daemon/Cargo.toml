@@ -18,9 +18,11 @@ name = "kanidmd"
 path = "src/main.rs"
 
 [dependencies]
+# Remove these!
 kanidm_proto.workspace = true
-kanidmd_core.workspace = true
 kanidmd_lib.workspace = true
+
+kanidmd_core.workspace = true
 sketching.workspace = true
 
 clap = { workspace = true, features = ["env"] }

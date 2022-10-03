@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 
 use clap::{Args, Parser, Subcommand};
-use kanidmd_lib::config::{Configuration, OnlineBackup, ServerRole};
+use kanidmd_core::config::{Configuration, OnlineBackup, ServerRole};
 #[cfg(not(target_family = "windows"))]
 use kanidmd_lib::utils::file_permissions_readonly;
 use kanidmd_core::{

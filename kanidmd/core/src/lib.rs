@@ -25,10 +25,12 @@ extern crate tracing;
 #[macro_use]
 extern crate kanidmd_lib;
 
+pub mod config;
 pub mod https;
+mod interval;
+mod crypto;
 mod ldaps;
 
-// use crossbeam::channel::unbounded;
 use std::sync::Arc;
 
 use async_std::task;
@@ -36,10 +38,7 @@ use compact_jwt::JwsSigner;
 use kanidmd_lib::actors::v1_read::QueryServerReadV1;
 use kanidmd_lib::actors::v1_write::QueryServerWriteV1;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
-use kanidmd_lib::config::Configuration;
-use kanidmd_lib::crypto::setup_tls;
 use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
-use kanidmd_lib::interval::IntervalActor;
 use kanidmd_lib::ldap::LdapServer;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
@@ -49,6 +48,10 @@ use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
+
+use crate::crypto::setup_tls;
+use crate::config::Configuration;
+use crate::interval::IntervalActor;
 
 // === internal setup helpers
 

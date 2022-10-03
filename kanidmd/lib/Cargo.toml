@@ -1,6 +1,6 @@
 [package]
 name = "kanidmd_lib"
-description = "Kanidm Server Library and Binary"
+description = "Kanidm Server Backend Library"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
 version.workspace = true
@@ -24,7 +24,6 @@ async-std.workspace = true
 async-trait.workspace = true
 base64.workspace = true
 base64urlsafedata.workspace = true
-chrono.workspace = true
 compact_jwt.workspace = true
 concread.workspace = true
 dyn-clone.workspace = true
@@ -45,7 +44,6 @@ r2d2.workspace = true
 r2d2_sqlite.workspace = true
 rand.workspace = true
 regex.workspace = true
-saffron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_cbor.workspace = true
 serde_json.workspace = true

@@ -32,7 +32,6 @@ extern crate lazy_static;
 #[macro_use]
 pub mod macros;
 
-pub mod crypto;
 pub mod utils;
 pub mod be;
 pub mod constants;
@@ -41,7 +40,6 @@ pub mod entry;
 pub mod event;
 pub mod filter;
 pub mod identity;
-pub mod interval;
 pub mod ldap;
 mod modify;
 pub mod value;
@@ -55,8 +53,6 @@ mod repl;
 pub mod schema;
 pub mod server;
 pub mod status;
-
-pub mod config;
 
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.

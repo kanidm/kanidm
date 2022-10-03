@@ -13,6 +13,7 @@ members = [
     "kanidm_unix_int/pam_kanidm",
     "kanidmd_web_ui",
     "kanidmd/daemon",
+    "kanidmd/idm",
     "kanidmd/lib",
     "kanidmd/core",
     "orca",
@@ -68,7 +69,7 @@ idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
 js-sys = "^0.3.58"
 kanidmd_core = { path = "./kanidmd/core" }
-# RENAME THIS
+kanidmd_idm = { path = "./kanidmd/idm" }
 kanidmd_lib = { path = "./kanidmd/lib" }
 kanidm_client = { path = "./kanidm_client" }
 kanidm_proto = { path = "./kanidm_proto" }

@@ -11,7 +11,6 @@ use std::str::FromStr;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
 use kanidmd_lib::actors::v1_read::QueryServerReadV1;
 use kanidmd_lib::actors::v1_write::QueryServerWriteV1;
-use kanidmd_lib::config::{ServerRole, TlsConfiguration};
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::status::StatusActor;
 use serde::Serialize;
@@ -20,6 +19,7 @@ use tide_openssl::TlsListener;
 use tracing::{error, info};
 use uuid::Uuid;
 
+use crate::config::{ServerRole, TlsConfiguration};
 use self::manifest::manifest;
 use self::middleware::*;
 use self::oauth2::*;

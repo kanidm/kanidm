@@ -1,0 +1,25 @@
+[package]
+name = "kanidmd_idm"
+description = "Kanidm Server IDM Library"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+name = "kanidmd_idm"
+path = "src/lib.rs"
+
+[dependencies]
+
+
+
+
+[build-dependencies]
+profiles.workspace = true
+

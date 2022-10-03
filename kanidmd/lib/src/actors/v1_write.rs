@@ -1199,7 +1199,7 @@ impl QueryServerWriteV1 {
         skip_all,
         fields(uuid = ?msg.eventid)
     )]
-    pub(crate) async fn handle_purgetombstoneevent(&self, msg: PurgeTombstoneEvent) {
+    pub async fn handle_purgetombstoneevent(&self, msg: PurgeTombstoneEvent) {
         trace!(?msg, "Begin purge tombstone event");
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
 
@@ -1217,7 +1217,7 @@ impl QueryServerWriteV1 {
         skip_all,
         fields(uuid = ?msg.eventid)
     )]
-    pub(crate) async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
+    pub async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
         trace!(?msg, "Begin purge recycled event");
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = idms_prox_write

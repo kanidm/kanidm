@@ -2313,6 +2313,7 @@ version = "1.1.0-alpha.9"
 dependencies = [
  "async-std",
  "async-trait",
+ "chrono",
  "compact_jwt",
  "futures",
  "futures-util",
@@ -2325,8 +2326,10 @@ dependencies = [
  "oauth2",
  "openssl",
  "profiles",
+ "rand 0.8.5",
  "regex",
  "reqwest",
+ "saffron",
  "serde",
  "serde_json",
  "sketching",
@@ -2343,6 +2346,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidmd_idm"
+version = "1.1.0-alpha.9"
+dependencies = [
+ "profiles",
+]
+
+[[package]]
 name = "kanidmd_lib"
 version = "1.1.0-alpha.9"
 dependencies = [
@@ -2350,7 +2360,6 @@ dependencies = [
  "async-trait",
  "base64 0.13.0",
  "base64urlsafedata",
- "chrono",
  "compact_jwt",
  "concread",
  "criterion",
@@ -2374,7 +2383,6 @@ dependencies = [
  "rand 0.8.5",
  "regex",
  "rusqlite",
- "saffron",
  "serde",
  "serde_cbor_2",
  "serde_json",
