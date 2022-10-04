@@ -1,0 +1,54 @@
+[package]
+name = "kanidmd_core"
+description = "Kanidm Server Core and Library"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+async-std = { workspace = true, features = ["tokio1"] }
+async-trait.workspace = true
+chrono.workspace = true
+compact_jwt.workspace = true
+futures-util.workspace = true
+http-types.workspace = true
+kanidm_proto.workspace = true
+kanidmd_lib.workspace = true
+ldap3_proto.workspace = true
+libc.workspace = true
+openssl.workspace = true
+rand.workspace = true
+regex.workspace = true
+saffron.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sketching.workspace = true
+tide.workspace = true
+time = { workspace = true, features = ["serde", "std"] }
+# I tried including brotli and it didn't work, including "default" pulls a mime-type list from the internet on build
+tide-compress = { workspace = true, default-features = false, features = [ "deflate", "gzip", "regex-check" ] }
+tide-openssl.workspace = true
+tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
+tokio-openssl.workspace = true
+tokio-util = { workspace = true, features = ["codec"] }
+tracing = { workspace = true, features = ["attributes"] }
+uuid = { workspace = true, features = ["serde", "v4" ] }
+
+[build-dependencies]
+profiles.workspace = true
+
+[dev-dependencies]
+kanidm_client.workspace = true
+futures.workspace = true
+
+webauthn-authenticator-rs.workspace = true
+oauth2_ext = { workspace = true, default-features = false }
+
+url = { workspace = true, features = ["serde"] }
+reqwest = { workspace = true, features=["cookies", "json", "native-tls"] }

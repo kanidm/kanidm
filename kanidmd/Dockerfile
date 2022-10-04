@@ -40,16 +40,16 @@ ENV CARGO_HOME=/scratch/.cargo
 
 # ======================
 
-WORKDIR /usr/src/kanidm/kanidmd_web_ui
-# This can't be used in the wasm build for now.
-# ENV RUSTFLAGS="-Clinker=clang"
-RUN if [ "${SCCACHE_REDIS}" != "" ]; \
-        then \
-            export CARGO_INCREMENTAL=false && \
-            export RUSTC_WRAPPER=sccache && \
-            sccache --start-server; \
-    fi && \
-    ./build_wasm.sh
+# WORKDIR /usr/src/kanidm/kanidmd_web_ui
+# # This can't be used in the wasm build for now.
+# # ENV RUSTFLAGS="-Clinker=clang"
+# RUN if [ "${SCCACHE_REDIS}" != "" ]; \
+#         then \
+#             export CARGO_INCREMENTAL=false && \
+#             export RUSTC_WRAPPER=sccache && \
+#             sccache --start-server; \
+#     fi && \
+#     ./build_wasm.sh
 
 # ======================
 

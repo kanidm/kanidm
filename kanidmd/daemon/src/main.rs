@@ -20,19 +20,17 @@ use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand};
-use kanidm::audit::LogLevel;
-use kanidm::config::{Configuration, OnlineBackup, ServerRole};
-#[cfg(not(target_family = "windows"))]
-use kanidm::utils::file_permissions_readonly;
-use score::{
+use kanidmd_core::config::{Configuration, OnlineBackup, ServerRole};
+use kanidmd_core::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
     domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
+#[cfg(not(target_family = "windows"))]
+use kanidmd_lib::utils::file_permissions_readonly;
 use serde::Deserialize;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -54,7 +52,6 @@ struct ServerConfig {
     pub db_arc_size: Option<usize>,
     pub tls_chain: Option<String>,
     pub tls_key: Option<String>,
-    pub log_level: Option<String>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
     pub origin: String,
@@ -232,17 +229,6 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            // Apply the file requirements
-            let ll = sconfig
-                .log_level
-                .map(|ll| match LogLevel::from_str(ll.as_str()) {
-                    Ok(v) => v as u32,
-                    Err(e) => {
-                        eprintln!("{:?}", e);
-                        std::process::exit(1);
-                    }
-                });
-
             // Check the permissions of the files from the configuration.
 
             let db_path = PathBuf::from(sconfig.db_path.as_str());
@@ -277,7 +263,6 @@ async fn main() {
                 }
             }
 
-            config.update_log_level(ll);
             config.update_db_path(&sconfig.db_path.as_str());
             config.update_db_fs_type(&sconfig.db_fs_type);
             config.update_origin(&sconfig.origin.as_str());
@@ -286,16 +271,12 @@ async fn main() {
             config.update_role(sconfig.role);
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
 
+            /*
             // Apply any cli overrides, normally debug level.
-            if let Some(dll) = opt.commands.commonopt().debug.as_ref() {
-                config.update_log_level(Some(dll.clone() as u32));
+            if opt.commands.commonopt().debug.as_ref() {
+                // ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
             }
-
-            // ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
-            // env_logger::builder()
-            //     .format_timestamp(None)
-            //     .format_level(false)
-            //     .init();
+            */
 
             match &opt.commands {
                 KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {

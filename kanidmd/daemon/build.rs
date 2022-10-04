@@ -5,9 +5,7 @@ use std::path::PathBuf;
 
 use clap::{Args, IntoApp, Parser, Subcommand};
 use clap_complete::{generate_to, Shell};
-use serde::{Deserialize, Serialize};
 
-include!("../idm/src/audit_loglevel.rs");
 include!("src/opt.rs");
 
 fn main() {
