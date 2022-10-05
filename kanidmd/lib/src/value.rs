@@ -10,6 +10,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use compact_jwt::JwsSigner;
+use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -29,15 +30,24 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
     };
+    pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
+        let mut m = HashSet::with_capacity(10);
+        m.insert("root");
+        m.insert("nobody");
+        m.insert("nogroup");
+        m.insert("wheel");
+        m.insert("sshd");
+        m.insert("shadow");
+        m.insert("systemd");
+        m.insert("mail");
+        m.insert("man");
+        m.insert("administrator");
+        m
+    };
     pub static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^((\\.|_).*|.*(\\s|:|;|@|,|/|\\\\|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found")
-        //            ^      ^                          ^   ^
-        //            |      |                          |   \- must not be a reserved name.
-        //            |      |                          \- must not be only integers
-        //            |      \- must not contain whitespace, @, :, ;, ',', /, \, =
-        //            \- must not start with _ or .
-        // Them's be the rules.
+        Regex::new("^[a-z][a-z0-9-_\\.]+$").expect("Invalid Iname regex found")
+        // Only lowercase+numbers, with limited chars.
     };
     pub static ref NSUNIQUEID_RE: Regex = {
         #[allow(clippy::expect_used)]
@@ -1536,7 +1546,7 @@ impl Value {
                     // It is a uuid, disallow.
                     Ok(_) => false,
                     // Not a uuid, check it against the re.
-                    Err(_) => !INAME_RE.is_match(s),
+                    Err(_) => INAME_RE.is_match(s) && !DISALLOWED_NAMES.contains(s.as_str()),
                 }
             }
             /*
@@ -1698,11 +1708,12 @@ mod tests {
         let inv5 = Value::new_iname("no spaces I'm sorry :(");
         let inv6 = Value::new_iname("bad=equals");
         let inv7 = Value::new_iname("bad,comma");
+        let inv8 = Value::new_iname("123_456");
+        let inv9 = Value::new_iname("🍿");
 
         let val1 = Value::new_iname("William");
         let val2 = Value::new_iname("this_is_okay");
-        let val3 = Value::new_iname("123_456");
-        let val4 = Value::new_iname("🍿");
+        let val3 = Value::new_iname("a123_456");
 
         assert!(!inv1.validate());
         assert!(!inv2.validate());
@@ -1711,11 +1722,12 @@ mod tests {
         assert!(!inv5.validate());
         assert!(!inv6.validate());
         assert!(!inv7.validate());
+        assert!(!inv8.validate());
+        assert!(!inv9.validate());
 
         assert!(val1.validate());
         assert!(val2.validate());
         assert!(val3.validate());
-        assert!(val4.validate());
     }
 
     #[test]

@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::value::INAME_RE;
+use crate::value::{DISALLOWED_NAMES, INAME_RE};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -102,7 +102,7 @@ impl ValueSetT for ValueSetIname {
                 // It is a uuid, disallow.
                 Ok(_) => false,
                 // Not a uuid, check it against the re.
-                Err(_) => !INAME_RE.is_match(s),
+                Err(_) => INAME_RE.is_match(s) && !DISALLOWED_NAMES.contains(s.as_str()),
             }
         })
     }
