@@ -643,6 +643,24 @@ pub struct OptSetDomainDisplayName {
     new_display_name: String,
 }
 
+
+#[derive(Debug, Subcommand)]
+pub enum PwBadlistOpt {
+    #[clap[name = "show"]]
+    /// Show information about this system's password badlist
+    Show(CommonOpt),
+    #[clap[name = "upload"]]
+    /// Upload an extra badlist, appending to the currently configured one.
+    /// This badlist will be preprocessed to remove items that are already
+    /// caught by "zxcvbn" at the configured level.
+    Upload {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(parse(from_os_str))]
+        paths: Vec<PathBuf>,
+    },
+}
+
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {
     #[clap[name = "set_domain_display_name"]]
@@ -659,6 +677,12 @@ pub enum DomainOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum SystemOpt {
+    #[clap(name = "pw-badlist")]
+    /// Configure and manage the password badlist entry
+    PwBadlist {
+        #[clap(subcommand)]
+        commands: PwBadlistOpt,
+    },
     #[clap(name = "oauth2")]
     /// Configure and display oauth2/oidc resource server configuration
     Oauth2 {

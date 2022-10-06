@@ -204,6 +204,24 @@ pub async fn json_rest_event_put_attr(
     to_tide_response(res, hvalue)
 }
 
+pub async fn json_rest_event_post_attr(
+    mut req: tide::Request<AppState>,
+    uuid_or_name: String,
+    filter: Filter<FilterInvalid>,
+) -> tide::Result {
+    let uat = req.get_current_uat();
+    let attr = req.get_url_param("attr")?;
+    let values: Vec<String> = req.body_json().await?;
+
+    let (eventid, hvalue) = req.new_eventid();
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_appendattribute(uat, uuid_or_name, attr, values, filter, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
 pub async fn json_rest_event_put_id_attr(
     req: tide::Request<AppState>,
     filter: Filter<FilterInvalid>,
@@ -891,6 +909,21 @@ pub async fn domain_delete_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
     let attr = req.get_url_param("attr")?;
     json_rest_event_delete_attr(req, filter, STR_UUID_DOMAIN_INFO.to_string(), attr).await
+}
+
+pub async fn system_get(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("uuid", PartialValue::new_uuid(UUID_SYSTEM_CONFIG)));
+    json_rest_event_get(req, filter, None).await
+}
+
+pub async fn system_get_attr(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("system_config")));
+    json_rest_event_get_attr(req, STR_UUID_SYSTEM_CONFIG, filter).await
+}
+
+pub async fn system_post_attr(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("system_config")));
+    json_rest_event_post_attr(req, STR_UUID_SYSTEM_CONFIG.to_string(), filter).await
 }
 
 pub async fn recycle_bin_get(req: tide::Request<AppState>) -> tide::Result {

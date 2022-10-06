@@ -791,6 +791,13 @@ pub fn create_https_server(
         .mapped_put(&mut routemap, domain_put_attr)
         .mapped_delete(&mut routemap, domain_delete_attr);
 
+    let mut system_route = appserver.at("/v1/system");
+    system_route.at("/").mapped_get(&mut routemap, system_get);
+    system_route
+        .at("/_attr/:attr")
+        .mapped_get(&mut routemap, system_get_attr)
+        .mapped_post(&mut routemap, system_post_attr);
+
     let mut recycle_route = appserver.at("/v1/recycle_bin");
     recycle_route
         .at("/")

@@ -8,7 +8,6 @@ use clap_complete::{generate_to, Shell};
 use uuid::Uuid;
 
 include!("src/opt/ssh_authorizedkeys.rs");
-include!("src/opt/badlist_preprocess.rs");
 include!("src/opt/kanidm.rs");
 
 fn main() {
@@ -38,21 +37,6 @@ fn main() {
         Shell::Zsh,
         &mut SshAuthorizedOpt::command(),
         "kanidm_ssh_authorizedkeys_direct",
-        comp_dir.clone(),
-    )
-    .ok();
-
-    generate_to(
-        Shell::Bash,
-        &mut BadlistProcOpt::command(),
-        "kanidm_badlist_preprocess",
-        comp_dir.clone(),
-    )
-    .ok();
-    generate_to(
-        Shell::Zsh,
-        &mut BadlistProcOpt::command(),
-        "kanidm_badlist_preprocess",
         comp_dir.clone(),
     )
     .ok();
