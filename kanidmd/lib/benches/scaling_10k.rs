@@ -4,14 +4,14 @@ use async_std::task;
 use criterion::{
     criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode, Throughput,
 };
-use kanidm;
-use kanidm::entry::{Entry, EntryInit, EntryNew};
-use kanidm::entry_init;
-use kanidm::idm::server::{IdmServer, IdmServerDelayed};
-use kanidm::macros::run_idm_test_no_logging;
-use kanidm::server::QueryServer;
-use kanidm::utils::duration_from_epoch_now;
-use kanidm::value::Value;
+use kanidmd_lib;
+use kanidmd_lib::entry::{Entry, EntryInit, EntryNew};
+use kanidmd_lib::entry_init;
+use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
+use kanidmd_lib::macros::run_idm_test_no_logging;
+use kanidmd_lib::server::QueryServer;
+use kanidmd_lib::utils::duration_from_epoch_now;
+use kanidmd_lib::value::Value;
 
 pub fn scaling_user_create_single(c: &mut Criterion) {
     let mut group = c.benchmark_group("user_create_single");
@@ -92,7 +92,7 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                     .collect();
 
                 for _i in 0..iters {
-                    kanidm::macros::run_idm_test_no_logging(
+                    kanidmd_lib::macros::run_idm_test_no_logging(
                         |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                             let ct = duration_from_epoch_now();
 
