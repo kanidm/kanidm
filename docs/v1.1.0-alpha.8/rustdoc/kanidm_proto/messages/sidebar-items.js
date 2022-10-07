@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["ConsoleOutputMode","This is used in user-facing CLIs to set the formatting for output, and defaults to text."],["MessageStatus",""]],"struct":[["AccountChangeMessage",""],["BasicMessage",""]]};

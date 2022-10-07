@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["CreateEvent",""],["DeleteEvent",""],["ExistsEvent",""],["ModifyEvent",""],["OnlineBackupEvent",""],["PurgeRecycledEvent",""],["PurgeTombstoneEvent",""],["ReviveRecycledEvent",""],["SearchEvent",""],["SearchResult",""],["WhoamiResult",""]]};
