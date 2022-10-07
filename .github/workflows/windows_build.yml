@@ -48,4 +48,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: -p kanidm_client -p kanidm_tools -p orca -p daemon -p score
+          args: -p kanidm_client -p kanidm_tools -p orca -p daemon -p kanidmd_core
