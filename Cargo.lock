@@ -2372,6 +2372,7 @@ dependencies = [
  "futures",
  "futures-util",
  "hashbrown",
+ "hex",
  "idlset",
  "kanidm_proto",
  "lazy_static",
