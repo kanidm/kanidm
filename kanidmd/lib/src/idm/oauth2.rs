@@ -850,6 +850,9 @@ impl Oauth2ResourceServersReadTransaction {
                 })
             })?;
 
+        // If we have a verifier present, we MUST assert that a code challenge is present!
+        // It is worth noting here that code_xchg is *server issued* and encrypted, with
+        // a short validity period. The client controlled value is in token_req.code_verifier
         if let Some(code_challenge) = code_xchg.code_challenge {
             // Validate the code_verifier
             let code_verifier = token_req.code_verifier
@@ -2735,6 +2738,69 @@ mod tests {
                 assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
 
                 assert!(idms_prox_write.commit().is_ok());
+            }
+        )
+    }
+
+    #[test]
+    // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.8
+    // This relies on the client being able to remove the code challenge from the
+    // code exchange, which prevents the pkce from being enforced.
+    fn test_idm_oauth2_1076_pkce_downgrade() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+
+                let idms_prox_read = idms.proxy_read();
+
+                // Get an ident/uat for now.
+
+                // == Setup the authorisation request
+                let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+                // Should be in the consent phase;
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
+
+                // == Submit the token exchange code.
+                // THIS IS THE THEORETICAL ATTACK. The client at this point can remove
+                // the code_verifier to attempt to bypass pkce
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: Some("test_resource_server".to_string()),
+                    client_secret: Some(secret),
+                    // Note the code verifier is set to NONE
+                    code_verifier: None,
+                };
+
+                // Assert the exchange fails.
+                assert!(matches!(
+                    idms_prox_read.check_oauth2_token_exchange(None, &token_req, ct),
+                    Err(Oauth2Error::InvalidRequest)
+                ))
             }
         )
     }
