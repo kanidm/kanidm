@@ -2758,6 +2758,7 @@ mod tests {
 
                 // == Setup the authorisation request
                 let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                let (code_verifier, _code_challenge) = create_code_verifier!("Something Else");
 
                 let consent_request =
                     good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
@@ -2788,12 +2789,28 @@ mod tests {
                 // the code_verifier to attempt to bypass pkce
                 let token_req = AccessTokenRequest {
                     grant_type: "authorization_code".to_string(),
+                    code: permit_success.code.clone(),
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: Some("test_resource_server".to_string()),
+                    client_secret: Some(secret.clone()),
+                    // Note the code verifier is set to NONE
+                    code_verifier: None,
+                };
+
+                // Assert the exchange fails.
+                assert!(matches!(
+                    idms_prox_read.check_oauth2_token_exchange(None, &token_req, ct),
+                    Err(Oauth2Error::InvalidRequest)
+                ));
+
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
                     code: permit_success.code,
                     redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                     client_id: Some("test_resource_server".to_string()),
                     client_secret: Some(secret),
-                    // Note the code verifier is set to NONE
-                    code_verifier: None,
+                    // Note the code verifier is set to "something else"
+                    code_verifier,
                 };
 
                 // Assert the exchange fails.
