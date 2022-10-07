@@ -13,11 +13,12 @@
 
 use clap::Parser;
 use kanidm_cli::KanidmClientParser;
+use std::thread;
+use tokio::runtime;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
+fn main() {
     let opt = KanidmClientParser::parse();
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
@@ -43,5 +44,18 @@ async fn main() {
         .with(fmt_layer)
         .init();
 
-    opt.commands.exec().await
+    let par_count = thread::available_parallelism()
+        .expect("Failed to determine available parallelism")
+        .get();
+
+    let rt = runtime::Builder::new_current_thread()
+        // We configure this as it's used by the badlist pre-processor
+        .max_blocking_threads(par_count)
+        .enable_all()
+        .build()
+        .expect("Failed to initialise tokio runtime!");
+
+    tracing::debug!("Using {} worker threads", par_count);
+
+    rt.block_on(async { opt.commands.exec().await });
 }

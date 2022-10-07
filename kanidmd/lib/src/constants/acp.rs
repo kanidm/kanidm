@@ -1022,6 +1022,9 @@ pub const JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
             "description",
             "badlist_password"
         ],
+        "acp_modify_removedattr": [
+            "badlist_password"
+        ],
         "acp_modify_presentattr": [
             "badlist_password"
         ]

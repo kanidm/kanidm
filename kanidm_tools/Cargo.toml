@@ -25,19 +25,15 @@ doc = false
 name = "kanidm_ssh_authorizedkeys_direct"
 path = "src/ssh_authorizedkeys.rs"
 
-[[bin]]
-name = "kanidm_badlist_preprocess"
-path = "src/badlist_preprocess.rs"
-
 [dependencies]
 clap = { workspace = true, features = ["derive", "env"] }
 compact_jwt.workspace = true
 dialoguer.workspace = true
+futures-concurrency.workspace = true
 libc.workspace = true
 kanidm_client.workspace = true
 kanidm_proto.workspace = true
 qrcode = { workspace = true, default-features = false }
-rayon.workspace = true
 rpassword.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 include!("../opt/kanidm.rs");
 
+pub mod badlist;
 pub mod common;
 pub mod domain;
 pub mod group;
@@ -64,6 +65,7 @@ impl SelfOpt {
 impl SystemOpt {
     pub fn debug(&self) -> bool {
         match self {
+            SystemOpt::PwBadlist { commands } => commands.debug(),
             SystemOpt::Oauth2 { commands } => commands.debug(),
             SystemOpt::Domain { commands } => commands.debug(),
         }
@@ -71,6 +73,7 @@ impl SystemOpt {
 
     pub async fn exec(&self) {
         match self {
+            SystemOpt::PwBadlist { commands } => commands.exec().await,
             SystemOpt::Oauth2 { commands } => commands.exec().await,
             SystemOpt::Domain { commands } => commands.exec().await,
         }
