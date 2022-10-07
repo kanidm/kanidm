@@ -10,7 +10,7 @@ use crate::views::AdminRoute;
 const CSS_CARD: &str = "card text-center";
 const CSS_CARD_BODY: &str = "card-body text-center";
 
-#[derive(PartialEq, Properties)]
+#[derive(Eq, PartialEq, Properties)]
 pub struct Props;
 
 // #[derive(PartialEq, Properties)]
@@ -137,7 +137,7 @@ pub struct Entity {
     pub object_type: EntityType,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GetError {
     pub err: String,
 }
