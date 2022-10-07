@@ -12,6 +12,7 @@ impl PwBadlistOpt {
         match self {
             PwBadlistOpt::Show(copt) => copt.debug,
             PwBadlistOpt::Upload { copt, .. } => copt.debug,
+            PwBadlistOpt::Remove { copt, .. } => copt.debug,
         }
     }
 
@@ -116,7 +117,45 @@ impl PwBadlistOpt {
                     Ok(_) => println!("Success"),
                     Err(e) => eprintln!("{:?}", e),
                 }
-            }
+            } // End Upload
+            PwBadlistOpt::Remove { copt, paths } => {
+                let client = copt.to_client().await;
+
+                let mut pwset: Vec<String> = Vec::new();
+
+                for f in paths.iter() {
+                    let mut file = match File::open(f) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            debug!(?e);
+                            info!("Skipping file -> {:?}", f);
+                            continue;
+                        }
+                    };
+                    let mut contents = String::new();
+                    if let Err(e) = file.read_to_string(&mut contents) {
+                        error!("{:?} -> {:?}", f, e);
+                        continue;
+                    }
+                    let mut inner_pw: Vec<_> =
+                        contents.as_str().lines().map(str::to_string).collect();
+                    pwset.append(&mut inner_pw);
+                }
+
+                debug!("Deduplicating pre-set ...");
+                pwset.sort_unstable();
+                pwset.dedup();
+
+                if pwset.is_empty() {
+                    eprintln!("No entries to remove?");
+                    return;
+                }
+
+                match client.system_password_badlist_remove(pwset).await {
+                    Ok(_) => println!("Success"),
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            } // End Remove
         }
     }
 }

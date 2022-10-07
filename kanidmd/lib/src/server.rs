@@ -753,12 +753,9 @@ pub trait QueryServerTransaction<'a> {
     // This is a helper to get password badlist.
     fn get_password_badlist(&self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(&UUID_SYSTEM_CONFIG)
-            .and_then(|e| match e.get_ava_iter_iutf8("badlist_password") {
-                Some(vs_str_iter) => {
-                    let badlist_hashset: HashSet<_> = vs_str_iter.map(str::to_string).collect();
-                    Ok(badlist_hashset)
-                }
-                None => Err(OperationError::InvalidEntryState),
+            .map(|e| match e.get_ava_iter_iutf8("badlist_password") {
+                Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
+                None => HashSet::default(),
             })
             .map_err(|e| {
                 admin_error!(?e, "Failed to retrieve system configuration");

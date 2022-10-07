@@ -926,6 +926,12 @@ pub async fn system_post_attr(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_post_attr(req, STR_UUID_SYSTEM_CONFIG.to_string(), filter).await
 }
 
+pub async fn system_delete_attr(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("system_config")));
+    let attr = req.get_url_param("attr")?;
+    json_rest_event_delete_attr(req, filter, STR_UUID_SYSTEM_CONFIG.to_string(), attr).await
+}
+
 pub async fn recycle_bin_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_pres("class"));
     let uat = req.get_current_uat();

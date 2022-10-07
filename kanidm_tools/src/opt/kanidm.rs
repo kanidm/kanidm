@@ -659,6 +659,15 @@ pub enum PwBadlistOpt {
         #[clap(parse(from_os_str))]
         paths: Vec<PathBuf>,
     },
+    #[clap[name = "remove", hide = true]]
+    /// Remove the content of these lists if present in the configured
+    /// badlist.
+    Remove {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(parse(from_os_str))]
+        paths: Vec<PathBuf>,
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -743,6 +752,7 @@ pub enum KanidmClientOpt {
         commands: RecycleOpt,
     },
     /// Unsafe - low level, raw database queries and operations.
+    #[clap(hide = true)]
     Raw {
         #[clap(subcommand)]
         commands: RawOpt,
