@@ -279,7 +279,16 @@ struct AccessControlProfile {
     // the acp update routine.
     #[allow(dead_code)]
     uuid: Uuid,
+    // Must be
+    //   Group
     receiver: Filter<FilterValid>,
+    // or
+    //  Filter
+    //  Group
+    //  Self
+    // and
+    //  exclude
+    //    Group
     targetscope: Filter<FilterValid>,
 }
 

@@ -2641,6 +2641,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_entries = [
             // Builtin dyn groups,
             JSON_IDM_ALL_PERSONS,
+            JSON_IDM_ALL_ACCOUNTS,
             // Builtin groups
             JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
             JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
@@ -3125,7 +3126,9 @@ mod tests {
             let mut e = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
                 ("name", Value::new_iname("testperson")),
+                ("spn", Value::new_spn_str("testperson", "example.com")),
                 (
                     "uuid",
                     Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
@@ -3150,6 +3153,8 @@ mod tests {
             e.add_ava("class", Value::new_class("memberof"));
             e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
             e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
+            e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
+            e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
 
             let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
 

@@ -420,9 +420,21 @@ pub const JSON_IDM_ALL_PERSONS: &str = r#"{
         "class": ["dyngroup", "group", "object"],
         "name": ["idm_all_persons"],
         "uuid": ["00000000-0000-0000-0000-000000000035"],
-        "description": ["Builtin IDM dynamic group containing all persons"],
+        "description": ["Builtin IDM dynamic group containing all persons that can authenticate"],
         "dyngroup_filter": [
-            "{\"eq\":[\"class\",\"person\"]}"
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}]}"
+        ]
+    }
+}"#;
+
+pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
+    "attrs": {
+        "class": ["dyngroup", "group", "object"],
+        "name": ["idm_all_accounts"],
+        "uuid": ["00000000-0000-0000-0000-000000000036"],
+        "description": ["Builtin IDM dynamic group containing all entries that can authenticate."],
+        "dyngroup_filter": [
+            "{\"eq\":[\"class\",\"account\"]}"
         ]
     }
 }"#;
