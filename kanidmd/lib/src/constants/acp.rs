@@ -82,7 +82,7 @@ pub const JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000004"],
         "description": ["Builtin IDM Control for self read - required for whoami and many other functions."],
         "acp_receiver": [
-            "{\"and\": [\"self\", {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000036\"]}"
         ],
         "acp_targetscope": [
             "\"self\""
@@ -114,7 +114,7 @@ pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000021"],
         "description": ["Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices."],
         "acp_receiver": [
-            "{\"and\": [\"self\", {\"eq\": [\"class\", \"person\"]}, {\"eq\": [\"class\", \"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}, {\"eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000035\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
@@ -156,7 +156,7 @@ pub const JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000006"],
         "description": ["Builtin IDM Control for all read - IE anonymous and all authenticated accounts."],
         "acp_receiver": [
-            "{\"pres\":\"class\"}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000036\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
