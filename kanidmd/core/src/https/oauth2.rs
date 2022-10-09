@@ -54,6 +54,23 @@ pub async fn oauth2_id_get(req: tide::Request<AppState>) -> tide::Result {
     to_tide_response(res, hvalue)
 }
 
+pub async fn oauth2_id_get_basic_secret(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+
+    let id = req.get_url_param("rs_name")?;
+    let filter = oauth2_id(&id);
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_oauth2_basic_secret_read(uat, filter, eventid)
+        .await;
+
+    to_tide_response(res, hvalue)
+}
+
 pub async fn oauth2_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
     // Update a value / attrs
     let uat = req.get_current_uat();
@@ -86,7 +103,7 @@ pub async fn oauth2_id_scopemap_post(mut req: tide::Request<AppState>) -> tide::
     let res = req
         .state()
         .qe_w_ref
-        .handle_oauth2_scopemap_create(uat, group, scopes, filter, eventid)
+        .handle_oauth2_scopemap_update(uat, group, scopes, filter, eventid)
         .await;
     to_tide_response(res, hvalue)
 }

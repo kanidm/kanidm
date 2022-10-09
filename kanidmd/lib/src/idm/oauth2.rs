@@ -527,16 +527,20 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidScope);
         }
 
-        let uat_scopes: BTreeSet<String> =o2rs.scope_maps
-                    .iter()
-                    .filter_map(|(u, m)| {
-                        if ident.is_memberof(*u) {
-                            Some(m.iter())
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten()
+        debug!(?o2rs.scope_maps);
+
+        let uat_scopes: BTreeSet<String> = o2rs
+            .scope_maps
+            .iter()
+            .filter_map(|(u, m)| {
+                trace!(?u);
+                if ident.is_memberof(*u) {
+                    Some(m.iter())
+                } else {
+                    None
+                }
+            })
+            .flatten()
             .cloned()
             .collect();
 
@@ -549,7 +553,8 @@ impl Oauth2ResourceServersReadTransaction {
         if avail_scopes.len() != req_scopes.len() {
             admin_warn!(
                 %ident,
-                %auth_req.scope,
+                requested_scopes = ?req_scopes,
+                available_scopes = ?uat_scopes,
                 "Identity does not have access to the requested scopes"
             );
             return Err(Oauth2Error::AccessDenied);
@@ -1426,7 +1431,7 @@ mod tests {
             ),
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_IDM_ALL_PERSONS, btreeset!["openid".to_string()])
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
@@ -2609,11 +2614,12 @@ mod tests {
                             PartialValue::new_iname("test_resource_server")
                         )),
                         ModifyList::new_list(vec![Modify::Present(
-
                             AttrString::from("oauth2_rs_scope_map"),
-                            Value::new_oauthscopemap(UUID_IDM_ALL_PERSONS, btreeset!["email".to_string()])
-                                .expect("invalid oauthscope")
-
+                            Value::new_oauthscopemap(
+                                UUID_IDM_ALL_ACCOUNTS,
+                                btreeset!["email".to_string(), "openid".to_string()],
+                            )
+                            .expect("invalid oauthscope"),
                         )]),
                     )
                 };

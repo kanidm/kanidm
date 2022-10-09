@@ -842,7 +842,6 @@ async fn test_server_rest_oauth2_basic_lifecycle() {
             None,
             Some("Test Integration"),
             Some("https://new_demo.example.com"),
-            Some(vec!["read", "email"]),
             true,
             true,
             true,
@@ -861,7 +860,7 @@ async fn test_server_rest_oauth2_basic_lifecycle() {
 
     // Check that we can add scope maps and delete them.
     rsclient
-        .idm_oauth2_rs_create_scope_map("test_integration", "system_admins", vec!["a", "b"])
+        .idm_oauth2_rs_update_scope_map("test_integration", "system_admins", vec!["a", "b"])
         .await
         .expect("Failed to create scope map");
 
@@ -874,10 +873,11 @@ async fn test_server_rest_oauth2_basic_lifecycle() {
 
     assert!(oauth2_config_updated != oauth2_config_updated2);
 
+    // Check we can update a scope map
     rsclient
-        .idm_oauth2_rs_delete_scope_map("test_integration", "system_admins")
+        .idm_oauth2_rs_update_scope_map("test_integration", "system_admins", vec!["a", "b", "c"])
         .await
-        .expect("Failed to delete scope map");
+        .expect("Failed to create scope map");
 
     let oauth2_config_updated3 = rsclient
         .idm_oauth2_rs_get("test_integration")
@@ -886,10 +886,26 @@ async fn test_server_rest_oauth2_basic_lifecycle() {
         .flatten()
         .expect("Failed to retrieve test_integration config");
 
-    eprintln!("{:?}", oauth2_config_updated);
-    eprintln!("{:?}", oauth2_config_updated3);
+    assert!(oauth2_config_updated2 != oauth2_config_updated3);
 
-    assert!(oauth2_config_updated == oauth2_config_updated3);
+    // Check we can delete a scope map.
+
+    rsclient
+        .idm_oauth2_rs_delete_scope_map("test_integration", "system_admins")
+        .await
+        .expect("Failed to delete scope map");
+
+    let oauth2_config_updated4 = rsclient
+        .idm_oauth2_rs_get("test_integration")
+        .await
+        .ok()
+        .flatten()
+        .expect("Failed to retrieve test_integration config");
+
+    eprintln!("{:?}", oauth2_config_updated);
+    eprintln!("{:?}", oauth2_config_updated4);
+
+    assert!(oauth2_config_updated == oauth2_config_updated4);
 
     // Delete the config
     rsclient

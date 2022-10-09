@@ -1616,6 +1616,14 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_oauth2_rs_get_basic_secret(
+        &self,
+        id: &str,
+    ) -> Result<Option<String>, ClientError> {
+        self.perform_get_request(format!("/v1/oauth2/{}/_basic_secret", id).as_str())
+            .await
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn idm_oauth2_rs_update(
         &self,
@@ -1623,7 +1631,6 @@ impl KanidmClient {
         name: Option<&str>,
         displayname: Option<&str>,
         origin: Option<&str>,
-        scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
         reset_sign_key: bool,
@@ -1647,12 +1654,6 @@ impl KanidmClient {
                 .attrs
                 .insert("oauth2_rs_origin".to_string(), vec![neworigin.to_string()]);
         }
-        if let Some(newscopes) = scopes {
-            update_oauth2_rs.attrs.insert(
-                "oauth2_rs_implicit_scopes".to_string(),
-                newscopes.into_iter().map(str::to_string).collect(),
-            );
-        }
         if reset_secret {
             update_oauth2_rs
                 .attrs
@@ -1675,7 +1676,7 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn idm_oauth2_rs_create_scope_map(
+    pub async fn idm_oauth2_rs_update_scope_map(
         &self,
         id: &str,
         group: &str,

@@ -78,31 +78,25 @@ async fn test_oauth2_openid_basic_flow() {
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update(
-            "test_integration",
-            None,
-            None,
-            None,
-            Some(vec!["read", "email", "openid"]),
-            false,
-            false,
-            false,
-        )
+        .idm_oauth2_rs_update("test_integration", None, None, None, true, true, true)
         .await
         .expect("Failed to update oauth2 config");
 
-    let oauth2_config = rsclient
-        .idm_oauth2_rs_get("test_integration")
+    rsclient
+        .idm_oauth2_rs_update_scope_map(
+            "test_integration",
+            "idm_all_accounts",
+            vec!["read", "email", "openid"],
+        )
+        .await
+        .expect("Failed to update oauth2 scopes");
+
+    let client_secret = rsclient
+        .idm_oauth2_rs_get_basic_secret("test_integration")
         .await
         .ok()
         .flatten()
-        .expect("Failed to retrieve test_integration config");
-
-    let client_secret = oauth2_config
-        .attrs
-        .get("oauth2_rs_basic_secret")
-        .map(|s| s[0].to_string())
-        .expect("No basic secret present");
+        .expect("Failed to retrieve test_integration basic secret");
 
     // Get our admin's auth token for our new client.
     // We have to re-auth to update the mail field.

@@ -594,18 +594,18 @@ pub enum Oauth2Opt {
     #[clap(name = "create")]
     /// Create a new oauth2 resource server
     CreateBasic(Oauth2BasicCreateOpt),
-    #[clap(name = "set_implicit_scopes")]
-    /// Set the list of scopes that are granted to all valid accounts.
-    SetImplictScopes(Oauth2SetImplicitScopes),
-    #[clap(name = "create_scope_map")]
-    /// Add a new mapping from a group to what scopes it provides
-    CreateScopeMap(Oauth2CreateScopeMapOpt),
+    #[clap(name = "update_scope_map", visible_aliases=&["create_scope_map"])]
+    /// Update or add a new mapping from a group to scopes that it provides to members
+    UpdateScopeMap(Oauth2CreateScopeMapOpt),
     #[clap(name = "delete_scope_map")]
     /// Remove a mapping from groups to scopes
     DeleteScopeMap(Oauth2DeleteScopeMapOpt),
     #[clap(name = "reset_secrets")]
     /// Reset the secrets associated to this resource server
     ResetSecrets(Named),
+    #[clap(name = "show_basic_secret")]
+    /// Show the associated basic secret for this resource server
+    ShowBasicSecret(Named),
     #[clap(name = "delete")]
     /// Delete a oauth2 resource server
     Delete(Named),

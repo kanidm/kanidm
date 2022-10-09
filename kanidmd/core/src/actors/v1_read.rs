@@ -1072,6 +1072,56 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
+    pub async fn handle_oauth2_basic_secret_read(
+        &self,
+        uat: Option<String>,
+        filter: Filter<FilterInvalid>,
+        eventid: Uuid,
+    ) -> Result<Option<String>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        // Make an event from the request
+        let srch =
+            match SearchEvent::from_internal_message(ident, &filter, None, &idms_prox_read.qs_read)
+            {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin oauth2 basic secret read: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+        trace!(?srch, "Begin event");
+
+        // We have to use search_ext to guarantee acs was applied.
+        match idms_prox_read.qs_read.search_ext(&srch) {
+            Ok(mut entries) => {
+                let r = entries
+                    .pop()
+                    // From the entry, turn it into the value
+                    .and_then(|entry| {
+                        entry
+                            .get_ava_single("oauth2_rs_basic_secret")
+                            .and_then(|v| v.get_secret_str().map(str::to_string))
+                    });
+                Ok(r)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_oauth2_authorise(
         &self,
         uat: Option<String>,

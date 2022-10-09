@@ -115,8 +115,9 @@ mod tests {
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_implicit_scopes",
-                Value::new_oauthscope("read").expect("Invalid scope")
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["read".to_string()])
+                    .expect("invalid oauthscope")
             )
         );
 
@@ -153,8 +154,9 @@ mod tests {
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_implicit_scopes",
-                Value::new_oauthscope("read").expect("Invalid scope")
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["read".to_string()])
+                    .expect("invalid oauthscope")
             ),
             ("oauth2_rs_basic_secret", Value::new_secret_str("12345")),
             ("oauth2_rs_token_key", Value::new_secret_str("12345"))

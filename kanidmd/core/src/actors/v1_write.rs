@@ -1081,7 +1081,7 @@ impl QueryServerWriteV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn handle_oauth2_scopemap_create(
+    pub async fn handle_oauth2_scopemap_update(
         &self,
         uat: Option<String>,
         group: String,
