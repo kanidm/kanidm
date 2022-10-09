@@ -46,8 +46,8 @@ if [ "$(which cargo | wc -l)" -eq 0 ]; then
     fi
 fi
 
-# this assumes the versions are in lock-step, which is fine at the moment.s
-KANIDM_VERSION="$(grep -ioE 'version.*' kanidm_tools/Cargo.toml | head -n1 | awk '{print $NF}' | tr -d '"')"
+# this assumes the versions are in lock-step, which is fine at the moment.
+KANIDM_VERSION="$(grep -ioE 'version.*' Cargo.toml | head -n1 | awk '{print $NF}' | tr -d '"')"
 
 # if we're in a github action, then it's easy to get the commit
 if [ -n "${GITHUB_SHA}" ]; then
