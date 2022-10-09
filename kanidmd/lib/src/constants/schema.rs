@@ -663,6 +663,37 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A reference to a group mapped to scopes for the associated oauth2 resource server"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "oauth2_rs_sup_scope_map"
+      ],
+      "syntax": [
+        "OAUTH_SCOPE_MAP"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000112"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: &str = r#"{
     "attrs": {
       "class": [
@@ -684,7 +715,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: &str = r#"{
         "oauth2_rs_basic_secret"
       ],
       "syntax": [
-        "UTF8STRING"
+        "SECRET_UTF8STRING"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000083"
@@ -1434,7 +1465,7 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
       "systemmay": [
         "description",
         "oauth2_rs_scope_map",
-        "oauth2_rs_implicit_scopes",
+        "oauth2_rs_sup_scope_map",
         "oauth2_allow_insecure_client_disable_pkce",
         "rs256_private_key_der",
         "oauth2_jwt_legacy_crypto_enable",

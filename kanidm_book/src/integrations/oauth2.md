@@ -83,19 +83,29 @@ a user wants to login, it may only request "access" as a scope from Kanidm.
 As each resource server may have its own scopes and understanding of these, Kanidm isolates
 scopes to each resource server connected to Kanidm. Kanidm has two methods of granting scopes to accounts (users).
 
-The first are implicit scopes. These are scopes granted to all accounts that Kanidm holds.
-
-The second is scope mappings. These provide a set of scopes if a user is a member of a specific
+The first is scope mappings. These provide a set of scopes if a user is a member of a specific
 group within Kanidm. This allows you to create a relationship between the scopes of a resource
 server, and the groups/roles in Kanidm which can be specific to that resource server.
 
 For an authorisation to proceed, all scopes requested must be available in the final scope set
-that is granted to the account. This final scope set can be built from implicit and mapped
-scopes.
+that is granted to the account.
 
-This use of scopes is the primary means to control who can access what resources. For example, if
-you have a resource server that will always request a scope of "read", then you can limit the
-"read" scope to a single group of users by a scope map so that only they may access that resource.
+The second is supplemental scope mappings. These function the same as scope maps where membership
+of a group provides a set of scopes to the account, however these scopes are NOT consulted during
+authorisation decisions made by Kanidm. These scopes exists to allow optional properties to be
+provided (such as personal information about a subset of accounts to be revealed) or so that the resource server
+may make it's own authorisation decisions based on the provided scopes.
+
+This use of scopes is the primary means to control who can access what resources. These access decisions
+can take place either on Kanidm or the resource server.
+
+For example, if you have a resource server that always requests a scope of "read", then users
+with scope maps that supply the read scope will be allowed by Kanidm to proceed to the resource server.
+Kanidm can then provide the supplementary scopes into provided tokens, so that the resource server
+can use these to choose if it wishes to display UI elements. If a user has a supplemental "admin"
+scope, then that user may be able to access an administration panel of the resource server. In this
+way Kanidm is still providing the authorisation information, but the control is then exercised by
+the resource server.
 
 ## Configuration
 
@@ -110,19 +120,14 @@ You can create a new resource server with:
     kanidm system oauth2 create <name> <displayname> <origin>
     kanidm system oauth2 create nextcloud "Nextcloud Production" https://nextcloud.example.com
 
-If you wish to create implicit scopes you can set these with:
-
-    kanidm system oauth2 set_implicit_scopes <name> [scopes]...
-    kanidm system oauth2 set_implicit_scopes nextcloud login read_user
-
 You can create a scope map with:
 
-    kanidm system oauth2 create_scope_map <name> <kanidm_group_name> [scopes]...
-    kanidm system oauth2 create_scope_map nextcloud nextcloud_admins admin
+    kanidm system oauth2 update_scope_map <name> <kanidm_group_name> [scopes]...
+    kanidm system oauth2 update_scope_map nextcloud nextcloud_admins admin
 
 > **WARNING**
 > If you are creating an OpenID Connect (OIDC) resource server you *MUST* provide a
-> scope map OR implicit scope named 'openid'. Without this, OpenID clients *WILL NOT WORK*
+> scope map named 'openid'. Without this, OpenID clients *WILL NOT WORK*
 
 > **HINT**
 > OpenID connect allows a number of scopes that affect the content of the resulting
@@ -135,6 +140,11 @@ You can create a scope map with:
 > * address - (address)
 > * phone - (phone\_number, phone\_number\_verified)
 >
+
+You can create a supplemental scope map with:
+
+    kanidm system oauth2 update_sup_scope_map <name> <kanidm_group_name> [scopes]...
+    kanidm system oauth2 update_sup_scope_map nextcloud nextcloud_admins admin
 
 Once created you can view the details of the resource server.
 
@@ -274,6 +284,13 @@ these to a group with a scope map due to Velociraptors high impact.
 
 ### Vouch Proxy
 
+> **WARNING**
+> Vouch proxy requires a unique identifier but does not use the proper scope, "sub". It uses the fields
+> "username" or "email" as primary identifiers instead. As a result, this can cause user or deployment issues, at
+> worst security bypasses. You should avoid Vouch Proxy if possible due to these issues.
+> * https://github.com/vouch/vouch-proxy/issues/309
+> * https://github.com/vouch/vouch-proxy/issues/310
+
 _You need to run at least the version 0.37.0_.
 
 Vouch Proxy supports multiple OAuth and OIDC login providers.
@@ -288,7 +305,7 @@ oauth:
   code_challenge_method: S256
   provider: oidc
   scopes:
-    - email # Important, vouch proxy requiers a username (but does not use the proper scope, sub) or an email see https://github.com/vouch/vouch-proxy/issues/309, 310
+    - email # Required due to vouch proxy reliance on mail as a primary identifier
   token_url: https://idm.wherekanidmruns.com/oauth2/token
   user_info_url: https://idm.wherekanidmruns.com/oauth2/openid/<oauth2_rs_name>/userinfo
 ```

@@ -6,10 +6,12 @@ impl Oauth2Opt {
             Oauth2Opt::List(copt) => copt.debug,
             Oauth2Opt::Get(nopt) => nopt.copt.debug,
             Oauth2Opt::CreateBasic(cbopt) => cbopt.nopt.copt.debug,
-            Oauth2Opt::SetImplictScopes(cbopt) => cbopt.nopt.copt.debug,
-            Oauth2Opt::CreateScopeMap(cbopt) => cbopt.nopt.copt.debug,
+            Oauth2Opt::UpdateScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::DeleteScopeMap(cbopt) => cbopt.nopt.copt.debug,
+            Oauth2Opt::UpdateSupScopeMap(cbopt) => cbopt.nopt.copt.debug,
+            Oauth2Opt::DeleteSupScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::ResetSecrets(cbopt) => cbopt.copt.debug,
+            Oauth2Opt::ShowBasicSecret(nopt) => nopt.copt.debug,
             Oauth2Opt::Delete(nopt) => nopt.copt.debug,
             Oauth2Opt::SetDisplayname(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::EnablePkce(nopt) => nopt.copt.debug,
@@ -52,29 +54,10 @@ impl Oauth2Opt {
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
-            Oauth2Opt::SetImplictScopes(cbopt) => {
+            Oauth2Opt::UpdateScopeMap(cbopt) => {
                 let client = cbopt.nopt.copt.to_client().await;
                 match client
-                    .idm_oauth2_rs_update(
-                        cbopt.nopt.name.as_str(),
-                        None,
-                        None,
-                        None,
-                        Some(cbopt.scopes.iter().map(|s| s.as_str()).collect()),
-                        false,
-                        false,
-                        false,
-                    )
-                    .await
-                {
-                    Ok(_) => println!("Success"),
-                    Err(e) => error!("Error -> {:?}", e),
-                }
-            }
-            Oauth2Opt::CreateScopeMap(cbopt) => {
-                let client = cbopt.nopt.copt.to_client().await;
-                match client
-                    .idm_oauth2_rs_create_scope_map(
+                    .idm_oauth2_rs_update_scope_map(
                         cbopt.nopt.name.as_str(),
                         cbopt.group.as_str(),
                         cbopt.scopes.iter().map(|s| s.as_str()).collect(),
@@ -95,22 +78,56 @@ impl Oauth2Opt {
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
-            Oauth2Opt::ResetSecrets(cbopt) => {
-                let client = cbopt.copt.to_client().await;
+            Oauth2Opt::UpdateSupScopeMap(cbopt) => {
+                let client = cbopt.nopt.copt.to_client().await;
                 match client
-                    .idm_oauth2_rs_update(
-                        cbopt.name.as_str(),
-                        None,
-                        None,
-                        None,
-                        None,
-                        true,
-                        true,
-                        true,
+                    .idm_oauth2_rs_update_sup_scope_map(
+                        cbopt.nopt.name.as_str(),
+                        cbopt.group.as_str(),
+                        cbopt.scopes.iter().map(|s| s.as_str()).collect(),
                     )
                     .await
                 {
                     Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::DeleteSupScopeMap(cbopt) => {
+                let client = cbopt.nopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_delete_sup_scope_map(
+                        cbopt.nopt.name.as_str(),
+                        cbopt.group.as_str(),
+                    )
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::ResetSecrets(cbopt) => {
+                let client = cbopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_update(cbopt.name.as_str(), None, None, None, true, true, true)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::ShowBasicSecret(nopt) => {
+                let client = nopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_get_basic_secret(nopt.name.as_str())
+                    .await
+                {
+                    Ok(Some(secret)) => {
+                        println!("{secret}");
+                        eprintln!("Success");
+                    }
+                    Ok(None) => {
+                        eprintln!("No secret configured");
+                    }
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
@@ -128,7 +145,6 @@ impl Oauth2Opt {
                         cbopt.nopt.name.as_str(),
                         None,
                         Some(cbopt.displayname.as_str()),
-                        None,
                         None,
                         false,
                         false,

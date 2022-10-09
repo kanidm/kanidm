@@ -1081,7 +1081,7 @@ impl QueryServerWriteV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn handle_oauth2_scopemap_create(
+    pub async fn handle_oauth2_scopemap_update(
         &self,
         uat: Option<String>,
         group: String,
@@ -1168,6 +1168,120 @@ impl QueryServerWriteV1 {
             })?;
 
         let ml = ModifyList::new_remove("oauth2_rs_scope_map", PartialValue::Refer(group_uuid));
+
+        let mdf = match ModifyEvent::from_internal_parts(
+            ident,
+            &ml,
+            &filter,
+            &idms_prox_write.qs_write,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                admin_error!(err = ?e, "Failed to begin modify");
+                return Err(e);
+            }
+        };
+
+        trace!(?mdf, "Begin modify event");
+
+        idms_prox_write
+            .qs_write
+            .modify(&mdf)
+            .and_then(|_| idms_prox_write.commit().map(|_| ()))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_sup_scopemap_update(
+        &self,
+        uat: Option<String>,
+        group: String,
+        scopes: Vec<String>,
+        filter: Filter<FilterInvalid>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        // Because this is from internal, we can generate a real modlist, rather
+        // than relying on the proto ones.
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let group_uuid = idms_prox_write
+            .qs_write
+            .name_to_uuid(group.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving group name to target");
+                e
+            })?;
+
+        let ml = ModifyList::new_append(
+            "oauth2_rs_sup_scope_map",
+            Value::new_oauthscopemap(group_uuid, scopes.into_iter().collect()).ok_or_else(
+                || OperationError::InvalidAttribute("Invalid Oauth Scope Map syntax".to_string()),
+            )?,
+        );
+
+        let mdf = match ModifyEvent::from_internal_parts(
+            ident,
+            &ml,
+            &filter,
+            &idms_prox_write.qs_write,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                admin_error!(err = ?e, "Failed to begin modify");
+                return Err(e);
+            }
+        };
+
+        trace!(?mdf, "Begin modify event");
+
+        idms_prox_write
+            .qs_write
+            .modify(&mdf)
+            .and_then(|_| idms_prox_write.commit().map(|_| ()))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_sup_scopemap_delete(
+        &self,
+        uat: Option<String>,
+        group: String,
+        filter: Filter<FilterInvalid>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
+        let ct = duration_from_epoch_now();
+
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let group_uuid = idms_prox_write
+            .qs_write
+            .name_to_uuid(group.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving group name to target");
+                e
+            })?;
+
+        let ml = ModifyList::new_remove("oauth2_rs_sup_scope_map", PartialValue::Refer(group_uuid));
 
         let mdf = match ModifyEvent::from_internal_parts(
             ident,

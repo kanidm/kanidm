@@ -14,7 +14,7 @@ macro_rules! keygen_transform {
         if $e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
             if !$e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
-                let v = Value::new_utf8(password_from_random());
+                let v = Value::SecretValue(password_from_random());
                 $e.add_ava("oauth2_rs_basic_secret", v);
             }
             if !$e.attribute_pres("oauth2_rs_token_key") {
@@ -115,8 +115,9 @@ mod tests {
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_implicit_scopes",
-                Value::new_oauthscope("read").expect("Invalid scope")
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["read".to_string()])
+                    .expect("invalid oauthscope")
             )
         );
 
@@ -153,10 +154,11 @@ mod tests {
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             (
-                "oauth2_rs_implicit_scopes",
-                Value::new_oauthscope("read").expect("Invalid scope")
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["read".to_string()])
+                    .expect("invalid oauthscope")
             ),
-            ("oauth2_rs_basic_secret", Value::new_utf8s("12345")),
+            ("oauth2_rs_basic_secret", Value::new_secret_str("12345")),
             ("oauth2_rs_token_key", Value::new_secret_str("12345"))
         );
 
@@ -179,7 +181,7 @@ mod tests {
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_token_key"));
                 // Check the values are different.
-                assert!(e.get_ava_single_utf8("oauth2_rs_basic_secret") != Some("12345"));
+                assert!(e.get_ava_single_secret("oauth2_rs_basic_secret") != Some("12345"));
                 assert!(e.get_ava_single_secret("oauth2_rs_token_key") != Some("12345"));
             }
         );

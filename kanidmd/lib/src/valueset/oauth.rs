@@ -193,11 +193,20 @@ impl ValueSetT for ValueSetOauthScopeMap {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::OauthScopeMap(u, m) => {
-                if let BTreeEntry::Vacant(e) = self.map.entry(u) {
-                    e.insert(m);
-                    Ok(true)
-                } else {
-                    Ok(false)
+                match self.map.entry(u) {
+                    BTreeEntry::Vacant(e) => {
+                        e.insert(m);
+                        Ok(true)
+                    }
+                    // In the case that the value already exists, we update it. This is a quirk
+                    // of the oauth2 scope map type where add_ava assumes that a value's entire state
+                    // will be reflected, but we were only checking the *uuid* existed, not it's
+                    // associated map state. So by always replacing on a present, we are true to
+                    // the intent of the api.
+                    BTreeEntry::Occupied(mut e) => {
+                        e.insert(m);
+                        Ok(true)
+                    }
                 }
             }
             _ => Err(OperationError::InvalidValueState),
