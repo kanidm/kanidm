@@ -1,0 +1,25 @@
+
+
+OTP tokens are stored in *related* entries:
+
+Not sure how you would determine this in an import?
+
+token key is base64 standard no pad
+
+entryuuid: 94dbeb81-45f8-11ed-a50d-919b4b1a5ec0
+syncstate: Add
+dn: ipatokenuniqueid=16b6d328-cead-4b71-af5e-0a7b8622b204,cn=otp,dc=dev,dc=blackhats,dc=net,dc=au
+ipatokenOTPalgorithm: sha1
+ipatokenOTPdigits: 6
+ipatokenOTPkey: iWM6XXyQt9GZV/yiPHYW/w4qjpaIJ8IlF6DlFndHe+C/zu4
+ipatokenOwner: uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au
+ipatokenTOTPclockOffset: 0
+ipatokenTOTPtimeStep: 30
+ipatokenUniqueID: 16b6d328-cead-4b71-af5e-0a7b8622b204
+objectClass: ipatoken
+objectClass: ipatokentotp
+objectClass: top
+
+
+
+
