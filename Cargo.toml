@@ -64,6 +64,7 @@ futures-util = "^0.3.21"
 gloo = "^0.8.0"
 gloo-net = "0.2.4"
 hashbrown = { version = "0.12.3", features = ["serde", "inline-more", "ahash"] }
+hex = "^0.4.3"
 http-types = "^2.12.0"
 idlset = "^0.2.4"
 # idlset = { path = "../idlset" }

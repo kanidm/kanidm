@@ -3,7 +3,8 @@ use std::time::{Duration, Instant};
 
 use hashbrown::{HashMap as Map, HashSet};
 use kanidm_proto::v1::{BackupCodesView, CredentialDetail, CredentialDetailType, OperationError};
-use openssl::hash::MessageDigest;
+use openssl::hash::{self, MessageDigest};
+use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
 use rand::prelude::*;
@@ -24,9 +25,16 @@ use crate::credential::totp::Totp;
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 // I choose tinfoil hat though ...
 const PBKDF2_SALT_LEN: usize = 24;
+
+const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
+
+// Min number of rounds for a pbkdf2
+pub const PBKDF2_MIN_NIST_COST: usize = 10000;
+
 // 64 * u8 -> 512 bits of out.
 const PBKDF2_KEY_LEN: usize = 64;
-const PBKDF2_IMPORT_MIN_LEN: usize = 32;
+const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
+const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
 const DS_SSHA512_SALT_LEN: usize = 8;
 const DS_SSHA512_HASH_LEN: usize = 64;
@@ -46,11 +54,20 @@ pub enum Policy {
 // I don't really feel like adding in so many restrictions, so I'll use
 // pbkdf2 in openssl because it doesn't have the same limits.
 #[derive(Clone, Debug, PartialEq)]
+#[allow(non_camel_case_types)]
 enum Kdf {
     //     cost, salt,   hash
     PBKDF2(usize, Vec<u8>, Vec<u8>),
+
+    // Imported types, will upgrade to the above.
+    //         cost,   salt,    hash
+    PBKDF2_SHA1(usize, Vec<u8>, Vec<u8>),
+    //           cost,   salt,    hash
+    PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
     //      salt     hash
     SSHA512(Vec<u8>, Vec<u8>),
+    //     hash
+    NT_MD4(Vec<u8>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -66,11 +83,43 @@ impl TryFrom<DbPasswordV1> for Password {
             DbPasswordV1::PBKDF2(c, s, h) => Ok(Password {
                 material: Kdf::PBKDF2(c, s, h),
             }),
+            DbPasswordV1::PBKDF2_SHA1(c, s, h) => Ok(Password {
+                material: Kdf::PBKDF2_SHA1(c, s, h),
+            }),
+            DbPasswordV1::PBKDF2_SHA512(c, s, h) => Ok(Password {
+                material: Kdf::PBKDF2_SHA512(c, s, h),
+            }),
             DbPasswordV1::SSHA512(s, h) => Ok(Password {
                 material: Kdf::SSHA512(s, h),
             }),
+            DbPasswordV1::NT_MD4(h) => Ok(Password {
+                material: Kdf::NT_MD4(h),
+            }),
         }
     }
+}
+
+// OpenLDAP based their PBKDF2 implementation on passlib from python, that uses a
+// non-standard base64 altchar set and padding that is not supported by
+// anything else in the world. To manage this, we only ever encode to base64 with
+// no pad but we have to remap ab64 to b64. This function allows b64 standard with
+// padding to pass, and remaps ab64 to b64 standard with padding.
+macro_rules! ab64_to_b64 {
+    ($ab64:expr) => {{
+        let mut s = $ab64.replace(".", "+");
+        match s.len() & 3 {
+            0 => {
+                // Do nothing
+            }
+            1 => {
+                // One is invalid, do nothing, we'll error in base64
+            }
+            2 => s.push_str("=="),
+            3 => s.push_str("="),
+            _ => unreachable!(),
+        }
+        s
+    }};
 }
 
 impl TryFrom<&str> for Password {
@@ -93,7 +142,7 @@ impl TryFrom<&str> for Password {
                     let c = cost.parse::<usize>().map_err(|_| ())?;
                     let s: Vec<_> = salt.as_bytes().to_vec();
                     let h = base64::decode(hash).map_err(|_| ())?;
-                    if h.len() < PBKDF2_IMPORT_MIN_LEN {
+                    if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
                         return Err(());
                     }
                     return Ok(Password {
@@ -102,6 +151,34 @@ impl TryFrom<&str> for Password {
                 }
                 _ => {}
             }
+        }
+
+        if value.starts_with("ipaNTHash: ") {
+            let nt_md4 = match value.split_once(" ") {
+                Some((_, v)) => v,
+                None => {
+                    unreachable!();
+                }
+            };
+
+            let h = base64::decode_config(nt_md4, base64::STANDARD_NO_PAD).map_err(|_| ())?;
+            return Ok(Password {
+                material: Kdf::NT_MD4(h),
+            });
+        }
+
+        if value.starts_with("sambaNTPassword: ") {
+            let nt_md4 = match value.split_once(" ") {
+                Some((_, v)) => v,
+                None => {
+                    unreachable!();
+                }
+            };
+
+            let h = hex::decode(nt_md4).map_err(|_| ())?;
+            return Ok(Password {
+                material: Kdf::NT_MD4(h),
+            });
         }
 
         // Test 389ds formats
@@ -114,6 +191,78 @@ impl TryFrom<&str> for Password {
             return Ok(Password {
                 material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
             });
+        }
+
+        // Test for OpenLDAP formats
+        if value.starts_with("{PBKDF2}")
+            || value.starts_with("{PBKDF2-SHA1}")
+            || value.starts_with("{PBKDF2-SHA256}")
+            || value.starts_with("{PBKDF2-SHA512}")
+        {
+            let ol_pbkdf2 = match value.split_once("}") {
+                Some((_, v)) => v,
+                None => {
+                    unreachable!();
+                }
+            };
+
+            let ol_pbkdf: Vec<&str> = ol_pbkdf2.split('$').collect();
+            if ol_pbkdf.len() == 3 {
+                let cost = ol_pbkdf[0];
+                let salt = ol_pbkdf[1];
+                let hash = ol_pbkdf[2];
+
+                let c = cost.parse::<usize>().map_err(|_| ())?;
+
+                let s = ab64_to_b64!(salt);
+                let s =
+                    base64::decode_config(&s, base64::STANDARD.decode_allow_trailing_bits(true))
+                        .map_err(|e| {
+                            error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                        })?;
+
+                let h = ab64_to_b64!(hash);
+                let h =
+                    base64::decode_config(&h, base64::STANDARD.decode_allow_trailing_bits(true))
+                        .map_err(|e| {
+                            error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                        })?;
+
+                // This is just sha1 in a trenchcoat.
+                if value.strip_prefix("{PBKDF2}").is_some()
+                    || value.strip_prefix("{PBKDF2-SHA1}").is_some()
+                {
+                    if h.len() < PBKDF2_SHA1_MIN_KEY_LEN {
+                        return Err(());
+                    }
+                    return Ok(Password {
+                        material: Kdf::PBKDF2_SHA1(c, s, h),
+                    });
+                }
+
+                if value.strip_prefix("{PBKDF2-SHA256}").is_some() {
+                    if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
+                        return Err(());
+                    }
+                    return Ok(Password {
+                        material: Kdf::PBKDF2(c, s, h),
+                    });
+                }
+
+                if value.strip_prefix("{PBKDF2-SHA512}").is_some() {
+                    if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
+                        return Err(());
+                    }
+                    return Ok(Password {
+                        material: Kdf::PBKDF2_SHA512(c, s, h),
+                    });
+                }
+
+                // Should be no way to get here!
+                unreachable!();
+            } else {
+                warn!("oldap pbkdf2 found but invalid number of elements?");
+            }
         }
 
         // Nothing matched to this point.
@@ -173,13 +322,47 @@ impl Password {
                 // We have to get the number of bits to derive from our stored hash
                 // as some imported hash types may have variable lengths
                 let key_len = key.len();
-                debug_assert!(key_len >= PBKDF2_IMPORT_MIN_LEN);
+                debug_assert!(key_len >= PBKDF2_MIN_NIST_KEY_LEN);
                 let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
                 pbkdf2_hmac(
                     cleartext.as_bytes(),
                     salt.as_slice(),
                     *cost,
                     MessageDigest::sha256(),
+                    chal_key.as_mut_slice(),
+                )
+                .map_err(|_| OperationError::CryptographyError)
+                .map(|()| {
+                    // Actually compare the outputs.
+                    &chal_key == key
+                })
+            }
+            Kdf::PBKDF2_SHA1(cost, salt, key) => {
+                let key_len = key.len();
+                debug_assert!(key_len >= PBKDF2_SHA1_MIN_KEY_LEN);
+                let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
+                pbkdf2_hmac(
+                    cleartext.as_bytes(),
+                    salt.as_slice(),
+                    *cost,
+                    MessageDigest::sha1(),
+                    chal_key.as_mut_slice(),
+                )
+                .map_err(|_| OperationError::CryptographyError)
+                .map(|()| {
+                    // Actually compare the outputs.
+                    &chal_key == key
+                })
+            }
+            Kdf::PBKDF2_SHA512(cost, salt, key) => {
+                let key_len = key.len();
+                debug_assert!(key_len >= PBKDF2_MIN_NIST_KEY_LEN);
+                let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
+                pbkdf2_hmac(
+                    cleartext.as_bytes(),
+                    salt.as_slice(),
+                    *cost,
+                    MessageDigest::sha512(),
                     chal_key.as_mut_slice(),
                 )
                 .map_err(|_| OperationError::CryptographyError)
@@ -195,6 +378,23 @@ impl Password {
                 let r = hasher.finish();
                 Ok(key == &(r.to_vec()))
             }
+            Kdf::NT_MD4(key) => {
+                // We need to get the cleartext to utf16le for reasons.
+                let clear_utf16le: Vec<u8> = cleartext
+                    .encode_utf16()
+                    .map(|c| c.to_le_bytes())
+                    .flat_map(|i| i.into_iter())
+                    .collect();
+
+                let dgst = MessageDigest::from_nid(Nid::MD4).ok_or_else(|| {
+                    error!("Unable to access MD4 - fips mode enabled?");
+                    OperationError::CryptographyError
+                })?;
+
+                hash::hash(dgst, &clear_utf16le)
+                    .map_err(|_| OperationError::CryptographyError)
+                    .map(|chal_key| chal_key.as_ref() == key)
+            }
         }
     }
 
@@ -203,12 +403,26 @@ impl Password {
             Kdf::PBKDF2(cost, salt, hash) => {
                 DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone())
             }
+            Kdf::PBKDF2_SHA1(cost, salt, hash) => {
+                DbPasswordV1::PBKDF2_SHA1(*cost, salt.clone(), hash.clone())
+            }
+            Kdf::PBKDF2_SHA512(cost, salt, hash) => {
+                DbPasswordV1::PBKDF2_SHA512(*cost, salt.clone(), hash.clone())
+            }
             Kdf::SSHA512(salt, hash) => DbPasswordV1::SSHA512(salt.clone(), hash.clone()),
+            Kdf::NT_MD4(hash) => DbPasswordV1::NT_MD4(hash.clone()),
         }
     }
 
     pub fn requires_upgrade(&self) -> bool {
-        !matches!(&self.material, Kdf::PBKDF2(_, _, _))
+        match &self.material {
+            Kdf::PBKDF2_SHA512(cost, salt, hash) | Kdf::PBKDF2(cost, salt, hash) => {
+                *cost < PBKDF2_MIN_NIST_COST
+                    || salt.len() < PBKDF2_MIN_NIST_SALT_LEN
+                    || hash.len() < PBKDF2_MIN_NIST_KEY_LEN
+            }
+            Kdf::PBKDF2_SHA1(_, _, _) | Kdf::SSHA512(_, _) | Kdf::NT_MD4(_) => true,
+        }
     }
 }
 
@@ -927,6 +1141,77 @@ mod tests {
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
         // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    // Can be generated with:
+    // slappasswd -s password -o module-load=/usr/lib64/openldap/pw-argon2.so -h {ARGON2}
+
+    #[test]
+    fn test_password_from_openldap_pkbdf2() {
+        let im_pw = "{PBKDF2}10000$IlfapjA351LuDSwYC0IQ8Q$saHqQTuYnjJN/tmAndT.8mJt.6w";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_openldap_pkbdf2_sha1() {
+        let im_pw = "{PBKDF2-SHA1}10000$ZBEH6B07rgQpJSikyvMU2w$TAA03a5IYkz1QlPsbJKvUsTqNV";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_openldap_pkbdf2_sha256() {
+        let im_pw = "{PBKDF2-SHA256}10000$henZGfPWw79Cs8ORDeVNrQ$1dTJy73v6n3bnTmTZFghxHXHLsAzKaAy8SksDfZBPIw";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(!r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_openldap_pkbdf2_sha512() {
+        let im_pw = "{PBKDF2-SHA512}10000$Je1Uw19Bfv5lArzZ6V3EPw$g4T/1sqBUYWl9o93MVnyQ/8zKGSkPbKaXXsT8WmysXQJhWy8MRP2JFudSL.N9RklQYgDPxPjnfum/F2f/TrppA";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(!r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    /*
+    // Not supported in openssl, may need an external crate.
+    #[test]
+    fn test_password_from_openldap_argon2() {
+        let im_pw = "{ARGON2}$argon2id$v=19$m=65536,t=2,p=1$IyTQMsvzB2JHDiWx8fq7Ew$VhYOA7AL0kbRXI5g2kOyyp8St1epkNj7WZyUY4pAIQQ"
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+    */
+
+    #[test]
+    fn test_password_from_ipa_nt_hash() {
+        // Base64 no pad
+        let im_pw = "ipaNTHash: iEb36u6PsRetBr3YMLdYbA";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_samba_nt_hash() {
+        // Base64 no pad
+        let im_pw = "sambaNTPassword: 8846F7EAEE8FB117AD06BDD830B7586C";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
         assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
