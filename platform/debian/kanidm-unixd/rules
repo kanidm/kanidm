@@ -55,3 +55,7 @@ override_dh_installexamples:
 		-g root -o root \
 		examples/kanidm \
 		${SHARED_DIR}/
+	install -D \
+		-g root -o root \
+		examples/config \
+		${SHARED_DIR}/
