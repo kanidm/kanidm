@@ -3,9 +3,9 @@
         &quot;class&quot;: [&quot;dyngroup&quot;, &quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_all_persons&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-000000000035&quot;],
-        &quot;description&quot;: [&quot;Builtin IDM dynamic group containing all persons&quot;],
+        &quot;description&quot;: [&quot;Builtin IDM dynamic group containing all persons that can authenticate&quot;],
         &quot;dyngroup_filter&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;class\&quot;,\&quot;person\&quot;]}&quot;
+            &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}]}&quot;
         ]
     }
 }&quot;#;</code></pre></div></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>

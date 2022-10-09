@@ -2606,6 +2606,15 @@
 <span id="2606">2606</span>
 <span id="2607">2607</span>
 <span id="2608">2608</span>
+<span id="2609">2609</span>
+<span id="2610">2610</span>
+<span id="2611">2611</span>
+<span id="2612">2612</span>
+<span id="2613">2613</span>
+<span id="2614">2614</span>
+<span id="2615">2615</span>
+<span id="2616">2616</span>
+<span id="2617">2617</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Access Control Profiles</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This is a pretty important and security sensitive part of the code - it&#39;s</span>
@@ -2887,7 +2896,16 @@
     <span class="comment">// the acp update routine.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    <span class="comment">// Must be</span>
+    <span class="comment">//   Group</span>
     <span class="ident">receiver</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
+    <span class="comment">// or</span>
+    <span class="comment">//  Filter</span>
+    <span class="comment">//  Group</span>
+    <span class="comment">//  Self</span>
+    <span class="comment">// and</span>
+    <span class="comment">//  exclude</span>
+    <span class="comment">//    Group</span>
     <span class="ident">targetscope</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
 }
 

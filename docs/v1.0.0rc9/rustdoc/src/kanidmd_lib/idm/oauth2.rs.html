@@ -2739,6 +2739,112 @@
 <span id="2739">2739</span>
 <span id="2740">2740</span>
 <span id="2741">2741</span>
+<span id="2742">2742</span>
+<span id="2743">2743</span>
+<span id="2744">2744</span>
+<span id="2745">2745</span>
+<span id="2746">2746</span>
+<span id="2747">2747</span>
+<span id="2748">2748</span>
+<span id="2749">2749</span>
+<span id="2750">2750</span>
+<span id="2751">2751</span>
+<span id="2752">2752</span>
+<span id="2753">2753</span>
+<span id="2754">2754</span>
+<span id="2755">2755</span>
+<span id="2756">2756</span>
+<span id="2757">2757</span>
+<span id="2758">2758</span>
+<span id="2759">2759</span>
+<span id="2760">2760</span>
+<span id="2761">2761</span>
+<span id="2762">2762</span>
+<span id="2763">2763</span>
+<span id="2764">2764</span>
+<span id="2765">2765</span>
+<span id="2766">2766</span>
+<span id="2767">2767</span>
+<span id="2768">2768</span>
+<span id="2769">2769</span>
+<span id="2770">2770</span>
+<span id="2771">2771</span>
+<span id="2772">2772</span>
+<span id="2773">2773</span>
+<span id="2774">2774</span>
+<span id="2775">2775</span>
+<span id="2776">2776</span>
+<span id="2777">2777</span>
+<span id="2778">2778</span>
+<span id="2779">2779</span>
+<span id="2780">2780</span>
+<span id="2781">2781</span>
+<span id="2782">2782</span>
+<span id="2783">2783</span>
+<span id="2784">2784</span>
+<span id="2785">2785</span>
+<span id="2786">2786</span>
+<span id="2787">2787</span>
+<span id="2788">2788</span>
+<span id="2789">2789</span>
+<span id="2790">2790</span>
+<span id="2791">2791</span>
+<span id="2792">2792</span>
+<span id="2793">2793</span>
+<span id="2794">2794</span>
+<span id="2795">2795</span>
+<span id="2796">2796</span>
+<span id="2797">2797</span>
+<span id="2798">2798</span>
+<span id="2799">2799</span>
+<span id="2800">2800</span>
+<span id="2801">2801</span>
+<span id="2802">2802</span>
+<span id="2803">2803</span>
+<span id="2804">2804</span>
+<span id="2805">2805</span>
+<span id="2806">2806</span>
+<span id="2807">2807</span>
+<span id="2808">2808</span>
+<span id="2809">2809</span>
+<span id="2810">2810</span>
+<span id="2811">2811</span>
+<span id="2812">2812</span>
+<span id="2813">2813</span>
+<span id="2814">2814</span>
+<span id="2815">2815</span>
+<span id="2816">2816</span>
+<span id="2817">2817</span>
+<span id="2818">2818</span>
+<span id="2819">2819</span>
+<span id="2820">2820</span>
+<span id="2821">2821</span>
+<span id="2822">2822</span>
+<span id="2823">2823</span>
+<span id="2824">2824</span>
+<span id="2825">2825</span>
+<span id="2826">2826</span>
+<span id="2827">2827</span>
+<span id="2828">2828</span>
+<span id="2829">2829</span>
+<span id="2830">2830</span>
+<span id="2831">2831</span>
+<span id="2832">2832</span>
+<span id="2833">2833</span>
+<span id="2834">2834</span>
+<span id="2835">2835</span>
+<span id="2836">2836</span>
+<span id="2837">2837</span>
+<span id="2838">2838</span>
+<span id="2839">2839</span>
+<span id="2840">2840</span>
+<span id="2841">2841</span>
+<span id="2842">2842</span>
+<span id="2843">2843</span>
+<span id="2844">2844</span>
+<span id="2845">2845</span>
+<span id="2846">2846</span>
+<span id="2847">2847</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -3212,6 +3318,9 @@
         }
 
         <span class="kw">let</span> <span class="ident">code_challenge</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pkce_request</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">auth_req</span>.<span class="ident">pkce_request</span> {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">o2rs</span>.<span class="ident">enable_pkce</span> {
+                <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">o2rs</span>.<span class="ident">name</span>, <span class="string">&quot;Insecure rs configuration - pkce is not enforced, but rs is requesting it!&quot;</span>);
+            }
             <span class="comment">// CodeChallengeMethod must be S256</span>
             <span class="kw">if</span> <span class="ident">pkce_request</span>.<span class="ident">code_challenge_method</span> <span class="op">!</span><span class="op">=</span> <span class="ident">CodeChallengeMethod::S256</span> {
                 <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 code_challenge_method (must be &#39;S256&#39;)&quot;</span>);
@@ -3591,6 +3700,9 @@
                 })
             })<span class="question-mark">?</span>;
 
+        <span class="comment">// If we have a verifier present, we MUST assert that a code challenge is present!</span>
+        <span class="comment">// It is worth noting here that code_xchg is *server issued* and encrypted, with</span>
+        <span class="comment">// a short validity period. The client controlled value is in token_req.code_verifier</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">code_challenge</span>) <span class="op">=</span> <span class="ident">code_xchg</span>.<span class="ident">code_challenge</span> {
             <span class="comment">// Validate the code_verifier</span>
             <span class="kw">let</span> <span class="ident">code_verifier</span> <span class="op">=</span> <span class="ident">token_req</span>.<span class="ident">code_verifier</span>
@@ -3612,6 +3724,11 @@
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">o2rs</span>.<span class="ident">enable_pkce</span> {
             <span class="macro">security_info!</span>(
                 <span class="string">&quot;PKCE code verification failed - no code challenge present in PKCE enforced mode&quot;</span>
+            );
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">token_req</span>.<span class="ident">code_verifier</span>.<span class="ident">is_some</span>() {
+            <span class="macro">security_info!</span>(
+                <span class="string">&quot;PKCE code verification failed - a code verifier is present, but no code challenge in exchange&quot;</span>
             );
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
         }
@@ -5476,6 +5593,101 @@
                 <span class="macro">assert!</span>(<span class="ident">ident</span>.<span class="ident">get_oauth2_consent_scopes</span>(<span class="ident">o2rs_uuid</span>).<span class="ident">is_none</span>());
 
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
+            }
+        )
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="comment">// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.8</span>
+    <span class="comment">//</span>
+    <span class="comment">// It was reported we were vulnerable to this attack, but that isn&#39;t the case. First</span>
+    <span class="comment">// this attack relies on stripping the *code_challenge* from the internals of the returned</span>
+    <span class="comment">// code exchange token. This isn&#39;t possible due to our use of encryption of the code exchange</span>
+    <span class="comment">// token. If that code challenge *could* be removed, then the attacker could use the code exchange</span>
+    <span class="comment">// with no verifier or an incorrect verifier.</span>
+    <span class="comment">//</span>
+    <span class="comment">// Due to the logic in our server, if a code exchange contains a code challenge we always enforce</span>
+    <span class="comment">// it is correctly used!</span>
+    <span class="comment">//</span>
+    <span class="comment">// This left a single odd case where if a client did an authorisation request without a pkce</span>
+    <span class="comment">// verifier, but then a verifier was submitted during the code exchange, that the server would</span>
+    <span class="comment">// *ignore* the verifier parameter. In this case, no stripping of the code challenge was done,</span>
+    <span class="comment">// and the client could have simply also submitted *no* verifier anyway. It could be that</span>
+    <span class="comment">// an attacker could gain a code exchange with no code challenge and then force a victim to</span>
+    <span class="comment">// exchange that code exchange with out the verifier, but I&#39;m not sure what damage that would</span>
+    <span class="comment">// lead to? Regardless, we test for and close off that possible hole in this test.</span>
+    <span class="comment">//</span>
+    <span class="kw">fn</span> <span class="ident">test_idm_oauth2_1076_pkce_downgrade</span>() {
+        <span class="macro">run_idm_test!</span>(
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
+                <span class="comment">// Enable pkce is set to FALSE</span>
+                <span class="kw">let</span> (<span class="ident">secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+
+                <span class="comment">// Get an ident/uat for now.</span>
+
+                <span class="comment">// == Setup the authorisation request</span>
+                <span class="comment">// We attempt pkce even though the rs is set to not support pkce.</span>
+                <span class="kw">let</span> (<span class="ident">code_verifier</span>, <span class="ident">_code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
+
+                <span class="comment">// First, the user does not request pkce in their exchange.</span>
+                <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
+                    <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">pkce_request</span>: <span class="prelude-val">None</span>,
+                    <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
+                    <span class="ident">scope</span>: <span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">nonce</span>: <span class="prelude-val">None</span>,
+                    <span class="ident">oidc_ext</span>: <span class="ident">Default::default</span>(),
+                    <span class="ident">unknown_keys</span>: <span class="ident">Default::default</span>(),
+                };
+
+                <span class="kw">let</span> <span class="ident">consent_request</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                    .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 authorisation request.&quot;</span>);
+
+                <span class="comment">// Should be in the consent phase;</span>
+                <span class="kw">let</span> <span class="ident">consent_token</span> <span class="op">=</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthoriseResponse::ConsentRequested</span> { <span class="ident">consent_token</span>, .. } <span class="op">=</span>
+                        <span class="ident">consent_request</span>
+                    {
+                        <span class="ident">consent_token</span>
+                    } <span class="kw">else</span> {
+                        <span class="macro">unreachable!</span>();
+                    };
+
+                <span class="comment">// == Manually submit the consent token to the permit for the permit_success</span>
+                <span class="kw">let</span> <span class="ident">permit_success</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                    .<span class="ident">check_oauth2_authorise_permit</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">consent_token</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 permit&quot;</span>);
+
+                <span class="comment">// Assert that the consent was submitted</span>
+                <span class="kw">match</span> <span class="ident">idms_delayed</span>.<span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
+                    <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::Oauth2ConsentGrant</span>(<span class="kw">_</span>)) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                }
+
+                <span class="comment">// == Submit the token exchange code.</span>
+                <span class="comment">// This exchange failed because we submitted a verifier when the code exchange</span>
+                <span class="comment">// has NO code challenge present.</span>
+                <span class="kw">let</span> <span class="ident">token_req</span> <span class="op">=</span> <span class="ident">AccessTokenRequest</span> {
+                    <span class="ident">grant_type</span>: <span class="string">&quot;authorization_code&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">code</span>: <span class="ident">permit_success</span>.<span class="ident">code</span>,
+                    <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
+                    <span class="ident">client_id</span>: <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>()),
+                    <span class="ident">client_secret</span>: <span class="prelude-val">Some</span>(<span class="ident">secret</span>),
+                    <span class="comment">// Note the code verifier is set to &quot;something else&quot;</span>
+                    <span class="ident">code_verifier</span>,
+                };
+
+                <span class="comment">// Assert the exchange fails.</span>
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_token_exchange</span>(<span class="prelude-val">None</span>, <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>)
+                ))
             }
         )
     }
