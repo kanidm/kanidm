@@ -8,6 +8,8 @@ impl Oauth2Opt {
             Oauth2Opt::CreateBasic(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::UpdateScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::DeleteScopeMap(cbopt) => cbopt.nopt.copt.debug,
+            Oauth2Opt::UpdateSupScopeMap(cbopt) => cbopt.nopt.copt.debug,
+            Oauth2Opt::DeleteSupScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::ResetSecrets(cbopt) => cbopt.copt.debug,
             Oauth2Opt::ShowBasicSecret(nopt) => nopt.copt.debug,
             Oauth2Opt::Delete(nopt) => nopt.copt.debug,
@@ -70,6 +72,33 @@ impl Oauth2Opt {
                 let client = cbopt.nopt.copt.to_client().await;
                 match client
                     .idm_oauth2_rs_delete_scope_map(cbopt.nopt.name.as_str(), cbopt.group.as_str())
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::UpdateSupScopeMap(cbopt) => {
+                let client = cbopt.nopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_update_sup_scope_map(
+                        cbopt.nopt.name.as_str(),
+                        cbopt.group.as_str(),
+                        cbopt.scopes.iter().map(|s| s.as_str()).collect(),
+                    )
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::DeleteSupScopeMap(cbopt) => {
+                let client = cbopt.nopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_delete_sup_scope_map(
+                        cbopt.nopt.name.as_str(),
+                        cbopt.group.as_str(),
+                    )
                     .await
                 {
                     Ok(_) => println!("Success"),

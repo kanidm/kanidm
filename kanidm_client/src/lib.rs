@@ -1699,6 +1699,29 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_oauth2_rs_update_sup_scope_map(
+        &self,
+        id: &str,
+        group: &str,
+        scopes: Vec<&str>,
+    ) -> Result<(), ClientError> {
+        let scopes: Vec<String> = scopes.into_iter().map(str::to_string).collect();
+        self.perform_post_request(
+            format!("/v1/oauth2/{}/_sup_scopemap/{}", id, group).as_str(),
+            scopes,
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_rs_delete_sup_scope_map(
+        &self,
+        id: &str,
+        group: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/oauth2/{}/_sup_scopemap/{}", id, group).as_str())
+            .await
+    }
+
     pub async fn idm_oauth2_rs_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/oauth2/", id].concat().as_str())
             .await

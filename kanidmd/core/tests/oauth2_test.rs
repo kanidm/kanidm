@@ -91,6 +91,11 @@ async fn test_oauth2_openid_basic_flow() {
         .await
         .expect("Failed to update oauth2 scopes");
 
+    rsclient
+        .idm_oauth2_rs_update_sup_scope_map("test_integration", "idm_all_accounts", vec!["admin"])
+        .await
+        .expect("Failed to update oauth2 scopes");
+
     let client_secret = rsclient
         .idm_oauth2_rs_get_basic_secret("test_integration")
         .await
@@ -221,12 +226,18 @@ async fn test_oauth2_openid_basic_flow() {
         .await
         .expect("Failed to access response body");
 
-    let consent_token =
-        if let AuthorisationResponse::ConsentRequested { consent_token, .. } = consent_req {
-            consent_token
-        } else {
-            unreachable!();
-        };
+    let consent_token = if let AuthorisationResponse::ConsentRequested {
+        consent_token,
+        scopes,
+        ..
+    } = consent_req
+    {
+        // Note the supplemental scope here (admin)
+        assert!(scopes.contains(&"admin".to_string()));
+        consent_token
+    } else {
+        unreachable!();
+    };
 
     // Step 2 - we now send the consent get to the server which yields a redirect with a
     // state and code.

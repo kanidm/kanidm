@@ -578,6 +578,11 @@ pub fn create_https_server(
         .mapped_post(&mut routemap, oauth2_id_scopemap_post)
         .mapped_delete(&mut routemap, oauth2_id_scopemap_delete);
 
+    oauth2_route
+        .at("/:id/_sup_scopemap/:group")
+        .mapped_post(&mut routemap, oauth2_id_sup_scopemap_post)
+        .mapped_delete(&mut routemap, oauth2_id_sup_scopemap_delete);
+
     let mut self_route = appserver.at("/v1/self");
     self_route.at("/").mapped_get(&mut routemap, whoami);
 

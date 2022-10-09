@@ -600,6 +600,14 @@ pub enum Oauth2Opt {
     #[clap(name = "delete_scope_map")]
     /// Remove a mapping from groups to scopes
     DeleteScopeMap(Oauth2DeleteScopeMapOpt),
+
+    #[clap(name = "update_sup_scope_map", visible_aliases=&["create_sup_scope_map"])]
+    /// Update or add a new mapping from a group to scopes that it provides to members
+    UpdateSupScopeMap(Oauth2CreateScopeMapOpt),
+    #[clap(name = "delete_sup_scope_map")]
+    /// Remove a mapping from groups to scopes
+    DeleteSupScopeMap(Oauth2DeleteScopeMapOpt),
+
     #[clap(name = "reset_secrets")]
     /// Reset the secrets associated to this resource server
     ResetSecrets(Named),

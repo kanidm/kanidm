@@ -174,8 +174,8 @@ pub struct Oauth2RS {
     displayname: String,
     uuid: Uuid,
     origin: Origin,
-    // Do we need optional maps?
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
+    sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     // Client Auth Type (basic is all we support for now.
     authz_secret: String,
     // Our internal exchange encryption material for this rs.
@@ -204,6 +204,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("uuid", &self.uuid)
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
+            .field("sup_scope_maps", &self.sup_scope_maps)
             .finish()
     }
 }
@@ -312,6 +313,12 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .cloned()
                         .unwrap_or_default();
 
+                    trace!("sup_scope_maps");
+                    let sup_scope_maps = ent
+                        .get_ava_as_oauthscopemaps("oauth2_rs_sup_scope_map")
+                        .cloned()
+                        .unwrap_or_default();
+
                     trace!("oauth2_jwt_legacy_crypto_enable");
                     let jws_signer = if ent.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
                         trace!("rs256_private_key_der");
@@ -368,9 +375,17 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     let mut iss = self.inner.origin.clone();
                     iss.set_path(&format!("/oauth2/openid/{}", name));
 
-                    let scopes_supported: BTreeSet<String> = scope_maps
+                    let scopes_supported: BTreeSet<String> =
+                    scope_maps
                         .values()
                         .flat_map(|bts| bts.iter())
+
+                        .chain(
+                            sup_scope_maps
+                                .values()
+                                .flat_map(|bts| bts.iter())
+                        )
+
                         .cloned()
                         .collect();
                     let scopes_supported: Vec<_> = scopes_supported.into_iter().collect();
@@ -382,6 +397,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         uuid,
                         origin,
                         scope_maps,
+                        sup_scope_maps,
                         authz_secret,
                         token_fernet,
                         jws_signer,
@@ -508,7 +524,7 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         }
 
-        // scopes - you need to have every requested scope or this req is denied.
+        // scopes - you need to have every requested scope or this auth_req is denied.
         let req_scopes: BTreeSet<String> = auth_req
             .scope
             .split_ascii_whitespace()
@@ -527,13 +543,10 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidScope);
         }
 
-        debug!(?o2rs.scope_maps);
-
         let uat_scopes: BTreeSet<String> = o2rs
             .scope_maps
             .iter()
             .filter_map(|(u, m)| {
-                trace!(?u);
                 if ident.is_memberof(*u) {
                     Some(m.iter())
                 } else {
@@ -550,6 +563,10 @@ impl Oauth2ResourceServersReadTransaction {
             .map(|s| s.to_string())
             .collect();
 
+        debug!(?o2rs.scope_maps);
+
+        // Due to the intersection above, this is correct because the equal len can only
+        // occur if all terms were satisfied.
         if avail_scopes.len() != req_scopes.len() {
             admin_warn!(
                 %ident,
@@ -560,9 +577,39 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         }
 
+        drop(avail_scopes);
+
+        // ⚠️  At this point, per scopes we are *authorised*
+
+        // We now access the supplemental scopes that will be granted to this session. It is important
+        // we DO NOT do this prior to the requested scope check, just in case we accidentally
+        // confuse the two!
+
+        // The set of scopes that are being granted during this auth_request. This is a combination
+        // of the scopes that were requested, and the scopes we supplement.
+
+        // MICRO OPTIMISATION = flag if we have openid first, so we can into_iter here rather than
+        // cloning.
+        let openid_requested = req_scopes.contains("openid");
+
+        let granted_scopes: BTreeSet<String> = o2rs
+            .sup_scope_maps
+            .iter()
+            .filter_map(|(u, m)| {
+                if ident.is_memberof(*u) {
+                    Some(m.iter())
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .cloned()
+            .chain(req_scopes.into_iter())
+            .collect();
+
         let consent_previously_granted =
             if let Some(consent_scopes) = ident.get_oauth2_consent_scopes(o2rs.uuid) {
-                req_scopes.eq(consent_scopes)
+                granted_scopes.eq(consent_scopes)
             } else {
                 false
             };
@@ -570,7 +617,7 @@ impl Oauth2ResourceServersReadTransaction {
         if consent_previously_granted {
             admin_info!(
                 "User has previously consented, permitting. {:?}",
-                req_scopes
+                granted_scopes
             );
 
             // Setup for the permit success
@@ -578,7 +625,7 @@ impl Oauth2ResourceServersReadTransaction {
                 uat: uat.clone(),
                 code_challenge,
                 redirect_uri: auth_req.redirect_uri.clone(),
-                scopes: avail_scopes,
+                scopes: granted_scopes.into_iter().collect(),
                 nonce: auth_req.nonce.clone(),
             };
 
@@ -607,9 +654,11 @@ impl Oauth2ResourceServersReadTransaction {
             //
             // https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims
 
-            let pii_scopes = if req_scopes.contains("openid") {
+            // IMPORTANT DISTINCTION - Here req scopes must contain openid, but the PII can be supplemented
+            // be the servers scopes!
+            let pii_scopes = if openid_requested {
                 let mut pii_scopes = Vec::with_capacity(2);
-                if req_scopes.contains("email") {
+                if granted_scopes.contains("email") {
                     pii_scopes.push("email".to_string());
                     pii_scopes.push("email_verified".to_string());
                 }
@@ -630,7 +679,7 @@ impl Oauth2ResourceServersReadTransaction {
                 state: auth_req.state.clone(),
                 code_challenge,
                 redirect_uri: auth_req.redirect_uri.clone(),
-                scopes: avail_scopes.clone(),
+                scopes: granted_scopes.iter().cloned().collect(),
                 nonce: auth_req.nonce.clone(),
             };
 
@@ -646,7 +695,7 @@ impl Oauth2ResourceServersReadTransaction {
 
             Ok(AuthoriseResponse::ConsentRequested {
                 client_name: o2rs.displayname.clone(),
-                scopes: avail_scopes,
+                scopes: granted_scopes.into_iter().collect(),
                 pii_scopes,
                 consent_token,
             })
@@ -1435,6 +1484,14 @@ mod tests {
                     .expect("invalid oauthscope")
             ),
             (
+                "oauth2_rs_sup_scope_map",
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset!["supplement".to_string()]
+                )
+                .expect("invalid oauthscope")
+            ),
+            (
                 "oauth2_allow_insecure_client_disable_pkce",
                 Value::new_bool(!enable_pkce)
             ),
@@ -2031,7 +2088,7 @@ mod tests {
 
                 eprintln!("👉  {:?}", intr_response);
                 assert!(intr_response.active);
-                assert!(intr_response.scope.as_deref() == Some("openid"));
+                assert!(intr_response.scope.as_deref() == Some("openid supplement"));
                 assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
                 assert!(intr_response.username.as_deref() == Some("admin@example.com"));
                 assert!(intr_response.token_type.as_deref() == Some("access_token"));
@@ -2236,7 +2293,12 @@ mod tests {
 
             eprintln!("{:?}", discovery.scopes_supported);
             assert!(
-                discovery.scopes_supported == Some(vec!["openid".to_string(), "read".to_string()])
+                discovery.scopes_supported
+                    == Some(vec![
+                        "openid".to_string(),
+                        "read".to_string(),
+                        "supplement".to_string(),
+                    ])
             );
 
             assert!(discovery.response_types_supported == vec![ResponseType::Code]);
@@ -2380,7 +2442,9 @@ mod tests {
                 assert!(oidc.jti.is_none());
                 assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
                 assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
-                assert!(oidc.s_claims.scopes == vec!["openid".to_string()]);
+                assert!(
+                    oidc.s_claims.scopes == vec!["openid".to_string(), "supplement".to_string()]
+                );
                 assert!(oidc.claims.is_empty());
                 // Does our access token work with the userinfo endpoint?
                 // Do the id_token details line up to the userinfo?
@@ -2667,7 +2731,76 @@ mod tests {
                         unreachable!();
                     };
 
+                drop(idms_prox_read);
+
                 // Success! We had to consent again due to the change :)
+
+                // Now change the supplemental scopes on the oauth2 instance, this revokes the permit.
+                let idms_prox_write = idms.proxy_write(ct);
+
+                let me_extend_scopes = unsafe {
+                    ModifyEvent::new_internal_invalid(
+                        filter!(f_eq(
+                            "oauth2_rs_name",
+                            PartialValue::new_iname("test_resource_server")
+                        )),
+                        ModifyList::new_list(vec![Modify::Present(
+                            AttrString::from("oauth2_rs_sup_scope_map"),
+                            Value::new_oauthscopemap(
+                                UUID_IDM_ALL_ACCOUNTS,
+                                btreeset!["newscope".to_string()],
+                            )
+                            .expect("invalid oauthscope"),
+                        )]),
+                    )
+                };
+
+                assert!(idms_prox_write.qs_write.modify(&me_extend_scopes).is_ok());
+                assert!(idms_prox_write.commit().is_ok());
+
+                // And do the workflow once more to see if we need to consent again.
+
+                let idms_prox_read = idms.proxy_read();
+
+                // We need to reload our identity
+                let ident = idms_prox_read
+                    .process_uat_to_identity(&uat, ct)
+                    .expect("Unable to process uat");
+
+                let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+                let auth_req = AuthorisationRequest {
+                    response_type: "code".to_string(),
+                    client_id: "test_resource_server".to_string(),
+                    state: "123".to_string(),
+                    pkce_request: Some(PkceRequest {
+                        code_challenge: Base64UrlSafeData(code_challenge),
+                        code_challenge_method: CodeChallengeMethod::S256,
+                    }),
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    // Note the scope isn't requested here!
+                    scope: "openid email".to_string(),
+                    nonce: Some("abcdef".to_string()),
+                    oidc_ext: Default::default(),
+                    unknown_keys: Default::default(),
+                };
+
+                let consent_request = idms_prox_read
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+                    .expect("Oauth2 authorisation failed");
+
+                // Should be present in the consent phase however!
+                let _consent_token = if let AuthoriseResponse::ConsentRequested {
+                    consent_token,
+                    scopes,
+                    ..
+                } = consent_request
+                {
+                    assert!(scopes.contains(&"newscope".to_string()));
+                    consent_token
+                } else {
+                    unreachable!();
+                };
             }
         )
     }
@@ -2723,7 +2856,7 @@ mod tests {
                 // Assert that the ident now has the consents.
                 assert!(
                     ident.get_oauth2_consent_scopes(o2rs_uuid)
-                        == Some(&btreeset!["openid".to_string()])
+                        == Some(&btreeset!["openid".to_string(), "supplement".to_string()])
                 );
 
                 // Now trigger the delete of the RS
