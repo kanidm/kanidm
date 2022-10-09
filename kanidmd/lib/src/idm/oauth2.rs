@@ -176,7 +176,6 @@ pub struct Oauth2RS {
     origin: Origin,
     // Do we need optional maps?
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
-    implicit_scopes: Vec<String>,
     // Client Auth Type (basic is all we support for now.
     authz_secret: String,
     // Our internal exchange encryption material for this rs.
@@ -205,7 +204,6 @@ impl std::fmt::Debug for Oauth2RS {
             .field("uuid", &self.uuid)
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
-            .field("implicit_scopes", &self.implicit_scopes)
             .finish()
     }
 }
@@ -297,7 +295,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("authz_secret");
                     let authz_secret = ent
-                        .get_ava_single_utf8("oauth2_rs_basic_secret")
+                        .get_ava_single_secret("oauth2_rs_basic_secret")
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("token_key");
@@ -313,12 +311,6 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
                         .cloned()
                         .unwrap_or_default();
-
-                    trace!("implicit_scopes");
-                    let implicit_scopes = ent
-                        .get_ava_as_oauthscopes("oauth2_rs_implicit_scopes")
-                        .map(|iter| iter.map(str::to_string).collect())
-                        .unwrap_or_else(Vec::new);
 
                     trace!("oauth2_jwt_legacy_crypto_enable");
                     let jws_signer = if ent.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
@@ -376,10 +368,10 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     let mut iss = self.inner.origin.clone();
                     iss.set_path(&format!("/oauth2/openid/{}", name));
 
-                    let scopes_supported: BTreeSet<String> = implicit_scopes
-                        .iter()
+                    let scopes_supported: BTreeSet<String> = scope_maps
+                        .values()
+                        .flat_map(|bts| bts.iter())
                         .cloned()
-                        .chain(scope_maps.values().flat_map(|bts| bts.iter()).cloned())
                         .collect();
                     let scopes_supported: Vec<_> = scopes_supported.into_iter().collect();
 
@@ -390,7 +382,6 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         uuid,
                         origin,
                         scope_maps,
-                        implicit_scopes,
                         authz_secret,
                         token_fernet,
                         jws_signer,
@@ -536,11 +527,7 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidScope);
         }
 
-        let uat_scopes: BTreeSet<String> = o2rs
-            .implicit_scopes
-            .iter()
-            .chain(
-                o2rs.scope_maps
+        let uat_scopes: BTreeSet<String> =o2rs.scope_maps
                     .iter()
                     .filter_map(|(u, m)| {
                         if ident.is_memberof(*u) {
@@ -549,8 +536,7 @@ impl Oauth2ResourceServersReadTransaction {
                             None
                         }
                     })
-                    .flatten(),
-            )
+                    .flatten()
             .cloned()
             .collect();
 
@@ -1432,14 +1418,15 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            (
-                "oauth2_rs_implicit_scopes",
-                Value::new_oauthscope("openid").expect("invalid oauthscope")
-            ),
             // System admins
             (
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_IDM_ALL_PERSONS, btreeset!["openid".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
@@ -1459,7 +1446,7 @@ mod tests {
             .internal_search_uuid(&uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
-            .get_ava_single_utf8("oauth2_rs_basic_secret")
+            .get_ava_single_secret("oauth2_rs_basic_secret")
             .map(str::to_string)
             .expect("No oauth2_rs_basic_secret found");
 
@@ -2622,8 +2609,11 @@ mod tests {
                             PartialValue::new_iname("test_resource_server")
                         )),
                         ModifyList::new_list(vec![Modify::Present(
-                            AttrString::from("oauth2_rs_implicit_scopes"),
-                            Value::new_oauthscope("email").expect("invalid oauthscope"),
+
+                            AttrString::from("oauth2_rs_scope_map"),
+                            Value::new_oauthscopemap(UUID_IDM_ALL_PERSONS, btreeset!["email".to_string()])
+                                .expect("invalid oauthscope")
+
                         )]),
                     )
                 };

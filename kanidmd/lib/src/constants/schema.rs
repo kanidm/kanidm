@@ -684,7 +684,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: &str = r#"{
         "oauth2_rs_basic_secret"
       ],
       "syntax": [
-        "UTF8STRING"
+        "SECRET_UTF8STRING"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000083"
@@ -1434,7 +1434,6 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
       "systemmay": [
         "description",
         "oauth2_rs_scope_map",
-        "oauth2_rs_implicit_scopes",
         "oauth2_allow_insecure_client_disable_pkce",
         "rs256_private_key_der",
         "oauth2_jwt_legacy_crypto_enable",

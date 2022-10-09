@@ -1160,6 +1160,10 @@ impl QueryServer {
             migrate_txn.migrate_7_to_8()?;
         }
 
+        if system_info_version < 9 {
+            migrate_txn.migrate_8_to_9()?;
+        }
+
         migrate_txn.commit()?;
         // Migrations complete. Init idm will now set the version as needed.
 
@@ -2262,6 +2266,89 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filter = filter!(f_eq("class", (*PVCLASS_SERVICE_ACCOUNT).clone()));
         let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
         self.internal_modify(&filter, &modlist)
+        // Complete
+    }
+
+    /// Migrate 8 to 9
+    ///
+    /// This migration updates properties of oauth2 relying server properties. First, it changes
+    /// the former basic value to a secret utf8string.
+    ///
+    /// The second change improves the current scope system to remove the implicit scope type.
+    #[instrument(level = "debug", skip_all)]
+    pub fn migrate_8_to_9(&self) -> Result<(), OperationError> {
+        admin_warn!("starting 8 to 9 migration.");
+        let filt = filter_all!(f_or!([
+            f_eq("class", PVCLASS_OAUTH2_RS.clone()),
+            f_eq("class", PVCLASS_OAUTH2_BASIC.clone()),
+        ]));
+
+        let pre_candidates = self.internal_search(filt).map_err(|e| {
+            admin_error!(err = ?e, "migrate_8_to_9 internal search failure");
+            e
+        })?;
+
+        // If there is nothing, we donn't need to do anything.
+        if pre_candidates.is_empty() {
+            admin_info!("migrate_8_to_9 no entries to migrate, complete");
+            return Ok(());
+        }
+
+        // Change the value type.
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+            .iter()
+            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
+            .collect();
+
+        candidates.iter_mut().try_for_each(|er| {
+            // Migrate basic secrets if they exist.
+            let nvs = er
+                .get_ava_set("oauth2_rs_basic_secret")
+                .and_then(|vs| vs.as_utf8_iter())
+                .and_then(|vs_iter| {
+                    ValueSetSecret::from_iter(vs_iter.map(|s: &str| s.to_string()))
+                });
+            if let Some(nvs) = nvs {
+                er.set_ava_set("oauth2_rs_basic_secret", nvs)
+            }
+
+            // Migrate implicit scopes if they exist.
+            let nv = if let Some(vs) = er.get_ava_set("oauth2_rs_implicit_scopes") {
+                vs.as_oauthscope_set()
+                    .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
+            } else {
+                None
+            };
+
+            if let Some(nv) = nv {
+                er.add_ava("oauth2_rs_scope_map", nv)
+            }
+            er.purge_ava("oauth2_rs_implicit_scopes");
+
+            Ok(())
+        })?;
+
+        // Schema check all.
+        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
+            .into_iter()
+            .map(|e| e.validate(&self.schema).map(|e| e.seal(&self.schema)))
+            .collect();
+
+        let norm_cand: Vec<Entry<_, _>> = match res {
+            Ok(v) => v,
+            Err(e) => {
+                admin_error!("migrate_8_to_9 schema error -> {:?}", e);
+                return Err(OperationError::SchemaViolation(e));
+            }
+        };
+
+        // Write them back.
+        self.be_txn
+            .modify(&self.cid, &pre_candidates, &norm_cand)
+            .map_err(|e| {
+                admin_error!("migrate_8_to_9 modification failure -> {:?}", e);
+                e
+            })
         // Complete
     }
 
