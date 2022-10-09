@@ -1485,9 +1485,9 @@ dependencies = [
 
 [[package]]
 name = "futures-concurrency"
-version = "3.0.2"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49242554e83bfb20ec3fa39db8fbdd349ed7c905efd39dfb9b83a517f41b05b1"
+checksum = "113411b30b3a4fd9aba3eb9654f436976b71bc7f709318aeae7f8e90f74a71d6"
 dependencies = [
  "async-trait",
  "futures-core",
