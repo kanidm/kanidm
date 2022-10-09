@@ -471,6 +471,9 @@ impl Oauth2ResourceServersReadTransaction {
         }
 
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
+            if !o2rs.enable_pkce {
+                security_info!(?o2rs.name, "Insecure rs configuration - pkce is not enforced, but rs is requesting it!");
+            }
             // CodeChallengeMethod must be S256
             if pkce_request.code_challenge_method != CodeChallengeMethod::S256 {
                 admin_warn!("Invalid oauth2 code_challenge_method (must be 'S256')");
@@ -850,6 +853,9 @@ impl Oauth2ResourceServersReadTransaction {
                 })
             })?;
 
+        // If we have a verifier present, we MUST assert that a code challenge is present!
+        // It is worth noting here that code_xchg is *server issued* and encrypted, with
+        // a short validity period. The client controlled value is in token_req.code_verifier
         if let Some(code_challenge) = code_xchg.code_challenge {
             // Validate the code_verifier
             let code_verifier = token_req.code_verifier
@@ -871,6 +877,11 @@ impl Oauth2ResourceServersReadTransaction {
         } else if o2rs.enable_pkce {
             security_info!(
                 "PKCE code verification failed - no code challenge present in PKCE enforced mode"
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        } else if token_req.code_verifier.is_some() {
+            security_info!(
+                "PKCE code verification failed - a code verifier is present, but no code challenge in exchange"
             );
             return Err(Oauth2Error::InvalidRequest);
         }
@@ -2735,6 +2746,101 @@ mod tests {
                 assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
 
                 assert!(idms_prox_write.commit().is_ok());
+            }
+        )
+    }
+
+    #[test]
+    // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.8
+    //
+    // It was reported we were vulnerable to this attack, but that isn't the case. First
+    // this attack relies on stripping the *code_challenge* from the internals of the returned
+    // code exchange token. This isn't possible due to our use of encryption of the code exchange
+    // token. If that code challenge *could* be removed, then the attacker could use the code exchange
+    // with no verifier or an incorrect verifier.
+    //
+    // Due to the logic in our server, if a code exchange contains a code challenge we always enforce
+    // it is correctly used!
+    //
+    // This left a single odd case where if a client did an authorisation request without a pkce
+    // verifier, but then a verifier was submitted during the code exchange, that the server would
+    // *ignore* the verifier parameter. In this case, no stripping of the code challenge was done,
+    // and the client could have simply also submitted *no* verifier anyway. It could be that
+    // an attacker could gain a code exchange with no code challenge and then force a victim to
+    // exchange that code exchange with out the verifier, but I'm not sure what damage that would
+    // lead to? Regardless, we test for and close off that possible hole in this test.
+    //
+    fn test_idm_oauth2_1076_pkce_downgrade() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                // Enable pkce is set to FALSE
+                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
+
+                let idms_prox_read = idms.proxy_read();
+
+                // Get an ident/uat for now.
+
+                // == Setup the authorisation request
+                // We attempt pkce even though the rs is set to not support pkce.
+                let (code_verifier, _code_challenge) = create_code_verifier!("Whar Garble");
+
+                // First, the user does not request pkce in their exchange.
+                let auth_req = AuthorisationRequest {
+                    response_type: "code".to_string(),
+                    client_id: "test_resource_server".to_string(),
+                    state: "123".to_string(),
+                    pkce_request: None,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    scope: "openid".to_string(),
+                    nonce: None,
+                    oidc_ext: Default::default(),
+                    unknown_keys: Default::default(),
+                };
+
+                let consent_request = idms_prox_read
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+                    .expect("Failed to perform oauth2 authorisation request.");
+
+                // Should be in the consent phase;
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
+
+                // == Submit the token exchange code.
+                // This exchange failed because we submitted a verifier when the code exchange
+                // has NO code challenge present.
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: Some("test_resource_server".to_string()),
+                    client_secret: Some(secret),
+                    // Note the code verifier is set to "something else"
+                    code_verifier,
+                };
+
+                // Assert the exchange fails.
+                assert!(matches!(
+                    idms_prox_read.check_oauth2_token_exchange(None, &token_req, ct),
+                    Err(Oauth2Error::InvalidRequest)
+                ))
             }
         )
     }
