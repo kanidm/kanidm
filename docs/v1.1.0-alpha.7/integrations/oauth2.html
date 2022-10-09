@@ -209,16 +209,25 @@ of the resource server, it may request the &quot;admin&quot; scope from Kanidm f
 a user wants to login, it may only request &quot;access&quot; as a scope from Kanidm.</p>
 <p>As each resource server may have its own scopes and understanding of these, Kanidm isolates
 scopes to each resource server connected to Kanidm. Kanidm has two methods of granting scopes to accounts (users).</p>
-<p>The first are implicit scopes. These are scopes granted to all accounts that Kanidm holds.</p>
-<p>The second is scope mappings. These provide a set of scopes if a user is a member of a specific
+<p>The first is scope mappings. These provide a set of scopes if a user is a member of a specific
 group within Kanidm. This allows you to create a relationship between the scopes of a resource
 server, and the groups/roles in Kanidm which can be specific to that resource server.</p>
 <p>For an authorisation to proceed, all scopes requested must be available in the final scope set
-that is granted to the account. This final scope set can be built from implicit and mapped
-scopes.</p>
-<p>This use of scopes is the primary means to control who can access what resources. For example, if
-you have a resource server that will always request a scope of &quot;read&quot;, then you can limit the
-&quot;read&quot; scope to a single group of users by a scope map so that only they may access that resource.</p>
+that is granted to the account.</p>
+<p>The second is supplemental scope mappings. These function the same as scope maps where membership
+of a group provides a set of scopes to the account, however these scopes are NOT consulted during
+authorisation decisions made by Kanidm. These scopes exists to allow optional properties to be
+provided (such as personal information about a subset of accounts to be revealed) or so that the resource server
+may make it's own authorisation decisions based on the provided scopes.</p>
+<p>This use of scopes is the primary means to control who can access what resources. These access decisions
+can take place either on Kanidm or the resource server.</p>
+<p>For example, if you have a resource server that always requests a scope of &quot;read&quot;, then users
+with scope maps that supply the read scope will be allowed by Kanidm to proceed to the resource server.
+Kanidm can then provide the supplementary scopes into provided tokens, so that the resource server
+can use these to choose if it wishes to display UI elements. If a user has a supplemental &quot;admin&quot;
+scope, then that user may be able to access an administration panel of the resource server. In this
+way Kanidm is still providing the authorisation information, but the control is then exercised by
+the resource server.</p>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <h3 id="create-the-kanidm-configuration"><a class="header" href="#create-the-kanidm-configuration">Create the Kanidm Configuration</a></h3>
 <p>After you have understood your resource server requirements you first need to configure Kanidm.
@@ -228,18 +237,14 @@ manage OAuth2 resource server integrations.</p>
 <pre><code>kanidm system oauth2 create &lt;name&gt; &lt;displayname&gt; &lt;origin&gt;
 kanidm system oauth2 create nextcloud &quot;Nextcloud Production&quot; https://nextcloud.example.com
 </code></pre>
-<p>If you wish to create implicit scopes you can set these with:</p>
-<pre><code>kanidm system oauth2 set_implicit_scopes &lt;name&gt; [scopes]...
-kanidm system oauth2 set_implicit_scopes nextcloud login read_user
-</code></pre>
 <p>You can create a scope map with:</p>
-<pre><code>kanidm system oauth2 create_scope_map &lt;name&gt; &lt;kanidm_group_name&gt; [scopes]...
-kanidm system oauth2 create_scope_map nextcloud nextcloud_admins admin
+<pre><code>kanidm system oauth2 update_scope_map &lt;name&gt; &lt;kanidm_group_name&gt; [scopes]...
+kanidm system oauth2 update_scope_map nextcloud nextcloud_admins admin
 </code></pre>
 <blockquote>
 <p><strong>WARNING</strong>
 If you are creating an OpenID Connect (OIDC) resource server you <em>MUST</em> provide a
-scope map OR implicit scope named 'openid'. Without this, OpenID clients <em>WILL NOT WORK</em></p>
+scope map named 'openid'. Without this, OpenID clients <em>WILL NOT WORK</em></p>
 </blockquote>
 <blockquote>
 <p><strong>HINT</strong>
@@ -254,6 +259,10 @@ that all of the associated claims will be added.</p>
 <li>phone - (phone_number, phone_number_verified)</li>
 </ul>
 </blockquote>
+<p>You can create a supplemental scope map with:</p>
+<pre><code>kanidm system oauth2 update_sup_scope_map &lt;name&gt; &lt;kanidm_group_name&gt; [scopes]...
+kanidm system oauth2 update_sup_scope_map nextcloud nextcloud_admins admin
+</code></pre>
 <p>Once created you can view the details of the resource server.</p>
 <pre><code>kanidm system oauth2 get nextcloud
 ---
@@ -361,6 +370,16 @@ these to a group with a scope map due to Velociraptors high impact.</p>
 kanidm system oauth2 create_scope_map &lt;resource server name&gt; velociraptor_users openid email
 </code></pre>
 <h3 id="vouch-proxy"><a class="header" href="#vouch-proxy">Vouch Proxy</a></h3>
+<blockquote>
+<p><strong>WARNING</strong>
+Vouch proxy requires a unique identifier but does not use the proper scope, &quot;sub&quot;. It uses the fields
+&quot;username&quot; or &quot;email&quot; as primary identifiers instead. As a result, this can cause user or deployment issues, at
+worst security bypasses. You should avoid Vouch Proxy if possible due to these issues.</p>
+<ul>
+<li>https://github.com/vouch/vouch-proxy/issues/309</li>
+<li>https://github.com/vouch/vouch-proxy/issues/310</li>
+</ul>
+</blockquote>
 <p><em>You need to run at least the version 0.37.0</em>.</p>
 <p>Vouch Proxy supports multiple OAuth and OIDC login providers.
 To configure it you need to pass:</p>
@@ -372,7 +391,7 @@ To configure it you need to pass:</p>
   code_challenge_method: S256
   provider: oidc
   scopes:
-    - email # Important, vouch proxy requiers a username (but does not use the proper scope, sub) or an email see https://github.com/vouch/vouch-proxy/issues/309, 310
+    - email # Required due to vouch proxy reliance on mail as a primary identifier
   token_url: https://idm.wherekanidmruns.com/oauth2/token
   user_info_url: https://idm.wherekanidmruns.com/oauth2/openid/&lt;oauth2_rs_name&gt;/userinfo
 </code></pre>

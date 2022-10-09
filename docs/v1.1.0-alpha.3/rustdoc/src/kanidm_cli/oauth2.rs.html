@@ -197,6 +197,22 @@
 <span id="197">197</span>
 <span id="198">198</span>
 <span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Oauth2Opt</span>;
 
 <span class="kw">impl</span> <span class="ident">Oauth2Opt</span> {
@@ -205,10 +221,12 @@
             <span class="ident">Oauth2Opt::List</span>(<span class="ident">copt</span>) =&gt; <span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::Get</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::CreateBasic</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::SetImplictScopes</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::CreateScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::UpdateScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::DeleteScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::UpdateSupScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::DeleteSupScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::ShowBasicSecret</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::Delete</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::SetDisplayname</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::EnablePkce</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
@@ -251,29 +269,10 @@
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::SetImplictScopes</span>(<span class="ident">cbopt</span>) =&gt; {
+            <span class="ident">Oauth2Opt::UpdateScopeMap</span>(<span class="ident">cbopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
                 <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_oauth2_rs_update</span>(
-                        <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
-                        <span class="prelude-val">None</span>,
-                        <span class="prelude-val">None</span>,
-                        <span class="prelude-val">None</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">cbopt</span>.<span class="ident">scopes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">as_str</span>()).<span class="ident">collect</span>()),
-                        <span class="bool-val">false</span>,
-                        <span class="bool-val">false</span>,
-                        <span class="bool-val">false</span>,
-                    )
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
-                }
-            }
-            <span class="ident">Oauth2Opt::CreateScopeMap</span>(<span class="ident">cbopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_oauth2_rs_create_scope_map</span>(
+                    .<span class="ident">idm_oauth2_rs_update_scope_map</span>(
                         <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
                         <span class="ident">cbopt</span>.<span class="ident">group</span>.<span class="ident">as_str</span>(),
                         <span class="ident">cbopt</span>.<span class="ident">scopes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">as_str</span>()).<span class="ident">collect</span>(),
@@ -294,22 +293,56 @@
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+            <span class="ident">Oauth2Opt::UpdateSupScopeMap</span>(<span class="ident">cbopt</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
                 <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_oauth2_rs_update</span>(
-                        <span class="ident">cbopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
-                        <span class="prelude-val">None</span>,
-                        <span class="prelude-val">None</span>,
-                        <span class="prelude-val">None</span>,
-                        <span class="prelude-val">None</span>,
-                        <span class="bool-val">true</span>,
-                        <span class="bool-val">true</span>,
-                        <span class="bool-val">true</span>,
+                    .<span class="ident">idm_oauth2_rs_update_sup_scope_map</span>(
+                        <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+                        <span class="ident">cbopt</span>.<span class="ident">group</span>.<span class="ident">as_str</span>(),
+                        <span class="ident">cbopt</span>.<span class="ident">scopes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">as_str</span>()).<span class="ident">collect</span>(),
                     )
                     .<span class="kw">await</span>
                 {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                }
+            }
+            <span class="ident">Oauth2Opt::DeleteSupScopeMap</span>(<span class="ident">cbopt</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+                <span class="kw">match</span> <span class="ident">client</span>
+                    .<span class="ident">idm_oauth2_rs_delete_sup_scope_map</span>(
+                        <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+                        <span class="ident">cbopt</span>.<span class="ident">group</span>.<span class="ident">as_str</span>(),
+                    )
+                    .<span class="kw">await</span>
+                {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                }
+            }
+            <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+                <span class="kw">match</span> <span class="ident">client</span>
+                    .<span class="ident">idm_oauth2_rs_update</span>(<span class="ident">cbopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>, <span class="bool-val">true</span>)
+                    .<span class="kw">await</span>
+                {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                }
+            }
+            <span class="ident">Oauth2Opt::ShowBasicSecret</span>(<span class="ident">nopt</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+                <span class="kw">match</span> <span class="ident">client</span>
+                    .<span class="ident">idm_oauth2_rs_get_basic_secret</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())
+                    .<span class="kw">await</span>
+                {
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">secret</span>)) =&gt; {
+                        <span class="macro">println!</span>(<span class="string">&quot;{secret}&quot;</span>);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;Success&quot;</span>);
+                    }
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;No secret configured&quot;</span>);
+                    }
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
@@ -327,7 +360,6 @@
                         <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
                         <span class="prelude-val">None</span>,
                         <span class="prelude-val">Some</span>(<span class="ident">cbopt</span>.<span class="ident">displayname</span>.<span class="ident">as_str</span>()),
-                        <span class="prelude-val">None</span>,
                         <span class="prelude-val">None</span>,
                         <span class="bool-val">false</span>,
                         <span class="bool-val">false</span>,

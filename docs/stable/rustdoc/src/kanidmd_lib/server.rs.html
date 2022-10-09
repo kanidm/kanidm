@@ -4554,6 +4554,94 @@
 <span id="4554">4554</span>
 <span id="4555">4555</span>
 <span id="4556">4556</span>
+<span id="4557">4557</span>
+<span id="4558">4558</span>
+<span id="4559">4559</span>
+<span id="4560">4560</span>
+<span id="4561">4561</span>
+<span id="4562">4562</span>
+<span id="4563">4563</span>
+<span id="4564">4564</span>
+<span id="4565">4565</span>
+<span id="4566">4566</span>
+<span id="4567">4567</span>
+<span id="4568">4568</span>
+<span id="4569">4569</span>
+<span id="4570">4570</span>
+<span id="4571">4571</span>
+<span id="4572">4572</span>
+<span id="4573">4573</span>
+<span id="4574">4574</span>
+<span id="4575">4575</span>
+<span id="4576">4576</span>
+<span id="4577">4577</span>
+<span id="4578">4578</span>
+<span id="4579">4579</span>
+<span id="4580">4580</span>
+<span id="4581">4581</span>
+<span id="4582">4582</span>
+<span id="4583">4583</span>
+<span id="4584">4584</span>
+<span id="4585">4585</span>
+<span id="4586">4586</span>
+<span id="4587">4587</span>
+<span id="4588">4588</span>
+<span id="4589">4589</span>
+<span id="4590">4590</span>
+<span id="4591">4591</span>
+<span id="4592">4592</span>
+<span id="4593">4593</span>
+<span id="4594">4594</span>
+<span id="4595">4595</span>
+<span id="4596">4596</span>
+<span id="4597">4597</span>
+<span id="4598">4598</span>
+<span id="4599">4599</span>
+<span id="4600">4600</span>
+<span id="4601">4601</span>
+<span id="4602">4602</span>
+<span id="4603">4603</span>
+<span id="4604">4604</span>
+<span id="4605">4605</span>
+<span id="4606">4606</span>
+<span id="4607">4607</span>
+<span id="4608">4608</span>
+<span id="4609">4609</span>
+<span id="4610">4610</span>
+<span id="4611">4611</span>
+<span id="4612">4612</span>
+<span id="4613">4613</span>
+<span id="4614">4614</span>
+<span id="4615">4615</span>
+<span id="4616">4616</span>
+<span id="4617">4617</span>
+<span id="4618">4618</span>
+<span id="4619">4619</span>
+<span id="4620">4620</span>
+<span id="4621">4621</span>
+<span id="4622">4622</span>
+<span id="4623">4623</span>
+<span id="4624">4624</span>
+<span id="4625">4625</span>
+<span id="4626">4626</span>
+<span id="4627">4627</span>
+<span id="4628">4628</span>
+<span id="4629">4629</span>
+<span id="4630">4630</span>
+<span id="4631">4631</span>
+<span id="4632">4632</span>
+<span id="4633">4633</span>
+<span id="4634">4634</span>
+<span id="4635">4635</span>
+<span id="4636">4636</span>
+<span id="4637">4637</span>
+<span id="4638">4638</span>
+<span id="4639">4639</span>
+<span id="4640">4640</span>
+<span id="4641">4641</span>
+<span id="4642">4642</span>
+<span id="4643">4643</span>
+<span id="4644">4644</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -5716,6 +5804,10 @@
             <span class="ident">migrate_txn</span>.<span class="ident">migrate_7_to_8</span>()<span class="question-mark">?</span>;
         }
 
+        <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">9</span> {
+            <span class="ident">migrate_txn</span>.<span class="ident">migrate_8_to_9</span>()<span class="question-mark">?</span>;
+        }
+
         <span class="ident">migrate_txn</span>.<span class="ident">commit</span>()<span class="question-mark">?</span>;
         <span class="comment">// Migrations complete. Init idm will now set the version as needed.</span>
 
@@ -6821,6 +6913,89 @@
         <span class="comment">// Complete</span>
     }
 
+    <span class="doccomment">/// Migrate 8 to 9</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This migration updates properties of oauth2 relying server properties. First, it changes</span>
+    <span class="doccomment">/// the former basic value to a secret utf8string.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The second change improves the current scope system to remove the implicit scope type.</span>
+    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_8_to_9</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 8 to 9 migration.&quot;</span>);
+        <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="macro">f_or!</span>([
+            <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PVCLASS_OAUTH2_RS</span>.<span class="ident">clone</span>()),
+            <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PVCLASS_OAUTH2_BASIC</span>.<span class="ident">clone</span>()),
+        ]));
+
+        <span class="kw">let</span> <span class="ident">pre_candidates</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">internal_search</span>(<span class="ident">filt</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;migrate_8_to_9 internal search failure&quot;</span>);
+            <span class="ident">e</span>
+        })<span class="question-mark">?</span>;
+
+        <span class="comment">// If there is nothing, we donn&#39;t need to do anything.</span>
+        <span class="kw">if</span> <span class="ident">pre_candidates</span>.<span class="ident">is_empty</span>() {
+            <span class="macro">admin_info!</span>(<span class="string">&quot;migrate_8_to_9 no entries to migrate, complete&quot;</span>);
+            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        }
+
+        <span class="comment">// Change the value type.</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">pre_candidates</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">er</span><span class="op">|</span> <span class="ident">er</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>().<span class="ident">invalidate</span>(<span class="self">self</span>.<span class="ident">cid</span>.<span class="ident">clone</span>()))
+            .<span class="ident">collect</span>();
+
+        <span class="ident">candidates</span>.<span class="ident">iter_mut</span>().<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">er</span><span class="op">|</span> {
+            <span class="comment">// Migrate basic secrets if they exist.</span>
+            <span class="kw">let</span> <span class="ident">nvs</span> <span class="op">=</span> <span class="ident">er</span>
+                .<span class="ident">get_ava_set</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>)
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">as_utf8_iter</span>())
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs_iter</span><span class="op">|</span> {
+                    <span class="ident">ValueSetSecret::from_iter</span>(<span class="ident">vs_iter</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>()))
+                });
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">nvs</span>) <span class="op">=</span> <span class="ident">nvs</span> {
+                <span class="ident">er</span>.<span class="ident">set_ava_set</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>, <span class="ident">nvs</span>)
+            }
+
+            <span class="comment">// Migrate implicit scopes if they exist.</span>
+            <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">er</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>) {
+                <span class="ident">vs</span>.<span class="ident">as_oauthscope_set</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::OauthScopeMap</span>(<span class="ident">UUID_IDM_ALL_PERSONS</span>, <span class="ident">v</span>.<span class="ident">clone</span>()))
+            } <span class="kw">else</span> {
+                <span class="prelude-val">None</span>
+            };
+
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">nv</span>) <span class="op">=</span> <span class="ident">nv</span> {
+                <span class="ident">er</span>.<span class="ident">add_ava</span>(<span class="string">&quot;oauth2_rs_scope_map&quot;</span>, <span class="ident">nv</span>)
+            }
+            <span class="ident">er</span>.<span class="ident">purge_ava</span>(<span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>);
+
+            <span class="prelude-val">Ok</span>(())
+        })<span class="question-mark">?</span>;
+
+        <span class="comment">// Schema check all.</span>
+        <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">SchemaError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">candidates</span>
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">seal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)))
+            .<span class="ident">collect</span>();
+
+        <span class="kw">let</span> <span class="ident">norm_cand</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;migrate_8_to_9 schema error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>));
+            }
+        };
+
+        <span class="comment">// Write them back.</span>
+        <span class="self">self</span>.<span class="ident">be_txn</span>
+            .<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cid</span>, <span class="kw-2">&amp;</span><span class="ident">pre_candidates</span>, <span class="kw-2">&amp;</span><span class="ident">norm_cand</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;migrate_8_to_9 modification failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">e</span>
+            })
+        <span class="comment">// Complete</span>
+    }
+
     <span class="comment">// These are where searches and other actions are actually implemented. This</span>
     <span class="comment">// is the &quot;internal&quot; version, where we define the event as being internal</span>
     <span class="comment">// only, allowing certain plugin by passes etc.</span>
@@ -7123,6 +7298,7 @@
             <span class="ident">JSON_SCHEMA_ATTR_DYNGROUP_FILTER</span>,
             <span class="ident">JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY</span>,
             <span class="ident">JSON_SCHEMA_ATTR_API_TOKEN_SESSION</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP</span>,
             <span class="ident">JSON_SCHEMA_CLASS_PERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_ORGPERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_GROUP</span>,

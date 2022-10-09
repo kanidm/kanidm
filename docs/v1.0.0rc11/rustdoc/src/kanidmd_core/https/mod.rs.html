@@ -870,6 +870,15 @@
 <span id="870">870</span>
 <span id="871">871</span>
 <span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
@@ -1442,9 +1451,18 @@ Disallow: /
         .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_delete</span>);
 
     <span class="ident">oauth2_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:rs_name/_basic_secret&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_get_basic_secret</span>);
+
+    <span class="ident">oauth2_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_scopemap/:group&quot;</span>)
         .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_scopemap_post</span>)
         .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_scopemap_delete</span>);
+
+    <span class="ident">oauth2_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_sup_scopemap/:group&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_sup_scopemap_post</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_sup_scopemap_delete</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/self&quot;</span>);
     <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">whoami</span>);

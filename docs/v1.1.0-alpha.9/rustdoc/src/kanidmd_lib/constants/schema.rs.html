@@ -1478,6 +1478,37 @@
 <span id="1478">1478</span>
 <span id="1479">1479</span>
 <span id="1480">1480</span>
+<span id="1481">1481</span>
+<span id="1482">1482</span>
+<span id="1483">1483</span>
+<span id="1484">1484</span>
+<span id="1485">1485</span>
+<span id="1486">1486</span>
+<span id="1487">1487</span>
+<span id="1488">1488</span>
+<span id="1489">1489</span>
+<span id="1490">1490</span>
+<span id="1491">1491</span>
+<span id="1492">1492</span>
+<span id="1493">1493</span>
+<span id="1494">1494</span>
+<span id="1495">1495</span>
+<span id="1496">1496</span>
+<span id="1497">1497</span>
+<span id="1498">1498</span>
+<span id="1499">1499</span>
+<span id="1500">1500</span>
+<span id="1501">1501</span>
+<span id="1502">1502</span>
+<span id="1503">1503</span>
+<span id="1504">1504</span>
+<span id="1505">1505</span>
+<span id="1506">1506</span>
+<span id="1507">1507</span>
+<span id="1508">1508</span>
+<span id="1509">1509</span>
+<span id="1510">1510</span>
+<span id="1511">1511</span>
 </pre><pre class="rust"><code><span class="comment">// Core</span>
 <span class="comment">// Schema uuids start at 00000000-0000-0000-0000-ffff00000000</span>
 
@@ -2143,6 +2174,37 @@
     }
 }&quot;#</span>;
 
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+    &quot;attrs&quot;: {
+      &quot;class&quot;: [
+        &quot;object&quot;,
+        &quot;system&quot;,
+        &quot;attributetype&quot;
+      ],
+      &quot;description&quot;: [
+        &quot;A reference to a group mapped to scopes for the associated oauth2 resource server&quot;
+      ],
+      &quot;index&quot;: [
+        &quot;EQUALITY&quot;
+      ],
+      &quot;unique&quot;: [
+        &quot;false&quot;
+      ],
+      &quot;multivalue&quot;: [
+        &quot;true&quot;
+      ],
+      &quot;attributename&quot;: [
+        &quot;oauth2_rs_sup_scope_map&quot;
+      ],
+      &quot;syntax&quot;: [
+        &quot;OAUTH_SCOPE_MAP&quot;
+      ],
+      &quot;uuid&quot;: [
+        &quot;00000000-0000-0000-0000-ffff00000112&quot;
+      ]
+    }
+}&quot;#</span>;
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -2164,7 +2226,7 @@
         &quot;oauth2_rs_basic_secret&quot;
       ],
       &quot;syntax&quot;: [
-        &quot;UTF8STRING&quot;
+        &quot;SECRET_UTF8STRING&quot;
       ],
       &quot;uuid&quot;: [
         &quot;00000000-0000-0000-0000-ffff00000083&quot;
@@ -2914,7 +2976,7 @@
       &quot;systemmay&quot;: [
         &quot;description&quot;,
         &quot;oauth2_rs_scope_map&quot;,
-        &quot;oauth2_rs_implicit_scopes&quot;,
+        &quot;oauth2_rs_sup_scope_map&quot;,
         &quot;oauth2_allow_insecure_client_disable_pkce&quot;,
         &quot;rs256_private_key_der&quot;,
         &quot;oauth2_jwt_legacy_crypto_enable&quot;,

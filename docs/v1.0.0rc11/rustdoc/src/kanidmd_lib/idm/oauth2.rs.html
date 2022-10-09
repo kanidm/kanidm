@@ -2845,6 +2845,135 @@
 <span id="2845">2845</span>
 <span id="2846">2846</span>
 <span id="2847">2847</span>
+<span id="2848">2848</span>
+<span id="2849">2849</span>
+<span id="2850">2850</span>
+<span id="2851">2851</span>
+<span id="2852">2852</span>
+<span id="2853">2853</span>
+<span id="2854">2854</span>
+<span id="2855">2855</span>
+<span id="2856">2856</span>
+<span id="2857">2857</span>
+<span id="2858">2858</span>
+<span id="2859">2859</span>
+<span id="2860">2860</span>
+<span id="2861">2861</span>
+<span id="2862">2862</span>
+<span id="2863">2863</span>
+<span id="2864">2864</span>
+<span id="2865">2865</span>
+<span id="2866">2866</span>
+<span id="2867">2867</span>
+<span id="2868">2868</span>
+<span id="2869">2869</span>
+<span id="2870">2870</span>
+<span id="2871">2871</span>
+<span id="2872">2872</span>
+<span id="2873">2873</span>
+<span id="2874">2874</span>
+<span id="2875">2875</span>
+<span id="2876">2876</span>
+<span id="2877">2877</span>
+<span id="2878">2878</span>
+<span id="2879">2879</span>
+<span id="2880">2880</span>
+<span id="2881">2881</span>
+<span id="2882">2882</span>
+<span id="2883">2883</span>
+<span id="2884">2884</span>
+<span id="2885">2885</span>
+<span id="2886">2886</span>
+<span id="2887">2887</span>
+<span id="2888">2888</span>
+<span id="2889">2889</span>
+<span id="2890">2890</span>
+<span id="2891">2891</span>
+<span id="2892">2892</span>
+<span id="2893">2893</span>
+<span id="2894">2894</span>
+<span id="2895">2895</span>
+<span id="2896">2896</span>
+<span id="2897">2897</span>
+<span id="2898">2898</span>
+<span id="2899">2899</span>
+<span id="2900">2900</span>
+<span id="2901">2901</span>
+<span id="2902">2902</span>
+<span id="2903">2903</span>
+<span id="2904">2904</span>
+<span id="2905">2905</span>
+<span id="2906">2906</span>
+<span id="2907">2907</span>
+<span id="2908">2908</span>
+<span id="2909">2909</span>
+<span id="2910">2910</span>
+<span id="2911">2911</span>
+<span id="2912">2912</span>
+<span id="2913">2913</span>
+<span id="2914">2914</span>
+<span id="2915">2915</span>
+<span id="2916">2916</span>
+<span id="2917">2917</span>
+<span id="2918">2918</span>
+<span id="2919">2919</span>
+<span id="2920">2920</span>
+<span id="2921">2921</span>
+<span id="2922">2922</span>
+<span id="2923">2923</span>
+<span id="2924">2924</span>
+<span id="2925">2925</span>
+<span id="2926">2926</span>
+<span id="2927">2927</span>
+<span id="2928">2928</span>
+<span id="2929">2929</span>
+<span id="2930">2930</span>
+<span id="2931">2931</span>
+<span id="2932">2932</span>
+<span id="2933">2933</span>
+<span id="2934">2934</span>
+<span id="2935">2935</span>
+<span id="2936">2936</span>
+<span id="2937">2937</span>
+<span id="2938">2938</span>
+<span id="2939">2939</span>
+<span id="2940">2940</span>
+<span id="2941">2941</span>
+<span id="2942">2942</span>
+<span id="2943">2943</span>
+<span id="2944">2944</span>
+<span id="2945">2945</span>
+<span id="2946">2946</span>
+<span id="2947">2947</span>
+<span id="2948">2948</span>
+<span id="2949">2949</span>
+<span id="2950">2950</span>
+<span id="2951">2951</span>
+<span id="2952">2952</span>
+<span id="2953">2953</span>
+<span id="2954">2954</span>
+<span id="2955">2955</span>
+<span id="2956">2956</span>
+<span id="2957">2957</span>
+<span id="2958">2958</span>
+<span id="2959">2959</span>
+<span id="2960">2960</span>
+<span id="2961">2961</span>
+<span id="2962">2962</span>
+<span id="2963">2963</span>
+<span id="2964">2964</span>
+<span id="2965">2965</span>
+<span id="2966">2966</span>
+<span id="2967">2967</span>
+<span id="2968">2968</span>
+<span id="2969">2969</span>
+<span id="2970">2970</span>
+<span id="2971">2971</span>
+<span id="2972">2972</span>
+<span id="2973">2973</span>
+<span id="2974">2974</span>
+<span id="2975">2975</span>
+<span id="2976">2976</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -3021,9 +3150,8 @@
     <span class="ident">displayname</span>: <span class="ident">String</span>,
     <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
     <span class="ident">origin</span>: <span class="ident">Origin</span>,
-    <span class="comment">// Do we need optional maps?</span>
     <span class="ident">scope_maps</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">implicit_scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="ident">sup_scope_maps</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="comment">// Client Auth Type (basic is all we support for now.</span>
     <span class="ident">authz_secret</span>: <span class="ident">String</span>,
     <span class="comment">// Our internal exchange encryption material for this rs.</span>
@@ -3052,7 +3180,7 @@
             .<span class="ident">field</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">uuid</span>)
             .<span class="ident">field</span>(<span class="string">&quot;origin&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">origin</span>)
             .<span class="ident">field</span>(<span class="string">&quot;scope_maps&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">scope_maps</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;implicit_scopes&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">implicit_scopes</span>)
+            .<span class="ident">field</span>(<span class="string">&quot;sup_scope_maps&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sup_scope_maps</span>)
             .<span class="ident">finish</span>()
     }
 }
@@ -3144,7 +3272,7 @@
                         .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidValueState</span>)<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">&quot;authz_secret&quot;</span>);
                     <span class="kw">let</span> <span class="ident">authz_secret</span> <span class="op">=</span> <span class="ident">ent</span>
-                        .<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>)
+                        .<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>)
                         .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
                         .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidValueState</span>)<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">&quot;token_key&quot;</span>);
@@ -3161,11 +3289,11 @@
                         .<span class="ident">cloned</span>()
                         .<span class="ident">unwrap_or_default</span>();
 
-                    <span class="macro">trace!</span>(<span class="string">&quot;implicit_scopes&quot;</span>);
-                    <span class="kw">let</span> <span class="ident">implicit_scopes</span> <span class="op">=</span> <span class="ident">ent</span>
-                        .<span class="ident">get_ava_as_oauthscopes</span>(<span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">iter</span><span class="op">|</span> <span class="ident">iter</span>.<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>())
-                        .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
+                    <span class="macro">trace!</span>(<span class="string">&quot;sup_scope_maps&quot;</span>);
+                    <span class="kw">let</span> <span class="ident">sup_scope_maps</span> <span class="op">=</span> <span class="ident">ent</span>
+                        .<span class="ident">get_ava_as_oauthscopemaps</span>(<span class="string">&quot;oauth2_rs_sup_scope_map&quot;</span>)
+                        .<span class="ident">cloned</span>()
+                        .<span class="ident">unwrap_or_default</span>();
 
                     <span class="macro">trace!</span>(<span class="string">&quot;oauth2_jwt_legacy_crypto_enable&quot;</span>);
                     <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">ent</span>.<span class="ident">get_ava_single_bool</span>(<span class="string">&quot;oauth2_jwt_legacy_crypto_enable&quot;</span>).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>) {
@@ -3223,10 +3351,18 @@
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iss</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>();
                     <span class="ident">iss</span>.<span class="ident">set_path</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{}&quot;</span>, <span class="ident">name</span>));
 
-                    <span class="kw">let</span> <span class="ident">scopes_supported</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">implicit_scopes</span>
-                        .<span class="ident">iter</span>()
+                    <span class="kw">let</span> <span class="ident">scopes_supported</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span>
+                    <span class="ident">scope_maps</span>
+                        .<span class="ident">values</span>()
+                        .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">bts</span><span class="op">|</span> <span class="ident">bts</span>.<span class="ident">iter</span>())
+
+                        .<span class="ident">chain</span>(
+                            <span class="ident">sup_scope_maps</span>
+                                .<span class="ident">values</span>()
+                                .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">bts</span><span class="op">|</span> <span class="ident">bts</span>.<span class="ident">iter</span>())
+                        )
+
                         .<span class="ident">cloned</span>()
-                        .<span class="ident">chain</span>(<span class="ident">scope_maps</span>.<span class="ident">values</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">bts</span><span class="op">|</span> <span class="ident">bts</span>.<span class="ident">iter</span>()).<span class="ident">cloned</span>())
                         .<span class="ident">collect</span>();
                     <span class="kw">let</span> <span class="ident">scopes_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">scopes_supported</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
 
@@ -3237,7 +3373,7 @@
                         <span class="ident">uuid</span>,
                         <span class="ident">origin</span>,
                         <span class="ident">scope_maps</span>,
-                        <span class="ident">implicit_scopes</span>,
+                        <span class="ident">sup_scope_maps</span>,
                         <span class="ident">authz_secret</span>,
                         <span class="ident">token_fernet</span>,
                         <span class="ident">jws_signer</span>,
@@ -3364,7 +3500,7 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::AccessDenied</span>);
         }
 
-        <span class="comment">// scopes - you need to have every requested scope or this req is denied.</span>
+        <span class="comment">// scopes - you need to have every requested scope or this auth_req is denied.</span>
         <span class="kw">let</span> <span class="ident">req_scopes</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">auth_req</span>
             .<span class="ident">scope</span>
             .<span class="ident">split_ascii_whitespace</span>()
@@ -3384,20 +3520,16 @@
         }
 
         <span class="kw">let</span> <span class="ident">uat_scopes</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">o2rs</span>
-            .<span class="ident">implicit_scopes</span>
+            .<span class="ident">scope_maps</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">chain</span>(
-                <span class="ident">o2rs</span>.<span class="ident">scope_maps</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">m</span>)<span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">ident</span>.<span class="ident">is_memberof</span>(<span class="kw-2">*</span><span class="ident">u</span>) {
-                            <span class="prelude-val">Some</span>(<span class="ident">m</span>.<span class="ident">iter</span>())
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">None</span>
-                        }
-                    })
-                    .<span class="ident">flatten</span>(),
-            )
+            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">m</span>)<span class="op">|</span> {
+                <span class="kw">if</span> <span class="ident">ident</span>.<span class="ident">is_memberof</span>(<span class="kw-2">*</span><span class="ident">u</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">m</span>.<span class="ident">iter</span>())
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                }
+            })
+            .<span class="ident">flatten</span>()
             .<span class="ident">cloned</span>()
             .<span class="ident">collect</span>();
 
@@ -3407,18 +3539,53 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">collect</span>();
 
+        <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">o2rs</span>.<span class="ident">scope_maps</span>);
+
+        <span class="comment">// Due to the intersection above, this is correct because the equal len can only</span>
+        <span class="comment">// occur if all terms were satisfied.</span>
         <span class="kw">if</span> <span class="ident">avail_scopes</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">req_scopes</span>.<span class="ident">len</span>() {
             <span class="macro">admin_warn!</span>(
                 <span class="op">%</span><span class="ident">ident</span>,
-                <span class="op">%</span><span class="ident">auth_req</span>.<span class="ident">scope</span>,
+                <span class="ident">requested_scopes</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">req_scopes</span>,
+                <span class="ident">available_scopes</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">uat_scopes</span>,
                 <span class="string">&quot;Identity does not have access to the requested scopes&quot;</span>
             );
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::AccessDenied</span>);
         }
 
+        <span class="ident">drop</span>(<span class="ident">avail_scopes</span>);
+
+        <span class="comment">// ⚠️  At this point, per scopes we are *authorised*</span>
+
+        <span class="comment">// We now access the supplemental scopes that will be granted to this session. It is important</span>
+        <span class="comment">// we DO NOT do this prior to the requested scope check, just in case we accidentally</span>
+        <span class="comment">// confuse the two!</span>
+
+        <span class="comment">// The set of scopes that are being granted during this auth_request. This is a combination</span>
+        <span class="comment">// of the scopes that were requested, and the scopes we supplement.</span>
+
+        <span class="comment">// MICRO OPTIMISATION = flag if we have openid first, so we can into_iter here rather than</span>
+        <span class="comment">// cloning.</span>
+        <span class="kw">let</span> <span class="ident">openid_requested</span> <span class="op">=</span> <span class="ident">req_scopes</span>.<span class="ident">contains</span>(<span class="string">&quot;openid&quot;</span>);
+
+        <span class="kw">let</span> <span class="ident">granted_scopes</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">o2rs</span>
+            .<span class="ident">sup_scope_maps</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">m</span>)<span class="op">|</span> {
+                <span class="kw">if</span> <span class="ident">ident</span>.<span class="ident">is_memberof</span>(<span class="kw-2">*</span><span class="ident">u</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">m</span>.<span class="ident">iter</span>())
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                }
+            })
+            .<span class="ident">flatten</span>()
+            .<span class="ident">cloned</span>()
+            .<span class="ident">chain</span>(<span class="ident">req_scopes</span>.<span class="ident">into_iter</span>())
+            .<span class="ident">collect</span>();
+
         <span class="kw">let</span> <span class="ident">consent_previously_granted</span> <span class="op">=</span>
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">consent_scopes</span>) <span class="op">=</span> <span class="ident">ident</span>.<span class="ident">get_oauth2_consent_scopes</span>(<span class="ident">o2rs</span>.<span class="ident">uuid</span>) {
-                <span class="ident">req_scopes</span>.<span class="ident">eq</span>(<span class="ident">consent_scopes</span>)
+                <span class="ident">granted_scopes</span>.<span class="ident">eq</span>(<span class="ident">consent_scopes</span>)
             } <span class="kw">else</span> {
                 <span class="bool-val">false</span>
             };
@@ -3426,7 +3593,7 @@
         <span class="kw">if</span> <span class="ident">consent_previously_granted</span> {
             <span class="macro">admin_info!</span>(
                 <span class="string">&quot;User has previously consented, permitting. {:?}&quot;</span>,
-                <span class="ident">req_scopes</span>
+                <span class="ident">granted_scopes</span>
             );
 
             <span class="comment">// Setup for the permit success</span>
@@ -3434,7 +3601,7 @@
                 <span class="ident">uat</span>: <span class="ident">uat</span>.<span class="ident">clone</span>(),
                 <span class="ident">code_challenge</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">auth_req</span>.<span class="ident">redirect_uri</span>.<span class="ident">clone</span>(),
-                <span class="ident">scopes</span>: <span class="ident">avail_scopes</span>,
+                <span class="ident">scopes</span>: <span class="ident">granted_scopes</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>(),
                 <span class="ident">nonce</span>: <span class="ident">auth_req</span>.<span class="ident">nonce</span>.<span class="ident">clone</span>(),
             };
 
@@ -3463,9 +3630,11 @@
             <span class="comment">//</span>
             <span class="comment">// https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims</span>
 
-            <span class="kw">let</span> <span class="ident">pii_scopes</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">req_scopes</span>.<span class="ident">contains</span>(<span class="string">&quot;openid&quot;</span>) {
+            <span class="comment">// IMPORTANT DISTINCTION - Here req scopes must contain openid, but the PII can be supplemented</span>
+            <span class="comment">// be the servers scopes!</span>
+            <span class="kw">let</span> <span class="ident">pii_scopes</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">openid_requested</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pii_scopes</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">2</span>);
-                <span class="kw">if</span> <span class="ident">req_scopes</span>.<span class="ident">contains</span>(<span class="string">&quot;email&quot;</span>) {
+                <span class="kw">if</span> <span class="ident">granted_scopes</span>.<span class="ident">contains</span>(<span class="string">&quot;email&quot;</span>) {
                     <span class="ident">pii_scopes</span>.<span class="ident">push</span>(<span class="string">&quot;email&quot;</span>.<span class="ident">to_string</span>());
                     <span class="ident">pii_scopes</span>.<span class="ident">push</span>(<span class="string">&quot;email_verified&quot;</span>.<span class="ident">to_string</span>());
                 }
@@ -3486,7 +3655,7 @@
                 <span class="ident">state</span>: <span class="ident">auth_req</span>.<span class="ident">state</span>.<span class="ident">clone</span>(),
                 <span class="ident">code_challenge</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">auth_req</span>.<span class="ident">redirect_uri</span>.<span class="ident">clone</span>(),
-                <span class="ident">scopes</span>: <span class="ident">avail_scopes</span>.<span class="ident">clone</span>(),
+                <span class="ident">scopes</span>: <span class="ident">granted_scopes</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
                 <span class="ident">nonce</span>: <span class="ident">auth_req</span>.<span class="ident">nonce</span>.<span class="ident">clone</span>(),
             };
 
@@ -3502,7 +3671,7 @@
 
             <span class="prelude-val">Ok</span>(<span class="ident">AuthoriseResponse::ConsentRequested</span> {
                 <span class="ident">client_name</span>: <span class="ident">o2rs</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
-                <span class="ident">scopes</span>: <span class="ident">avail_scopes</span>,
+                <span class="ident">scopes</span>: <span class="ident">granted_scopes</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>(),
                 <span class="ident">pii_scopes</span>,
                 <span class="ident">consent_token</span>,
             })
@@ -4279,15 +4448,24 @@
                 <span class="string">&quot;oauth2_rs_origin&quot;</span>,
                 <span class="ident">Value::new_url_s</span>(<span class="string">&quot;https://demo.example.com&quot;</span>).<span class="ident">unwrap</span>()
             ),
-            (
-                <span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>,
-                <span class="ident">Value::new_oauthscope</span>(<span class="string">&quot;openid&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>)
-            ),
             <span class="comment">// System admins</span>
             (
                 <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
                 <span class="ident">Value::new_oauthscopemap</span>(<span class="ident">UUID_SYSTEM_ADMINS</span>, <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>()])
                     .<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>)
+            ),
+            (
+                <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
+                <span class="ident">Value::new_oauthscopemap</span>(<span class="ident">UUID_IDM_ALL_ACCOUNTS</span>, <span class="macro">btreeset!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>()])
+                    .<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>)
+            ),
+            (
+                <span class="string">&quot;oauth2_rs_sup_scope_map&quot;</span>,
+                <span class="ident">Value::new_oauthscopemap</span>(
+                    <span class="ident">UUID_IDM_ALL_ACCOUNTS</span>,
+                    <span class="macro">btreeset!</span>[<span class="string">&quot;supplement&quot;</span>.<span class="ident">to_string</span>()]
+                )
+                .<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>)
             ),
             (
                 <span class="string">&quot;oauth2_allow_insecure_client_disable_pkce&quot;</span>,
@@ -4306,7 +4484,7 @@
             .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">uuid</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;Failed to retrieve oauth2 resource entry &quot;</span>);
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">entry</span>
-            .<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>)
+            .<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>)
             .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;No oauth2_rs_basic_secret found&quot;</span>);
 
@@ -4886,7 +5064,7 @@
 
                 <span class="macro">eprintln!</span>(<span class="string">&quot;👉  {:?}&quot;</span>, <span class="ident">intr_response</span>);
                 <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">active</span>);
-                <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">scope</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;openid&quot;</span>));
+                <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">scope</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;openid supplement&quot;</span>));
                 <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">client_id</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>));
                 <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">username</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;admin@example.com&quot;</span>));
                 <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">token_type</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;access_token&quot;</span>));
@@ -5091,7 +5269,12 @@
 
             <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">discovery</span>.<span class="ident">scopes_supported</span>);
             <span class="macro">assert!</span>(
-                <span class="ident">discovery</span>.<span class="ident">scopes_supported</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>()])
+                <span class="ident">discovery</span>.<span class="ident">scopes_supported</span>
+                    <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[
+                        <span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>(),
+                        <span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>(),
+                        <span class="string">&quot;supplement&quot;</span>.<span class="ident">to_string</span>(),
+                    ])
             );
 
             <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">response_types_supported</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">ResponseType::Code</span>]);
@@ -5235,7 +5418,9 @@
                 <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">jti</span>.<span class="ident">is_none</span>());
                 <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">name</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;System Administrator&quot;</span>.<span class="ident">to_string</span>()));
                 <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">preferred_username</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;admin@example.com&quot;</span>.<span class="ident">to_string</span>()));
-                <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">scopes</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>()]);
+                <span class="macro">assert!</span>(
+                    <span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">scopes</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;supplement&quot;</span>.<span class="ident">to_string</span>()]
+                );
                 <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">claims</span>.<span class="ident">is_empty</span>());
                 <span class="comment">// Does our access token work with the userinfo endpoint?</span>
                 <span class="comment">// Do the id_token details line up to the userinfo?</span>
@@ -5469,8 +5654,12 @@
                             <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;test_resource_server&quot;</span>)
                         )),
                         <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-                            <span class="ident">AttrString::from</span>(<span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>),
-                            <span class="ident">Value::new_oauthscope</span>(<span class="string">&quot;email&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>),
+                            <span class="ident">AttrString::from</span>(<span class="string">&quot;oauth2_rs_scope_map&quot;</span>),
+                            <span class="ident">Value::new_oauthscopemap</span>(
+                                <span class="ident">UUID_IDM_ALL_ACCOUNTS</span>,
+                                <span class="macro">btreeset!</span>[<span class="string">&quot;email&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>()],
+                            )
+                            .<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>),
                         )]),
                     )
                 };
@@ -5518,7 +5707,76 @@
                         <span class="macro">unreachable!</span>();
                     };
 
+                <span class="ident">drop</span>(<span class="ident">idms_prox_read</span>);
+
                 <span class="comment">// Success! We had to consent again due to the change :)</span>
+
+                <span class="comment">// Now change the supplemental scopes on the oauth2 instance, this revokes the permit.</span>
+                <span class="kw">let</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+
+                <span class="kw">let</span> <span class="ident">me_extend_scopes</span> <span class="op">=</span> <span class="kw">unsafe</span> {
+                    <span class="ident">ModifyEvent::new_internal_invalid</span>(
+                        <span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+                            <span class="string">&quot;oauth2_rs_name&quot;</span>,
+                            <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;test_resource_server&quot;</span>)
+                        )),
+                        <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
+                            <span class="ident">AttrString::from</span>(<span class="string">&quot;oauth2_rs_sup_scope_map&quot;</span>),
+                            <span class="ident">Value::new_oauthscopemap</span>(
+                                <span class="ident">UUID_IDM_ALL_ACCOUNTS</span>,
+                                <span class="macro">btreeset!</span>[<span class="string">&quot;newscope&quot;</span>.<span class="ident">to_string</span>()],
+                            )
+                            .<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>),
+                        )]),
+                    )
+                };
+
+                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">qs_write</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_extend_scopes</span>).<span class="ident">is_ok</span>());
+                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
+
+                <span class="comment">// And do the workflow once more to see if we need to consent again.</span>
+
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+
+                <span class="comment">// We need to reload our identity</span>
+                <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                    .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Unable to process uat&quot;</span>);
+
+                <span class="kw">let</span> (<span class="ident">_code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
+
+                <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
+                    <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">pkce_request</span>: <span class="prelude-val">Some</span>(<span class="ident">PkceRequest</span> {
+                        <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>(<span class="ident">code_challenge</span>),
+                        <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod::S256</span>,
+                    }),
+                    <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
+                    <span class="comment">// Note the scope isn&#39;t requested here!</span>
+                    <span class="ident">scope</span>: <span class="string">&quot;openid email&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="ident">nonce</span>: <span class="prelude-val">Some</span>(<span class="string">&quot;abcdef&quot;</span>.<span class="ident">to_string</span>()),
+                    <span class="ident">oidc_ext</span>: <span class="ident">Default::default</span>(),
+                    <span class="ident">unknown_keys</span>: <span class="ident">Default::default</span>(),
+                };
+
+                <span class="kw">let</span> <span class="ident">consent_request</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                    .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Oauth2 authorisation failed&quot;</span>);
+
+                <span class="comment">// Should be present in the consent phase however!</span>
+                <span class="kw">let</span> <span class="ident">_consent_token</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthoriseResponse::ConsentRequested</span> {
+                    <span class="ident">consent_token</span>,
+                    <span class="ident">scopes</span>,
+                    ..
+                } <span class="op">=</span> <span class="ident">consent_request</span>
+                {
+                    <span class="macro">assert!</span>(<span class="ident">scopes</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="string">&quot;newscope&quot;</span>.<span class="ident">to_string</span>()));
+                    <span class="ident">consent_token</span>
+                } <span class="kw">else</span> {
+                    <span class="macro">unreachable!</span>();
+                };
             }
         )
     }
@@ -5574,7 +5832,7 @@
                 <span class="comment">// Assert that the ident now has the consents.</span>
                 <span class="macro">assert!</span>(
                     <span class="ident">ident</span>.<span class="ident">get_oauth2_consent_scopes</span>(<span class="ident">o2rs_uuid</span>)
-                        <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">btreeset!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>()])
+                        <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="macro">btreeset!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;supplement&quot;</span>.<span class="ident">to_string</span>()])
                 );
 
                 <span class="comment">// Now trigger the delete of the RS</span>
