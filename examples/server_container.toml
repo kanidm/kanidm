@@ -10,6 +10,16 @@ bindaddress = "[::]:8443"
 #   Defaults to "" (disabled)
 # ldapbindaddress = "[::]:3636"
 #
+#   HTTPS requests can be reverse proxied by a loadbalancer.
+#   To preserve the original IP of the caller, these systems
+#   will often add a header such as "Forwarded" or
+#   "X-Forwarded-For". If set to true, then this header is
+#   respected as the "authoritive" source of the IP of the
+#   connected client. If you are not using a load balancer
+#   then you should leave this value as default.
+#   Defaults to false
+# trust_x_forward_for = false
+#
 #   The path to the kanidm database.
 db_path = "/data/kanidm.db"
 #

@@ -46,6 +46,7 @@ include!("./opt.rs");
 struct ServerConfig {
     pub bindaddress: Option<String>,
     pub ldapbindaddress: Option<String>,
+    pub trust_x_forward_for: Option<bool>,
     // pub threads: Option<usize>,
     pub db_path: String,
     pub db_fs_type: Option<String>,
@@ -270,6 +271,7 @@ async fn main() {
             config.update_db_arc_size(sconfig.db_arc_size);
             config.update_role(sconfig.role);
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
+            config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
 
             /*
             // Apply any cli overrides, normally debug level.

@@ -87,6 +87,7 @@ pub struct Configuration {
     pub db_arc_size: Option<usize>,
     pub maximum_request: usize,
     pub secure_cookies: bool,
+    pub trust_x_forward_for: bool,
     pub tls_config: Option<TlsConfiguration>,
     pub cookie_key: [u8; 32],
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
@@ -113,6 +114,7 @@ impl fmt::Display for Configuration {
             })
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
             .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
+            .and_then(|_| write!(f, "trust X-Forwarded-For: {}, ", self.trust_x_forward_for))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
             // TODO: include the backup timings
             .and_then(|_| match &self.online_backup {
@@ -149,6 +151,7 @@ impl Configuration {
             // log path?
             // default true in prd
             secure_cookies: !cfg!(test),
+            trust_x_forward_for: false,
             tls_config: None,
             cookie_key: [0; 32],
             integration_test_config: None,
@@ -177,6 +180,10 @@ impl Configuration {
                 })
             }
         }
+    }
+
+    pub fn update_trust_x_forward_for(&mut self, t: Option<bool>) {
+        self.trust_x_forward_for = t.unwrap_or(false);
     }
 
     pub fn update_db_path(&mut self, p: &str) {
