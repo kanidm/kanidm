@@ -300,6 +300,7 @@ pub fn create_https_server(
     // opt_tls_params: Option<SslAcceptorBuilder>,
     opt_tls_params: Option<&TlsConfiguration>,
     role: ServerRole,
+    trust_x_forward_for: bool,
     cookie_key: &[u8; 32],
     jws_signer: JwsSigner,
     status_ref: &'static StatusActor,
@@ -355,7 +356,9 @@ pub fn create_https_server(
     });
 
     // Add middleware?
-    tserver.with(sketching::middleware::TreeMiddleware::default());
+    tserver.with(sketching::middleware::TreeMiddleware::new(
+        trust_x_forward_for,
+    ));
     // tserver.with(tide::log::LogMiddleware::new());
     // We do not force a session ttl, because we validate this elsewhere in usage.
     tserver.with(

@@ -3,16 +3,17 @@ use tracing::{self, instrument};
 
 use crate::{request_error, request_info, request_warn, security_info, *};
 
-#[derive(Default)]
-pub struct TreeMiddleware {}
-
-// impl Default for TreeMiddleware {
-//     fn default() -> Self {
-//         TreeMiddleware {}
-//     }
-// }
+pub struct TreeMiddleware {
+    trust_x_forward_for: bool,
+}
 
 impl TreeMiddleware {
+    pub fn new(trust_x_forward_for: bool) -> Self {
+        TreeMiddleware {
+            trust_x_forward_for,
+        }
+    }
+
     #[instrument(name = "tide-request", skip(self, req, next))]
     async fn log<'a, State: Clone + Send + Sync + 'static>(
         &'a self,
@@ -26,7 +27,13 @@ impl TreeMiddleware {
         }
         req.set_ext(TreeMiddlewareFinished);
 
-        let remote_address = req.remote().unwrap_or("-").to_string();
+        let remote_address = if self.trust_x_forward_for {
+            req.remote()
+        } else {
+            req.peer_addr()
+        }
+        .unwrap_or("-")
+        .to_string();
         let host = req.host().unwrap_or("-").to_string();
         let method = req.method();
         let path = req.url().path().to_string();
@@ -37,7 +44,7 @@ impl TreeMiddleware {
         let path = path.as_str();
 
         security_info!(
-            src = remote_address,
+            remote_addr = remote_address,
             http.host = host,
             http.method = method,
             path,
