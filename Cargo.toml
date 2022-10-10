@@ -160,6 +160,7 @@ webauthn-rs-proto = "0.4.7"
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 web-sys = "^0.3.60"
 whoami = "^1.2.3"
+walkdir = "2"
 
 yew = "^0.19.3"
 yew-agent = "^0.1.0"

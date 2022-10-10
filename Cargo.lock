@@ -2334,6 +2334,7 @@ dependencies = [
  "toml",
  "tracing",
  "users",
+ "walkdir",
 ]
 
 [[package]]

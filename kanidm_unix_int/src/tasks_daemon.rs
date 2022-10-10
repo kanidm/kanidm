@@ -12,6 +12,7 @@
 
 use std::ffi::CString;
 use std::os::unix::fs::symlink;
+use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::time::Duration;
 use std::{fs, io};
@@ -29,6 +30,7 @@ use tokio::net::UnixStream;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_effective_gid, get_effective_uid};
+use walkdir::WalkDir;
 
 struct TaskCodec;
 
@@ -68,6 +70,17 @@ impl TaskCodec {
     }
 }
 
+fn chown(path: &Path, gid: u32) -> Result<(), String> {
+    let path_os = CString::new(path.as_os_str().as_bytes())
+        .map_err(|_| "Unable to create c-string".to_string())?;
+
+    // Change the owner to the gid - remember, kanidm ONLY has gid's, the uid is implied.
+    if unsafe { lchown(path_os.as_ptr(), gid, gid) } != 0 {
+        return Err("Unable to set ownership".to_string());
+    }
+    Ok(())
+}
+
 fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
     let name = info
@@ -96,14 +109,10 @@ fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<
         return Err("Invalid/Corrupt home directory path - no prefix found".to_string());
     }
 
-    let hd_path_os =
-        CString::new(hd_path_raw.clone()).map_err(|_| "Unable to create c-string".to_string())?;
-
     // Does the home directory exist?
     if !hd_path.exists() {
         // Set a umask
         let before = unsafe { umask(0o0027) };
-        // TODO: Should we copy content from /etc/skel?
         // Create the dir
         if let Err(e) = fs::create_dir_all(hd_path) {
             let _ = unsafe { umask(before) };
@@ -111,10 +120,26 @@ fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<
         }
         let _ = unsafe { umask(before) };
 
-        // Change the owner to the gid - remember, kanidm ONLY has gid's, the uid is implied.
+        chown(hd_path, info.gid)?;
 
-        if unsafe { lchown(hd_path_os.as_ptr(), info.gid, info.gid) } != 0 {
-            return Err("Unable to set ownership".to_string());
+        // Copy in structure from /etc/skel/ if present
+        let skel_dir = Path::new("/etc/skel/");
+        if skel_dir.exists() {
+            info!("preparing homedir using /etc/skel");
+            for entry in WalkDir::new(skel_dir).into_iter().filter_map(|e| e.ok()) {
+                let dest = &hd_path.join(
+                    entry
+                        .path()
+                        .strip_prefix(skel_dir)
+                        .map_err(|e| e.to_string())?,
+                );
+                if entry.path().is_dir() {
+                    fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+                } else {
+                    fs::copy(entry.path(), dest).map_err(|e| e.to_string())?;
+                }
+                chown(dest, info.gid)?;
+            }
         }
     }
 

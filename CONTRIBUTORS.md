@@ -20,6 +20,7 @@
 * Thomas Sanchez (daedric)
 * Dominik Süß (theSuess)
 * Florian Klink (flokli)
+* Kaleb Olson (kalebo)
 
 ## Acknowledgements
 

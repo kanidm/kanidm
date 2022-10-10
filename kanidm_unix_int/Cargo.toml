@@ -70,6 +70,7 @@ tokio-util = { workspace = true, features = ["codec"] }
 tracing.workspace = true
 reqwest.workspace = true
 users.workspace = true
+walkdir.workspace = true
 
 [features]
 # default = [ "libsqlite3-sys/bundled" ]
