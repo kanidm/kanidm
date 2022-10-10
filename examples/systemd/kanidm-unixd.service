@@ -1,0 +1,18 @@
+# You should not need to edit this file. Instead, use a drop-in file by running:
+#   systemctl edit kanidm-unixd-tasks.service
+
+[Unit]
+Description=Kanidm Local Client Resolver
+After=chronyd.service ntpd.service network-online.target
+
+[Service]
+DynamicUser=yes
+Type=simple
+ExecStart=/usr/local/sbin/kanidm_unixd
+
+CacheDirectory=kanidm-unixd
+RuntimeDirectory=kanidm-unixd
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
