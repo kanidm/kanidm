@@ -12,7 +12,7 @@ BINDIR=${PKGDIR}/usr/sbin/
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
 
 %:
-	dh $@
+	dh $@ --with systemd
 
 override_dh_auto_clean:
 
@@ -24,6 +24,25 @@ override_dh_auto_build:
 override_dh_auto_test:
 override_dh_shlibdeps:
 override_dh_strip:
+
+# Do the systemd things
+override_dh_installinit:
+	install -g root -o root \
+		examples/systemd/${PACKAGE}.service \
+		debian/
+    dh_systemd_enable -p${PACKAGE} --name=${PACKAGE} ${PACKAGE}.service
+    dh_installinit -p${PACKAGE} --no-start --noscripts
+    dh_systemd_start -p${PACKAGE} --no-restart-on-upgrade
+
+	install -g root -o root \
+		examples/systemd/${PACKAGE}-tasks.service \
+		debian/
+    dh_systemd_enable -p${PACKAGE}-tasks --name=${PACKAGE}-tasks ${PACKAGE}-tasks.service
+    dh_installinit -p${PACKAGE}-tasks --no-start --noscripts
+    dh_systemd_start -p${PACKAGE}-tasks --no-restart-on-upgrade
+
+override_dh_systemd_start:
+    echo "Not running dh_systemd_start"
 
 override_dh_auto_install:
 	mkdir -p ${BINDIR}
@@ -51,6 +70,7 @@ override_dh_auto_install:
 
 override_dh_installexamples:
 	mkdir -p ${SHARED_DIR}
+	install
 	install -D \
 		-g root -o root \
 		examples/kanidm \
