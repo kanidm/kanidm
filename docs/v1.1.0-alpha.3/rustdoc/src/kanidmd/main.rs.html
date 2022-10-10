@@ -439,6 +439,8 @@
 <span id="439">439</span>
 <span id="440">440</span>
 <span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -487,6 +489,7 @@
 <span class="kw">struct</span> <span class="ident">ServerConfig</span> {
     <span class="kw">pub</span> <span class="ident">bindaddress</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">ldapbindaddress</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">trust_x_forward_for</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
     <span class="comment">// pub threads: Option&lt;usize&gt;,</span>
     <span class="kw">pub</span> <span class="ident">db_path</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">db_fs_type</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -711,6 +714,7 @@
             <span class="ident">config</span>.<span class="ident">update_db_arc_size</span>(<span class="ident">sconfig</span>.<span class="ident">db_arc_size</span>);
             <span class="ident">config</span>.<span class="ident">update_role</span>(<span class="ident">sconfig</span>.<span class="ident">role</span>);
             <span class="ident">config</span>.<span class="ident">update_output_mode</span>(<span class="ident">opt</span>.<span class="ident">commands</span>.<span class="ident">commonopt</span>().<span class="ident">output_mode</span>.<span class="ident">to_owned</span>().<span class="ident">into</span>());
+            <span class="ident">config</span>.<span class="ident">update_trust_x_forward_for</span>(<span class="ident">sconfig</span>.<span class="ident">trust_x_forward_for</span>);
 
             <span class="comment">/*
             // Apply any cli overrides, normally debug level.

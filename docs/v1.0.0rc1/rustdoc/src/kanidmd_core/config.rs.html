@@ -234,6 +234,13 @@
 <span id="234">234</span>
 <span id="235">235</span>
 <span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of</span>
 <span class="doccomment">//! variables that determine how our backends, query server, and frontends are configured.</span>
 <span class="doccomment">//!</span>
@@ -323,6 +330,7 @@
     <span class="kw">pub</span> <span class="ident">db_arc_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">maximum_request</span>: <span class="ident">usize</span>,
     <span class="kw">pub</span> <span class="ident">secure_cookies</span>: <span class="ident">bool</span>,
+    <span class="kw">pub</span> <span class="ident">trust_x_forward_for</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">tls_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">TlsConfiguration</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">cookie_key</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
     <span class="kw">pub</span> <span class="ident">integration_test_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">IntegrationTestConfig</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -349,6 +357,7 @@
             })
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;max request size: {}b, &quot;</span>, <span class="self">self</span>.<span class="ident">maximum_request</span>))
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;secure cookies: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">secure_cookies</span>))
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;trust X-Forwarded-For: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">trust_x_forward_for</span>))
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;with TLS: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">tls_config</span>.<span class="ident">is_some</span>()))
             <span class="comment">// TODO: include the backup timings</span>
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">online_backup</span> {
@@ -385,6 +394,7 @@
             <span class="comment">// log path?</span>
             <span class="comment">// default true in prd</span>
             <span class="ident">secure_cookies</span>: <span class="op">!</span><span class="macro">cfg!</span>(<span class="ident">test</span>),
+            <span class="ident">trust_x_forward_for</span>: <span class="bool-val">false</span>,
             <span class="ident">tls_config</span>: <span class="prelude-val">None</span>,
             <span class="ident">cookie_key</span>: [<span class="number">0</span>; <span class="number">32</span>],
             <span class="ident">integration_test_config</span>: <span class="prelude-val">None</span>,
@@ -413,6 +423,10 @@
                 })
             }
         }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_trust_x_forward_for</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">t</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">trust_x_forward_for</span> <span class="op">=</span> <span class="ident">t</span>.<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_db_path</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">p</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {

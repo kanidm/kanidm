@@ -92,21 +92,29 @@
 <span id="92">92</span>
 <span id="93">93</span>
 <span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tide</span>::{<span class="self">self</span>, <span class="ident">Middleware</span>, <span class="ident">Next</span>, <span class="ident">Request</span>};
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="self">self</span>, <span class="ident">instrument</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">request_error</span>, <span class="ident">request_info</span>, <span class="ident">request_warn</span>, <span class="ident">security_info</span>, <span class="kw-2">*</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TreeMiddleware</span> {}
-
-<span class="comment">// impl Default for TreeMiddleware {</span>
-<span class="comment">//     fn default() -&gt; Self {</span>
-<span class="comment">//         TreeMiddleware {}</span>
-<span class="comment">//     }</span>
-<span class="comment">// }</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TreeMiddleware</span> {
+    <span class="ident">trust_x_forward_for</span>: <span class="ident">bool</span>,
+}
 
 <span class="kw">impl</span> <span class="ident">TreeMiddleware</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">trust_x_forward_for</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">TreeMiddleware</span> {
+            <span class="ident">trust_x_forward_for</span>,
+        }
+    }
+
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;tide-request&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">req</span>, <span class="ident">next</span>))]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">log</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">State</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
@@ -120,7 +128,13 @@
         }
         <span class="ident">req</span>.<span class="ident">set_ext</span>(<span class="ident">TreeMiddlewareFinished</span>);
 
-        <span class="kw">let</span> <span class="ident">remote_address</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">remote</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;-&quot;</span>).<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">remote_address</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">trust_x_forward_for</span> {
+            <span class="ident">req</span>.<span class="ident">remote</span>()
+        } <span class="kw">else</span> {
+            <span class="ident">req</span>.<span class="ident">peer_addr</span>()
+        }
+        .<span class="ident">unwrap_or</span>(<span class="string">&quot;-&quot;</span>)
+        .<span class="ident">to_string</span>();
         <span class="kw">let</span> <span class="ident">host</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">host</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;-&quot;</span>).<span class="ident">to_string</span>();
         <span class="kw">let</span> <span class="ident">method</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">method</span>();
         <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">url</span>().<span class="ident">path</span>().<span class="ident">to_string</span>();
@@ -131,7 +145,7 @@
         <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">path</span>.<span class="ident">as_str</span>();
 
         <span class="macro">security_info!</span>(
-            <span class="ident">src</span> <span class="op">=</span> <span class="ident">remote_address</span>,
+            <span class="ident">remote_addr</span> <span class="op">=</span> <span class="ident">remote_address</span>,
             <span class="ident">http</span>.<span class="ident">host</span> <span class="op">=</span> <span class="ident">host</span>,
             <span class="ident">http</span>.<span class="ident">method</span> <span class="op">=</span> <span class="ident">method</span>,
             <span class="ident">path</span>,

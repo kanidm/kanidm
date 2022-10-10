@@ -879,6 +879,9 @@
 <span id="879">879</span>
 <span id="880">880</span>
 <span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
@@ -1181,6 +1184,7 @@ Disallow: /
     <span class="comment">// opt_tls_params: Option&lt;SslAcceptorBuilder&gt;,</span>
     <span class="ident">opt_tls_params</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">TlsConfiguration</span><span class="op">&gt;</span>,
     <span class="ident">role</span>: <span class="ident">ServerRole</span>,
+    <span class="ident">trust_x_forward_for</span>: <span class="ident">bool</span>,
     <span class="ident">cookie_key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="number">32</span>],
     <span class="ident">jws_signer</span>: <span class="ident">JwsSigner</span>,
     <span class="ident">status_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">StatusActor</span>,
@@ -1236,7 +1240,9 @@ Disallow: /
     });
 
     <span class="comment">// Add middleware?</span>
-    <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">sketching::middleware::TreeMiddleware::default</span>());
+    <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">sketching::middleware::TreeMiddleware::new</span>(
+        <span class="ident">trust_x_forward_for</span>,
+    ));
     <span class="comment">// tserver.with(tide::log::LogMiddleware::new());</span>
     <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.</span>
     <span class="ident">tserver</span>.<span class="ident">with</span>(
