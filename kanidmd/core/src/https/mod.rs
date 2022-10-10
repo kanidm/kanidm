@@ -356,7 +356,9 @@ pub fn create_https_server(
     });
 
     // Add middleware?
-    tserver.with(sketching::middleware::TreeMiddleware::new(trust_x_forward_for));
+    tserver.with(sketching::middleware::TreeMiddleware::new(
+        trust_x_forward_for,
+    ));
     // tserver.with(tide::log::LogMiddleware::new());
     // We do not force a session ttl, because we validate this elsewhere in usage.
     tserver.with(

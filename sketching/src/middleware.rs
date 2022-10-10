@@ -10,7 +10,7 @@ pub struct TreeMiddleware {
 impl TreeMiddleware {
     pub fn new(trust_x_forward_for: bool) -> Self {
         TreeMiddleware {
-            trust_x_forward_for
+            trust_x_forward_for,
         }
     }
 
@@ -31,7 +31,9 @@ impl TreeMiddleware {
             req.remote()
         } else {
             req.peer_addr()
-        }.unwrap_or("-").to_string();
+        }
+        .unwrap_or("-")
+        .to_string();
         let host = req.host().unwrap_or("-").to_string();
         let method = req.method();
         let path = req.url().path().to_string();
