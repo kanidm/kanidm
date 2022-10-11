@@ -70,7 +70,6 @@ override_dh_auto_install:
 
 override_dh_installexamples:
 	mkdir -p ${SHARED_DIR}
-	install
 	install -D \
 		-g root -o root \
 		examples/kanidm \
