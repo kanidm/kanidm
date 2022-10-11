@@ -1,0 +1,20 @@
+# You should not need to edit this file. Instead, use a drop-in file by running:
+#   systemctl edit kanidm-unixd-tasks.service
+
+[Unit]
+Description=Kanidm, the IDM for rustaceans
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+ExecStart=/usr/local/sbin/kanidmd server --config=/etc/kanidm/server.toml
+Restart=on-failure
+RestartSec=15s
+WorkingDirectory=/var/lib/kanidm
+DynamicUser=yes
+StateDirectory=kanidm
+
+[Install]
+WantedBy=multi-user.target
