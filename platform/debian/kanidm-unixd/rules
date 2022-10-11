@@ -37,9 +37,9 @@ override_dh_installinit:
 	install -g root -o root \
 		examples/systemd/${PACKAGE}-tasks.service \
 		debian/
-	dh_systemd_enable -p${PACKAGE}-tasks --name=${PACKAGE}-tasks ${PACKAGE}-tasks.service
-	dh_installinit -p${PACKAGE}-tasks --no-start --noscripts
-	dh_systemd_start -p${PACKAGE}-tasks --no-restart-on-upgrade
+	dh_systemd_enable -p${PACKAGE} --name=${PACKAGE}-tasks ${PACKAGE}-tasks.service
+	dh_installinit -p${PACKAGE} --no-start --noscripts
+	dh_systemd_start -p${PACKAGE} --no-restart-on-upgrade
 
 override_dh_systemd_start:
 	echo "Not running dh_systemd_start"
