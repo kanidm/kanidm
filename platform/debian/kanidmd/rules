@@ -14,7 +14,7 @@ BINDIR=${PKGDIR}/usr/sbin/
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
 
 %:
-	dh $@
+	dh $@ --with systemd
 
 override_dh_auto_clean:
 # cargo clean
