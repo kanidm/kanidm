@@ -927,6 +927,8 @@ pub trait AccessControlsTransaction<'a> {
         };
         trace!("Access check for create event: {}", ce.ident);
 
+        //
+
         // Some useful references we'll use for the remainder of the operation
         let create_state = self.get_create();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
