@@ -971,6 +971,13 @@ impl Oauth2ResourceServersReadTransaction {
             // TODO: Can the user consent to which claims are released? Today as we don't support most
             // of them anyway, no, but in the future, we can stash these to the consent req.
 
+            admin_warn!("prefer_short_username: {:?}", o2rs.prefer_short_username);
+            let preferred_username = if o2rs.prefer_short_username {
+                Some(code_xchg.uat.name().to_string())
+            } else {
+                Some(code_xchg.uat.spn.clone())
+            };
+
             let (email, email_verified) = if scope_set.contains("email") {
                 if let Some(mp) = code_xchg.uat.mail_primary {
                     (Some(mp), Some(true))
@@ -979,13 +986,6 @@ impl Oauth2ResourceServersReadTransaction {
                 }
             } else {
                 (None, None)
-            };
-
-            admin_warn!("prefer_short_username: {:?}", o2rs.prefer_short_username);
-            let preferred_username = if o2rs.prefer_short_username {
-                Some(code_xchg.uat.name.clone())
-            } else {
-                Some(code_xchg.uat.spn.clone())
             };
 
             // TODO: If max_age was requested in the request, we MUST provide auth_time.

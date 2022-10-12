@@ -358,6 +358,19 @@ pub struct DbValueOauthScopeMapV1 {
     pub data: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub enum DbValueAccessScopeV1 {
+    #[serde(rename = "i")]
+    IdentityOnly,
+    #[serde(rename = "r")]
+    #[default]
+    ReadOnly,
+    #[serde(rename = "w")]
+    ReadWrite,
+    #[serde(rename = "s")]
+    Synchronise,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueIdentityId {
     #[serde(rename = "v1i")]
@@ -379,6 +392,8 @@ pub enum DbValueSession {
         issued_at: String,
         #[serde(rename = "b")]
         issued_by: DbValueIdentityId,
+        #[serde(rename = "s", default)]
+        scope: DbValueAccessScopeV1,
     },
 }
 

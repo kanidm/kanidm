@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 
 use time::OffsetDateTime;
 
-use crate::be::dbvalue::{DbValueIdentityId, DbValueSession};
-use crate::identity::IdentityId;
+use crate::be::dbvalue::{DbValueAccessScopeV1, DbValueIdentityId, DbValueSession};
+use crate::identity::{AccessScope, IdentityId};
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::value::Session;
@@ -37,6 +37,7 @@ impl ValueSetSession {
                         expiry,
                         issued_at,
                         issued_by,
+                        scope,
                     } => {
                         // Convert things.
                         let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
@@ -78,6 +79,13 @@ impl ValueSetSession {
                             DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
                         };
 
+                        let scope = match scope {
+                            DbValueAccessScopeV1::IdentityOnly => AccessScope::IdentityOnly,
+                            DbValueAccessScopeV1::ReadOnly => AccessScope::ReadOnly,
+                            DbValueAccessScopeV1::ReadWrite => AccessScope::ReadWrite,
+                            DbValueAccessScopeV1::Synchronise => AccessScope::Synchronise,
+                        };
+
                         Some((
                             refer,
                             Session {
@@ -85,6 +93,7 @@ impl ValueSetSession {
                                 expiry,
                                 issued_at,
                                 issued_by,
+                                scope,
                             },
                         ))
                     }
@@ -192,6 +201,12 @@ impl ValueSetT for ValueSetSession {
                     issued_by: match m.issued_by {
                         IdentityId::Internal => DbValueIdentityId::V1Internal,
                         IdentityId::User(u) => DbValueIdentityId::V1Uuid(u),
+                    },
+                    scope: match m.scope {
+                        AccessScope::IdentityOnly => DbValueAccessScopeV1::IdentityOnly,
+                        AccessScope::ReadOnly => DbValueAccessScopeV1::ReadOnly,
+                        AccessScope::ReadWrite => DbValueAccessScopeV1::ReadWrite,
+                        AccessScope::Synchronise => DbValueAccessScopeV1::Synchronise,
                     },
                 })
                 .collect(),

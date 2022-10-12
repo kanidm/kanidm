@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use compact_jwt::{Jws, JwsSigner};
-use kanidm_proto::v1::ApiToken;
+use kanidm_proto::v1::{ApiToken, ApiTokenPurpose};
 use time::OffsetDateTime;
 
 use crate::event::SearchEvent;
@@ -150,6 +150,8 @@ pub struct GenerateApiTokenEvent {
     pub label: String,
     // When should it expire?
     pub expiry: Option<time::OffsetDateTime>,
+    // Is it read_write capable?
+    pub read_write: bool,
     // Limits?
 }
 
@@ -161,6 +163,7 @@ impl GenerateApiTokenEvent {
             target,
             label: label.to_string(),
             expiry: expiry.map(|ct| time::OffsetDateTime::unix_epoch() + ct),
+            read_write: false,
         }
     }
 }
@@ -209,6 +212,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .clone()
             .map(|odt| odt.to_offset(time::UtcOffset::UTC));
 
+        let purpose = if gte.read_write {
+            ApiTokenPurpose::ReadWrite
+        } else {
+            ApiTokenPurpose::ReadOnly
+        };
+
         // create a new session
         let session = Value::Session(
             session_id,
@@ -220,6 +229,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 issued_at,
                 // Who actually created this?
                 issued_by: gte.ident.get_event_origin_id(),
+                // What is the access scope of this session? This is
+                // for auditing purposes.
+                scope: (&purpose).into(),
             },
         );
 
@@ -230,6 +242,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             label: gte.label.clone(),
             expiry: gte.expiry.clone(),
             issued_at,
+            purpose,
         });
 
         // modify the account to put the session onto it.
@@ -318,7 +331,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         match self.qs_read.search_ext(&srch) {
             Ok(mut entries) => {
-                let r = entries
+                entries
                     .pop()
                     // get the first entry
                     .and_then(|e| {
@@ -326,21 +339,29 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                         // From the entry, turn it into the value
                         e.get_ava_as_session_map("api_token_session").map(|smap| {
                             smap.iter()
-                                .map(|(u, s)| ApiToken {
-                                    account_id,
-                                    token_id: *u,
-                                    label: s.label.clone(),
-                                    expiry: s.expiry.clone(),
-                                    issued_at: s.issued_at.clone(),
+                                .map(|(u, s)| {
+                                    s.scope
+                                        .try_into()
+                                        .map(|purpose| ApiToken {
+                                            account_id,
+                                            token_id: *u,
+                                            label: s.label.clone(),
+                                            expiry: s.expiry.clone(),
+                                            issued_at: s.issued_at.clone(),
+                                            purpose,
+                                        })
+                                        .map_err(|e| {
+                                            admin_error!("Invalid api_token {}", u);
+                                            e
+                                        })
                                 })
-                                .collect::<Vec<_>>()
+                                .collect::<Result<Vec<_>, _>>()
                         })
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
-                        Vec::new()
-                    });
-                Ok(r)
+                        Ok(Vec::new())
+                    })
             }
             Err(e) => Err(e),
         }

@@ -455,14 +455,25 @@ pub async fn service_account_api_token_get(req: tide::Request<AppState>) -> tide
 pub async fn service_account_api_token_post(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
-    let ApiTokenGenerate { label, expiry } = req.body_json().await?;
+    let ApiTokenGenerate {
+        label,
+        expiry,
+        read_write,
+    } = req.body_json().await?;
 
     let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
         .qe_w_ref
-        .handle_service_account_api_token_generate(uat, uuid_or_name, label, expiry, eventid)
+        .handle_service_account_api_token_generate(
+            uat,
+            uuid_or_name,
+            label,
+            expiry,
+            read_write,
+            eventid,
+        )
         .await;
     to_tide_response(res, hvalue)
 }

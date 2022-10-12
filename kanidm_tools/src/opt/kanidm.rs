@@ -358,6 +358,8 @@ pub enum ServiceAccountApiToken {
         /// An optional rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00".
         /// After this time the api token will no longer be valid.
         expiry: Option<String>,
+        #[clap(long = "rw")]
+        read_write: bool,
     },
     /// Destroy / revoke an api token from this service account. Access to the
     /// token is NOT required, only the tag/uuid of the token.

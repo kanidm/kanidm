@@ -7,6 +7,8 @@ use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::sync::Arc;
 
+use kanidm_proto::v1::ApiTokenPurpose;
+
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
@@ -39,6 +41,48 @@ impl Limits {
             search_max_results: usize::MAX,
             search_max_filter_test: usize::MAX,
             filter_max_elements: usize::MAX,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AccessScope {
+    IdentityOnly,
+    ReadOnly,
+    ReadWrite,
+    Synchronise,
+}
+
+impl std::fmt::Display for AccessScope {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AccessScope::IdentityOnly => write!(f, "identity only"),
+            AccessScope::ReadOnly => write!(f, "read only"),
+            AccessScope::ReadWrite => write!(f, "read write"),
+            AccessScope::Synchronise => write!(f, "synchronise"),
+        }
+    }
+}
+
+impl From<&ApiTokenPurpose> for AccessScope {
+    fn from(purpose: &ApiTokenPurpose) -> Self {
+        match purpose {
+            ApiTokenPurpose::ReadOnly => AccessScope::ReadOnly,
+            ApiTokenPurpose::ReadWrite => AccessScope::ReadWrite,
+            ApiTokenPurpose::Synchronise => AccessScope::Synchronise,
+        }
+    }
+}
+
+impl TryInto<ApiTokenPurpose> for AccessScope {
+    type Error = OperationError;
+
+    fn try_into(self: AccessScope) -> Result<ApiTokenPurpose, OperationError> {
+        match self {
+            AccessScope::ReadOnly => Ok(ApiTokenPurpose::ReadOnly),
+            AccessScope::ReadWrite => Ok(ApiTokenPurpose::ReadWrite),
+            AccessScope::Synchronise => Ok(ApiTokenPurpose::Synchronise),
+            AccessScope::IdentityOnly => Err(OperationError::InvalidEntryState),
         }
     }
 }
@@ -81,20 +125,24 @@ impl From<&IdentType> for IdentityId {
 /// An identity that initiated an `Event`.
 pub struct Identity {
     pub origin: IdentType,
+    // pub(crate) source:
+    // pub(crate) impersonate: bool,
+    pub(crate) scope: AccessScope,
     pub(crate) limits: Limits,
 }
 
 impl std::fmt::Display for Identity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self.origin {
-            IdentType::Internal => write!(f, "Internal"),
+            IdentType::Internal => write!(f, "Internal ({})", self.scope),
             IdentType::User(u) => {
                 let nv = u.entry.get_uuid2spn();
                 write!(
                     f,
-                    "User( {}, {} ) ",
+                    "User( {}, {} ) ({})",
                     nv.to_proto_string_clone(),
-                    u.entry.get_uuid().as_hyphenated()
+                    u.entry.get_uuid().as_hyphenated(),
+                    self.scope
                 )
             }
         }
@@ -105,6 +153,7 @@ impl Identity {
     pub fn from_internal() -> Self {
         Identity {
             origin: IdentType::Internal,
+            scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
         }
     }
@@ -113,6 +162,16 @@ impl Identity {
     pub fn from_impersonate_entry(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
+            scope: AccessScope::ReadOnly,
+            limits: Limits::unlimited(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn from_impersonate_entry_priv(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
+        Identity {
+            origin: IdentType::User(IdentUser { entry }),
+            scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
         }
     }
@@ -120,7 +179,11 @@ impl Identity {
     #[cfg(test)]
     pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
         let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        Self::from_impersonate_entry(Arc::new(ei.into_sealed_committed()))
+        Self::from_impersonate_entry_priv(Arc::new(ei.into_sealed_committed()))
+    }
+
+    pub fn access_scope(&self) -> AccessScope {
+        self.scope
     }
 
     pub fn from_impersonate(ident: &Self) -> Self {
