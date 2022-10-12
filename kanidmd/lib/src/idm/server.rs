@@ -3606,7 +3606,7 @@ mod tests {
                 let idms_prox_write = idms.proxy_write(ct.clone());
                 let me_reset_tokens = unsafe {
                     ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("uuid", PartialValue::new_uuid(*UUID_DOMAIN_INFO))),
+                        filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
                         ModifyList::new_list(vec![
                             Modify::Purged(AttrString::from("fernet_private_key_str")),
                             Modify::Purged(AttrString::from("es256_private_key_der")),

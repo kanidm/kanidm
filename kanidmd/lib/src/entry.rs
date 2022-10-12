@@ -85,8 +85,10 @@ use crate::valueset::{self, ValueSet};
 // }
 //
 
+pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
+pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;
 pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).

@@ -159,7 +159,18 @@ impl Identity {
     }
 
     #[cfg(test)]
-    pub fn from_impersonate_entry(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
+    pub fn from_impersonate_entry_identityonly(
+        entry: Arc<Entry<EntrySealed, EntryCommitted>>,
+    ) -> Self {
+        Identity {
+            origin: IdentType::User(IdentUser { entry }),
+            scope: AccessScope::IdentityOnly,
+            limits: Limits::unlimited(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn from_impersonate_entry_readonly(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
             scope: AccessScope::ReadOnly,
@@ -168,18 +179,14 @@ impl Identity {
     }
 
     #[cfg(test)]
-    pub fn from_impersonate_entry_priv(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
+    pub fn from_impersonate_entry_readwrite(
+        entry: Arc<Entry<EntrySealed, EntryCommitted>>,
+    ) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
         }
-    }
-
-    #[cfg(test)]
-    pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        Self::from_impersonate_entry_priv(Arc::new(ei.into_sealed_committed()))
     }
 
     pub fn access_scope(&self) -> AccessScope {

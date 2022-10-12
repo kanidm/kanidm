@@ -2427,7 +2427,7 @@ mod tests {
                         == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
                             .unwrap()
                 );
-                assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
+                assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
                 assert!(oidc.aud == "test_resource_server");
                 assert!(oidc.iat == iat);
                 assert!(oidc.nbf == Some(iat));
@@ -2600,7 +2600,7 @@ mod tests {
                     .validate(&jws_validator, iat)
                     .expect("Failed to verify oidc");
 
-                assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
+                assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
             }
         )
     }

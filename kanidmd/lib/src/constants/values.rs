@@ -34,12 +34,14 @@ lazy_static! {
     pub static ref PVCLASS_SYSTEM_INFO: PartialValue = PartialValue::new_class("system_info");
     pub static ref PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class("system_config");
     pub static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
-    pub static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
+    pub static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(UUID_DOMAIN_INFO);
+    pub static ref CLASS_ACCOUNT: Value = Value::new_class("account");
     pub static ref CLASS_DOMAIN_INFO: Value = Value::new_class("domain_info");
     pub static ref CLASS_DYNGROUP: Value = Value::new_class("dyngroup");
     pub static ref CLASS_MEMBEROF: Value = Value::new_class("memberof");
     pub static ref CLASS_OBJECT: Value = Value::new_class("object");
     pub static ref CLASS_RECYCLED: Value = Value::new_class("recycled");
+    pub static ref CLASS_SERVICE_ACCOUNT: Value = Value::new_class("service_account");
     pub static ref CLASS_SYSTEM: Value = Value::new_class("system");
     pub static ref CLASS_SYSTEM_CONFIG: Value = Value::new_class("system_config");
     pub static ref CLASS_SYSTEM_INFO: Value = Value::new_class("system_info");

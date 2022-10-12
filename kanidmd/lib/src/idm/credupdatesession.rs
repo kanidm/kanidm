@@ -234,7 +234,7 @@ impl InitCredentialUpdateIntentEvent {
         target: Uuid,
         max_ttl: Duration,
     ) -> Self {
-        let ident = Identity::from_impersonate_entry(e);
+        let ident = Identity::from_impersonate_entry_readwrite(e);
         InitCredentialUpdateIntentEvent {
             ident,
             target,
@@ -255,7 +255,7 @@ impl InitCredentialUpdateEvent {
 
     #[cfg(test)]
     pub fn new_impersonate_entry(e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
-        let ident = Identity::from_impersonate_entry(e);
+        let ident = Identity::from_impersonate_entry_readwrite(e);
         let target = ident
             .get_uuid()
             .ok_or(OperationError::InvalidState)
@@ -277,6 +277,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             %target,
             "Initiating Credential Update Session",
         );
+
+        // The initiating identity must be in readwrite mode! Effective permission assumes you
+        // are in rw.
+        if ident.access_scope() != AccessScope::ReadWrite {
+            security_access!("identity access scope is not permitted to modify");
+            security_access!("denied ❌");
+            return Err(OperationError::AccessDenied);
+        }
 
         // Is target an account? This checks for us.
         let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
