@@ -29,12 +29,9 @@ use uuid::Uuid;
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::filter::{Filter, FilterValid, FilterValidResolved};
-use crate::identity::{IdentType, IdentityId};
+use crate::identity::{AccessScope, IdentType, IdentityId};
 use crate::modify::Modify;
 use crate::prelude::*;
-
-// const ACP_RELATED_SEARCH_CACHE_MAX: usize = 2048;
-// const ACP_RELATED_SEARCH_CACHE_LOCAL: usize = 16;
 
 const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 2048;
 const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
@@ -514,7 +511,17 @@ pub trait AccessControlsTransaction<'a> {
             }
             IdentType::User(u) => &u.entry,
         };
-        trace!(event = %se.ident, "Access check for search (filter) event");
+        info!(event = %se.ident, "Access check for search (filter) event");
+
+        match se.ident.access_scope() {
+            AccessScope::IdentityOnly | AccessScope::Synchronise => {
+                security_access!("denied ❌ - identity access scope is not permitted to search");
+                return Ok(vec![]);
+            }
+            AccessScope::ReadOnly | AccessScope::ReadWrite => {
+                // As you were
+            }
+        };
 
         // First get the set of acps that apply to this receiver
         let related_acp: Vec<(&AccessControlSearch, _)> =
@@ -616,7 +623,7 @@ pub trait AccessControlsTransaction<'a> {
          * modify and co.
          */
 
-        trace!("Access check for search (reduce) event: {}", se.ident);
+        info!(event = %se.ident, "Access check for search (reduce) event");
 
         // Get the relevant acps for this receiver.
         let related_acp: Vec<(&AccessControlSearch, _)> =
@@ -764,7 +771,17 @@ pub trait AccessControlsTransaction<'a> {
             }
             IdentType::User(u) => &u.entry,
         };
-        trace!("Access check for modify event: {}", me.ident);
+        info!(event = %me.ident, "Access check for modify event");
+
+        match me.ident.access_scope() {
+            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
+                security_access!("denied ❌ - identity access scope is not permitted to modify");
+                return Ok(false);
+            }
+            AccessScope::ReadWrite => {
+                // As you were
+            }
+        };
 
         // Pre-check if the no-no purge class is present
         let disallow = me
@@ -925,7 +942,17 @@ pub trait AccessControlsTransaction<'a> {
             }
             IdentType::User(u) => &u.entry,
         };
-        trace!("Access check for create event: {}", ce.ident);
+        info!(event = %ce.ident, "Access check for create event");
+
+        match ce.ident.access_scope() {
+            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
+                security_access!("denied ❌ - identity access scope is not permitted to create");
+                return Ok(false);
+            }
+            AccessScope::ReadWrite => {
+                // As you were
+            }
+        };
 
         // Some useful references we'll use for the remainder of the operation
         let create_state = self.get_create();
@@ -1056,7 +1083,17 @@ pub trait AccessControlsTransaction<'a> {
             }
             IdentType::User(u) => &u.entry,
         };
-        trace!("Access check for delete event: {}", de.ident);
+        info!(event = %de.ident, "Access check for delete event");
+
+        match de.ident.access_scope() {
+            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
+                security_access!("denied ❌ - identity access scope is not permitted to delete");
+                return Ok(false);
+            }
+            AccessScope::ReadWrite => {
+                // As you were
+            }
+        };
 
         // Some useful references we'll use for the remainder of the operation
         let delete_state = self.get_delete();
@@ -1971,6 +2008,40 @@ mod tests {
         }};
     }
 
+    macro_rules! test_acp_search_reduce {
+        (
+            $se:expr,
+            $controls:expr,
+            $entries:expr,
+            $expect:expr
+        ) => {{
+            let ac = AccessControls::new();
+            let mut acw = ac.write();
+            acw.update_search($controls).expect("Failed to update");
+            let acw = acw;
+
+            // We still have to reduce the entries to be sure that we are good.
+            let res = acw
+                .search_filter_entries(&mut $se, $entries)
+                .expect("operation failed");
+            // Now on the reduced entries, reduce the entries attrs.
+            let reduced = acw
+                .search_filter_entry_attributes(&mut $se, res)
+                .expect("operation failed");
+
+            // Help the type checker for the expect set.
+            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> = $expect
+                .into_iter()
+                .map(|e| unsafe { e.into_reduced() })
+                .collect();
+
+            debug!("expect --> {:?}", expect_set);
+            debug!("result --> {:?}", reduced);
+            // should be ok, and same as expect.
+            assert!(reduced == expect_set);
+        }};
+    }
+
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
@@ -2010,11 +2081,8 @@ mod tests {
     #[test]
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
-
-        let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
-        let ev2 = unsafe { e2.into_sealed_committed() };
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev2 = unsafe { E_TESTPERSON_2.clone().into_sealed_committed() };
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2.clone())];
 
@@ -2049,58 +2117,146 @@ mod tests {
         test_acp_search!(&se_anon, vec![acp], r_set, ex_anon);
     }
 
-    macro_rules! test_acp_search_reduce {
-        (
-            $se:expr,
-            $controls:expr,
-            $entries:expr,
-            $expect:expr
-        ) => {{
-            let ac = AccessControls::new();
-            let mut acw = ac.write();
-            acw.update_search($controls).expect("Failed to update");
-            let acw = acw;
+    #[test]
+    fn test_access_enforce_scope_search() {
+        let _ = sketching::test_init();
+        // Test that identities are bound by their access scope.
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
 
-            // We still have to reduce the entries to be sure that we are good.
-            let res = acw
-                .search_filter_entries(&mut $se, $entries)
-                .expect("operation failed");
-            // Now on the reduced entries, reduce the entries attrs.
-            let reduced = acw
-                .search_filter_entry_attributes(&mut $se, res)
-                .expect("operation failed");
+        let ex_admin_some = vec![Arc::new(ev1.clone())];
+        let ex_admin_none = vec![];
 
-            // Help the type checker for the expect set.
-            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> = $expect
-                .into_iter()
-                .map(|e| unsafe { e.into_reduced() })
-                .collect();
+        let r_set = vec![Arc::new(ev1)];
 
-            debug!("expect --> {:?}", expect_set);
-            debug!("result --> {:?}", reduced);
-            // should be ok, and same as expect.
-            assert!(reduced == expect_set);
-        }};
+        let se_admin_io = unsafe {
+            SearchEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_identityonly(Arc::new(
+                    E_ADMIN_V1.clone().into_sealed_committed(),
+                )),
+                filter_all!(f_pres("name")),
+            )
+        };
+
+        let se_admin_ro = unsafe {
+            SearchEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_readonly(Arc::new(
+                    E_ADMIN_V1.clone().into_sealed_committed(),
+                )),
+                filter_all!(f_pres("name")),
+            )
+        };
+
+        let se_admin_rw = unsafe {
+            SearchEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_readwrite(Arc::new(
+                    E_ADMIN_V1.clone().into_sealed_committed(),
+                )),
+                filter_all!(f_pres("name")),
+            )
+        };
+
+        let acp = unsafe {
+            AccessControlSearch::from_raw(
+                "test_acp",
+                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                // apply to admin only
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                // Allow admin to read only testperson1
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // In that read, admin may only view the "name" attribute, or query on
+                // the name attribute. Any other query (should be) rejected.
+                "name",
+            )
+        };
+
+        // Check the admin search event
+        test_acp_search!(
+            &se_admin_io,
+            vec![acp.clone()],
+            r_set.clone(),
+            ex_admin_none
+        );
+
+        test_acp_search!(
+            &se_admin_ro,
+            vec![acp.clone()],
+            r_set.clone(),
+            ex_admin_some
+        );
+
+        test_acp_search!(
+            &se_admin_rw,
+            vec![acp.clone()],
+            r_set.clone(),
+            ex_admin_some
+        );
     }
 
-    const JSON_TESTPERSON1_REDUCED: &'static str = r#"{
-        "attrs": {
-            "name": ["testperson1"]
-        }
-    }"#;
+    #[test]
+    fn test_access_enforce_scope_search_attrs() {
+        // Test that in ident only mode that all attrs are always denied. The op should already have
+        // "nothing to do" based on search_filter_entries, but we do the "right thing" anyway.
+
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let r_set = vec![Arc::new(ev1.clone())];
+
+        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
+
+        let ex_anon_some = vec![exv1.clone()];
+        let ex_anon_none: Vec<EntrySealedCommitted> = vec![];
+
+        let se_anon_io = unsafe {
+            SearchEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_identityonly(Arc::new(
+                    E_ANONYMOUS_V1.clone().into_sealed_committed(),
+                )),
+                filter_all!(f_pres("name")),
+            )
+        };
+
+        let se_anon_ro = unsafe {
+            SearchEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_readonly(Arc::new(
+                    E_ANONYMOUS_V1.clone().into_sealed_committed(),
+                )),
+                filter_all!(f_pres("name")),
+            )
+        };
+
+        let acp = unsafe {
+            AccessControlSearch::from_raw(
+                "test_acp",
+                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                // apply to anonymous only
+                filter_valid!(f_eq("name", PartialValue::new_iname("anonymous"))),
+                // Allow anonymous to read only testperson1
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // In that read, admin may only view the "name" attribute, or query on
+                // the name attribute. Any other query (should be) rejected.
+                "name",
+            )
+        };
+
+        // Finally test it!
+        test_acp_search_reduce!(&se_anon_io, vec![acp.clone()], r_set.clone(), ex_anon_none);
+
+        test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
+    }
+
+    lazy_static! {
+        pub static ref E_TESTPERSON_1_REDUCED: EntryInitNew =
+            entry_init!(("name", Value::new_iname("testperson1")));
+    }
 
     #[test]
     fn test_access_enforce_search_attrs() {
         // Test that attributes are correctly limited.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
         let r_set = vec![Arc::new(ev1.clone())];
 
-        let ex1: Entry<EntryInit, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
-        let exv1 = unsafe { ex1.into_sealed_committed() };
+        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
         let ex_anon = vec![exv1.clone()];
 
         let se_anon = unsafe {
@@ -2133,13 +2289,11 @@ mod tests {
         // Test that attributes are correctly limited by the request.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+
         let r_set = vec![Arc::new(ev1.clone())];
 
-        let ex1: Entry<EntryInit, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
-        let exv1 = unsafe { ex1.into_sealed_committed() };
+        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
         let ex_anon = vec![exv1.clone()];
 
         let mut se_anon = unsafe {
@@ -2194,8 +2348,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_modify() {
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
         let r_set = vec![Arc::new(ev1.clone())];
 
         // Name present
@@ -2331,6 +2484,64 @@ mod tests {
         test_acp_modify!(&me_rem_class, vec![acp_deny.clone()], &r_set, false);
     }
 
+    #[test]
+    fn test_access_enforce_scope_modify() {
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let r_set = vec![Arc::new(ev1.clone())];
+
+        let admin = Arc::new(unsafe { E_ADMIN_V1.clone().into_sealed_committed() });
+
+        // Name present
+        let me_pres_io = unsafe {
+            ModifyEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_identityonly(admin.clone()),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iname("value"))]),
+            )
+        };
+
+        // Name present
+        let me_pres_ro = unsafe {
+            ModifyEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_readonly(admin.clone()),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iname("value"))]),
+            )
+        };
+
+        // Name present
+        let me_pres_rw = unsafe {
+            ModifyEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_readwrite(admin.clone()),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iname("value"))]),
+            )
+        };
+
+        let acp_allow = unsafe {
+            AccessControlModify::from_raw(
+                "test_modify_allow",
+                "87bfe9b8-7600-431e-a492-1dde64bbc455",
+                // Apply to admin
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                // To modify testperson
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // Allow pres name and class
+                "name class",
+                // Allow rem name and class
+                "name class",
+                // And the class allowed is account
+                "account",
+            )
+        };
+
+        test_acp_modify!(&me_pres_io, vec![acp_allow.clone()], &r_set, false);
+
+        test_acp_modify!(&me_pres_ro, vec![acp_allow.clone()], &r_set, false);
+
+        test_acp_modify!(&me_pres_rw, vec![acp_allow.clone()], &r_set, true);
+    }
+
     macro_rules! test_acp_create {
         (
             $ce:expr,
@@ -2449,6 +2660,51 @@ mod tests {
         test_acp_create!(&ce_admin, vec![acp, acp2], &r4_set, false);
     }
 
+    #[test]
+    fn test_access_enforce_scope_create() {
+        let ev1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
+        let r1_set = vec![ev1.clone()];
+
+        let admin = Arc::new(unsafe { E_ADMIN_V1.clone().into_sealed_committed() });
+
+        let ce_admin_io = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_identityonly(admin.clone()),
+            vec![],
+        );
+
+        let ce_admin_ro = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(admin.clone()),
+            vec![],
+        );
+
+        let ce_admin_rw = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(admin.clone()),
+            vec![],
+        );
+
+        let acp = unsafe {
+            AccessControlCreate::from_raw(
+                "test_create",
+                "87bfe9b8-7600-431e-a492-1dde64bbc453",
+                // Apply to admin
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                // To create matching filter testperson
+                // Can this be empty?
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // classes
+                "account",
+                // attrs
+                "class name uuid",
+            )
+        };
+
+        test_acp_create!(&ce_admin_io, vec![acp.clone()], &r1_set, false);
+
+        test_acp_create!(&ce_admin_ro, vec![acp.clone()], &r1_set, false);
+
+        test_acp_create!(&ce_admin_rw, vec![acp], &r1_set, true);
+    }
+
     macro_rules! test_acp_delete {
         (
             $de:expr,
@@ -2474,8 +2730,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_delete() {
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
         let r_set = vec![Arc::new(ev1.clone())];
 
         let de_admin = unsafe {
@@ -2507,6 +2762,46 @@ mod tests {
         test_acp_delete!(&de_admin, vec![acp.clone()], &r_set, true);
         // Test reject delete
         test_acp_delete!(&de_anon, vec![acp], &r_set, false);
+    }
+
+    #[test]
+    fn test_access_enforce_scope_delete() {
+        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let r_set = vec![Arc::new(ev1.clone())];
+
+        let admin = Arc::new(unsafe { E_ADMIN_V1.clone().into_sealed_committed() });
+
+        let de_admin_io = DeleteEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_identityonly(admin.clone()),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
+
+        let de_admin_ro = DeleteEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(admin.clone()),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
+
+        let de_admin_rw = DeleteEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(admin.clone()),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
+
+        let acp = unsafe {
+            AccessControlDelete::from_raw(
+                "test_delete",
+                "87bfe9b8-7600-431e-a492-1dde64bbc453",
+                // Apply to admin
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                // To delete testperson
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            )
+        };
+
+        test_acp_delete!(&de_admin_io, vec![acp.clone()], &r_set, false);
+
+        test_acp_delete!(&de_admin_ro, vec![acp.clone()], &r_set, false);
+
+        test_acp_delete!(&de_admin_rw, vec![acp], &r_set, true);
     }
 
     macro_rules! test_acp_effective_permissions {
@@ -2541,7 +2836,11 @@ mod tests {
     fn test_access_effective_permission_check_1() {
         let _ = sketching::test_init();
 
-        let admin = unsafe { Identity::from_impersonate_entry_ser(JSON_ADMIN_V1) };
+        let admin = unsafe {
+            Identity::from_impersonate_entry_readwrite(Arc::new(
+                E_ADMIN_V1.clone().into_sealed_committed(),
+            ))
+        };
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
@@ -2579,7 +2878,11 @@ mod tests {
     fn test_access_effective_permission_check_2() {
         let _ = sketching::test_init();
 
-        let admin = unsafe { Identity::from_impersonate_entry_ser(JSON_ADMIN_V1) };
+        let admin = unsafe {
+            Identity::from_impersonate_entry_readwrite(Arc::new(
+                E_ADMIN_V1.clone().into_sealed_committed(),
+            ))
+        };
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };

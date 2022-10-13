@@ -15,8 +15,8 @@ use fernet::Fernet;
 use futures::task as futures_task;
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UnixGroupToken,
-    UnixUserToken, UserAuthToken,
+    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UatPurpose,
+    UnixGroupToken, UnixUserToken, UserAuthToken,
 };
 use rand::prelude::*;
 use tokio::sync::mpsc::{
@@ -31,7 +31,7 @@ use super::delayed::BackupCodeRemoval;
 use super::event::ReadBackupCodeEvent;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
-use crate::identity::{IdentType, IdentUser, Limits};
+use crate::identity::{AccessScope, IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -610,6 +610,19 @@ pub trait IdmServerTransaction<'a> {
             return Err(OperationError::SessionExpired);
         }
 
+        let scope = match uat.purpose {
+            UatPurpose::IdentityOnly => AccessScope::IdentityOnly,
+            UatPurpose::ReadOnly => AccessScope::ReadOnly,
+            UatPurpose::ReadWrite { expiry } => {
+                let cot = time::OffsetDateTime::unix_epoch() + ct;
+                if cot < expiry {
+                    AccessScope::ReadWrite
+                } else {
+                    AccessScope::ReadOnly
+                }
+            }
+        };
+
         // #64: Now apply claims from the uat into the Entry
         // to allow filtering.
         /*
@@ -644,6 +657,7 @@ pub trait IdmServerTransaction<'a> {
         let limits = Limits::default();
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
+            scope,
             limits,
         })
     }
@@ -662,9 +676,12 @@ pub trait IdmServerTransaction<'a> {
             return Err(OperationError::SessionExpired);
         }
 
+        let scope = (&apit.purpose).into();
+
         let limits = Limits::default();
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
+            scope,
             limits,
         })
     }
@@ -703,6 +720,7 @@ pub trait IdmServerTransaction<'a> {
                     let limits = Limits::default();
                     Ok(Identity {
                         origin: IdentType::User(IdentUser { entry: anon_entry }),
+                        scope: AccessScope::ReadOnly,
                         limits,
                     })
                 } else {
@@ -3588,7 +3606,7 @@ mod tests {
                 let idms_prox_write = idms.proxy_write(ct.clone());
                 let me_reset_tokens = unsafe {
                     ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("uuid", PartialValue::new_uuid(*UUID_DOMAIN_INFO))),
+                        filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
                         ModifyList::new_list(vec![
                             Modify::Purged(AttrString::from("fernet_private_key_str")),
                             Modify::Purged(AttrString::from("es256_private_key_der")),

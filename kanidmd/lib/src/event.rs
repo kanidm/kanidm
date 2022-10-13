@@ -204,8 +204,9 @@ impl SearchEvent {
     // Just impersonate the account with no filter changes.
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
+        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
         SearchEvent {
-            ident: Identity::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_readonly(Arc::new(ei.into_sealed_committed())),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
@@ -218,7 +219,17 @@ impl SearchEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
-            ident: Identity::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry_readonly(e),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            attrs: None,
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
+        SearchEvent {
+            ident,
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
@@ -247,7 +258,7 @@ impl SearchEvent {
         let filter_orig = filter.into_valid();
         let filter = filter_orig.clone().into_recycled();
         SearchEvent {
-            ident: Identity::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry_readonly(e),
             filter,
             filter_orig,
             attrs: None,
@@ -261,7 +272,7 @@ impl SearchEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
-            ident: Identity::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry_readonly(e),
             filter: filter.clone().into_valid().into_ignore_hidden(),
             filter_orig: filter.into_valid(),
             attrs: None,
@@ -345,16 +356,24 @@ impl CreateEvent {
         }
     }
 
-    // Is this an internal only function?
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(
         e: &str,
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Self {
+        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
         CreateEvent {
-            ident: Identity::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
             entries,
         }
+    }
+
+    #[cfg(test)]
+    pub fn new_impersonate_identity(
+        ident: Identity,
+        entries: Vec<Entry<EntryInit, EntryNew>>,
+    ) -> Self {
+        CreateEvent { ident, entries }
     }
 
     pub fn new_internal(entries: Vec<Entry<EntryInit, EntryNew>>) -> Self {
@@ -447,16 +466,28 @@ impl DeleteEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         DeleteEvent {
-            ident: Identity::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry_readwrite(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
     }
 
     #[cfg(test)]
+    pub fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
+        unsafe {
+            DeleteEvent {
+                ident,
+                filter: filter.clone().into_valid(),
+                filter_orig: filter.into_valid(),
+            }
+        }
+    }
+
+    #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
+        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
         DeleteEvent {
-            ident: Identity::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
@@ -618,8 +649,23 @@ impl ModifyEvent {
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
+        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
         ModifyEvent {
-            ident: Identity::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn new_impersonate_identity(
+        ident: Identity,
+        filter: Filter<FilterInvalid>,
+        modlist: ModifyList<ModifyInvalid>,
+    ) -> Self {
+        ModifyEvent {
+            ident,
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             modlist: modlist.into_valid(),
@@ -633,7 +679,7 @@ impl ModifyEvent {
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
         ModifyEvent {
-            ident: Identity::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry_readwrite(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             modlist: modlist.into_valid(),
@@ -769,7 +815,7 @@ impl ReviveRecycledEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         ReviveRecycledEvent {
-            ident: Identity::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry_readwrite(e),
             filter: filter.into_valid(),
         }
     }

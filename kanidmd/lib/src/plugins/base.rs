@@ -84,11 +84,6 @@ impl Plugin for Base {
             }
         }
 
-        // Setup UUIDS because lazy_static can't create a type valid for range.
-        let uuid_admin = *UUID_ADMIN;
-        let uuid_anonymous = UUID_ANONYMOUS;
-        let uuid_does_not_exist = UUID_DOES_NOT_EXIST;
-
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.
         if !ce.ident.is_internal() {
@@ -97,7 +92,7 @@ impl Plugin for Base {
             // part of the struct somehow at init. rather than needing to parse a lot?
             // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
-            let overlap: usize = cand_uuid.range(uuid_admin..uuid_anonymous).count();
+            let overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
             if overlap != 0 {
                 admin_error!(
                     "uuid from protected system UUID range found in create set! {:?}",
@@ -109,10 +104,10 @@ impl Plugin for Base {
             }
         }
 
-        if cand_uuid.contains(&uuid_does_not_exist) {
+        if cand_uuid.contains(&UUID_DOES_NOT_EXIST) {
             admin_error!(
                 "uuid \"does not exist\" found in create set! {:?}",
-                uuid_does_not_exist
+                UUID_DOES_NOT_EXIST
             );
             return Err(OperationError::Plugin(PluginError::Base(
                 "UUID_DOES_NOT_EXIST may not exist!".to_string(),

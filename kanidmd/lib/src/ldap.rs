@@ -598,16 +598,16 @@ mod tests {
                 let admin_t = task::block_on(ldaps.do_bind(idms, "admin", TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "admin@example.com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "name=admin,dc=example,dc=com",
@@ -615,7 +615,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "spn=admin@example.com,dc=example,dc=com",
@@ -623,7 +623,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("uuid={},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
@@ -631,17 +631,17 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
                 let admin_t = task::block_on(ldaps.do_bind(idms, "name=admin", TEST_PASSWORD))
                     .unwrap()
                     .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "spn=admin@example.com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("uuid={}", STR_UUID_ADMIN).as_str(),
@@ -649,13 +649,13 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
                 let admin_t =
                     task::block_on(ldaps.do_bind(idms, "admin,dc=example,dc=com", TEST_PASSWORD))
                         .unwrap()
                         .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     "admin@example.com,dc=example,dc=com",
@@ -663,7 +663,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
                     format!("{},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
@@ -671,7 +671,7 @@ mod tests {
                 ))
                 .unwrap()
                 .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(*UUID_ADMIN));
+                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
                 // Bad password, check last to prevent softlocking of the admin account.
                 assert!(task::block_on(ldaps.do_bind(idms, "admin", "test"))

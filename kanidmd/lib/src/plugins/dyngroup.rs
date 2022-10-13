@@ -681,7 +681,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_refer(*UUID_ADMIN)
+                Value::new_refer(UUID_ADMIN)
             )]),
             None,
             |_| {},

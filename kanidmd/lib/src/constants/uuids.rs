@@ -4,6 +4,7 @@ use uuid::{uuid, Uuid};
 
 // Built in group and account ranges.
 pub const STR_UUID_ADMIN: &str = "00000000-0000-0000-0000-000000000000";
+pub const UUID_ADMIN: Uuid = uuid!("00000000-0000-0000-0000-000000000000");
 pub const _UUID_IDM_ADMINS: Uuid = uuid!("00000000-0000-0000-0000-000000000001");
 pub const _UUID_IDM_PEOPLE_READ_PRIV: Uuid = uuid!("00000000-0000-0000-0000-000000000002");
 pub const _UUID_IDM_PEOPLE_WRITE_PRIV: Uuid = uuid!("00000000-0000-0000-0000-000000000003");
@@ -196,6 +197,7 @@ pub const _UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: Uuid =
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
 pub const UUID_SYSTEM_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000001");
 pub const STR_UUID_DOMAIN_INFO: &str = "00000000-0000-0000-0000-ffffff000025";
+pub const UUID_DOMAIN_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000025");
 
 // DO NOT allocate here, allocate below.
 
@@ -270,8 +272,3 @@ pub const _UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: Uuid =
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
 pub const UUID_ANONYMOUS: Uuid = uuid!("00000000-0000-0000-0000-ffffffffffff");
-
-lazy_static! {
-    pub static ref UUID_ADMIN: Uuid = Uuid::parse_str(STR_UUID_ADMIN).unwrap();
-    pub static ref UUID_DOMAIN_INFO: Uuid = Uuid::parse_str(STR_UUID_DOMAIN_INFO).unwrap();
-}

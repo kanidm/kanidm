@@ -22,7 +22,7 @@ use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::Credential;
-use crate::identity::IdentityId;
+use crate::identity::{AccessScope, IdentityId};
 use crate::repl::cid::Cid;
 
 lazy_static! {
@@ -746,6 +746,7 @@ pub struct Session {
     pub expiry: Option<OffsetDateTime>,
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
+    pub scope: AccessScope,
 }
 
 /// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is

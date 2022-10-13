@@ -321,6 +321,17 @@ pub enum UiHint {
     PosixAccount,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum UatPurpose {
+    IdentityOnly,
+    ReadOnly,
+    ReadWrite {
+        #[serde(with = "time::serde::timestamp")]
+        expiry: time::OffsetDateTime,
+    },
+}
+
 /// The currently authenticated user, and any required metadata for them
 /// to properly authorise them. This is similar in nature to oauth and the krb
 /// PAC/PAD structures. This information is transparent to clients and CAN
@@ -338,8 +349,8 @@ pub struct UserAuthToken {
     // may depend on the client application.
     #[serde(with = "time::serde::timestamp")]
     pub expiry: time::OffsetDateTime,
+    pub purpose: UatPurpose,
     pub uuid: Uuid,
-    pub name: String,
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
@@ -349,19 +360,21 @@ pub struct UserAuthToken {
 
 impl fmt::Display for UserAuthToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // writeln!(f, "name: {}", self.name)?;
         writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "display: {}", self.displayname)?;
+        writeln!(f, "expiry: {}", self.expiry)?;
+        match &self.purpose {
+            UatPurpose::IdentityOnly => writeln!(f, "purpose: identity only")?,
+            UatPurpose::ReadOnly => writeln!(f, "purpose: read only")?,
+            UatPurpose::ReadWrite { expiry } => {
+                writeln!(f, "purpose: read write (expiry: {})", expiry)?
+            }
+        }
         for group in &self.groups {
             writeln!(f, "group: {:?}", group.spn)?;
         }
-        /*
-        for claim in &self.claims {
-            writeln!(f, "claim: {:?}", claim)?;
-        }
-        */
-        writeln!(f, "token expiry: {}", self.expiry)
+        Ok(())
     }
 }
 
@@ -372,6 +385,21 @@ impl PartialEq for UserAuthToken {
 }
 
 impl Eq for UserAuthToken {}
+
+impl UserAuthToken {
+    pub fn name(&self) -> &str {
+        self.spn.split_once('@').map(|x| x.0).unwrap_or(&self.spn)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ApiTokenPurpose {
+    #[default]
+    ReadOnly,
+    ReadWrite,
+    Synchronise,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -384,6 +412,9 @@ pub struct ApiToken {
     pub expiry: Option<time::OffsetDateTime>,
     #[serde(with = "time::serde::timestamp")]
     pub issued_at: time::OffsetDateTime,
+    // Defaults to ReadOnly if not present
+    #[serde(default)]
+    pub purpose: ApiTokenPurpose,
 }
 
 impl fmt::Display for ApiToken {
@@ -422,6 +453,7 @@ pub struct ApiTokenGenerate {
     pub label: String,
     #[serde(with = "time::serde::timestamp::option")]
     pub expiry: Option<time::OffsetDateTime>,
+    pub read_write: bool,
 }
 
 // UAT will need a downcast to Entry, which adds in the claims to the entry

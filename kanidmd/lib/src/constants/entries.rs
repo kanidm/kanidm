@@ -1,4 +1,11 @@
+use crate::constants::uuids::*;
 ///! Constant Entries for the IDM
+use crate::constants::values::*;
+use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::value::Value;
+
+#[cfg(test)]
+use uuid::{uuid, Uuid};
 
 /// Builtin System Admin account.
 pub const JSON_ADMIN_V1: &str = r#"{
@@ -10,6 +17,22 @@ pub const JSON_ADMIN_V1: &str = r#"{
         "displayname": ["System Administrator"]
     }
 }"#;
+
+lazy_static! {
+    pub static ref E_ADMIN_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_MEMBEROF.clone()),
+        ("class", CLASS_ACCOUNT.clone()),
+        ("class", CLASS_SERVICE_ACCOUNT.clone()),
+        ("name", Value::new_iname("admin")),
+        ("uuid", Value::new_uuid(UUID_ADMIN)),
+        (
+            "description",
+            Value::new_utf8s("Builtin System Admin account.")
+        ),
+        ("displayname", Value::new_utf8s("System Administrator"))
+    );
+}
 
 /// Builtin IDM Admin account.
 pub const JSON_IDM_ADMIN_V1: &str = r#"{
@@ -509,7 +532,22 @@ pub const JSON_ANONYMOUS_V1: &str = r#"{
     }
 }"#;
 
+lazy_static! {
+    pub static ref E_ANONYMOUS_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCOUNT.clone()),
+        ("class", CLASS_SERVICE_ACCOUNT.clone()),
+        ("name", Value::new_iname("anonymous")),
+        ("uuid", Value::new_uuid(UUID_ANONYMOUS)),
+        ("description", Value::new_utf8s("Anonymous access account.")),
+        ("displayname", Value::new_utf8s("Anonymous"))
+    );
+}
+
 // ============ TEST DATA ============
+#[cfg(test)]
+pub const UUID_TESTPERSON_1: Uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
 #[cfg(test)]
 pub const JSON_TESTPERSON1: &str = r#"{
     "attrs": {
@@ -520,6 +558,9 @@ pub const JSON_TESTPERSON1: &str = r#"{
 }"#;
 
 #[cfg(test)]
+pub const UUID_TESTPERSON_2: Uuid = uuid!("538faac7-4d29-473b-a59d-23023ac19955");
+
+#[cfg(test)]
 pub const JSON_TESTPERSON2: &str = r#"{
     "attrs": {
         "class": ["object"],
@@ -527,3 +568,17 @@ pub const JSON_TESTPERSON2: &str = r#"{
         "uuid": ["538faac7-4d29-473b-a59d-23023ac19955"]
     }
 }"#;
+
+#[cfg(test)]
+lazy_static! {
+    pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("name", Value::new_iname("testperson1")),
+        ("uuid", Value::new_uuid(UUID_TESTPERSON_1))
+    );
+    pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("name", Value::new_iname("testperson2")),
+        ("uuid", Value::new_uuid(UUID_TESTPERSON_2))
+    );
+}

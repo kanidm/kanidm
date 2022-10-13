@@ -1214,7 +1214,7 @@ async fn test_server_api_token_lifecycle() {
     assert!(tokens.is_empty());
 
     let token = rsclient
-        .idm_service_account_generate_api_token("test_service", "test token", None)
+        .idm_service_account_generate_api_token("test_service", "test token", None, false)
         .await
         .expect("Failed to create service account api token");
 

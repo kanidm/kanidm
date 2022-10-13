@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AuthType, BackupCodesView, CredentialStatus, OperationError, UiHint, UserAuthToken,
+    AuthType, BackupCodesView, CredentialStatus, OperationError, UatPurpose, UiHint, UserAuthToken,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -195,13 +195,17 @@ impl Account {
 
         // TODO: Apply policy to this expiry time.
         let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY);
+        // TODO: Apply priv expiry.
+        let purpose = UatPurpose::ReadWrite {
+            expiry: expiry.clone(),
+        };
 
         Some(UserAuthToken {
             session_id,
             auth_type,
             expiry,
+            purpose,
             uuid: self.uuid,
-            name: self.name.clone(),
             displayname: self.displayname.clone(),
             spn: self.spn.clone(),
             mail_primary: self.mail_primary.clone(),

@@ -4572,7 +4572,7 @@ mod tests {
             // ++ Mod domain name and name to be the old type.
             let me_dn = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("uuid", PartialValue::new_uuid(*UUID_DOMAIN_INFO))),
+                    filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
                     ModifyList::new_list(vec![
                         Modify::Purged(AttrString::from("name")),
                         Modify::Purged(AttrString::from("domain_name")),
