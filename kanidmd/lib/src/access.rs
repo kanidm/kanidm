@@ -515,8 +515,7 @@ pub trait AccessControlsTransaction<'a> {
 
         match se.ident.access_scope() {
             AccessScope::IdentityOnly | AccessScope::Synchronise => {
-                security_access!("identity access scope is not permitted to search");
-                security_access!("denied ❌");
+                security_access!("denied ❌ - identity access scope is not permitted to search");
                 return Ok(vec![]);
             }
             AccessScope::ReadOnly | AccessScope::ReadWrite => {
@@ -776,8 +775,7 @@ pub trait AccessControlsTransaction<'a> {
 
         match me.ident.access_scope() {
             AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("identity access scope is not permitted to modify");
-                security_access!("denied ❌");
+                security_access!("denied ❌ - identity access scope is not permitted to modify");
                 return Ok(false);
             }
             AccessScope::ReadWrite => {
@@ -948,8 +946,7 @@ pub trait AccessControlsTransaction<'a> {
 
         match ce.ident.access_scope() {
             AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("identity access scope is not permitted to create");
-                security_access!("denied ❌");
+                security_access!("denied ❌ - identity access scope is not permitted to create");
                 return Ok(false);
             }
             AccessScope::ReadWrite => {
@@ -1090,8 +1087,7 @@ pub trait AccessControlsTransaction<'a> {
 
         match de.ident.access_scope() {
             AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("identity access scope is not permitted to delete");
-                security_access!("denied ❌");
+                security_access!("denied ❌ - identity access scope is not permitted to delete");
                 return Ok(false);
             }
             AccessScope::ReadWrite => {
