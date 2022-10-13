@@ -1614,16 +1614,16 @@
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
                     <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin@example.com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                         .<span class="ident">unwrap</span>()
                         .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="ident">STR_UUID_ADMIN</span>, <span class="ident">TEST_PASSWORD</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="string">&quot;name=admin,dc=example,dc=com&quot;</span>,
@@ -1631,7 +1631,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="string">&quot;spn=admin@example.com,dc=example,dc=com&quot;</span>,
@@ -1639,7 +1639,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="macro">format!</span>(<span class="string">&quot;uuid={},dc=example,dc=com&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
@@ -1647,17 +1647,17 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
 
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;name=admin&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
                     <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;spn=admin@example.com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                         .<span class="ident">unwrap</span>()
                         .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
@@ -1665,13 +1665,13 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
 
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
                     <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin,dc=example,dc=com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                         .<span class="ident">unwrap</span>()
                         .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="string">&quot;admin@example.com,dc=example,dc=com&quot;</span>,
@@ -1679,7 +1679,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="macro">format!</span>(<span class="string">&quot;{},dc=example,dc=com&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
@@ -1687,7 +1687,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
 
                 <span class="comment">// Bad password, check last to prevent softlocking of the admin account.</span>
                 <span class="macro">assert!</span>(<span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin&quot;</span>, <span class="string">&quot;test&quot;</span>))

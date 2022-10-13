@@ -281,10 +281,18 @@ and other auditing information attached.</p>
 <pre><code class="language-shell">kanidm service-account api-token status --name admin ACCOUNT_ID
 kanidm service-account api-token status --name admin demo_service
 </code></pre>
-<p>To generate a new api token:</p>
+<p>By default api tokens are issued to be &quot;read only&quot;, so they are unable to make changes on behalf of the
+service account they represent. To generate a new read only api token:</p>
 <pre><code class="language-shell">kanidm service-account api-token generate --name admin ACCOUNT_ID LABEL [EXPIRY]
 kanidm service-account api-token generate --name admin demo_service &quot;Test Token&quot;
 kanidm service-account api-token generate --name admin demo_service &quot;Test Token&quot; 2020-09-25T11:22:02+10:00
+</code></pre>
+<p>If you wish to issue a token that is able to make changes on behalf
+of the service account, you must add the &quot;--rw&quot; flag during the generate command. It is recommended you
+only add --rw when the api-token is performing writes to Kanidm.</p>
+<pre><code class="language-shell">kanidm service-account api-token generate --name admin ACCOUNT_ID LABEL [EXPIRY] --rw
+kanidm service-account api-token generate --name admin demo_service &quot;Test Token&quot; --rw
+kanidm service-account api-token generate --name admin demo_service &quot;Test Token&quot; 2020-09-25T11:22:02+10:00 --rw
 </code></pre>
 <p>To destroy (revoke) an api token you will need it's token id. This can be shown with the &quot;status&quot;
 command.</p>

@@ -1140,6 +1140,17 @@
 <span id="1140">1140</span>
 <span id="1141">1141</span>
 <span id="1142">1142</span>
+<span id="1143">1143</span>
+<span id="1144">1144</span>
+<span id="1145">1145</span>
+<span id="1146">1146</span>
+<span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
+<span id="1151">1151</span>
+<span id="1152">1152</span>
+<span id="1153">1153</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
@@ -1597,14 +1608,25 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">service_account_api_token_post</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
     <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">ApiTokenGenerate</span> { <span class="ident">label</span>, <span class="ident">expiry</span> } <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">ApiTokenGenerate</span> {
+        <span class="ident">label</span>,
+        <span class="ident">expiry</span>,
+        <span class="ident">read_write</span>,
+    } <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
 
     <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
         .<span class="ident">state</span>()
         .<span class="ident">qe_w_ref</span>
-        .<span class="ident">handle_service_account_api_token_generate</span>(<span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">label</span>, <span class="ident">expiry</span>, <span class="ident">eventid</span>)
+        .<span class="ident">handle_service_account_api_token_generate</span>(
+            <span class="ident">uat</span>,
+            <span class="ident">uuid_or_name</span>,
+            <span class="ident">label</span>,
+            <span class="ident">expiry</span>,
+            <span class="ident">read_write</span>,
+            <span class="ident">eventid</span>,
+        )
         .<span class="kw">await</span>;
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
@@ -2033,7 +2055,7 @@
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
-    <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">UUID_DOMAIN_INFO</span>)));
+    <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">UUID_DOMAIN_INFO</span>)));
     <span class="ident">json_rest_event_get</span>(<span class="ident">req</span>, <span class="ident">filter</span>, <span class="prelude-val">None</span>).<span class="kw">await</span>
 }
 

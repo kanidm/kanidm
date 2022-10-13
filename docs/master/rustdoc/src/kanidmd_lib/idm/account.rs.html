@@ -516,11 +516,15 @@
 <span id="516">516</span>
 <span id="517">517</span>
 <span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AuthType</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span>, <span class="ident">UiHint</span>, <span class="ident">UserAuthToken</span>,
+    <span class="ident">AuthType</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span>, <span class="ident">UatPurpose</span>, <span class="ident">UiHint</span>, <span class="ident">UserAuthToken</span>,
 };
 <span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
@@ -713,13 +717,17 @@
 
         <span class="comment">// TODO: Apply policy to this expiry time.</span>
         <span class="kw">let</span> <span class="ident">expiry</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">AUTH_SESSION_EXPIRY</span>);
+        <span class="comment">// TODO: Apply priv expiry.</span>
+        <span class="kw">let</span> <span class="ident">purpose</span> <span class="op">=</span> <span class="ident">UatPurpose::ReadWrite</span> {
+            <span class="ident">expiry</span>: <span class="ident">expiry</span>.<span class="ident">clone</span>(),
+        };
 
         <span class="prelude-val">Some</span>(<span class="ident">UserAuthToken</span> {
             <span class="ident">session_id</span>,
             <span class="ident">auth_type</span>,
             <span class="ident">expiry</span>,
+            <span class="ident">purpose</span>,
             <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>,
-            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
             <span class="ident">displayname</span>: <span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
             <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
             <span class="ident">mail_primary</span>: <span class="self">self</span>.<span class="ident">mail_primary</span>.<span class="ident">clone</span>(),

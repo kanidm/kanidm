@@ -9216,7 +9216,7 @@
             <span class="comment">// ++ Mod domain name and name to be the old type.</span>
             <span class="kw">let</span> <span class="ident">me_dn</span> <span class="op">=</span> <span class="kw">unsafe</span> {
                 <span class="ident">ModifyEvent::new_internal_invalid</span>(
-                    <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">UUID_DOMAIN_INFO</span>))),
+                    <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">UUID_DOMAIN_INFO</span>))),
                     <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[
                         <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;name&quot;</span>)),
                         <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;domain_name&quot;</span>)),

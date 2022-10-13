@@ -2935,6 +2935,8 @@
 <span id="2935">2935</span>
 <span id="2936">2936</span>
 <span id="2937">2937</span>
+<span id="2938">2938</span>
+<span id="2939">2939</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
 <span class="doccomment">//!</span>
@@ -3022,8 +3024,10 @@
 <span class="comment">// }</span>
 <span class="comment">//</span>
 
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">EntryInitNew</span> <span class="op">=</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span>;
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">EntrySealedCommitted</span> <span class="op">=</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>;
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">EntryInvalidCommitted</span> <span class="op">=</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">EntryReducedCommitted</span> <span class="op">=</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>;
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">EntryTuple</span> <span class="op">=</span> (<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>, <span class="ident">EntryInvalidCommitted</span>);
 
 <span class="comment">// Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).</span>

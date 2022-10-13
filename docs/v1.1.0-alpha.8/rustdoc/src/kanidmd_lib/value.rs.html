@@ -1854,6 +1854,7 @@
 <span id="1854">1854</span>
 <span id="1855">1855</span>
 <span id="1856">1856</span>
+<span id="1857">1857</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of</span>
 <span class="doccomment">//! the [`Value`] module allow storage and transformation of various types of input into strongly</span>
 <span class="doccomment">//! typed values, allows their comparison, filtering and more. It also has the code for serialising</span>
@@ -1878,7 +1879,7 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbentry::DbIdentSpn</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::Credential</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity::IdentityId</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">AccessScope</span>, <span class="ident">IdentityId</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::cid::Cid</span>;
 
 <span class="macro">lazy_static!</span> {
@@ -2602,6 +2603,7 @@
     <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">OffsetDateTime</span>,
     <span class="kw">pub</span> <span class="ident">issued_by</span>: <span class="ident">IdentityId</span>,
+    <span class="kw">pub</span> <span class="ident">scope</span>: <span class="ident">AccessScope</span>,
 }
 
 <span class="doccomment">/// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is</span>

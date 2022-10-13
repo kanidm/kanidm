@@ -627,6 +627,21 @@
 <span id="627">627</span>
 <span id="628">628</span>
 <span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
@@ -987,6 +1002,19 @@
     <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueAccessScopeV1</span> {
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;i&quot;</span>)]</span>
+    <span class="ident">IdentityOnly</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;r&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">default</span>]</span>
+    <span class="ident">ReadOnly</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;w&quot;</span>)]</span>
+    <span class="ident">ReadWrite</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>)]</span>
+    <span class="ident">Synchronise</span>,
+}
+
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueIdentityId</span> {
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v1i&quot;</span>)]</span>
@@ -1008,6 +1036,8 @@
         <span class="ident">issued_at</span>: <span class="ident">String</span>,
         <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;b&quot;</span>)]</span>
         <span class="ident">issued_by</span>: <span class="ident">DbValueIdentityId</span>,
+        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>, <span class="ident">default</span>)]</span>
+        <span class="ident">scope</span>: <span class="ident">DbValueAccessScopeV1</span>,
     },
 }
 

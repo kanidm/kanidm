@@ -665,11 +665,6 @@
 <span id="665">665</span>
 <span id="666">666</span>
 <span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
-<span id="671">671</span>
-<span id="672">672</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
 <span class="kw">use</span> <span class="ident">std::iter::once</span>;
 
@@ -756,11 +751,6 @@
             }
         }
 
-        <span class="comment">// Setup UUIDS because lazy_static can&#39;t create a type valid for range.</span>
-        <span class="kw">let</span> <span class="ident">uuid_admin</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>;
-        <span class="kw">let</span> <span class="ident">uuid_anonymous</span> <span class="op">=</span> <span class="ident">UUID_ANONYMOUS</span>;
-        <span class="kw">let</span> <span class="ident">uuid_does_not_exist</span> <span class="op">=</span> <span class="ident">UUID_DOES_NOT_EXIST</span>;
-
         <span class="comment">// Check that the system-protected range is not in the cand_uuid, unless we are</span>
         <span class="comment">// an internal operation.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">ce</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
@@ -769,7 +759,7 @@
             <span class="comment">// part of the struct somehow at init. rather than needing to parse a lot?</span>
             <span class="comment">// The internal set is bounded by: UUID_ADMIN -&gt; UUID_ANONYMOUS</span>
             <span class="comment">// Sadly we need to allocate these to strings to make references, sigh.</span>
-            <span class="kw">let</span> <span class="ident">overlap</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">cand_uuid</span>.<span class="ident">range</span>(<span class="ident">uuid_admin</span>..<span class="ident">uuid_anonymous</span>).<span class="ident">count</span>();
+            <span class="kw">let</span> <span class="ident">overlap</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">cand_uuid</span>.<span class="ident">range</span>(<span class="ident">UUID_ADMIN</span>..<span class="ident">UUID_ANONYMOUS</span>).<span class="ident">count</span>();
             <span class="kw">if</span> <span class="ident">overlap</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
                 <span class="macro">admin_error!</span>(
                     <span class="string">&quot;uuid from protected system UUID range found in create set! {:?}&quot;</span>,
@@ -781,10 +771,10 @@
             }
         }
 
-        <span class="kw">if</span> <span class="ident">cand_uuid</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">uuid_does_not_exist</span>) {
+        <span class="kw">if</span> <span class="ident">cand_uuid</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOES_NOT_EXIST</span>) {
             <span class="macro">admin_error!</span>(
                 <span class="string">&quot;uuid \&quot;does not exist\&quot; found in create set! {:?}&quot;</span>,
-                <span class="ident">uuid_does_not_exist</span>
+                <span class="ident">UUID_DOES_NOT_EXIST</span>
             );
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
                 <span class="string">&quot;UUID_DOES_NOT_EXIST may not exist!&quot;</span>.<span class="ident">to_string</span>(),

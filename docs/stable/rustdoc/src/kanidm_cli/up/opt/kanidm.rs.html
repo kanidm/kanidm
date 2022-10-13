@@ -775,6 +775,8 @@
 <span id="775">775</span>
 <span id="776">776</span>
 <span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Args</span>, <span class="ident">Subcommand</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -1135,6 +1137,8 @@
         <span class="doccomment">/// An optional rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;.</span>
         <span class="doccomment">/// After this time the api token will no longer be valid.</span>
         <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;rw&quot;</span>)]</span>
+        <span class="ident">read_write</span>: <span class="ident">bool</span>,
     },
     <span class="doccomment">/// Destroy / revoke an api token from this service account. Access to the</span>
     <span class="doccomment">/// token is NOT required, only the tag/uuid of the token.</span>

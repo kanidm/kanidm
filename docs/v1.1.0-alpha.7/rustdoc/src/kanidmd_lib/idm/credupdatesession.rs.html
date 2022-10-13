@@ -2457,6 +2457,14 @@
 <span id="2457">2457</span>
 <span id="2458">2458</span>
 <span id="2459">2459</span>
+<span id="2460">2460</span>
+<span id="2461">2461</span>
+<span id="2462">2462</span>
+<span id="2463">2463</span>
+<span id="2464">2464</span>
+<span id="2465">2465</span>
+<span id="2466">2466</span>
+<span id="2467">2467</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core::ops::Deref</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
@@ -2693,7 +2701,7 @@
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">max_ttl</span>: <span class="ident">Duration</span>,
     ) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_impersonate_entry</span>(<span class="ident">e</span>);
+        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">e</span>);
         <span class="ident">InitCredentialUpdateIntentEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -2714,7 +2722,7 @@
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry</span>(<span class="ident">e</span>: <span class="ident">std::sync::Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_impersonate_entry</span>(<span class="ident">e</span>);
+        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">e</span>);
         <span class="kw">let</span> <span class="ident">target</span> <span class="op">=</span> <span class="ident">ident</span>
             .<span class="ident">get_uuid</span>()
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
@@ -2736,6 +2744,14 @@
             <span class="op">%</span><span class="ident">target</span>,
             <span class="string">&quot;Initiating Credential Update Session&quot;</span>,
         );
+
+        <span class="comment">// The initiating identity must be in readwrite mode! Effective permission assumes you</span>
+        <span class="comment">// are in rw.</span>
+        <span class="kw">if</span> <span class="ident">ident</span>.<span class="ident">access_scope</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">AccessScope::ReadWrite</span> {
+            <span class="macro">security_access!</span>(<span class="string">&quot;identity access scope is not permitted to modify&quot;</span>);
+            <span class="macro">security_access!</span>(<span class="string">&quot;denied ❌&quot;</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::AccessDenied</span>);
+        }
 
         <span class="comment">// Is target an account? This checks for us.</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">Account::try_from_entry_rw</span>(<span class="ident">entry</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">qs_write</span>)<span class="question-mark">?</span>;

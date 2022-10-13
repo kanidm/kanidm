@@ -1356,6 +1356,8 @@
 <span id="1356">1356</span>
 <span id="1357">1357</span>
 <span id="1358">1358</span>
+<span id="1359">1359</span>
+<span id="1360">1360</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::iter</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
@@ -1783,6 +1785,7 @@
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">label</span>: <span class="ident">String</span>,
         <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
+        <span class="ident">read_write</span>: <span class="ident">bool</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
@@ -1807,6 +1810,7 @@
             <span class="ident">target</span>,
             <span class="ident">label</span>,
             <span class="ident">expiry</span>,
+            <span class="ident">read_write</span>,
         };
 
         <span class="ident">idms_prox_write</span>

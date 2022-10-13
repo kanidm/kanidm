@@ -233,13 +233,28 @@
 <span id="233">233</span>
 <span id="234">234</span>
 <span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::btree_map::Entry</span> <span class="kw">as</span> <span class="ident">BTreeEntry</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
 <span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue</span>::{<span class="ident">DbValueIdentityId</span>, <span class="ident">DbValueSession</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity::IdentityId</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue</span>::{<span class="ident">DbValueAccessScopeV1</span>, <span class="ident">DbValueIdentityId</span>, <span class="ident">DbValueSession</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">AccessScope</span>, <span class="ident">IdentityId</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaAttribute</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::Session</span>;
@@ -272,6 +287,7 @@
                         <span class="ident">expiry</span>,
                         <span class="ident">issued_at</span>,
                         <span class="ident">issued_by</span>,
+                        <span class="ident">scope</span>,
                     } =&gt; {
                         <span class="comment">// Convert things.</span>
                         <span class="kw">let</span> <span class="ident">issued_at</span> <span class="op">=</span> <span class="ident">OffsetDateTime::parse</span>(<span class="ident">issued_at</span>, <span class="ident">time::Format::Rfc3339</span>)
@@ -313,6 +329,13 @@
                             <span class="ident">DbValueIdentityId::V1Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">IdentityId::User</span>(<span class="ident">u</span>),
                         };
 
+                        <span class="kw">let</span> <span class="ident">scope</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">scope</span> {
+                            <span class="ident">DbValueAccessScopeV1::IdentityOnly</span> =&gt; <span class="ident">AccessScope::IdentityOnly</span>,
+                            <span class="ident">DbValueAccessScopeV1::ReadOnly</span> =&gt; <span class="ident">AccessScope::ReadOnly</span>,
+                            <span class="ident">DbValueAccessScopeV1::ReadWrite</span> =&gt; <span class="ident">AccessScope::ReadWrite</span>,
+                            <span class="ident">DbValueAccessScopeV1::Synchronise</span> =&gt; <span class="ident">AccessScope::Synchronise</span>,
+                        };
+
                         <span class="prelude-val">Some</span>((
                             <span class="ident">refer</span>,
                             <span class="ident">Session</span> {
@@ -320,6 +343,7 @@
                                 <span class="ident">expiry</span>,
                                 <span class="ident">issued_at</span>,
                                 <span class="ident">issued_by</span>,
+                                <span class="ident">scope</span>,
                             },
                         ))
                     }
@@ -427,6 +451,12 @@
                     <span class="ident">issued_by</span>: <span class="kw">match</span> <span class="ident">m</span>.<span class="ident">issued_by</span> {
                         <span class="ident">IdentityId::Internal</span> =&gt; <span class="ident">DbValueIdentityId::V1Internal</span>,
                         <span class="ident">IdentityId::User</span>(<span class="ident">u</span>) =&gt; <span class="ident">DbValueIdentityId::V1Uuid</span>(<span class="ident">u</span>),
+                    },
+                    <span class="ident">scope</span>: <span class="kw">match</span> <span class="ident">m</span>.<span class="ident">scope</span> {
+                        <span class="ident">AccessScope::IdentityOnly</span> =&gt; <span class="ident">DbValueAccessScopeV1::IdentityOnly</span>,
+                        <span class="ident">AccessScope::ReadOnly</span> =&gt; <span class="ident">DbValueAccessScopeV1::ReadOnly</span>,
+                        <span class="ident">AccessScope::ReadWrite</span> =&gt; <span class="ident">DbValueAccessScopeV1::ReadWrite</span>,
+                        <span class="ident">AccessScope::Synchronise</span> =&gt; <span class="ident">DbValueAccessScopeV1::Synchronise</span>,
                     },
                 })
                 .<span class="ident">collect</span>(),
