@@ -474,14 +474,11 @@ pub struct LoginOpt {
 
 #[derive(Debug, Args)]
 pub struct LogoutOpt {
-    #[clap(short, long, env = "KANIDM_DEBUG")]
-    pub debug: bool,
-    #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
-    pub addr: Option<String>,
-    #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
-    pub ca_path: Option<PathBuf>,
-    #[clap()]
-    pub username: Option<String>,
+    #[clap(flatten)]
+    copt: CommonOpt,
+    #[clap(short, long, hide = true)]
+    /// Do not send the logout to the server - only remove the session token locally
+    local_only: bool,
 }
 
 #[derive(Debug, Subcommand)]

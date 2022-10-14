@@ -146,11 +146,13 @@ impl From<&IdentType> for IdentityId {
 }
 
 #[derive(Debug, Clone)]
-/// An identity that initiated an `Event`.
+/// An identity that initiated an `Event`. Contains extra details about the session
+/// and other info that can assist with server decision making.
 pub struct Identity {
     pub origin: IdentType,
     // pub(crate) source:
     // pub(crate) impersonate: bool,
+    // In a way I guess these are session claims?
     pub(crate) session_id: Uuid,
     pub(crate) scope: AccessScope,
     pub(crate) limits: Limits,

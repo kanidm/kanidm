@@ -83,7 +83,6 @@ pub struct IdmServer {
     webauthn: Webauthn,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
-
     uat_jwt_signer: Arc<CowCell<JwsSigner>>,
     uat_jwt_validator: Arc<CowCell<JwsValidator>>,
     token_enc_key: Arc<CowCell<Fernet>>,
@@ -2013,6 +2012,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             },
         );
 
+        info!(session_id = %asr.session_id, "Persisting auth session");
+
         // modify the account to put the session onto it.
         let modlist = ModifyList::new_list(vec![Modify::Present(
             AttrString::from("user_auth_token_session"),
@@ -2025,7 +2026,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &modlist,
             )
             .map_err(|e| {
-                admin_error!("Failed to update session token {:?}", e);
+                admin_error!("Failed to persist user auth token {:?}", e);
                 e
             })
         // Done!

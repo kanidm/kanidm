@@ -6,6 +6,10 @@ if [ -z "$KANI_TMP" ]; then
     KANI_TMP=/tmp/kanidm
 fi
 
+if [ -z "$KANI_CARGO_OPTS" ]; then
+    KANI_CARGO_OPTS=--debug
+fi
+
 CONFIG_FILE="../../examples/insecure_server.toml"
 
 if [ ! -f "${CONFIG_FILE}" ]; then
@@ -28,4 +32,4 @@ if [ -n "${1}" ]; then
 fi
 
 #shellcheck disable=SC2086
-cargo run --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"
+cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"

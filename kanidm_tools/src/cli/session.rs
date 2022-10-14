@@ -372,33 +372,66 @@ impl LoginOpt {
 
 impl LogoutOpt {
     pub fn debug(&self) -> bool {
-        self.debug
+        self.copt.debug
     }
 
     pub async fn exec(&self) {
-        // For now we just remove this from the token store.
-
-        let mut _tmp_username = String::new();
-        let username = match &self.username {
-            Some(value) => value,
-            None => {
-                _tmp_username = match prompt_for_username_get_username() {
+        let username: String = if self.local_only {
+            // For now we just remove this from the token store.
+            let mut _tmp_username = String::new();
+            match &self.copt.username {
+                Some(value) => value.clone(),
+                None => match prompt_for_username_get_username() {
                     Ok(value) => value,
                     Err(msg) => {
                         error!("{}", msg);
                         std::process::exit(1);
                     }
-                };
-                &_tmp_username
+                },
             }
+        } else {
+            let client = self.copt.to_client().await;
+            let token = match client.get_token().await {
+                Some(t) => t,
+                None => {
+                    error!("Client token store is empty/corrupt");
+                    std::process::exit(1);
+                }
+            };
+            // Parse it for the username.
+
+            if let Err(e) = client.logout().await {
+                error!("Failed to logout - {:?}", e);
+                std::process::exit(1);
+            }
+
+            // Server acked the logout, lets proceed with the local cleanup now.
+            let jwtu = match JwsUnverified::from_str(&token) {
+                Ok(value) => value,
+                Err(e) => {
+                    error!(?e, "Unable to parse token from str");
+                    std::process::exit(1);
+                }
+            };
+
+            let uat: UserAuthToken = match jwtu.validate_embeded() {
+                Ok(jwt) => jwt.into_inner(),
+                Err(e) => {
+                    error!(?e, "Unable to verify token signature, may be corrupt");
+                    std::process::exit(1);
+                }
+            };
+
+            uat.name().to_string()
         };
+
         let mut tokens = read_tokens().unwrap_or_else(|_| {
             error!("Error retrieving authentication token store");
             std::process::exit(1);
         });
 
         // Remove our old one
-        if tokens.remove(username).is_some() {
+        if tokens.remove(&username).is_some() {
             // write them out.
             if let Err(_e) = write_tokens(&tokens) {
                 error!("Error persisting authentication token store");

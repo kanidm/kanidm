@@ -442,27 +442,35 @@ impl Account {
             return false;
         }
 
-        // Get the sessions.
-        let session_present = entry
-            .get_ava_as_session_map("user_auth_token_session")
-            .map(|session_map| session_map.get(&uat.session_id).is_some())
-            .unwrap_or(false);
+        // Anonymous does NOT record it's sessions, so we simply check the expiry time
+        // of the token. This is already done for us as noted above.
 
-        if session_present {
-            security_info!("A valid session value exists for this token");
+        if uat.auth_type == AuthType::Anonymous {
+            security_info!("Anonymous sessions do not have session records, session is valid.");
             true
         } else {
-            let grace = uat.issued_at + GRACE_WINDOW;
-            let current = time::OffsetDateTime::unix_epoch() + ct;
-            trace!(%grace, %current);
-            if current >= grace {
-                security_info!(
-                    "The token grace window has passed, and no session exists. Assuming invalid."
-                );
-                false
-            } else {
-                security_info!("The token grace window is in effect. Assuming valid.");
+            // Get the sessions.
+            let session_present = entry
+                .get_ava_as_session_map("user_auth_token_session")
+                .map(|session_map| session_map.get(&uat.session_id).is_some())
+                .unwrap_or(false);
+
+            if session_present {
+                security_info!("A valid session value exists for this token");
                 true
+            } else {
+                let grace = uat.issued_at + GRACE_WINDOW;
+                let current = time::OffsetDateTime::unix_epoch() + ct;
+                trace!(%grace, %current);
+                if current >= grace {
+                    security_info!(
+                        "The token grace window has passed, and no session exists. Assuming invalid."
+                    );
+                    false
+                } else {
+                    security_info!("The token grace window is in effect. Assuming valid.");
+                    true
+                }
             }
         }
     }

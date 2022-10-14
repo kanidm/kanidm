@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
-    Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
-    ModifyRequest, OperationError,
+    AccountUnixExtend, AuthType, CUIntentToken, CUSessionToken, CUStatus, CreateRequest,
+    DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify,
+    ModifyList as ProtoModifyList, ModifyRequest, OperationError,
 };
 use time::OffsetDateTime;
 use tracing::{info, instrument, span, trace, Level};
@@ -551,12 +551,20 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
         let idms_prox_write = self.idms.proxy_write_async(ct).await;
-        let ident = idms_prox_write
-            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
-                e
+
+        // We specifically need a uat here to assess the auth type!
+        let (ident, uat) = idms_prox_write
+            .validate_and_parse_uat(uat.as_deref(), ct)
+            .and_then(|uat| {
+                idms_prox_write
+                    .process_uat_to_identity(&uat, ct)
+                    .map(|ident| (ident, uat))
             })?;
+
+        if uat.auth_type == AuthType::Anonymous {
+            info!("Ignoring request to logout anonymous session - these sessions are not recorded");
+            return Ok(());
+        }
 
         let target = ident.get_uuid().ok_or_else(|| {
             admin_error!("Invalid identity - no uuid present");
