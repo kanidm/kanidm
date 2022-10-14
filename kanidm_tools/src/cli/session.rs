@@ -463,9 +463,13 @@ impl SessionOpt {
                 let tokens: BTreeMap<_, _> = tokens
                     .into_iter()
                     .filter_map(|(u, (t, uat))| {
-                        if now >= uat.expiry {
-                            //Expired
-                            None
+                        if let Some(exp) = uat.expiry {
+                            if now >= exp {
+                                //Expired
+                                None
+                            } else {
+                                Some((u, t))
+                            }
                         } else {
                             Some((u, t))
                         }

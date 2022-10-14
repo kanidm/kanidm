@@ -17,6 +17,7 @@ use kanidmd_lib::{
         ReviveRecycledEvent,
     },
     filter::{Filter, FilterInvalid},
+    idm::account::DestroySessionTokenEvent,
     idm::credupdatesession::{
         CredentialUpdateIntentToken, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
         InitCredentialUpdateIntentEvent,
@@ -495,6 +496,83 @@ impl QueryServerWriteV1 {
 
         idms_prox_write
             .service_account_destroy_api_token(&dte)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_account_user_auth_token_destroy(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        token_id: Uuid,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving id to target");
+                e
+            })?;
+
+        let dte = DestroySessionTokenEvent {
+            ident,
+            target,
+            token_id,
+        };
+
+        idms_prox_write
+            .account_destroy_session_token(&dte)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_logout(
+        &self,
+        uat: Option<String>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = ident.get_uuid().ok_or_else(|| {
+            admin_error!("Invalid identity - no uuid present");
+            OperationError::InvalidState
+        })?;
+
+        let token_id = ident.get_session_id();
+
+        let dte = DestroySessionTokenEvent {
+            ident,
+            target,
+            token_id,
+        };
+
+        idms_prox_write
+            .account_destroy_session_token(&dte)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 

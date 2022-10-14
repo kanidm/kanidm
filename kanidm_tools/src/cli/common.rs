@@ -121,12 +121,14 @@ impl CommonOpt {
             .map(|jws: Jws<UserAuthToken>| jws.into_inner())
         {
             Ok(uat) => {
-                if time::OffsetDateTime::now_utc() >= uat.expiry {
-                    error!(
-                        "Session has expired for {} - you may need to login again.",
-                        uat.spn
-                    );
-                    std::process::exit(1);
+                if let Some(exp) = uat.expiry {
+                    if time::OffsetDateTime::now_utc() >= exp {
+                        error!(
+                            "Session has expired for {} - you may need to login again.",
+                            uat.spn
+                        );
+                        std::process::exit(1);
+                    }
                 }
             }
             Err(e) => {

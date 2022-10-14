@@ -101,6 +101,7 @@ pub const JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
             "account_expire",
             "account_valid_from",
             "primary_credential",
+            "user_auth_token_session",
             "passkeys",
             "devicekeys"
         ]
@@ -120,7 +121,7 @@ pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
             "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
         ],
         "acp_modify_removedattr": [
-            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password", "passkeys", "devicekeys"
+            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password", "passkeys", "devicekeys", "user_auth_token_session"
         ],
         "acp_modify_presentattr": [
             "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password", "passkeys", "devicekeys"
@@ -247,6 +248,9 @@ pub const JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
             "displayname",
             "legalname",
             "primary_credential",
+            "passkeys",
+            "devicekeys",
+            "user_auth_token_session",
             "ssh_publickey",
             "mail"
         ],
@@ -434,7 +438,7 @@ pub const JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &str = r#"{
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail", "gidnumber", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail", "gidnumber", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
         ]
     }
 }"#;
@@ -456,7 +460,7 @@ pub const JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_modify_removedattr": [
-            "name", "displayname", "ssh_publickey", "primary_credential", "mail", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"
+            "name", "displayname", "ssh_publickey", "primary_credential", "mail", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
         ],
         "acp_modify_presentattr": [
             "name", "displayname", "ssh_publickey", "primary_credential", "mail", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"
@@ -591,7 +595,7 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
         ]
     }
 }"#;
@@ -613,7 +617,7 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_modify_removedattr": [
-            "name", "displayname", "ssh_publickey", "primary_credential", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"
+            "name", "displayname", "ssh_publickey", "primary_credential", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
         ],
         "acp_modify_presentattr": [
             "name", "displayname", "ssh_publickey", "primary_credential", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"

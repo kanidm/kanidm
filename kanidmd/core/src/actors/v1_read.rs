@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use kanidm_proto::v1::{
     ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
-    Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse,
+    Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, UatStatus,
     UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
 use ldap3_proto::simple::*;
@@ -18,6 +18,7 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::{
     event::{OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult},
     filter::{Filter, FilterInvalid},
+    idm::account::ListUserAuthTokenEvent,
     idm::credupdatesession::CredentialUpdateSessionToken,
     idm::event::{
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent,
@@ -763,6 +764,38 @@ impl QueryServerReadV1 {
         let lte = ListApiTokenEvent { ident, target };
 
         idms_prox_read.service_account_list_api_token(&lte)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_account_user_auth_token_get(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        eventid: Uuid,
+    ) -> Result<Vec<UatStatus>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+        let target = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!("Error resolving id to target");
+                e
+            })?;
+
+        let lte = ListUserAuthTokenEvent { ident, target };
+
+        idms_prox_read.account_list_user_auth_tokens(&lte)
     }
 
     #[instrument(

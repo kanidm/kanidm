@@ -6,8 +6,9 @@
 use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::sync::Arc;
+use uuid::uuid;
 
-use kanidm_proto::v1::ApiTokenPurpose;
+use kanidm_proto::v1::{ApiTokenPurpose, UatPurpose, UatPurposeStatus};
 
 use serde::{Deserialize, Serialize};
 
@@ -87,6 +88,29 @@ impl TryInto<ApiTokenPurpose> for AccessScope {
     }
 }
 
+impl From<&UatPurpose> for AccessScope {
+    fn from(purpose: &UatPurpose) -> Self {
+        match purpose {
+            UatPurpose::IdentityOnly => AccessScope::IdentityOnly,
+            UatPurpose::ReadOnly => AccessScope::ReadOnly,
+            UatPurpose::ReadWrite { .. } => AccessScope::ReadWrite,
+        }
+    }
+}
+
+impl TryInto<UatPurposeStatus> for AccessScope {
+    type Error = OperationError;
+
+    fn try_into(self: AccessScope) -> Result<UatPurposeStatus, OperationError> {
+        match self {
+            AccessScope::ReadOnly => Ok(UatPurposeStatus::ReadOnly),
+            AccessScope::ReadWrite => Ok(UatPurposeStatus::ReadWrite),
+            AccessScope::IdentityOnly => Ok(UatPurposeStatus::IdentityOnly),
+            AccessScope::Synchronise => Err(OperationError::InvalidEntryState),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 /// Metadata and the entry of the current Identity which is an external account/user.
 pub struct IdentUser {
@@ -127,6 +151,7 @@ pub struct Identity {
     pub origin: IdentType,
     // pub(crate) source:
     // pub(crate) impersonate: bool,
+    pub(crate) session_id: Uuid,
     pub(crate) scope: AccessScope,
     pub(crate) limits: Limits,
 }
@@ -139,9 +164,10 @@ impl std::fmt::Display for Identity {
                 let nv = u.entry.get_uuid2spn();
                 write!(
                     f,
-                    "User( {}, {} ) ({})",
+                    "User( {}, {} ) ({}, {})",
                     nv.to_proto_string_clone(),
                     u.entry.get_uuid().as_hyphenated(),
+                    self.session_id,
                     self.scope
                 )
             }
@@ -153,6 +179,7 @@ impl Identity {
     pub fn from_internal() -> Self {
         Identity {
             origin: IdentType::Internal,
+            session_id: uuid!("00000000-0000-0000-0000-000000000000"),
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
         }
@@ -164,6 +191,7 @@ impl Identity {
     ) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
+            session_id: uuid!("00000000-0000-0000-0000-000000000000"),
             scope: AccessScope::IdentityOnly,
             limits: Limits::unlimited(),
         }
@@ -173,6 +201,7 @@ impl Identity {
     pub fn from_impersonate_entry_readonly(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
+            session_id: uuid!("00000000-0000-0000-0000-000000000000"),
             scope: AccessScope::ReadOnly,
             limits: Limits::unlimited(),
         }
@@ -184,6 +213,7 @@ impl Identity {
     ) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
+            session_id: uuid!("00000000-0000-0000-0000-000000000000"),
             scope: AccessScope::ReadWrite,
             limits: Limits::unlimited(),
         }
@@ -191,6 +221,10 @@ impl Identity {
 
     pub fn access_scope(&self) -> AccessScope {
         self.scope
+    }
+
+    pub fn get_session_id(&self) -> Uuid {
+        self.session_id
     }
 
     pub fn from_impersonate(ident: &Self) -> Self {

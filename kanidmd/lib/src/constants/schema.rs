@@ -1140,6 +1140,37 @@ pub const JSON_SCHEMA_ATTR_API_TOKEN_SESSION: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A session entry related to an issued user auth token"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "user_auth_token_session"
+      ],
+      "syntax": [
+        "SESSION"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000113"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1279,7 +1310,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "account_expire",
         "account_valid_from",
         "mail",
-        "oauth2_consent_scope_map"
+        "oauth2_consent_scope_map",
+        "user_auth_token_session"
       ],
       "systemmust": [
         "displayname",

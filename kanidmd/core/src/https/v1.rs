@@ -65,6 +65,13 @@ pub async fn whoami(req: tide::Request<AppState>) -> tide::Result {
     to_tide_response(res, hvalue)
 }
 
+pub async fn logout(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let (eventid, hvalue) = req.new_eventid();
+    let res = req.state().qe_w_ref.handle_logout(uat, eventid).await;
+    to_tide_response(res, hvalue)
+}
+
 // =============== REST generics ========================
 
 pub async fn json_rest_event_get(
@@ -570,6 +577,35 @@ pub async fn account_get_id_credential_update_intent(req: tide::Request<AppState
         .state()
         .qe_w_ref
         .handle_idmcredentialupdateintent(uat, uuid_or_name, ttl, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn account_get_id_user_auth_token(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_account_user_auth_token_get(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn account_user_auth_token_delete(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+    let token_id = req.get_url_param_uuid("token_id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_account_user_auth_token_destroy(uat, uuid_or_name, token_id, eventid)
         .await;
     to_tide_response(res, hvalue)
 }

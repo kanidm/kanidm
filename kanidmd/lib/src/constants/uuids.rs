@@ -192,6 +192,8 @@ pub const _UUID_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: Uuid =
 pub const _UUID_SCHEMA_ATTR_API_TOKEN_SESSION: Uuid = uuid!("00000000-0000-0000-0000-ffff00000111");
 pub const _UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000112");
+pub const _UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000113");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

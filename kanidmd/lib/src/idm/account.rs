@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AuthType, BackupCodesView, CredentialStatus, OperationError, UatPurpose, UiHint, UserAuthToken,
+    AuthType, BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint,
+    UserAuthToken,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -15,8 +16,9 @@ use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
+use crate::event::SearchEvent;
 use crate::idm::group::Group;
-use crate::idm::server::IdmServerProxyWriteTransaction;
+use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -195,6 +197,7 @@ impl Account {
 
         // TODO: Apply policy to this expiry time.
         let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY);
+        let issued_at = OffsetDateTime::unix_epoch() + ct;
         // TODO: Apply priv expiry.
         let purpose = UatPurpose::ReadWrite {
             expiry: expiry.clone(),
@@ -203,7 +206,8 @@ impl Account {
         Some(UserAuthToken {
             session_id,
             auth_type,
-            expiry,
+            expiry: Some(expiry),
+            issued_at,
             purpose,
             uuid: self.uuid,
             displayname: self.displayname.clone(),
@@ -417,13 +421,110 @@ impl Account {
         // Used in registrations only for disallowing exsiting credentials.
         None
     }
+
+    pub(crate) fn check_user_auth_token_valid(
+        ct: Duration,
+        uat: &UserAuthToken,
+        entry: &Entry<EntrySealed, EntryCommitted>,
+    ) -> bool {
+        // Remember, token expiry is checked by validate_and_parse_token_to_token.
+        // If we wanted we could check other properties of the uat here?
+        // Alternatelly, we could always store LESS in the uat because of this?
+
+        let within_valid_window = Account::check_within_valid_time(
+            ct,
+            entry.get_ava_single_datetime("account_valid_from").as_ref(),
+            entry.get_ava_single_datetime("account_expire").as_ref(),
+        );
+
+        if !within_valid_window {
+            security_info!("Account has expired or is not yet valid, not allowing to proceed");
+            return false;
+        }
+
+        // Get the sessions.
+        let session_present = entry
+            .get_ava_as_session_map("user_auth_token_session")
+            .map(|session_map| session_map.get(&uat.session_id).is_some())
+            .unwrap_or(false);
+
+        if session_present {
+            security_info!("A valid session value exists for this token");
+            true
+        } else {
+            let grace = uat.issued_at + GRACE_WINDOW;
+            let current = time::OffsetDateTime::unix_epoch() + ct;
+            trace!(%grace, %current);
+            if current >= grace {
+                security_info!(
+                    "The token grace window has passed, and no session exists. Assuming invalid."
+                );
+                false
+            } else {
+                security_info!("The token grace window is in effect. Assuming valid.");
+                true
+            }
+        }
+    }
 }
 
 // Need to also add a "to UserAuthToken" ...
 
 // Need tests for conversion and the cred validations
 
+pub struct DestroySessionTokenEvent {
+    // Who initiated this?
+    pub ident: Identity,
+    // Who is it targetting?
+    pub target: Uuid,
+    // Which token id.
+    pub token_id: Uuid,
+}
+
+impl DestroySessionTokenEvent {
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid, token_id: Uuid) -> Self {
+        DestroySessionTokenEvent {
+            ident: Identity::from_internal(),
+            target,
+            token_id,
+        }
+    }
+}
+
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn account_destroy_session_token(
+        &self,
+        dte: &DestroySessionTokenEvent,
+    ) -> Result<(), OperationError> {
+        // Delete the attribute with uuid.
+        let modlist = ModifyList::new_list(vec![Modify::Removed(
+            AttrString::from("user_auth_token_session"),
+            PartialValue::Refer(dte.token_id),
+        )]);
+
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_and!([
+                    f_eq("uuid", PartialValue::Uuid(dte.target)),
+                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                ])),
+                // Filter as intended (acp)
+                &filter_all!(f_and!([
+                    f_eq("uuid", PartialValue::Uuid(dte.target)),
+                    f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
+                ])),
+                &modlist,
+                // Provide the event to impersonate
+                &dte.ident,
+            )
+            .map_err(|e| {
+                admin_error!("Failed to destroy user auth token {:?}", e);
+                e
+            })
+    }
+
     pub fn service_account_into_person(
         &self,
         ident: &Identity,
@@ -492,6 +593,70 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 admin_error!("Failed to migrate service account to person - {:?}", e);
                 e
             })
+    }
+}
+
+pub struct ListUserAuthTokenEvent {
+    // Who initiated this?
+    pub ident: Identity,
+    // Who is it targetting?
+    pub target: Uuid,
+}
+
+impl<'a> IdmServerProxyReadTransaction<'a> {
+    pub fn account_list_user_auth_tokens(
+        &self,
+        lte: &ListUserAuthTokenEvent,
+    ) -> Result<Vec<UatStatus>, OperationError> {
+        // Make an event from the request
+        let srch = match SearchEvent::from_target_uuid_request(
+            lte.ident.clone(),
+            lte.target,
+            &self.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin account list user auth tokens: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        match self.qs_read.search_ext(&srch) {
+            Ok(mut entries) => {
+                entries
+                    .pop()
+                    // get the first entry
+                    .and_then(|e| {
+                        let account_id = e.get_uuid();
+                        // From the entry, turn it into the value
+                        e.get_ava_as_session_map("user_auth_token_session")
+                            .map(|smap| {
+                                smap.iter()
+                                    .map(|(u, s)| {
+                                        s.scope
+                                            .try_into()
+                                            .map(|purpose| UatStatus {
+                                                account_id,
+                                                session_id: *u,
+                                                expiry: s.expiry.clone(),
+                                                issued_at: s.issued_at.clone(),
+                                                purpose,
+                                            })
+                                            .map_err(|e| {
+                                                admin_error!("Invalid user auth token {}", u);
+                                                e
+                                            })
+                                    })
+                                    .collect::<Result<Vec<_>, _>>()
+                            })
+                    })
+                    .unwrap_or_else(|| {
+                        // No matching entry? Return none.
+                        Ok(Vec::new())
+                    })
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
