@@ -341,6 +341,26 @@ pub struct UatStatus {
     pub purpose: UatPurposeStatus,
 }
 
+impl fmt::Display for UatStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "account_id: {}", self.account_id)?;
+        writeln!(f, "session_id: {}", self.session_id)?;
+        if let Some(exp) = self.expiry {
+            writeln!(f, "expiry: {}", exp)?;
+        } else {
+            writeln!(f, "expiry: -")?;
+        }
+        writeln!(f, "issued_at: {}", self.issued_at)?;
+        match &self.purpose {
+            UatPurposeStatus::IdentityOnly => writeln!(f, "purpose: identity only")?,
+            UatPurposeStatus::ReadOnly => writeln!(f, "purpose: read only")?,
+            UatPurposeStatus::ReadWrite => 
+                writeln!(f, "purpose: read write")?,
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurpose {

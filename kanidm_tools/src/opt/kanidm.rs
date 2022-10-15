@@ -279,6 +279,25 @@ pub enum AccountValidity {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum AccountUserAuthToken {
+    /// Show the status of logged in sessions associated to this account.
+    #[clap(name = "status")]
+    Status(AccountNamedOpt),
+    /// Destroy / revoke a session for this account. Access to the
+    /// session (user auth token) is NOT required, only the uuid of the session.
+    #[clap(name = "destroy")]
+    Destroy {
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        /// The UUID of the token to destroy.
+        #[clap(name = "session_id")]
+        session_id: Uuid,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 pub enum PersonOpt {
     /// Manage the credentials this person uses for authentication
     #[clap(name = "credential")]
@@ -297,6 +316,12 @@ pub enum PersonOpt {
     Posix {
         #[clap(subcommand)]
         commands: PersonPosix,
+    },
+    /// Manage sessions (user auth tokens) associated to this person.
+    #[clap(name = "session")]
+    Session {
+        #[clap(subcommand)]
+        commands: AccountUserAuthToken,
     },
     /// Manage ssh public key's associated to this person
     #[clap(name = "ssh")]
@@ -416,6 +441,12 @@ pub enum ServiceAccountOpt {
     Posix {
         #[clap(subcommand)]
         commands: ServiceAccountPosix,
+    },
+    /// Manage sessions (user auth tokens) associated to this service account.
+    #[clap(name = "session")]
+    Session {
+        #[clap(subcommand)]
+        commands: AccountUserAuthToken,
     },
     /// Manage ssh public key's associated to this person
     #[clap(name = "ssh")]

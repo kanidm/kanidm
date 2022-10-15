@@ -18,7 +18,7 @@ use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 use crate::{
     password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountValidity, PersonOpt,
-    PersonPosix,
+    PersonPosix, AccountUserAuthToken
 };
 
 impl PersonOpt {
@@ -34,6 +34,10 @@ impl PersonOpt {
                 PersonPosix::Show(apo) => apo.copt.debug,
                 PersonPosix::Set(apo) => apo.copt.debug,
                 PersonPosix::SetPassword(apo) => apo.copt.debug,
+            },
+            PersonOpt::Session { commands } => match commands {
+                AccountUserAuthToken::Status(apo) => apo.copt.debug,
+                AccountUserAuthToken::Destroy { copt, .. } => copt.debug,
             },
             PersonOpt::Ssh { commands } => match commands {
                 AccountSsh::List(ano) => ano.copt.debug,
@@ -166,6 +170,46 @@ impl PersonOpt {
                     }
                 }
             }, // end PersonOpt::Posix
+            PersonOpt::Session { commands } => match commands {
+                AccountUserAuthToken::Status(apo) => {
+                    let client = apo.copt.to_client().await;
+                    match client
+                        .idm_account_list_user_auth_token(apo.aopts.account_id.as_str())
+                        .await
+                    {
+                        Ok(tokens) => {
+                            if tokens.is_empty() {
+                                println!("No sessions exist");
+                            } else {
+                                for token in tokens {
+                                    println!("token: {}", token);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            error!("Error listing sessions -> {:?}", e);
+                        }
+                    }
+                }
+                AccountUserAuthToken::Destroy {
+                    aopts,
+                    copt,
+                    session_id,
+                } => {
+                    let client = copt.to_client().await;
+                    match client
+                        .idm_account_destroy_user_auth_token(aopts.account_id.as_str(), *session_id)
+                        .await
+                    {
+                        Ok(()) => {
+                            println!("Success");
+                        }
+                        Err(e) => {
+                            error!("Error destroying account session -> {:?}", e);
+                        }
+                    }
+                }
+            }, // End PersonOpt::Session
             PersonOpt::Ssh { commands } => match commands {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client().await;
