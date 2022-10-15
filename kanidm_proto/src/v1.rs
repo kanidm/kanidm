@@ -354,8 +354,7 @@ impl fmt::Display for UatStatus {
         match &self.purpose {
             UatPurposeStatus::IdentityOnly => writeln!(f, "purpose: identity only")?,
             UatPurposeStatus::ReadOnly => writeln!(f, "purpose: read only")?,
-            UatPurposeStatus::ReadWrite => 
-                writeln!(f, "purpose: read write")?,
+            UatPurposeStatus::ReadWrite => writeln!(f, "purpose: read write")?,
         }
         Ok(())
     }

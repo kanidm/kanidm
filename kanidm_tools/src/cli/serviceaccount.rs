@@ -2,8 +2,8 @@ use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageSta
 use time::OffsetDateTime;
 
 use crate::{
-    AccountSsh, AccountValidity, ServiceAccountApiToken, ServiceAccountCredential,
-    ServiceAccountOpt, ServiceAccountPosix, AccountUserAuthToken
+    AccountSsh, AccountUserAuthToken, AccountValidity, ServiceAccountApiToken,
+    ServiceAccountCredential, ServiceAccountOpt, ServiceAccountPosix,
 };
 
 impl ServiceAccountOpt {

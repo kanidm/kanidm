@@ -17,8 +17,8 @@ use webauthn_authenticator_rs::u2fhid::U2FHid;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 use crate::{
-    password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountValidity, PersonOpt,
-    PersonPosix, AccountUserAuthToken
+    password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken,
+    AccountValidity, PersonOpt, PersonPosix,
 };
 
 impl PersonOpt {
