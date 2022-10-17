@@ -51,7 +51,7 @@ fn main() {
             cfg.sock_path
         )
     } else {
-        match call_daemon_blocking(cfg.sock_path.as_str(), &req) {
+        match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
             Ok(r) => match r {
                 ClientResponse::Ok => println!("working!"),
                 _ => {
