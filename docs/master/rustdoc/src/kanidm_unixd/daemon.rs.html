@@ -1474,7 +1474,7 @@
                             <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
                                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">handle_client</span>(<span class="ident">socket</span>, <span class="ident">cachelayer_ref</span>.<span class="ident">clone</span>(), <span class="kw-2">&amp;</span><span class="ident">tc_tx</span>).<span class="kw">await</span>
                                 {
-                                    <span class="macro">error!</span>(<span class="string">&quot;an error occured; error = {:?}&quot;</span>, <span class="ident">e</span>);
+                                    <span class="macro">error!</span>(<span class="string">&quot;handle_client error occured; error = {:?}&quot;</span>, <span class="ident">e</span>);
                                 }
                             });
                         }

@@ -241,6 +241,10 @@
 <span id="241">241</span>
 <span id="242">242</span>
 <span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::env</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Display</span>, <span class="ident">Formatter</span>};
 <span class="kw">use</span> <span class="ident">std::fs::File</span>;
@@ -318,6 +322,7 @@
     <span class="kw">pub</span> <span class="ident">task_sock_path</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">conn_timeout</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">cache_timeout</span>: <span class="ident">u64</span>,
+    <span class="kw">pub</span> <span class="ident">unix_sock_timeout</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">pam_allowed_login_groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">default_shell</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">home_prefix</span>: <span class="ident">String</span>,
@@ -339,6 +344,7 @@
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;sock_path: {}&quot;</span>, <span class="self">self</span>.<span class="ident">sock_path</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;task_sock_path: {}&quot;</span>, <span class="self">self</span>.<span class="ident">task_sock_path</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;conn_timeout: {}&quot;</span>, <span class="self">self</span>.<span class="ident">conn_timeout</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;unix_sock_timeout: {}&quot;</span>, <span class="self">self</span>.<span class="ident">unix_sock_timeout</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;cache_timeout: {}&quot;</span>, <span class="self">self</span>.<span class="ident">cache_timeout</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             <span class="ident">f</span>,
@@ -369,6 +375,7 @@
             <span class="ident">sock_path</span>: <span class="ident">DEFAULT_SOCK_PATH</span>.<span class="ident">to_string</span>(),
             <span class="ident">task_sock_path</span>: <span class="ident">DEFAULT_TASK_SOCK_PATH</span>.<span class="ident">to_string</span>(),
             <span class="ident">conn_timeout</span>: <span class="ident">DEFAULT_CONN_TIMEOUT</span>,
+            <span class="ident">unix_sock_timeout</span>: <span class="ident">DEFAULT_CONN_TIMEOUT</span> <span class="op">*</span> <span class="number">2</span>,
             <span class="ident">cache_timeout</span>: <span class="ident">DEFAULT_CACHE_TIMEOUT</span>,
             <span class="ident">pam_allowed_login_groups</span>: <span class="ident">Vec::new</span>(),
             <span class="ident">default_shell</span>: <span class="ident">DEFAULT_SHELL</span>.<span class="ident">to_string</span>(),
@@ -428,6 +435,7 @@
             <span class="ident">sock_path</span>: <span class="ident">config</span>.<span class="ident">sock_path</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">sock_path</span>),
             <span class="ident">task_sock_path</span>: <span class="ident">config</span>.<span class="ident">task_sock_path</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">task_sock_path</span>),
             <span class="ident">conn_timeout</span>: <span class="ident">config</span>.<span class="ident">conn_timeout</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">conn_timeout</span>),
+            <span class="ident">unix_sock_timeout</span>: <span class="ident">config</span>.<span class="ident">conn_timeout</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">conn_timeout</span>) <span class="op">*</span> <span class="number">2</span>,
             <span class="ident">cache_timeout</span>: <span class="ident">config</span>.<span class="ident">cache_timeout</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">cache_timeout</span>),
             <span class="ident">pam_allowed_login_groups</span>: <span class="ident">config</span>
                 .<span class="ident">pam_allowed_login_groups</span>
