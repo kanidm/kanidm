@@ -212,6 +212,8 @@
 <span id="212">212</span>
 <span id="213">213</span>
 <span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsUnverified</span>};
@@ -335,12 +337,14 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">jws</span>: <span class="ident">Jws</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">jws</span>.<span class="ident">into_inner</span>())
         {
             <span class="prelude-val">Ok</span>(<span class="ident">uat</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">time::OffsetDateTime::now_utc</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">uat</span>.<span class="ident">expiry</span> {
-                    <span class="macro">error!</span>(
-                        <span class="string">&quot;Session has expired for {} - you may need to login again.&quot;</span>,
-                        <span class="ident">uat</span>.<span class="ident">spn</span>
-                    );
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exp</span>) <span class="op">=</span> <span class="ident">uat</span>.<span class="ident">expiry</span> {
+                    <span class="kw">if</span> <span class="ident">time::OffsetDateTime::now_utc</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exp</span> {
+                        <span class="macro">error!</span>(
+                            <span class="string">&quot;Session has expired for {} - you may need to login again.&quot;</span>,
+                            <span class="ident">uat</span>.<span class="ident">spn</span>
+                        );
+                        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                    }
                 }
             }
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {

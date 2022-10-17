@@ -2974,6 +2974,17 @@
 <span id="2974">2974</span>
 <span id="2975">2975</span>
 <span id="2976">2976</span>
+<span id="2977">2977</span>
+<span id="2978">2978</span>
+<span id="2979">2979</span>
+<span id="2980">2980</span>
+<span id="2981">2981</span>
+<span id="2982">2982</span>
+<span id="2983">2983</span>
+<span id="2984">2984</span>
+<span id="2985">2985</span>
+<span id="2986">2986</span>
+<span id="2987">2987</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -3916,15 +3927,24 @@
         <span class="kw">let</span> <span class="ident">iat</span> <span class="op">=</span> <span class="ident">ct</span>.<span class="ident">as_secs</span>() <span class="kw">as</span> <span class="ident">i64</span>;
 
         <span class="comment">// TODO: Make configurable from auth policy!</span>
-        <span class="kw">let</span> <span class="ident">expires_in</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">expiry</span> <span class="op">&gt;</span> <span class="ident">odt_ct</span> {
-            <span class="comment">// Becomes a duration.</span>
-            (<span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">expiry</span> <span class="op">-</span> <span class="ident">odt_ct</span>).<span class="ident">whole_seconds</span>() <span class="kw">as</span> <span class="ident">u32</span>
+        <span class="kw">let</span> (<span class="ident">expiry</span>, <span class="ident">expires_in</span>) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">expiry</span>) <span class="op">=</span> <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">expiry</span> {
+            <span class="kw">if</span> <span class="ident">expiry</span> <span class="op">&gt;</span> <span class="ident">odt_ct</span> {
+                <span class="comment">// Becomes a duration.</span>
+                (<span class="ident">expiry</span>, (<span class="ident">expiry</span> <span class="op">-</span> <span class="ident">odt_ct</span>).<span class="ident">whole_seconds</span>() <span class="kw">as</span> <span class="ident">u32</span>)
+            } <span class="kw">else</span> {
+                <span class="macro">security_info!</span>(
+                    <span class="string">&quot;User Auth Token has expired before we could publish the oauth2 response&quot;</span>
+                );
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::AccessDenied</span>);
+            }
         } <span class="kw">else</span> {
-            <span class="macro">security_info!</span>(
-                <span class="string">&quot;User Auth Token has expired before we could publish the oauth2 response&quot;</span>
-            );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::AccessDenied</span>);
+            <span class="macro">security_info!</span>(<span class="string">&quot;User Auth Token has no expiry, setting to refresh window&quot;</span>);
+            (
+                <span class="ident">odt_ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">OAUTH2_ACCESS_TOKEN_EXPIRY</span> <span class="kw">as</span> <span class="ident">u64</span>),
+                <span class="ident">OAUTH2_ACCESS_TOKEN_EXPIRY</span>,
+            )
         };
+        <span class="comment">// let expiry = odt_ct + Duration::from_secs(expires_in as u64);</span>
 
         <span class="kw">let</span> <span class="ident">scope</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">code_xchg</span>.<span class="ident">scopes</span>.<span class="ident">is_empty</span>() {
             <span class="prelude-val">None</span>
@@ -4020,7 +4040,7 @@
             <span class="ident">scopes</span>: <span class="ident">code_xchg</span>.<span class="ident">scopes</span>,
             <span class="ident">session_id</span>: <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">session_id</span>,
             <span class="ident">auth_type</span>: <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">auth_type</span>,
-            <span class="ident">expiry</span>: <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">expiry</span>,
+            <span class="ident">expiry</span>,
             <span class="ident">uuid</span>: <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">uuid</span>,
             <span class="ident">iat</span>,
             <span class="ident">nbf</span>: <span class="ident">iat</span>,
@@ -4846,8 +4866,10 @@
                 <span class="comment">//   TEST_CURRENT_TIME     UAT_EXPIRE         TOKEN_EXPIRE</span>
                 <span class="comment">//</span>
                 <span class="comment">// This lets us check a variety of time based cases.</span>
-                <span class="ident">uat</span>.<span class="ident">expiry</span> <span class="op">=</span> <span class="ident">time::OffsetDateTime::unix_epoch</span>()
-                    <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span> <span class="op">+</span> <span class="ident">UAT_EXPIRE</span> <span class="op">-</span> <span class="number">1</span>);
+                <span class="ident">uat</span>.<span class="ident">expiry</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
+                    <span class="ident">time::OffsetDateTime::unix_epoch</span>()
+                        <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span> <span class="op">+</span> <span class="ident">UAT_EXPIRE</span> <span class="op">-</span> <span class="number">1</span>),
+                );
 
                 <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
 

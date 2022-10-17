@@ -34,15 +34,57 @@
 <span id="34">34</span>
 <span id="35">35</span>
 <span id="36">36</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">AccessScope</span>, <span class="ident">IdentityId</span>};
+<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
+<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 <span class="kw">use</span> <span class="ident">webauthn_rs::prelude::AuthenticationResult</span>;
 
+<span class="kw">use</span> <span class="ident">std::fmt</span>;
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DelayedAction</span> {
     <span class="ident">PwUpgrade</span>(<span class="ident">PasswordUpgrade</span>),
     <span class="ident">UnixPwUpgrade</span>(<span class="ident">UnixPasswordUpgrade</span>),
     <span class="ident">WebauthnCounterIncrement</span>(<span class="ident">WebauthnCounterIncrement</span>),
     <span class="ident">BackupCodeRemoval</span>(<span class="ident">BackupCodeRemoval</span>),
     <span class="ident">Oauth2ConsentGrant</span>(<span class="ident">Oauth2ConsentGrant</span>),
+    <span class="ident">AuthSessionRecord</span>(<span class="ident">AuthSessionRecord</span>),
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PasswordUpgrade</span> {
@@ -50,25 +92,55 @@
     <span class="kw">pub</span> <span class="ident">existing_password</span>: <span class="ident">String</span>,
 }
 
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">PasswordUpgrade</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;PasswordUpgrade&quot;</span>)
+            .<span class="ident">field</span>(<span class="string">&quot;target_uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target_uuid</span>)
+            .<span class="ident">finish</span>()
+    }
+}
+
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixPasswordUpgrade</span> {
     <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">existing_password</span>: <span class="ident">String</span>,
 }
 
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">UnixPasswordUpgrade</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;UnixPasswordUpgrade&quot;</span>)
+            .<span class="ident">field</span>(<span class="string">&quot;target_uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target_uuid</span>)
+            .<span class="ident">finish</span>()
+    }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WebauthnCounterIncrement</span> {
     <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">auth_result</span>: <span class="ident">AuthenticationResult</span>,
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BackupCodeRemoval</span> {
     <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">code_to_remove</span>: <span class="ident">String</span>,
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2ConsentGrant</span> {
     <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">oauth2_rs_uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthSessionRecord</span> {
+    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
+    <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
+    <span class="kw">pub</span> <span class="ident">label</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">OffsetDateTime</span>,
+    <span class="kw">pub</span> <span class="ident">issued_by</span>: <span class="ident">IdentityId</span>,
+    <span class="kw">pub</span> <span class="ident">scope</span>: <span class="ident">AccessScope</span>,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>

@@ -713,7 +713,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">client</span>.<span class="ident">logout</span>().<span class="kw">await</span>;
+        <span class="macro">assert!</span>(<span class="self">self</span>.<span class="ident">client</span>.<span class="ident">logout</span>().<span class="kw">await</span>.<span class="ident">is_ok</span>());
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(

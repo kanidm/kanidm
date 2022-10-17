@@ -1261,6 +1261,10 @@
 <span id="1261">1261</span>
 <span id="1262">1262</span>
 <span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
 </pre><pre class="rust"><code><span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
@@ -1364,6 +1368,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;account_expire&quot;,
             &quot;account_valid_from&quot;,
             &quot;primary_credential&quot;,
+            &quot;user_auth_token_session&quot;,
             &quot;passkeys&quot;,
             &quot;devicekeys&quot;
         ]
@@ -1383,7 +1388,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, \&quot;self\&quot;]}&quot;
         ],
         &quot;acp_modify_removedattr&quot;: [
-            &quot;name&quot;, &quot;displayname&quot;, &quot;legalname&quot;, &quot;radius_secret&quot;, &quot;primary_credential&quot;, &quot;ssh_publickey&quot;, &quot;unix_password&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;
+            &quot;name&quot;, &quot;displayname&quot;, &quot;legalname&quot;, &quot;radius_secret&quot;, &quot;primary_credential&quot;, &quot;ssh_publickey&quot;, &quot;unix_password&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;user_auth_token_session&quot;
         ],
         &quot;acp_modify_presentattr&quot;: [
             &quot;name&quot;, &quot;displayname&quot;, &quot;legalname&quot;, &quot;radius_secret&quot;, &quot;primary_credential&quot;, &quot;ssh_publickey&quot;, &quot;unix_password&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;
@@ -1510,6 +1515,9 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;displayname&quot;,
             &quot;legalname&quot;,
             &quot;primary_credential&quot;,
+            &quot;passkeys&quot;,
+            &quot;devicekeys&quot;,
+            &quot;user_auth_token_session&quot;,
             &quot;ssh_publickey&quot;,
             &quot;mail&quot;
         ],
@@ -1697,7 +1705,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
         &quot;acp_search_attr&quot;: [
-            &quot;class&quot;, &quot;name&quot;, &quot;spn&quot;, &quot;uuid&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;memberof&quot;, &quot;mail&quot;, &quot;gidnumber&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;
+            &quot;class&quot;, &quot;name&quot;, &quot;spn&quot;, &quot;uuid&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;memberof&quot;, &quot;mail&quot;, &quot;gidnumber&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;, &quot;user_auth_token_session&quot;
         ]
     }
 }&quot;#</span>;
@@ -1719,7 +1727,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
         &quot;acp_modify_removedattr&quot;: [
-            &quot;name&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;mail&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;
+            &quot;name&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;mail&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;, &quot;user_auth_token_session&quot;
         ],
         &quot;acp_modify_presentattr&quot;: [
             &quot;name&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;mail&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;
@@ -1854,7 +1862,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
         &quot;acp_search_attr&quot;: [
-            &quot;class&quot;, &quot;name&quot;, &quot;spn&quot;, &quot;uuid&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;memberof&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;
+            &quot;class&quot;, &quot;name&quot;, &quot;spn&quot;, &quot;uuid&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;memberof&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;, &quot;user_auth_token_session&quot;
         ]
     }
 }&quot;#</span>;
@@ -1876,7 +1884,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
         &quot;acp_modify_removedattr&quot;: [
-            &quot;name&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;
+            &quot;name&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;, &quot;user_auth_token_session&quot;
         ],
         &quot;acp_modify_presentattr&quot;: [
             &quot;name&quot;, &quot;displayname&quot;, &quot;ssh_publickey&quot;, &quot;primary_credential&quot;, &quot;account_expire&quot;, &quot;account_valid_from&quot;, &quot;passkeys&quot;, &quot;devicekeys&quot;, &quot;api_token_session&quot;

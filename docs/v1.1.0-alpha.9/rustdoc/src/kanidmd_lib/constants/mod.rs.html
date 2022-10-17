@@ -45,6 +45,17 @@
 <span id="45">45</span>
 <span id="46">46</span>
 <span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
 </pre><pre class="rust"><code><span class="comment">// Re-export as needed</span>
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">acp</span>;
@@ -60,6 +71,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::system_config</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::uuids</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::values</span>::<span class="kw-2">*</span>;
+
+<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
 <span class="comment">// Increment this as we add new schema types and values!!!</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SYSTEM_INDEX_VERSION</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="number">26</span>;
@@ -92,5 +105,14 @@
 
 <span class="comment">// Default</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AUTH_SESSION_EXPIRY</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">3600</span>;
+
+<span class="comment">// The time that a token can be used before session</span>
+<span class="comment">// status is enforced. This needs to be longer than</span>
+<span class="comment">// replication delay/cycle.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GRACE_WINDOW</span>: <span class="ident">Duration</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="number">600</span>);
+
+<span class="doccomment">/// How long access tokens should last. This is NOT the length</span>
+<span class="doccomment">/// of the refresh token, which is bound to the issuing session.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OAUTH2_ACCESS_TOKEN_EXPIRY</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">4</span> <span class="op">*</span> <span class="number">3600</span>;
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>

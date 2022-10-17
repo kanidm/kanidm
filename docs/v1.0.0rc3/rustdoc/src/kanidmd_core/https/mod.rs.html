@@ -882,6 +882,14 @@
 <span id="882">882</span>
 <span id="883">883</span>
 <span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
@@ -1419,6 +1427,8 @@ Disallow: /
         .<span class="ident">at</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>)
         .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">auth_valid</span>);
 
+    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/logout&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">logout</span>);
+
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">schema_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/schema&quot;</span>);
     <span class="ident">schema_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_get</span>);
     <span class="ident">schema_route</span>
@@ -1637,6 +1647,12 @@ Disallow: /
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
         .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkey_tag</span>);
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_user_auth_token&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_user_auth_token</span>);
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_user_auth_token/:token_id&quot;</span>)
+        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_user_auth_token_delete</span>);
 
     <span class="comment">// Credential updates, don&#39;t require the account id.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cred_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/credential&quot;</span>);

@@ -2465,6 +2465,54 @@
 <span id="2465">2465</span>
 <span id="2466">2466</span>
 <span id="2467">2467</span>
+<span id="2468">2468</span>
+<span id="2469">2469</span>
+<span id="2470">2470</span>
+<span id="2471">2471</span>
+<span id="2472">2472</span>
+<span id="2473">2473</span>
+<span id="2474">2474</span>
+<span id="2475">2475</span>
+<span id="2476">2476</span>
+<span id="2477">2477</span>
+<span id="2478">2478</span>
+<span id="2479">2479</span>
+<span id="2480">2480</span>
+<span id="2481">2481</span>
+<span id="2482">2482</span>
+<span id="2483">2483</span>
+<span id="2484">2484</span>
+<span id="2485">2485</span>
+<span id="2486">2486</span>
+<span id="2487">2487</span>
+<span id="2488">2488</span>
+<span id="2489">2489</span>
+<span id="2490">2490</span>
+<span id="2491">2491</span>
+<span id="2492">2492</span>
+<span id="2493">2493</span>
+<span id="2494">2494</span>
+<span id="2495">2495</span>
+<span id="2496">2496</span>
+<span id="2497">2497</span>
+<span id="2498">2498</span>
+<span id="2499">2499</span>
+<span id="2500">2500</span>
+<span id="2501">2501</span>
+<span id="2502">2502</span>
+<span id="2503">2503</span>
+<span id="2504">2504</span>
+<span id="2505">2505</span>
+<span id="2506">2506</span>
+<span id="2507">2507</span>
+<span id="2508">2508</span>
+<span id="2509">2509</span>
+<span id="2510">2510</span>
+<span id="2511">2511</span>
+<span id="2512">2512</span>
+<span id="2513">2513</span>
+<span id="2514">2514</span>
+<span id="2515">2515</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core::ops::Deref</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
@@ -3954,7 +4002,7 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event::CreateEvent</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed::DelayedAction</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event</span>::{<span class="ident">AuthEvent</span>, <span class="ident">AuthResult</span>};
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server::IdmServer</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerDelayed</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::AuthState</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 
@@ -4136,7 +4184,12 @@
         <span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to commit txn&quot;</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">check_testperson_password</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">check_testperson_password</span>(
+        <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
+        <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span>,
+        <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">ct</span>: <span class="ident">Duration</span>,
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_auth</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">auth</span>();
 
         <span class="kw">let</span> <span class="ident">auth_init</span> <span class="op">=</span> <span class="ident">AuthEvent::named_init</span>(<span class="string">&quot;testperson&quot;</span>);
@@ -4178,13 +4231,20 @@
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
                 <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
-            }) =&gt; <span class="prelude-val">Some</span>(<span class="ident">token</span>),
+            }) =&gt; {
+                <span class="comment">// Process the auth session</span>
+                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="kw">_</span>)));
+
+                <span class="prelude-val">Some</span>(<span class="ident">token</span>)
+            }
             <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
 
     <span class="kw">fn</span> <span class="ident">check_testperson_password_totp</span>(
         <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
+        <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">Totp</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
@@ -4245,13 +4305,19 @@
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
                 <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
-            }) =&gt; <span class="prelude-val">Some</span>(<span class="ident">token</span>),
+            }) =&gt; {
+                <span class="comment">// Process the auth session</span>
+                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="kw">_</span>)));
+                <span class="prelude-val">Some</span>(<span class="ident">token</span>)
+            }
             <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
 
     <span class="kw">fn</span> <span class="ident">check_testperson_password_backup_code</span>(
         <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
+        <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
@@ -4308,13 +4374,25 @@
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
                 <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
-            }) =&gt; <span class="prelude-val">Some</span>(<span class="ident">token</span>),
+            }) =&gt; {
+                <span class="comment">// There now should be a backup code invalidation present</span>
+                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="kw">_</span>)));
+                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">ct</span>, <span class="ident">da</span>));
+                <span class="macro">assert!</span>(<span class="ident">r</span>.<span class="ident">is_ok</span>());
+
+                <span class="comment">// Process the auth session</span>
+                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="kw">_</span>)));
+                <span class="prelude-val">Some</span>(<span class="ident">token</span>)
+            }
             <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
 
     <span class="kw">fn</span> <span class="ident">check_testperson_passkey</span>(
         <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
+        <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span>,
         <span class="ident">wa</span>: <span class="kw-2">&amp;mut</span> <span class="ident">WebauthnAuthenticator</span><span class="op">&lt;</span><span class="ident">SoftPasskey</span><span class="op">&gt;</span>,
         <span class="ident">origin</span>: <span class="ident">Url</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
@@ -4373,7 +4451,19 @@
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
                 <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
-            }) =&gt; <span class="prelude-val">Some</span>(<span class="ident">token</span>),
+            }) =&gt; {
+                <span class="comment">// Process the webauthn update</span>
+                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)));
+                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">ct</span>, <span class="ident">da</span>));
+                <span class="macro">assert!</span>(<span class="ident">r</span>.<span class="ident">is_ok</span>());
+
+                <span class="comment">// Process the auth session</span>
+                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="kw">_</span>)));
+
+                <span class="prelude-val">Some</span>(<span class="ident">token</span>)
+            }
             <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -4408,63 +4498,64 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_credential_update_onboarding_create_new_pw</span>() {
-        <span class="macro">run_idm_test!</span>(<span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>,
-                       <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
-                       <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
-            <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
+        <span class="macro">run_idm_test!</span>(
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span>
+                    <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
+                <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
 
-            <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
+                <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
-            <span class="comment">// Get the credential status - this should tell</span>
-            <span class="comment">// us the details of the credentials, as well as</span>
-            <span class="comment">// if they are ready and valid to commit?</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_update_status</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to get the current session status.&quot;</span>);
+                <span class="comment">// Get the credential status - this should tell</span>
+                <span class="comment">// us the details of the credentials, as well as</span>
+                <span class="comment">// if they are ready and valid to commit?</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_update_status</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to get the current session status.&quot;</span>);
 
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">c_status</span>);
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">c_status</span>);
 
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">is_none</span>());
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">is_none</span>());
 
-            <span class="comment">// Test initially creating a credential.</span>
-            <span class="comment">//   - pw first</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+                <span class="comment">// Test initially creating a credential.</span>
+                <span class="comment">//   - pw first</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
 
-            <span class="ident">drop</span>(<span class="ident">cutxn</span>);
-            <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
+                <span class="ident">drop</span>(<span class="ident">cutxn</span>);
+                <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
 
-            <span class="comment">// Check it works!</span>
-            <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
+                <span class="comment">// Check it works!</span>
+                <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">idms_delayed</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
 
-            <span class="comment">// Test deleting the pw</span>
-            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
-            <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
+                <span class="comment">// Test deleting the pw</span>
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_update_status</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to get the current session status.&quot;</span>);
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">c_status</span>);
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">is_some</span>());
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_update_status</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to get the current session status.&quot;</span>);
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">c_status</span>);
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">is_some</span>());
 
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_delete</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to delete the primary cred&quot;</span>);
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">c_status</span>);
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">is_none</span>());
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_delete</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to delete the primary cred&quot;</span>);
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">c_status</span>);
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">is_none</span>());
 
-            <span class="ident">drop</span>(<span class="ident">cutxn</span>);
-            <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
+                <span class="ident">drop</span>(<span class="ident">cutxn</span>);
+                <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
 
-            <span class="comment">// Must fail now!</span>
-            <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_none</span>());
-        })
+                <span class="comment">// Must fail now!</span>
+                <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">idms_delayed</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_none</span>());
+            }
+        )
     }
 
     <span class="comment">// Test set of primary account password</span>
@@ -4474,162 +4565,178 @@
     <span class="comment">// - setup TOTP</span>
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_credential_update_onboarding_create_new_mfa_totp_basic</span>() {
-        <span class="macro">run_idm_test!</span>(<span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>,
-                       <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
-                       <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
-            <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
+        <span class="macro">run_idm_test!</span>(
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span>
+                    <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
+                <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
-            <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
-            <span class="comment">// Setup the PW</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+                <span class="comment">// Setup the PW</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
-            <span class="comment">// Since it&#39;s pw only.</span>
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
+                <span class="comment">// Since it&#39;s pw only.</span>
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
 
-            <span class="comment">//</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_init_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+                <span class="comment">//</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_init_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
-            <span class="comment">// Check the status has the token.</span>
-            <span class="kw">let</span> <span class="ident">totp_token</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">c_status</span>.<span class="ident">mfaregstate</span> {
-                <span class="ident">MfaRegStateStatus::TotpCheck</span>(<span class="ident">secret</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">secret</span>.<span class="ident">into</span>()),
+                <span class="comment">// Check the status has the token.</span>
+                <span class="kw">let</span> <span class="ident">totp_token</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">c_status</span>.<span class="ident">mfaregstate</span> {
+                    <span class="ident">MfaRegStateStatus::TotpCheck</span>(<span class="ident">secret</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">secret</span>.<span class="ident">into</span>()),
 
-                <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+                    <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+                }
+                .<span class="ident">expect</span>(<span class="string">&quot;Unable to retrieve totp token, invalid state.&quot;</span>);
+
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">totp_token</span>);
+                <span class="kw">let</span> <span class="ident">chal</span> <span class="op">=</span> <span class="ident">totp_token</span>
+                    .<span class="ident">do_totp_duration_from_epoch</span>(<span class="kw-2">&amp;</span><span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform totp step&quot;</span>);
+
+                <span class="comment">// Intentionally get it wrong.</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_check_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">chal</span> <span class="op">+</span> <span class="number">1</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    <span class="ident">c_status</span>.<span class="ident">mfaregstate</span>,
+                    <span class="ident">MfaRegStateStatus::TotpTryAgain</span>
+                ));
+
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_check_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">chal</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    <span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">type_</span>),
+                    <span class="prelude-val">Some</span>(<span class="ident">CredentialDetailType::PasswordMfa</span>(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
+                ));
+
+                <span class="comment">// Should be okay now!</span>
+
+                <span class="ident">drop</span>(<span class="ident">cutxn</span>);
+                <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
+
+                <span class="comment">// Check it works!</span>
+                <span class="macro">assert!</span>(<span class="ident">check_testperson_password_totp</span>(
+                    <span class="ident">idms</span>,
+                    <span class="ident">idms_delayed</span>,
+                    <span class="ident">test_pw</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">totp_token</span>,
+                    <span class="ident">ct</span>
+                )
+                .<span class="ident">is_some</span>());
+                <span class="comment">// No need to test delete of the whole cred, we already did with pw above.</span>
+
+                <span class="comment">// If we remove TOTP, show it reverts back.</span>
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
+
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_remove_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    <span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">type_</span>),
+                    <span class="prelude-val">Some</span>(<span class="ident">CredentialDetailType::Password</span>)
+                ));
+
+                <span class="ident">drop</span>(<span class="ident">cutxn</span>);
+                <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
+
+                <span class="comment">// Check it works with totp removed.</span>
+                <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">idms_delayed</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
             }
-            .<span class="ident">expect</span>(<span class="string">&quot;Unable to retrieve totp token, invalid state.&quot;</span>);
-
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">totp_token</span>);
-            <span class="kw">let</span> <span class="ident">chal</span> <span class="op">=</span> <span class="ident">totp_token</span>
-                .<span class="ident">do_totp_duration_from_epoch</span>(<span class="kw-2">&amp;</span><span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform totp step&quot;</span>);
-
-            <span class="comment">// Intentionally get it wrong.</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_check_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">chal</span> <span class="op">+</span> <span class="number">1</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
-
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-                <span class="ident">c_status</span>.<span class="ident">mfaregstate</span>,
-                <span class="ident">MfaRegStateStatus::TotpTryAgain</span>
-            ));
-
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_check_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">chal</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
-
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-                <span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">type_</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">CredentialDetailType::PasswordMfa</span>(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
-            ));
-
-            <span class="comment">// Should be okay now!</span>
-
-            <span class="ident">drop</span>(<span class="ident">cutxn</span>);
-            <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
-
-            <span class="comment">// Check it works!</span>
-            <span class="macro">assert!</span>(<span class="ident">check_testperson_password_totp</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="kw-2">&amp;</span><span class="ident">totp_token</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
-            <span class="comment">// No need to test delete of the whole cred, we already did with pw above.</span>
-
-            <span class="comment">// If we remove TOTP, show it reverts back.</span>
-            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
-            <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
-
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_remove_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
-
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-                <span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">type_</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">CredentialDetailType::Password</span>)
-            ));
-
-            <span class="ident">drop</span>(<span class="ident">cutxn</span>);
-            <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
-
-            <span class="comment">// Check it works with totp removed.</span>
-            <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
-        })
+        )
     }
 
     <span class="comment">// Check sha1 totp.</span>
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_credential_update_onboarding_create_new_mfa_totp_sha1</span>() {
-        <span class="macro">run_idm_test!</span>(<span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>,
-                       <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
-                       <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
-            <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
+        <span class="macro">run_idm_test!</span>(
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span>
+                    <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
+                <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
-            <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
-            <span class="comment">// Setup the PW</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+                <span class="comment">// Setup the PW</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
-            <span class="comment">// Since it&#39;s pw only.</span>
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
+                <span class="comment">// Since it&#39;s pw only.</span>
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
 
-            <span class="comment">//</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_init_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+                <span class="comment">//</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_init_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
-            <span class="comment">// Check the status has the token.</span>
-            <span class="kw">let</span> <span class="ident">totp_token</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">c_status</span>.<span class="ident">mfaregstate</span> {
-                <span class="ident">MfaRegStateStatus::TotpCheck</span>(<span class="ident">secret</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">secret</span>.<span class="ident">into</span>()),
+                <span class="comment">// Check the status has the token.</span>
+                <span class="kw">let</span> <span class="ident">totp_token</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">c_status</span>.<span class="ident">mfaregstate</span> {
+                    <span class="ident">MfaRegStateStatus::TotpCheck</span>(<span class="ident">secret</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">secret</span>.<span class="ident">into</span>()),
 
-                <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+                    <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+                }
+                .<span class="ident">expect</span>(<span class="string">&quot;Unable to retrieve totp token, invalid state.&quot;</span>);
+
+                <span class="kw">let</span> <span class="ident">totp_token</span> <span class="op">=</span> <span class="ident">totp_token</span>.<span class="ident">downgrade_to_legacy</span>();
+
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">totp_token</span>);
+                <span class="kw">let</span> <span class="ident">chal</span> <span class="op">=</span> <span class="ident">totp_token</span>
+                    .<span class="ident">do_totp_duration_from_epoch</span>(<span class="kw-2">&amp;</span><span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform totp step&quot;</span>);
+
+                <span class="comment">// Should getn the warn that it&#39;s sha1</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_check_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">chal</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    <span class="ident">c_status</span>.<span class="ident">mfaregstate</span>,
+                    <span class="ident">MfaRegStateStatus::TotpInvalidSha1</span>
+                ));
+
+                <span class="comment">// Accept it</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_accept_sha1_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    <span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">type_</span>),
+                    <span class="prelude-val">Some</span>(<span class="ident">CredentialDetailType::PasswordMfa</span>(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
+                ));
+
+                <span class="comment">// Should be okay now!</span>
+
+                <span class="ident">drop</span>(<span class="ident">cutxn</span>);
+                <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
+
+                <span class="comment">// Check it works!</span>
+                <span class="macro">assert!</span>(<span class="ident">check_testperson_password_totp</span>(
+                    <span class="ident">idms</span>,
+                    <span class="ident">idms_delayed</span>,
+                    <span class="ident">test_pw</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">totp_token</span>,
+                    <span class="ident">ct</span>
+                )
+                .<span class="ident">is_some</span>());
+                <span class="comment">// No need to test delete, we already did with pw above.</span>
             }
-            .<span class="ident">expect</span>(<span class="string">&quot;Unable to retrieve totp token, invalid state.&quot;</span>);
-
-            <span class="kw">let</span> <span class="ident">totp_token</span> <span class="op">=</span> <span class="ident">totp_token</span>.<span class="ident">downgrade_to_legacy</span>();
-
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">totp_token</span>);
-            <span class="kw">let</span> <span class="ident">chal</span> <span class="op">=</span> <span class="ident">totp_token</span>
-                .<span class="ident">do_totp_duration_from_epoch</span>(<span class="kw-2">&amp;</span><span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform totp step&quot;</span>);
-
-            <span class="comment">// Should getn the warn that it&#39;s sha1</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_check_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">chal</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
-
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-                <span class="ident">c_status</span>.<span class="ident">mfaregstate</span>,
-                <span class="ident">MfaRegStateStatus::TotpInvalidSha1</span>
-            ));
-
-            <span class="comment">// Accept it</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_accept_sha1_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
-
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-                <span class="ident">c_status</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">type_</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">CredentialDetailType::PasswordMfa</span>(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
-            ));
-
-            <span class="comment">// Should be okay now!</span>
-
-            <span class="ident">drop</span>(<span class="ident">cutxn</span>);
-            <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
-
-            <span class="comment">// Check it works!</span>
-            <span class="macro">assert!</span>(<span class="ident">check_testperson_password_totp</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="kw-2">&amp;</span><span class="ident">totp_token</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
-            <span class="comment">// No need to test delete, we already did with pw above.</span>
-        })
+        )
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -4706,15 +4813,14 @@
                 <span class="kw">let</span> <span class="ident">backup_code</span> <span class="op">=</span> <span class="ident">codes</span>.<span class="ident">iter</span>().<span class="ident">next</span>().<span class="ident">expect</span>(<span class="string">&quot;No codes available&quot;</span>);
 
                 <span class="comment">// Check it works!</span>
-                <span class="macro">assert!</span>(
-                    <span class="ident">check_testperson_password_backup_code</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="ident">backup_code</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>()
-                );
-
-                <span class="comment">// There now should be a backup code invalidation present</span>
-                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
-                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="kw">_</span>)));
-                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">ct</span>, <span class="ident">da</span>));
-                <span class="macro">assert!</span>(<span class="ident">r</span>.<span class="ident">is_ok</span>());
+                <span class="macro">assert!</span>(<span class="ident">check_testperson_password_backup_code</span>(
+                    <span class="ident">idms</span>,
+                    <span class="ident">idms_delayed</span>,
+                    <span class="ident">test_pw</span>,
+                    <span class="ident">backup_code</span>,
+                    <span class="ident">ct</span>
+                )
+                .<span class="ident">is_some</span>());
 
                 <span class="comment">// Renew to start the next steps</span>
                 <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
@@ -4774,48 +4880,49 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_idm_credential_update_onboarding_cancel_inprogress_totp</span>() {
-        <span class="macro">run_idm_test!</span>(<span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>,
-                       <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
-                       <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
-            <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
+        <span class="macro">run_idm_test!</span>(
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span>
+                    <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
+                <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
-            <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
-            <span class="comment">// Setup the PW</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+                <span class="comment">// Setup the PW</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>, <span class="ident">test_pw</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
-            <span class="comment">// Since it&#39;s pw only.</span>
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
+                <span class="comment">// Since it&#39;s pw only.</span>
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
 
-            <span class="comment">//</span>
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_primary_init_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred totp&quot;</span>);
+                <span class="comment">//</span>
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_primary_init_totp</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to update the primary cred totp&quot;</span>);
 
-            <span class="comment">// Check the status has the token.</span>
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-                <span class="ident">c_status</span>.<span class="ident">mfaregstate</span>,
-                <span class="ident">MfaRegStateStatus::TotpCheck</span>(<span class="kw">_</span>)
-            ));
+                <span class="comment">// Check the status has the token.</span>
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    <span class="ident">c_status</span>.<span class="ident">mfaregstate</span>,
+                    <span class="ident">MfaRegStateStatus::TotpCheck</span>(<span class="kw">_</span>)
+                ));
 
-            <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
-                .<span class="ident">credential_update_cancel_mfareg</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to cancel inflight totp change&quot;</span>);
+                <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
+                    .<span class="ident">credential_update_cancel_mfareg</span>(<span class="kw-2">&amp;</span><span class="ident">cust</span>, <span class="ident">ct</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to cancel inflight totp change&quot;</span>);
 
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
-            <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
+                <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">c_status</span>.<span class="ident">mfaregstate</span>, <span class="ident">MfaRegStateStatus::None</span>));
+                <span class="macro">assert!</span>(<span class="ident">c_status</span>.<span class="ident">can_commit</span>);
 
-            <span class="ident">drop</span>(<span class="ident">cutxn</span>);
-            <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
+                <span class="ident">drop</span>(<span class="ident">cutxn</span>);
+                <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
 
-            <span class="comment">// It&#39;s pw only, since we canceled TOTP</span>
-            <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
-        })
+                <span class="comment">// It&#39;s pw only, since we canceled TOTP</span>
+                <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">idms_delayed</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
+            }
+        )
     }
 
     <span class="comment">// Primary cred must be pw or pwmfa</span>
@@ -4879,23 +4986,10 @@
                 <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
 
                 <span class="comment">// Do an auth test</span>
-                <span class="macro">assert!</span>(<span class="ident">check_testperson_passkey</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;mut</span> <span class="ident">wa</span>, <span class="ident">origin</span>.<span class="ident">clone</span>(), <span class="ident">ct</span>).<span class="ident">is_some</span>());
-
-                <span class="comment">// Since it authed, it should have updated the delayed queue.</span>
-                <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>
-                    .<span class="ident">blocking_recv</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;No queued action found!&quot;</span>);
-
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">da</span> {
-                    <span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="ident">wci</span>) =&gt; {
-                        <span class="macro">trace!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">wci</span>.<span class="ident">auth_result</span>);
-                    }
-                    <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
-                }
-
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
-                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">process_delayedaction</span>(<span class="ident">da</span>).<span class="ident">is_ok</span>());
-                <span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to commit txn&quot;</span>);
+                <span class="macro">assert!</span>(
+                    <span class="ident">check_testperson_passkey</span>(<span class="ident">idms</span>, <span class="ident">idms_delayed</span>, <span class="kw-2">&amp;mut</span> <span class="ident">wa</span>, <span class="ident">origin</span>.<span class="ident">clone</span>(), <span class="ident">ct</span>)
+                        .<span class="ident">is_some</span>()
+                );
 
                 <span class="comment">// Now test removing the token</span>
                 <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
@@ -4917,7 +5011,9 @@
                 <span class="ident">commit_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">cust</span>);
 
                 <span class="comment">// Must fail now!</span>
-                <span class="macro">assert!</span>(<span class="ident">check_testperson_passkey</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;mut</span> <span class="ident">wa</span>, <span class="ident">origin</span>, <span class="ident">ct</span>).<span class="ident">is_none</span>());
+                <span class="macro">assert!</span>(
+                    <span class="ident">check_testperson_passkey</span>(<span class="ident">idms</span>, <span class="ident">idms_delayed</span>, <span class="kw-2">&amp;mut</span> <span class="ident">wa</span>, <span class="ident">origin</span>, <span class="ident">ct</span>).<span class="ident">is_none</span>()
+                );
             }
         )
     }

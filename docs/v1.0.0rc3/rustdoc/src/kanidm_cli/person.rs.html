@@ -1069,6 +1069,50 @@
 <span id="1069">1069</span>
 <span id="1070">1070</span>
 <span id="1071">1071</span>
+<span id="1072">1072</span>
+<span id="1073">1073</span>
+<span id="1074">1074</span>
+<span id="1075">1075</span>
+<span id="1076">1076</span>
+<span id="1077">1077</span>
+<span id="1078">1078</span>
+<span id="1079">1079</span>
+<span id="1080">1080</span>
+<span id="1081">1081</span>
+<span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
+<span id="1085">1085</span>
+<span id="1086">1086</span>
+<span id="1087">1087</span>
+<span id="1088">1088</span>
+<span id="1089">1089</span>
+<span id="1090">1090</span>
+<span id="1091">1091</span>
+<span id="1092">1092</span>
+<span id="1093">1093</span>
+<span id="1094">1094</span>
+<span id="1095">1095</span>
+<span id="1096">1096</span>
+<span id="1097">1097</span>
+<span id="1098">1098</span>
+<span id="1099">1099</span>
+<span id="1100">1100</span>
+<span id="1101">1101</span>
+<span id="1102">1102</span>
+<span id="1103">1103</span>
+<span id="1104">1104</span>
+<span id="1105">1105</span>
+<span id="1106">1106</span>
+<span id="1107">1107</span>
+<span id="1108">1108</span>
+<span id="1109">1109</span>
+<span id="1110">1110</span>
+<span id="1111">1111</span>
+<span id="1112">1112</span>
+<span id="1113">1113</span>
+<span id="1114">1114</span>
+<span id="1115">1115</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="self">self</span>, <span class="ident">Debug</span>};
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
@@ -1088,8 +1132,8 @@
 <span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::WebauthnAuthenticator</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">password_prompt</span>, <span class="ident">AccountCredential</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>, <span class="ident">AccountValidity</span>, <span class="ident">PersonOpt</span>,
-    <span class="ident">PersonPosix</span>,
+    <span class="ident">password_prompt</span>, <span class="ident">AccountCredential</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>, <span class="ident">AccountUserAuthToken</span>,
+    <span class="ident">AccountValidity</span>, <span class="ident">PersonOpt</span>, <span class="ident">PersonPosix</span>,
 };
 
 <span class="kw">impl</span> <span class="ident">PersonOpt</span> {
@@ -1105,6 +1149,10 @@
                 <span class="ident">PersonPosix::Show</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">PersonPosix::Set</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">PersonPosix::SetPassword</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            },
+            <span class="ident">PersonOpt::Session</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
+                <span class="ident">AccountUserAuthToken::Status</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+                <span class="ident">AccountUserAuthToken::Destroy</span> { <span class="ident">copt</span>, .. } =&gt; <span class="ident">copt</span>.<span class="ident">debug</span>,
             },
             <span class="ident">PersonOpt::Ssh</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountSsh::List</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
@@ -1237,6 +1285,46 @@
                     }
                 }
             }, <span class="comment">// end PersonOpt::Posix</span>
+            <span class="ident">PersonOpt::Session</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
+                <span class="ident">AccountUserAuthToken::Status</span>(<span class="ident">apo</span>) =&gt; {
+                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+                    <span class="kw">match</span> <span class="ident">client</span>
+                        .<span class="ident">idm_account_list_user_auth_token</span>(<span class="ident">apo</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
+                        .<span class="kw">await</span>
+                    {
+                        <span class="prelude-val">Ok</span>(<span class="ident">tokens</span>) =&gt; {
+                            <span class="kw">if</span> <span class="ident">tokens</span>.<span class="ident">is_empty</span>() {
+                                <span class="macro">println!</span>(<span class="string">&quot;No sessions exist&quot;</span>);
+                            } <span class="kw">else</span> {
+                                <span class="kw">for</span> <span class="ident">token</span> <span class="kw">in</span> <span class="ident">tokens</span> {
+                                    <span class="macro">println!</span>(<span class="string">&quot;token: {}&quot;</span>, <span class="ident">token</span>);
+                                }
+                            }
+                        }
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error listing sessions -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        }
+                    }
+                }
+                <span class="ident">AccountUserAuthToken::Destroy</span> {
+                    <span class="ident">aopts</span>,
+                    <span class="ident">copt</span>,
+                    <span class="ident">session_id</span>,
+                } =&gt; {
+                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+                    <span class="kw">match</span> <span class="ident">client</span>
+                        .<span class="ident">idm_account_destroy_user_auth_token</span>(<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(), <span class="kw-2">*</span><span class="ident">session_id</span>)
+                        .<span class="kw">await</span>
+                    {
+                        <span class="prelude-val">Ok</span>(()) =&gt; {
+                            <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>);
+                        }
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error destroying account session -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        }
+                    }
+                }
+            }, <span class="comment">// End PersonOpt::Session</span>
             <span class="ident">PersonOpt::Ssh</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountSsh::List</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;

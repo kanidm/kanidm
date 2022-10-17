@@ -2457,7 +2457,7 @@
     <span class="comment">// This has to have two versions to account for ro/rw traits, because RS can&#39;t</span>
     <span class="comment">// monomorphise on the trait to call clone_value. An option is to make a fn that</span>
     <span class="comment">// takes &quot;clone_value(t, a, v) instead, but that may have a similar issue.</span>
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
+    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;filter::from_ro&quot;</span>, <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_ro</span>(
         <span class="ident">ev</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
         <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoFilter</span>,
@@ -2472,7 +2472,7 @@
         })
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
+    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;filter::from_rw&quot;</span>, <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_rw</span>(
         <span class="ident">ev</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
         <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoFilter</span>,
@@ -2487,7 +2487,7 @@
         })
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
+    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;filter::from_ldap_ro&quot;</span>, <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_ldap_ro</span>(
         <span class="ident">ev</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
         <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="ident">LdapFilter</span>,

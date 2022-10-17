@@ -1343,6 +1343,39 @@
 <span id="1343">1343</span>
 <span id="1344">1344</span>
 <span id="1345">1345</span>
+<span id="1346">1346</span>
+<span id="1347">1347</span>
+<span id="1348">1348</span>
+<span id="1349">1349</span>
+<span id="1350">1350</span>
+<span id="1351">1351</span>
+<span id="1352">1352</span>
+<span id="1353">1353</span>
+<span id="1354">1354</span>
+<span id="1355">1355</span>
+<span id="1356">1356</span>
+<span id="1357">1357</span>
+<span id="1358">1358</span>
+<span id="1359">1359</span>
+<span id="1360">1360</span>
+<span id="1361">1361</span>
+<span id="1362">1362</span>
+<span id="1363">1363</span>
+<span id="1364">1364</span>
+<span id="1365">1365</span>
+<span id="1366">1366</span>
+<span id="1367">1367</span>
+<span id="1368">1368</span>
+<span id="1369">1369</span>
+<span id="1370">1370</span>
+<span id="1371">1371</span>
+<span id="1372">1372</span>
+<span id="1373">1373</span>
+<span id="1374">1374</span>
+<span id="1375">1375</span>
+<span id="1376">1376</span>
+<span id="1377">1377</span>
+<span id="1378">1378</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::fs</span>;
 <span class="kw">use</span> <span class="ident">std::path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
@@ -1350,7 +1383,7 @@
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
     <span class="ident">ApiToken</span>, <span class="ident">AuthRequest</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CURequest</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>, <span class="ident">CredentialStatus</span>,
-    <span class="ident">Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>, <span class="ident">OperationError</span>, <span class="ident">RadiusAuthToken</span>, <span class="ident">SearchRequest</span>, <span class="ident">SearchResponse</span>,
+    <span class="ident">Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>, <span class="ident">OperationError</span>, <span class="ident">RadiusAuthToken</span>, <span class="ident">SearchRequest</span>, <span class="ident">SearchResponse</span>, <span class="ident">UatStatus</span>,
     <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>, <span class="ident">WhoamiResponse</span>,
 };
 <span class="kw">use</span> <span class="ident">ldap3_proto::simple</span>::<span class="kw-2">*</span>;
@@ -1363,6 +1396,7 @@
 <span class="kw">use</span> <span class="ident">kanidmd_lib</span>::{
     <span class="ident">event</span>::{<span class="ident">OnlineBackupEvent</span>, <span class="ident">SearchEvent</span>, <span class="ident">SearchResult</span>, <span class="ident">WhoamiResult</span>},
     <span class="ident">filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>},
+    <span class="ident">idm::account::ListUserAuthTokenEvent</span>,
     <span class="ident">idm::credupdatesession::CredentialUpdateSessionToken</span>,
     <span class="ident">idm::event</span>::{
         <span class="ident">AuthEvent</span>, <span class="ident">AuthResult</span>, <span class="ident">CredentialStatusEvent</span>, <span class="ident">RadiusAuthTokenEvent</span>, <span class="ident">ReadBackupCodeEvent</span>,
@@ -2108,6 +2142,38 @@
         <span class="kw">let</span> <span class="ident">lte</span> <span class="op">=</span> <span class="ident">ListApiTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> };
 
         <span class="ident">idms_prox_read</span>.<span class="ident">service_account_list_api_token</span>(<span class="kw-2">&amp;</span><span class="ident">lte</span>)
+    }
+
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">skip_all</span>,
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_account_user_auth_token_get</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
+        <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UatStatus</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+            .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid identity: {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">e</span>
+            })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">target</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+            .<span class="ident">qs_read</span>
+            .<span class="ident">name_to_uuid</span>(<span class="ident">uuid_or_name</span>.<span class="ident">as_str</span>())
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Error resolving id to target&quot;</span>);
+                <span class="ident">e</span>
+            })<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">lte</span> <span class="op">=</span> <span class="ident">ListUserAuthTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> };
+
+        <span class="ident">idms_prox_read</span>.<span class="ident">account_list_user_auth_tokens</span>(<span class="kw-2">&amp;</span><span class="ident">lte</span>)
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(

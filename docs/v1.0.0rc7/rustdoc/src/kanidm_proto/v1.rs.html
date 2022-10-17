@@ -1134,6 +1134,49 @@
 <span id="1134">1134</span>
 <span id="1135">1135</span>
 <span id="1136">1136</span>
+<span id="1137">1137</span>
+<span id="1138">1138</span>
+<span id="1139">1139</span>
+<span id="1140">1140</span>
+<span id="1141">1141</span>
+<span id="1142">1142</span>
+<span id="1143">1143</span>
+<span id="1144">1144</span>
+<span id="1145">1145</span>
+<span id="1146">1146</span>
+<span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
+<span id="1151">1151</span>
+<span id="1152">1152</span>
+<span id="1153">1153</span>
+<span id="1154">1154</span>
+<span id="1155">1155</span>
+<span id="1156">1156</span>
+<span id="1157">1157</span>
+<span id="1158">1158</span>
+<span id="1159">1159</span>
+<span id="1160">1160</span>
+<span id="1161">1161</span>
+<span id="1162">1162</span>
+<span id="1163">1163</span>
+<span id="1164">1164</span>
+<span id="1165">1165</span>
+<span id="1166">1166</span>
+<span id="1167">1167</span>
+<span id="1168">1168</span>
+<span id="1169">1169</span>
+<span id="1170">1170</span>
+<span id="1171">1171</span>
+<span id="1172">1172</span>
+<span id="1173">1173</span>
+<span id="1174">1174</span>
+<span id="1175">1175</span>
+<span id="1176">1176</span>
+<span id="1177">1177</span>
+<span id="1178">1178</span>
+<span id="1179">1179</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
@@ -1459,6 +1502,45 @@ pub struct Application {
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UatPurposeStatus</span> {
+    <span class="ident">IdentityOnly</span>,
+    <span class="ident">ReadOnly</span>,
+    <span class="ident">ReadWrite</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UatStatus</span> {
+    <span class="kw">pub</span> <span class="ident">account_id</span>: <span class="ident">Uuid</span>,
+    <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">time::OffsetDateTime</span>,
+    <span class="kw">pub</span> <span class="ident">purpose</span>: <span class="ident">UatPurposeStatus</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">UatStatus</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;account_id: {}&quot;</span>, <span class="self">self</span>.<span class="ident">account_id</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;session_id: {}&quot;</span>, <span class="self">self</span>.<span class="ident">session_id</span>)<span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exp</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">expiry</span> {
+            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: {}&quot;</span>, <span class="ident">exp</span>)<span class="question-mark">?</span>;
+        } <span class="kw">else</span> {
+            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: -&quot;</span>)<span class="question-mark">?</span>;
+        }
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;issued_at: {}&quot;</span>, <span class="self">self</span>.<span class="ident">issued_at</span>)<span class="question-mark">?</span>;
+        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">purpose</span> {
+            <span class="ident">UatPurposeStatus::IdentityOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: identity only&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">UatPurposeStatus::ReadOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read only&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">UatPurposeStatus::ReadWrite</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read write&quot;</span>)<span class="question-mark">?</span>,
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UatPurpose</span> {
     <span class="ident">IdentityOnly</span>,
     <span class="ident">ReadOnly</span>,
@@ -1481,10 +1563,10 @@ pub struct Application {
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UserAuthToken</span> {
     <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">auth_type</span>: <span class="ident">AuthType</span>,
-    <span class="comment">// When this token should be considered expired. Interpretation</span>
-    <span class="comment">// may depend on the client application.</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="ident">time::OffsetDateTime</span>,
+    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">time::OffsetDateTime</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">purpose</span>: <span class="ident">UatPurpose</span>,
     <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
@@ -1499,7 +1581,11 @@ pub struct Application {
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;spn: {}&quot;</span>, <span class="self">self</span>.<span class="ident">spn</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;display: {}&quot;</span>, <span class="self">self</span>.<span class="ident">displayname</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: {}&quot;</span>, <span class="self">self</span>.<span class="ident">expiry</span>)<span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exp</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">expiry</span> {
+            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: {}&quot;</span>, <span class="ident">exp</span>)<span class="question-mark">?</span>;
+        } <span class="kw">else</span> {
+            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: -&quot;</span>)<span class="question-mark">?</span>;
+        }
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">purpose</span> {
             <span class="ident">UatPurpose::IdentityOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: identity only&quot;</span>)<span class="question-mark">?</span>,
             <span class="ident">UatPurpose::ReadOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read only&quot;</span>)<span class="question-mark">?</span>,
