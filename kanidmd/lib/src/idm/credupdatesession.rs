@@ -1487,7 +1487,7 @@ mod tests {
     use crate::event::CreateEvent;
     use crate::idm::delayed::DelayedAction;
     use crate::idm::event::{AuthEvent, AuthResult};
-    use crate::idm::server::IdmServer;
+    use crate::idm::server::{IdmServer, IdmServerDelayed};
     use crate::idm::AuthState;
     use crate::prelude::*;
 
@@ -1669,7 +1669,12 @@ mod tests {
         idms_prox_write.commit().expect("Failed to commit txn");
     }
 
-    fn check_testperson_password(idms: &IdmServer, pw: &str, ct: Duration) -> Option<String> {
+    fn check_testperson_password(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+        pw: &str,
+        ct: Duration,
+    ) -> Option<String> {
         let mut idms_auth = idms.auth();
 
         let auth_init = AuthEvent::named_init("testperson");
@@ -1711,13 +1716,20 @@ mod tests {
                 sessionid: _,
                 state: AuthState::Success(token),
                 delay: _,
-            }) => Some(token),
+            }) => {
+                // Process the auth session
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+
+                Some(token)
+            }
             _ => None,
         }
     }
 
     fn check_testperson_password_totp(
         idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
         pw: &str,
         token: &Totp,
         ct: Duration,
@@ -1778,13 +1790,19 @@ mod tests {
                 sessionid: _,
                 state: AuthState::Success(token),
                 delay: _,
-            }) => Some(token),
+            }) => {
+                // Process the auth session
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                Some(token)
+            }
             _ => None,
         }
     }
 
     fn check_testperson_password_backup_code(
         idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
         pw: &str,
         code: &str,
         ct: Duration,
@@ -1841,13 +1859,25 @@ mod tests {
                 sessionid: _,
                 state: AuthState::Success(token),
                 delay: _,
-            }) => Some(token),
+            }) => {
+                // There now should be a backup code invalidation present
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::BackupCodeRemoval(_)));
+                let r = task::block_on(idms.delayed_action(ct, da));
+                assert!(r.is_ok());
+
+                // Process the auth session
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                Some(token)
+            }
             _ => None,
         }
     }
 
     fn check_testperson_passkey(
         idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         origin: Url,
         ct: Duration,
@@ -1906,7 +1936,19 @@ mod tests {
                 sessionid: _,
                 state: AuthState::Success(token),
                 delay: _,
-            }) => Some(token),
+            }) => {
+                // Process the webauthn update
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::WebauthnCounterIncrement(_)));
+                let r = task::block_on(idms.delayed_action(ct, da));
+                assert!(r.is_ok());
+
+                // Process the auth session
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+
+                Some(token)
+            }
             _ => None,
         }
     }
@@ -1941,63 +1983,64 @@ mod tests {
 
     #[test]
     fn test_idm_credential_update_onboarding_create_new_pw() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let test_pw =
+                    "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let (cust, _) = setup_test_session(idms, ct);
+                let (cust, _) = setup_test_session(idms, ct);
 
-            let cutxn = idms.cred_update_transaction();
+                let cutxn = idms.cred_update_transaction();
 
-            // Get the credential status - this should tell
-            // us the details of the credentials, as well as
-            // if they are ready and valid to commit?
-            let c_status = cutxn
-                .credential_update_status(&cust, ct)
-                .expect("Failed to get the current session status.");
+                // Get the credential status - this should tell
+                // us the details of the credentials, as well as
+                // if they are ready and valid to commit?
+                let c_status = cutxn
+                    .credential_update_status(&cust, ct)
+                    .expect("Failed to get the current session status.");
 
-            trace!(?c_status);
+                trace!(?c_status);
 
-            assert!(c_status.primary.is_none());
+                assert!(c_status.primary.is_none());
 
-            // Test initially creating a credential.
-            //   - pw first
-            let c_status = cutxn
-                .credential_primary_set_password(&cust, ct, test_pw)
-                .expect("Failed to update the primary cred password");
+                // Test initially creating a credential.
+                //   - pw first
+                let c_status = cutxn
+                    .credential_primary_set_password(&cust, ct, test_pw)
+                    .expect("Failed to update the primary cred password");
 
-            assert!(c_status.can_commit);
+                assert!(c_status.can_commit);
 
-            drop(cutxn);
-            commit_session(idms, ct, cust);
+                drop(cutxn);
+                commit_session(idms, ct, cust);
 
-            // Check it works!
-            assert!(check_testperson_password(idms, test_pw, ct).is_some());
+                // Check it works!
+                assert!(check_testperson_password(idms, idms_delayed, test_pw, ct).is_some());
 
-            // Test deleting the pw
-            let (cust, _) = renew_test_session(idms, ct);
-            let cutxn = idms.cred_update_transaction();
+                // Test deleting the pw
+                let (cust, _) = renew_test_session(idms, ct);
+                let cutxn = idms.cred_update_transaction();
 
-            let c_status = cutxn
-                .credential_update_status(&cust, ct)
-                .expect("Failed to get the current session status.");
-            trace!(?c_status);
-            assert!(c_status.primary.is_some());
+                let c_status = cutxn
+                    .credential_update_status(&cust, ct)
+                    .expect("Failed to get the current session status.");
+                trace!(?c_status);
+                assert!(c_status.primary.is_some());
 
-            let c_status = cutxn
-                .credential_primary_delete(&cust, ct)
-                .expect("Failed to delete the primary cred");
-            trace!(?c_status);
-            assert!(c_status.primary.is_none());
+                let c_status = cutxn
+                    .credential_primary_delete(&cust, ct)
+                    .expect("Failed to delete the primary cred");
+                trace!(?c_status);
+                assert!(c_status.primary.is_none());
 
-            drop(cutxn);
-            commit_session(idms, ct, cust);
+                drop(cutxn);
+                commit_session(idms, ct, cust);
 
-            // Must fail now!
-            assert!(check_testperson_password(idms, test_pw, ct).is_none());
-        })
+                // Must fail now!
+                assert!(check_testperson_password(idms, idms_delayed, test_pw, ct).is_none());
+            }
+        )
     }
 
     // Test set of primary account password
@@ -2007,162 +2050,178 @@ mod tests {
     // - setup TOTP
     #[test]
     fn test_idm_credential_update_onboarding_create_new_mfa_totp_basic() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let test_pw =
+                    "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let (cust, _) = setup_test_session(idms, ct);
-            let cutxn = idms.cred_update_transaction();
+                let (cust, _) = setup_test_session(idms, ct);
+                let cutxn = idms.cred_update_transaction();
 
-            // Setup the PW
-            let c_status = cutxn
-                .credential_primary_set_password(&cust, ct, test_pw)
-                .expect("Failed to update the primary cred password");
+                // Setup the PW
+                let c_status = cutxn
+                    .credential_primary_set_password(&cust, ct, test_pw)
+                    .expect("Failed to update the primary cred password");
 
-            // Since it's pw only.
-            assert!(c_status.can_commit);
+                // Since it's pw only.
+                assert!(c_status.can_commit);
 
-            //
-            let c_status = cutxn
-                .credential_primary_init_totp(&cust, ct)
-                .expect("Failed to update the primary cred password");
+                //
+                let c_status = cutxn
+                    .credential_primary_init_totp(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
-            // Check the status has the token.
-            let totp_token: Totp = match c_status.mfaregstate {
-                MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
+                // Check the status has the token.
+                let totp_token: Totp = match c_status.mfaregstate {
+                    MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
 
-                _ => None,
+                    _ => None,
+                }
+                .expect("Unable to retrieve totp token, invalid state.");
+
+                trace!(?totp_token);
+                let chal = totp_token
+                    .do_totp_duration_from_epoch(&ct)
+                    .expect("Failed to perform totp step");
+
+                // Intentionally get it wrong.
+                let c_status = cutxn
+                    .credential_primary_check_totp(&cust, ct, chal + 1)
+                    .expect("Failed to update the primary cred password");
+
+                assert!(matches!(
+                    c_status.mfaregstate,
+                    MfaRegStateStatus::TotpTryAgain
+                ));
+
+                let c_status = cutxn
+                    .credential_primary_check_totp(&cust, ct, chal)
+                    .expect("Failed to update the primary cred password");
+
+                assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+                assert!(matches!(
+                    c_status.primary.as_ref().map(|c| &c.type_),
+                    Some(CredentialDetailType::PasswordMfa(true, _, 0))
+                ));
+
+                // Should be okay now!
+
+                drop(cutxn);
+                commit_session(idms, ct, cust);
+
+                // Check it works!
+                assert!(check_testperson_password_totp(
+                    idms,
+                    idms_delayed,
+                    test_pw,
+                    &totp_token,
+                    ct
+                )
+                .is_some());
+                // No need to test delete of the whole cred, we already did with pw above.
+
+                // If we remove TOTP, show it reverts back.
+                let (cust, _) = renew_test_session(idms, ct);
+                let cutxn = idms.cred_update_transaction();
+
+                let c_status = cutxn
+                    .credential_primary_remove_totp(&cust, ct)
+                    .expect("Failed to update the primary cred password");
+
+                assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+                assert!(matches!(
+                    c_status.primary.as_ref().map(|c| &c.type_),
+                    Some(CredentialDetailType::Password)
+                ));
+
+                drop(cutxn);
+                commit_session(idms, ct, cust);
+
+                // Check it works with totp removed.
+                assert!(check_testperson_password(idms, idms_delayed, test_pw, ct).is_some());
             }
-            .expect("Unable to retrieve totp token, invalid state.");
-
-            trace!(?totp_token);
-            let chal = totp_token
-                .do_totp_duration_from_epoch(&ct)
-                .expect("Failed to perform totp step");
-
-            // Intentionally get it wrong.
-            let c_status = cutxn
-                .credential_primary_check_totp(&cust, ct, chal + 1)
-                .expect("Failed to update the primary cred password");
-
-            assert!(matches!(
-                c_status.mfaregstate,
-                MfaRegStateStatus::TotpTryAgain
-            ));
-
-            let c_status = cutxn
-                .credential_primary_check_totp(&cust, ct, chal)
-                .expect("Failed to update the primary cred password");
-
-            assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-            assert!(matches!(
-                c_status.primary.as_ref().map(|c| &c.type_),
-                Some(CredentialDetailType::PasswordMfa(true, _, 0))
-            ));
-
-            // Should be okay now!
-
-            drop(cutxn);
-            commit_session(idms, ct, cust);
-
-            // Check it works!
-            assert!(check_testperson_password_totp(idms, test_pw, &totp_token, ct).is_some());
-            // No need to test delete of the whole cred, we already did with pw above.
-
-            // If we remove TOTP, show it reverts back.
-            let (cust, _) = renew_test_session(idms, ct);
-            let cutxn = idms.cred_update_transaction();
-
-            let c_status = cutxn
-                .credential_primary_remove_totp(&cust, ct)
-                .expect("Failed to update the primary cred password");
-
-            assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-            assert!(matches!(
-                c_status.primary.as_ref().map(|c| &c.type_),
-                Some(CredentialDetailType::Password)
-            ));
-
-            drop(cutxn);
-            commit_session(idms, ct, cust);
-
-            // Check it works with totp removed.
-            assert!(check_testperson_password(idms, test_pw, ct).is_some());
-        })
+        )
     }
 
     // Check sha1 totp.
     #[test]
     fn test_idm_credential_update_onboarding_create_new_mfa_totp_sha1() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let test_pw =
+                    "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let (cust, _) = setup_test_session(idms, ct);
-            let cutxn = idms.cred_update_transaction();
+                let (cust, _) = setup_test_session(idms, ct);
+                let cutxn = idms.cred_update_transaction();
 
-            // Setup the PW
-            let c_status = cutxn
-                .credential_primary_set_password(&cust, ct, test_pw)
-                .expect("Failed to update the primary cred password");
+                // Setup the PW
+                let c_status = cutxn
+                    .credential_primary_set_password(&cust, ct, test_pw)
+                    .expect("Failed to update the primary cred password");
 
-            // Since it's pw only.
-            assert!(c_status.can_commit);
+                // Since it's pw only.
+                assert!(c_status.can_commit);
 
-            //
-            let c_status = cutxn
-                .credential_primary_init_totp(&cust, ct)
-                .expect("Failed to update the primary cred password");
+                //
+                let c_status = cutxn
+                    .credential_primary_init_totp(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
-            // Check the status has the token.
-            let totp_token: Totp = match c_status.mfaregstate {
-                MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
+                // Check the status has the token.
+                let totp_token: Totp = match c_status.mfaregstate {
+                    MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
 
-                _ => None,
+                    _ => None,
+                }
+                .expect("Unable to retrieve totp token, invalid state.");
+
+                let totp_token = totp_token.downgrade_to_legacy();
+
+                trace!(?totp_token);
+                let chal = totp_token
+                    .do_totp_duration_from_epoch(&ct)
+                    .expect("Failed to perform totp step");
+
+                // Should getn the warn that it's sha1
+                let c_status = cutxn
+                    .credential_primary_check_totp(&cust, ct, chal)
+                    .expect("Failed to update the primary cred password");
+
+                assert!(matches!(
+                    c_status.mfaregstate,
+                    MfaRegStateStatus::TotpInvalidSha1
+                ));
+
+                // Accept it
+                let c_status = cutxn
+                    .credential_primary_accept_sha1_totp(&cust, ct)
+                    .expect("Failed to update the primary cred password");
+
+                assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+                assert!(matches!(
+                    c_status.primary.as_ref().map(|c| &c.type_),
+                    Some(CredentialDetailType::PasswordMfa(true, _, 0))
+                ));
+
+                // Should be okay now!
+
+                drop(cutxn);
+                commit_session(idms, ct, cust);
+
+                // Check it works!
+                assert!(check_testperson_password_totp(
+                    idms,
+                    idms_delayed,
+                    test_pw,
+                    &totp_token,
+                    ct
+                )
+                .is_some());
+                // No need to test delete, we already did with pw above.
             }
-            .expect("Unable to retrieve totp token, invalid state.");
-
-            let totp_token = totp_token.downgrade_to_legacy();
-
-            trace!(?totp_token);
-            let chal = totp_token
-                .do_totp_duration_from_epoch(&ct)
-                .expect("Failed to perform totp step");
-
-            // Should getn the warn that it's sha1
-            let c_status = cutxn
-                .credential_primary_check_totp(&cust, ct, chal)
-                .expect("Failed to update the primary cred password");
-
-            assert!(matches!(
-                c_status.mfaregstate,
-                MfaRegStateStatus::TotpInvalidSha1
-            ));
-
-            // Accept it
-            let c_status = cutxn
-                .credential_primary_accept_sha1_totp(&cust, ct)
-                .expect("Failed to update the primary cred password");
-
-            assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-            assert!(matches!(
-                c_status.primary.as_ref().map(|c| &c.type_),
-                Some(CredentialDetailType::PasswordMfa(true, _, 0))
-            ));
-
-            // Should be okay now!
-
-            drop(cutxn);
-            commit_session(idms, ct, cust);
-
-            // Check it works!
-            assert!(check_testperson_password_totp(idms, test_pw, &totp_token, ct).is_some());
-            // No need to test delete, we already did with pw above.
-        })
+        )
     }
 
     #[test]
@@ -2239,15 +2298,14 @@ mod tests {
                 let backup_code = codes.iter().next().expect("No codes available");
 
                 // Check it works!
-                assert!(
-                    check_testperson_password_backup_code(idms, test_pw, backup_code, ct).is_some()
-                );
-
-                // There now should be a backup code invalidation present
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::BackupCodeRemoval(_)));
-                let r = task::block_on(idms.delayed_action(ct, da));
-                assert!(r.is_ok());
+                assert!(check_testperson_password_backup_code(
+                    idms,
+                    idms_delayed,
+                    test_pw,
+                    backup_code,
+                    ct
+                )
+                .is_some());
 
                 // Renew to start the next steps
                 let (cust, _) = renew_test_session(idms, ct);
@@ -2307,48 +2365,49 @@ mod tests {
 
     #[test]
     fn test_idm_credential_update_onboarding_cancel_inprogress_totp() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let test_pw =
+                    "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let (cust, _) = setup_test_session(idms, ct);
-            let cutxn = idms.cred_update_transaction();
+                let (cust, _) = setup_test_session(idms, ct);
+                let cutxn = idms.cred_update_transaction();
 
-            // Setup the PW
-            let c_status = cutxn
-                .credential_primary_set_password(&cust, ct, test_pw)
-                .expect("Failed to update the primary cred password");
+                // Setup the PW
+                let c_status = cutxn
+                    .credential_primary_set_password(&cust, ct, test_pw)
+                    .expect("Failed to update the primary cred password");
 
-            // Since it's pw only.
-            assert!(c_status.can_commit);
+                // Since it's pw only.
+                assert!(c_status.can_commit);
 
-            //
-            let c_status = cutxn
-                .credential_primary_init_totp(&cust, ct)
-                .expect("Failed to update the primary cred totp");
+                //
+                let c_status = cutxn
+                    .credential_primary_init_totp(&cust, ct)
+                    .expect("Failed to update the primary cred totp");
 
-            // Check the status has the token.
-            assert!(c_status.can_commit);
-            assert!(matches!(
-                c_status.mfaregstate,
-                MfaRegStateStatus::TotpCheck(_)
-            ));
+                // Check the status has the token.
+                assert!(c_status.can_commit);
+                assert!(matches!(
+                    c_status.mfaregstate,
+                    MfaRegStateStatus::TotpCheck(_)
+                ));
 
-            let c_status = cutxn
-                .credential_update_cancel_mfareg(&cust, ct)
-                .expect("Failed to cancel inflight totp change");
+                let c_status = cutxn
+                    .credential_update_cancel_mfareg(&cust, ct)
+                    .expect("Failed to cancel inflight totp change");
 
-            assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-            assert!(c_status.can_commit);
+                assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+                assert!(c_status.can_commit);
 
-            drop(cutxn);
-            commit_session(idms, ct, cust);
+                drop(cutxn);
+                commit_session(idms, ct, cust);
 
-            // It's pw only, since we canceled TOTP
-            assert!(check_testperson_password(idms, test_pw, ct).is_some());
-        })
+                // It's pw only, since we canceled TOTP
+                assert!(check_testperson_password(idms, idms_delayed, test_pw, ct).is_some());
+            }
+        )
     }
 
     // Primary cred must be pw or pwmfa
@@ -2412,23 +2471,10 @@ mod tests {
                 commit_session(idms, ct, cust);
 
                 // Do an auth test
-                assert!(check_testperson_passkey(idms, &mut wa, origin.clone(), ct).is_some());
-
-                // Since it authed, it should have updated the delayed queue.
-                let da = idms_delayed
-                    .blocking_recv()
-                    .expect("No queued action found!");
-
-                match &da {
-                    DelayedAction::WebauthnCounterIncrement(wci) => {
-                        trace!("{:?}", wci.auth_result);
-                    }
-                    _ => unreachable!(),
-                }
-
-                let mut idms_prox_write = idms.proxy_write(ct);
-                assert!(idms_prox_write.process_delayedaction(da).is_ok());
-                idms_prox_write.commit().expect("Failed to commit txn");
+                assert!(
+                    check_testperson_passkey(idms, idms_delayed, &mut wa, origin.clone(), ct)
+                        .is_some()
+                );
 
                 // Now test removing the token
                 let (cust, _) = renew_test_session(idms, ct);
@@ -2450,7 +2496,9 @@ mod tests {
                 commit_session(idms, ct, cust);
 
                 // Must fail now!
-                assert!(check_testperson_passkey(idms, &mut wa, origin, ct).is_none());
+                assert!(
+                    check_testperson_passkey(idms, idms_delayed, &mut wa, origin, ct).is_none()
+                );
             }
         )
     }

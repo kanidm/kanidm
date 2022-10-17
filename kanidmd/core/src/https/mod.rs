@@ -535,6 +535,8 @@ pub fn create_https_server(
         .at("/v1/auth/valid")
         .mapped_get(&mut routemap, auth_valid);
 
+    appserver.at("/v1/logout").mapped_get(&mut routemap, logout);
+
     let mut schema_route = appserver.at("/v1/schema");
     schema_route.at("/").mapped_get(&mut routemap, schema_get);
     schema_route
@@ -753,6 +755,12 @@ pub fn create_https_server(
     account_route
         .at("/:id/_ssh_pubkeys/:tag")
         .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag);
+    account_route
+        .at("/:id/_user_auth_token")
+        .mapped_get(&mut routemap, account_get_id_user_auth_token);
+    account_route
+        .at("/:id/_user_auth_token/:token_id")
+        .mapped_delete(&mut routemap, account_user_auth_token_delete);
 
     // Credential updates, don't require the account id.
     let mut cred_route = appserver.at("/v1/credential");

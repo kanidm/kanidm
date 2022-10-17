@@ -26,8 +26,6 @@ use crate::value::Session;
 
 // revoke
 
-const GRACE_WINDOW: Duration = Duration::from_secs(600);
-
 macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
@@ -324,7 +322,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin ssh key read: {:?}", e);
+                admin_error!("Failed to begin service account api token list: {:?}", e);
                 return Err(e);
             }
         };
@@ -376,7 +374,7 @@ mod tests {
     use compact_jwt::{Jws, JwsUnverified};
     use kanidm_proto::v1::ApiToken;
 
-    use super::{DestroyApiTokenEvent, GenerateApiTokenEvent, GRACE_WINDOW};
+    use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
     // use crate::prelude::*;
     use crate::event::CreateEvent;
     use crate::idm::server::IdmServerTransaction;

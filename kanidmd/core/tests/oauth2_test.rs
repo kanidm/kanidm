@@ -366,5 +366,8 @@ async fn test_oauth2_openid_basic_flow() {
         .await
         .expect("Unable to decode OidcToken from userinfo");
 
+    tracing::trace!(?userinfo);
+    tracing::trace!(?oidc);
+
     assert!(userinfo == oidc);
 }

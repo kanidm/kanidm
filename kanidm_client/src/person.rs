@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use kanidm_proto::v1::{AccountUnixExtend, CredentialStatus, Entry, SingleStringRequest};
+use kanidm_proto::v1::{
+    AccountUnixExtend, CredentialStatus, Entry, SingleStringRequest, UatStatus,
+};
+use uuid::Uuid;
 
 use crate::{ClientError, KanidmClient};
 
@@ -230,5 +233,29 @@ impl KanidmClient {
     pub async fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/person/{}/_radius", id).as_str())
             .await
+    }
+
+    pub async fn idm_account_list_user_auth_token(
+        &self,
+        id: &str,
+    ) -> Result<Vec<UatStatus>, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_user_auth_token", id).as_str())
+            .await
+    }
+
+    pub async fn idm_account_destroy_user_auth_token(
+        &self,
+        id: &str,
+        token_id: Uuid,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(
+            format!(
+                "/v1/account/{}/_user_auth_token/{}",
+                id,
+                &token_id.to_string()
+            )
+            .as_str(),
+        )
+        .await
     }
 }

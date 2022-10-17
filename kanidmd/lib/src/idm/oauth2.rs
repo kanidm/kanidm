@@ -940,15 +940,24 @@ impl Oauth2ResourceServersReadTransaction {
         let iat = ct.as_secs() as i64;
 
         // TODO: Make configurable from auth policy!
-        let expires_in = if code_xchg.uat.expiry > odt_ct {
-            // Becomes a duration.
-            (code_xchg.uat.expiry - odt_ct).whole_seconds() as u32
+        let (expiry, expires_in) = if let Some(expiry) = code_xchg.uat.expiry {
+            if expiry > odt_ct {
+                // Becomes a duration.
+                (expiry, (expiry - odt_ct).whole_seconds() as u32)
+            } else {
+                security_info!(
+                    "User Auth Token has expired before we could publish the oauth2 response"
+                );
+                return Err(Oauth2Error::AccessDenied);
+            }
         } else {
-            security_info!(
-                "User Auth Token has expired before we could publish the oauth2 response"
-            );
-            return Err(Oauth2Error::AccessDenied);
+            security_info!("User Auth Token has no expiry, setting to refresh window");
+            (
+                odt_ct + Duration::from_secs(OAUTH2_ACCESS_TOKEN_EXPIRY as u64),
+                OAUTH2_ACCESS_TOKEN_EXPIRY,
+            )
         };
+        // let expiry = odt_ct + Duration::from_secs(expires_in as u64);
 
         let scope = if code_xchg.scopes.is_empty() {
             None
@@ -1044,7 +1053,7 @@ impl Oauth2ResourceServersReadTransaction {
             scopes: code_xchg.scopes,
             session_id: code_xchg.uat.session_id,
             auth_type: code_xchg.uat.auth_type,
-            expiry: code_xchg.uat.expiry,
+            expiry,
             uuid: code_xchg.uat.uuid,
             iat,
             nbf: iat,
@@ -1870,8 +1879,10 @@ mod tests {
                 //   TEST_CURRENT_TIME     UAT_EXPIRE         TOKEN_EXPIRE
                 //
                 // This lets us check a variety of time based cases.
-                uat.expiry = time::OffsetDateTime::unix_epoch()
-                    + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1);
+                uat.expiry = Some(
+                    time::OffsetDateTime::unix_epoch()
+                        + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1),
+                );
 
                 let idms_prox_read = idms.proxy_read();
 

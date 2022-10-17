@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
-    Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
-    ModifyRequest, OperationError,
+    AccountUnixExtend, AuthType, CUIntentToken, CUSessionToken, CUStatus, CreateRequest,
+    DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify,
+    ModifyList as ProtoModifyList, ModifyRequest, OperationError,
 };
 use time::OffsetDateTime;
 use tracing::{info, instrument, span, trace, Level};
@@ -17,6 +17,7 @@ use kanidmd_lib::{
         ReviveRecycledEvent,
     },
     filter::{Filter, FilterInvalid},
+    idm::account::DestroySessionTokenEvent,
     idm::credupdatesession::{
         CredentialUpdateIntentToken, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
         InitCredentialUpdateIntentEvent,
@@ -495,6 +496,91 @@ impl QueryServerWriteV1 {
 
         idms_prox_write
             .service_account_destroy_api_token(&dte)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_account_user_auth_token_destroy(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        token_id: Uuid,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(err = ?e, "Invalid identity");
+                e
+            })?;
+
+        let target = idms_prox_write
+            .qs_write
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Error resolving id to target");
+                e
+            })?;
+
+        let dte = DestroySessionTokenEvent {
+            ident,
+            target,
+            token_id,
+        };
+
+        idms_prox_write
+            .account_destroy_session_token(&dte)
+            .and_then(|r| idms_prox_write.commit().map(|_| r))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_logout(
+        &self,
+        uat: Option<String>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_write = self.idms.proxy_write_async(ct).await;
+
+        // We specifically need a uat here to assess the auth type!
+        let (ident, uat) = idms_prox_write
+            .validate_and_parse_uat(uat.as_deref(), ct)
+            .and_then(|uat| {
+                idms_prox_write
+                    .process_uat_to_identity(&uat, ct)
+                    .map(|ident| (ident, uat))
+            })?;
+
+        if uat.auth_type == AuthType::Anonymous {
+            info!("Ignoring request to logout anonymous session - these sessions are not recorded");
+            return Ok(());
+        }
+
+        let target = ident.get_uuid().ok_or_else(|| {
+            admin_error!("Invalid identity - no uuid present");
+            OperationError::InvalidState
+        })?;
+
+        let token_id = ident.get_session_id();
+
+        let dte = DestroySessionTokenEvent {
+            ident,
+            target,
+            token_id,
+        };
+
+        idms_prox_write
+            .account_destroy_session_token(&dte)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 

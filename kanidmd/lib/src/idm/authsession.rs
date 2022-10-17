@@ -22,9 +22,10 @@ use webauthn_rs::prelude::{
 
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
+use crate::identity::IdentityId;
 use crate::idm::account::Account;
 use crate::idm::delayed::{
-    BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
 };
 use crate::idm::AuthState;
 use crate::prelude::*;
@@ -740,10 +741,6 @@ impl AuthSession {
                 ) {
                     CredState::Success(auth_type) => {
                         security_info!("Successful cred handling");
-                        // TODO: put the operation id into the call to `to_userauthtoken`
-                        // Can't `unwrap` the uuid until full integration, because some unit tests
-                        // call functions that call this indirectly without opening a span first,
-                        // and this returns `None` when not in a span (and panics if the tree isn't initialized).
                         let session_id = Uuid::new_v4();
                         security_info!(
                             "Starting session {} for {} {}",
@@ -751,10 +748,46 @@ impl AuthSession {
                             self.account.spn,
                             self.account.uuid
                         );
+
                         let uat = self
                             .account
-                            .to_userauthtoken(session_id, *time, auth_type)
+                            .to_userauthtoken(session_id, *time, auth_type.clone())
                             .ok_or(OperationError::InvalidState)?;
+
+                        // Queue the session info write.
+                        // This is dependent on the type of authentication factors
+                        // used. Generally we won't submit for Anonymous. Add an extra
+                        // safety barrier for auth types that shouldn't be here. Generally we
+                        // submit session info for everything else.
+                        match auth_type {
+                            AuthType::Anonymous => {
+                                // Skip - these sessions are not validated by session id.
+                            }
+                            AuthType::UnixPassword => {
+                                // Impossibru!
+                                admin_error!("Impossible auth type (UnixPassword) found");
+                                return Err(OperationError::InvalidState);
+                            }
+                            AuthType::Password
+                            | AuthType::GeneratedPassword
+                            | AuthType::PasswordMfa
+                            | AuthType::Passkey => {
+                                trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
+                                async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
+                                    target_uuid: self.account.uuid,
+                                    session_id,
+                                    label: "Auth Session".to_string(),
+                                    expiry: uat.expiry,
+                                    issued_at: uat.issued_at.clone(),
+                                    issued_by: IdentityId::User(self.account.uuid),
+                                    scope: (&uat.purpose).into(),
+                                }))
+                                .map_err(|_| {
+                                    admin_error!("unable to queue failing authentication as the session will not validate ... ");
+                                    OperationError::InvalidState
+                                })?;
+                            }
+                        };
 
                         let jwt = Jws::new(uat);
 
@@ -983,6 +1016,11 @@ mod tests {
             Ok(AuthState::Success(_)) => {}
             _ => panic!(),
         };
+
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::AuthSessionRecord(_)) => {}
+            _ => assert!(false),
+        }
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
@@ -1225,6 +1263,11 @@ mod tests {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
             };
+
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
         }
 
         drop(async_tx);
@@ -1445,12 +1488,16 @@ mod tests {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
             };
-        }
 
-        // Check the async counter update was sent.
-        match async_rx.blocking_recv() {
-            Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
-            _ => assert!(false),
+            // Check the async counter update was sent.
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
+                _ => assert!(false),
+            }
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
         }
 
         // Check bad challenge.
@@ -1686,6 +1733,10 @@ mod tests {
                 Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
                 _ => assert!(false),
             }
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
         }
 
         drop(async_tx);
@@ -1883,6 +1934,11 @@ mod tests {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
             };
+
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
         }
 
         // Check good webauthn/good pw (pass)
@@ -1921,6 +1977,10 @@ mod tests {
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
                 Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
+                _ => assert!(false),
+            }
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
                 _ => assert!(false),
             }
         }
@@ -2077,6 +2137,12 @@ mod tests {
             _ => assert!(false),
         }
 
+        // There will be a auth session record too
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::AuthSessionRecord(_)) => {}
+            _ => assert!(false),
+        }
+
         // TOTP should also work:
         // check send good TOTP, should continue
         //      then good pw, success
@@ -2106,6 +2172,12 @@ mod tests {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
             };
+        }
+
+        // There will be a auth session record too
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::AuthSessionRecord(_)) => {}
+            _ => assert!(false),
         }
 
         drop(async_tx);

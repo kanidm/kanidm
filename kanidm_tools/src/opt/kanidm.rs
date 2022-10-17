@@ -279,6 +279,25 @@ pub enum AccountValidity {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum AccountUserAuthToken {
+    /// Show the status of logged in sessions associated to this account.
+    #[clap(name = "status")]
+    Status(AccountNamedOpt),
+    /// Destroy / revoke a session for this account. Access to the
+    /// session (user auth token) is NOT required, only the uuid of the session.
+    #[clap(name = "destroy")]
+    Destroy {
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        /// The UUID of the token to destroy.
+        #[clap(name = "session_id")]
+        session_id: Uuid,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 pub enum PersonOpt {
     /// Manage the credentials this person uses for authentication
     #[clap(name = "credential")]
@@ -297,6 +316,12 @@ pub enum PersonOpt {
     Posix {
         #[clap(subcommand)]
         commands: PersonPosix,
+    },
+    /// Manage sessions (user auth tokens) associated to this person.
+    #[clap(name = "session")]
+    Session {
+        #[clap(subcommand)]
+        commands: AccountUserAuthToken,
     },
     /// Manage ssh public key's associated to this person
     #[clap(name = "ssh")]
@@ -417,6 +442,12 @@ pub enum ServiceAccountOpt {
         #[clap(subcommand)]
         commands: ServiceAccountPosix,
     },
+    /// Manage sessions (user auth tokens) associated to this service account.
+    #[clap(name = "session")]
+    Session {
+        #[clap(subcommand)]
+        commands: AccountUserAuthToken,
+    },
     /// Manage ssh public key's associated to this person
     #[clap(name = "ssh")]
     Ssh {
@@ -474,14 +505,11 @@ pub struct LoginOpt {
 
 #[derive(Debug, Args)]
 pub struct LogoutOpt {
-    #[clap(short, long, env = "KANIDM_DEBUG")]
-    pub debug: bool,
-    #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
-    pub addr: Option<String>,
-    #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
-    pub ca_path: Option<PathBuf>,
-    #[clap()]
-    pub username: Option<String>,
+    #[clap(flatten)]
+    copt: CommonOpt,
+    #[clap(short, long, hide = true)]
+    /// Do not send the logout to the server - only remove the session token locally
+    local_only: bool,
 }
 
 #[derive(Debug, Subcommand)]

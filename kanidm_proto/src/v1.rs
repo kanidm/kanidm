@@ -323,6 +323,45 @@ pub enum UiHint {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
+pub enum UatPurposeStatus {
+    IdentityOnly,
+    ReadOnly,
+    ReadWrite,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub struct UatStatus {
+    pub account_id: Uuid,
+    pub session_id: Uuid,
+    #[serde(with = "time::serde::timestamp::option")]
+    pub expiry: Option<time::OffsetDateTime>,
+    #[serde(with = "time::serde::timestamp")]
+    pub issued_at: time::OffsetDateTime,
+    pub purpose: UatPurposeStatus,
+}
+
+impl fmt::Display for UatStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "account_id: {}", self.account_id)?;
+        writeln!(f, "session_id: {}", self.session_id)?;
+        if let Some(exp) = self.expiry {
+            writeln!(f, "expiry: {}", exp)?;
+        } else {
+            writeln!(f, "expiry: -")?;
+        }
+        writeln!(f, "issued_at: {}", self.issued_at)?;
+        match &self.purpose {
+            UatPurposeStatus::IdentityOnly => writeln!(f, "purpose: identity only")?,
+            UatPurposeStatus::ReadOnly => writeln!(f, "purpose: read only")?,
+            UatPurposeStatus::ReadWrite => writeln!(f, "purpose: read write")?,
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum UatPurpose {
     IdentityOnly,
     ReadOnly,
@@ -345,10 +384,10 @@ pub enum UatPurpose {
 pub struct UserAuthToken {
     pub session_id: Uuid,
     pub auth_type: AuthType,
-    // When this token should be considered expired. Interpretation
-    // may depend on the client application.
     #[serde(with = "time::serde::timestamp")]
-    pub expiry: time::OffsetDateTime,
+    pub issued_at: time::OffsetDateTime,
+    #[serde(with = "time::serde::timestamp::option")]
+    pub expiry: Option<time::OffsetDateTime>,
     pub purpose: UatPurpose,
     pub uuid: Uuid,
     pub displayname: String,
@@ -363,7 +402,11 @@ impl fmt::Display for UserAuthToken {
         writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "display: {}", self.displayname)?;
-        writeln!(f, "expiry: {}", self.expiry)?;
+        if let Some(exp) = self.expiry {
+            writeln!(f, "expiry: {}", exp)?;
+        } else {
+            writeln!(f, "expiry: -")?;
+        }
         match &self.purpose {
             UatPurpose::IdentityOnly => writeln!(f, "purpose: identity only")?,
             UatPurpose::ReadOnly => writeln!(f, "purpose: read only")?,

@@ -432,9 +432,11 @@ impl KanidmClient {
         builder.build()
     }
 
-    pub async fn logout(&self) {
+    pub async fn logout(&self) -> Result<(), ClientError> {
+        self.perform_get_request("/v1/logout").await?;
         let mut tguard = self.bearer_token.write().await;
         *tguard = None;
+        Ok(())
     }
 
     async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(

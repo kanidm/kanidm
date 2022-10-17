@@ -291,7 +291,7 @@ impl KaniHttpServer {
     }
 
     pub async fn close_connection(&self) {
-        self.client.logout().await;
+        assert!(self.client.logout().await.is_ok());
     }
 
     pub async fn search(

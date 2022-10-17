@@ -27,7 +27,6 @@ use tracing::trace;
 use url::Url;
 use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
-use super::delayed::BackupCodeRemoval;
 use super::event::ReadBackupCodeEvent;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
@@ -36,8 +35,8 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
-    DelayedAction, Oauth2ConsentGrant, PasswordUpgrade, UnixPasswordUpgrade,
-    WebauthnCounterIncrement,
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, PasswordUpgrade,
+    UnixPasswordUpgrade, WebauthnCounterIncrement,
 };
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
@@ -60,6 +59,7 @@ use crate::idm::AuthState;
 use crate::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
+use crate::value::Session;
 
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -83,7 +83,6 @@ pub struct IdmServer {
     webauthn: Webauthn,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
-
     uat_jwt_signer: Arc<CowCell<JwsSigner>>,
     uat_jwt_validator: Arc<CowCell<JwsValidator>>,
     token_enc_key: Arc<CowCell<Fernet>>,
@@ -358,14 +357,19 @@ impl IdmServerDelayed {
         let mut cx = Context::from_waker(&waker);
         match self.async_rx.poll_recv(&mut cx) {
             Poll::Pending | Poll::Ready(None) => {}
-            Poll::Ready(Some(_m)) => panic!("Task queue not empty"),
+            Poll::Ready(Some(m)) => {
+                trace!(?m);
+                panic!("Task queue not empty")
+            }
         }
     }
 
+    /*
     #[cfg(test)]
     pub(crate) fn blocking_recv(&mut self) -> Option<DelayedAction> {
         self.async_rx.blocking_recv()
     }
+    */
 
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
@@ -455,10 +459,15 @@ pub trait IdmServerTransaction<'a> {
                 })
                 .map(|t: Jws<UserAuthToken>| t.into_inner())?;
 
-            if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
-                security_info!("Session expired");
-                Err(OperationError::SessionExpired)
+            if let Some(exp) = uat.expiry {
+                if time::OffsetDateTime::unix_epoch() + ct >= exp {
+                    security_info!("Session expired");
+                    Err(OperationError::SessionExpired)
+                } else {
+                    Ok(Token::UserAuthToken(uat))
+                }
             } else {
+                debug!("Session has no expiry");
                 Ok(Token::UserAuthToken(uat))
             }
         } else {
@@ -541,10 +550,15 @@ pub trait IdmServerTransaction<'a> {
                     .map(|t: Jws<UserAuthToken>| t.into_inner())
             })?;
 
-        if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
-            security_info!("Session expired");
-            Err(OperationError::SessionExpired)
+        if let Some(exp) = uat.expiry {
+            if time::OffsetDateTime::unix_epoch() + ct >= exp {
+                security_info!("Session expired");
+                Err(OperationError::SessionExpired)
+            } else {
+                Ok(uat)
+            }
         } else {
+            debug!("Session has no expiry");
             Ok(uat)
         }
     }
@@ -597,18 +611,13 @@ pub trait IdmServerTransaction<'a> {
                 e
             })?;
 
-        // #59: If the account is expired, do not allow the event
-        // to proceed
-        let valid = Account::check_within_valid_time(
-            ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
-        );
+        let valid = Account::check_user_auth_token_valid(ct, uat, &entry);
 
         if !valid {
-            security_info!("Account has expired or is not yet valid, not allowing to proceed");
             return Err(OperationError::SessionExpired);
         }
+
+        // ✅  Session is valid! Start to setup for it to be used.
 
         let scope = match uat.purpose {
             UatPurpose::IdentityOnly => AccessScope::IdentityOnly,
@@ -623,6 +632,8 @@ pub trait IdmServerTransaction<'a> {
             }
         };
 
+        let limits = Limits::default();
+
         // #64: Now apply claims from the uat into the Entry
         // to allow filtering.
         /*
@@ -635,28 +646,12 @@ pub trait IdmServerTransaction<'a> {
             AuthType::PasswordMfa => "authtype_passwordmfa",
         });
 
-        match &uat.auth_type {
-            AuthType::Anonymous | AuthType::UnixPassword | AuthType::Password => {}
-            AuthType::GeneratedPassword | AuthType::Webauthn | AuthType::PasswordMfa => {
-                entry.insert_claim("authlevel_strong")
-            }
-        };
-
-        match &uat.auth_type {
-            AuthType::Anonymous => {}
-            AuthType::UnixPassword
-            | AuthType::Password
-            | AuthType::GeneratedPassword
-            | AuthType::Webauthn => entry.insert_claim("authclass_single"),
-            AuthType::PasswordMfa => entry.insert_claim("authclass_mfa"),
-        };
+        trace!(claims = ?entry.get_ava_set("claim"), "Applied claims");
         */
 
-        trace!(claims = ?entry.get_ava_set("claim"), "Applied claims");
-
-        let limits = Limits::default();
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
+            session_id: uat.session_id,
             scope,
             limits,
         })
@@ -681,6 +676,7 @@ pub trait IdmServerTransaction<'a> {
         let limits = Limits::default();
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
+            session_id: apit.token_id,
             scope,
             limits,
         })
@@ -718,8 +714,11 @@ pub trait IdmServerTransaction<'a> {
                 ) {
                     // Good to go
                     let limits = Limits::default();
+                    let session_id = Uuid::new_v4();
+
                     Ok(Identity {
                         origin: IdentType::User(IdentUser { entry: anon_entry }),
+                        session_id,
                         scope: AccessScope::ReadOnly,
                         limits,
                     })
@@ -1993,6 +1992,46 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    pub(crate) fn process_authsessionrecord(
+        &mut self,
+        asr: &AuthSessionRecord,
+    ) -> Result<(), OperationError> {
+        let session = Value::Session(
+            asr.session_id,
+            Session {
+                label: asr.label.clone(),
+                expiry: asr.expiry,
+                // Need the other inner bits?
+                // for the gracewindow.
+                issued_at: asr.issued_at,
+                // Who actually created this?
+                issued_by: asr.issued_by.clone(),
+                // What is the access scope of this session? This is
+                // for auditing purposes.
+                scope: asr.scope,
+            },
+        );
+
+        info!(session_id = %asr.session_id, "Persisting auth session");
+
+        // modify the account to put the session onto it.
+        let modlist = ModifyList::new_list(vec![Modify::Present(
+            AttrString::from("user_auth_token_session"),
+            session,
+        )]);
+
+        self.qs_write
+            .internal_modify(
+                &filter!(f_eq("uuid", PartialValue::new_uuid(asr.target_uuid))),
+                &modlist,
+            )
+            .map_err(|e| {
+                admin_error!("Failed to persist user auth token {:?}", e);
+                e
+            })
+        // Done!
+    }
+
     pub(crate) fn process_oauth2consentgrant(
         &mut self,
         o2cg: &Oauth2ConsentGrant,
@@ -2021,6 +2060,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(&wci),
             DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
             DelayedAction::Oauth2ConsentGrant(o2cg) => self.process_oauth2consentgrant(&o2cg),
+            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr),
         }
     }
 
@@ -2110,6 +2150,8 @@ mod tests {
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::{Credential, Password};
     use crate::event::{CreateEvent, ModifyEvent};
+    use crate::idm::account::DestroySessionTokenEvent;
+    use crate::idm::delayed::DelayedAction;
     use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
@@ -2399,15 +2441,21 @@ mod tests {
         };
 
         idms_auth.commit().expect("Must not fail");
+
         token
     }
 
     #[test]
     fn test_idm_simple_password_auth() {
         run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
+            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
                 check_admin_password(idms, TEST_PASSWORD);
+
+                // Clear our the session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                idms_delayed.check_is_empty_or_panic();
             }
         )
     }
@@ -2415,7 +2463,7 @@ mod tests {
     #[test]
     fn test_idm_simple_password_spn_auth() {
         run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
+            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
 
                 let sid = init_admin_authsession_sid(
@@ -2459,6 +2507,11 @@ mod tests {
                         panic!();
                     }
                 };
+
+                // Clear our the session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                idms_delayed.check_is_empty_or_panic();
 
                 idms_auth.commit().expect("Must not fail");
             }
@@ -2874,12 +2927,23 @@ mod tests {
                 idms_delayed.check_is_empty_or_panic();
                 // Do an auth, this will trigger the action to send.
                 check_admin_password(idms, "password");
+
                 // process it.
                 let da = idms_delayed.try_recv().expect("invalid");
+                // The first task is the pw upgrade
+                assert!(matches!(da, DelayedAction::PwUpgrade(_)));
                 let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
+                // The second is the auth session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
                 assert!(Ok(true) == r);
+
                 // Check the admin pw still matches
                 check_admin_password(idms, "password");
+                // Clear the next auth session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+
                 // No delayed action was queued.
                 idms_delayed.check_is_empty_or_panic();
             }
@@ -3152,7 +3216,7 @@ mod tests {
     #[test]
     fn test_idm_account_softlocking() {
         run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
+            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
 
                 // Auth invalid, no softlock present.
@@ -3286,6 +3350,12 @@ mod tests {
                 };
 
                 idms_auth.commit().expect("Must not fail");
+
+                // Clear the auth session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                idms_delayed.check_is_empty_or_panic();
+
                 // Auth valid after reset at, count == 0.
                 // Tested in the softlock state machine.
 
@@ -3453,12 +3523,19 @@ mod tests {
     #[test]
     fn test_idm_jwt_uat_expiry() {
         run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
+            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
                 // Do an authenticate
                 init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
                 let token = check_admin_password(idms, TEST_PASSWORD);
+
+                // Clear our the session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
+                assert!(Ok(true) == r);
+                idms_delayed.check_is_empty_or_panic();
 
                 let idms_prox_read = idms.proxy_read();
 
@@ -3469,6 +3546,80 @@ mod tests {
 
                 // In X time it should be INVALID
                 match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), expiry)
+                {
+                    Err(OperationError::SessionExpired) => {}
+                    _ => assert!(false),
+                }
+            }
+        )
+    }
+
+    #[test]
+    fn test_idm_account_session_validation() {
+        run_idm_test!(
+            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                use compact_jwt::{Jws, JwsUnverified};
+                use kanidm_proto::v1::UserAuthToken;
+                use std::str::FromStr;
+
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+                let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
+                let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+
+                // Assert that our grace time is less than expiry, so we know the failure is due to
+                // this.
+                assert!(post_grace < expiry);
+
+                // Do an authenticate
+                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                let token = check_admin_password(idms, TEST_PASSWORD);
+
+                // Process the session info.
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
+                assert!(Ok(true) == r);
+
+                let uat_unverified =
+                    JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
+                let uat_inner: Jws<UserAuthToken> = uat_unverified
+                    .validate_embeded()
+                    .expect("Embedded jwk not found");
+                let uat_inner = uat_inner.into_inner();
+
+                let idms_prox_read = idms.proxy_read();
+
+                // Check it's valid.
+                idms_prox_read
+                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+                    .expect("Failed to validate");
+
+                // If the auth session record wasn't processed, this will fail.
+                idms_prox_read
+                    .validate_and_parse_token_to_ident(Some(token.as_str()), post_grace)
+                    .expect("Failed to validate");
+
+                drop(idms_prox_read);
+
+                // Mark the session as invalid now.
+                let idms_prox_write = idms.proxy_write(ct.clone());
+                let dte =
+                    DestroySessionTokenEvent::new_internal(uat_inner.uuid, uat_inner.session_id);
+                assert!(idms_prox_write.account_destroy_session_token(&dte).is_ok());
+                assert!(idms_prox_write.commit().is_ok());
+
+                // Now check again with the session destroyed.
+                let idms_prox_read = idms.proxy_read();
+
+                // Now, within gracewindow, it's still valid.
+                idms_prox_read
+                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+                    .expect("Failed to validate");
+
+                // post grace, it's not valid.
+                match idms_prox_read
+                    .validate_and_parse_token_to_ident(Some(token.as_str()), post_grace)
                 {
                     Err(OperationError::SessionExpired) => {}
                     _ => assert!(false),
@@ -3584,11 +3735,17 @@ mod tests {
     #[test]
     fn test_idm_jwt_uat_token_key_reload() {
         run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
+            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
                 init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
                 let token = check_admin_password(idms, TEST_PASSWORD);
+
+                // Clear the session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                idms_delayed.check_is_empty_or_panic();
+
                 let idms_prox_read = idms.proxy_read();
 
                 // Check it's valid.
@@ -3618,6 +3775,11 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
                 // Check the old token is invalid, due to reload.
                 let new_token = check_admin_password(idms, TEST_PASSWORD);
+
+                // Clear the session record
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                idms_delayed.check_is_empty_or_panic();
 
                 let idms_prox_read = idms.proxy_read();
                 assert!(idms_prox_read

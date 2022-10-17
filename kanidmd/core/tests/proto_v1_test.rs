@@ -2,7 +2,7 @@
 use std::time::SystemTime;
 
 use kanidm_proto::v1::{
-    ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList,
+    ApiToken, CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList, UserAuthToken,
 };
 use kanidmd_lib::credential::totp::Totp;
 use tracing::debug;
@@ -1242,6 +1242,102 @@ async fn test_server_api_token_lifecycle() {
         .idm_service_account_list_api_token("test_service")
         .await
         .expect("Failed to list service account api tokens");
+    assert!(tokens.is_empty());
+
+    // No need to test expiry, that's validated in the server internal tests.
+}
+
+#[tokio::test]
+async fn test_server_user_auth_token_lifecycle() {
+    let rsclient = setup_async_test().await;
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // Not recommended in production!
+    rsclient
+        .idm_group_add_members("idm_admins", &["admin"])
+        .await
+        .unwrap();
+
+    rsclient
+        .idm_person_account_create("demo_account", "Deeeeemo")
+        .await
+        .unwrap();
+
+    // First, show there are no auth sessions.
+    let sessions = rsclient
+        .idm_account_list_user_auth_token("demo_account")
+        .await
+        .expect("Failed to list user auth tokens");
+    assert!(sessions.is_empty());
+
+    // Setup the credentials for the account
+
+    {
+        // Create an intent token for them
+        let intent_token = rsclient
+            .idm_person_account_credential_update_intent("demo_account")
+            .await
+            .unwrap();
+
+        // Logout, we don't need any auth now.
+        let _ = rsclient.logout();
+        // Exchange the intent token
+        let (session_token, _status) = rsclient
+            .idm_account_credential_update_exchange(intent_token)
+            .await
+            .unwrap();
+
+        // Setup and update the password
+        let _status = rsclient
+            .idm_account_credential_update_set_password(&session_token, "eicieY7ahchaoCh0eeTa")
+            .await
+            .unwrap();
+
+        // Commit it
+        rsclient
+            .idm_account_credential_update_commit(&session_token)
+            .await
+            .unwrap();
+    }
+
+    // Auth as the user.
+
+    let _ = rsclient.logout();
+    let res = rsclient
+        .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
+        .await;
+    assert!(res.is_ok());
+
+    let token = rsclient.get_token().await.expect("No bearer token present");
+
+    let token_unverified =
+        JwsUnverified::from_str(&token).expect("Failed to parse user auth token");
+
+    let token: UserAuthToken = token_unverified
+        .validate_embeded()
+        .map(|j| j.into_inner())
+        .expect("Embedded jwk not found");
+
+    let sessions = rsclient
+        .idm_account_list_user_auth_token("demo_account")
+        .await
+        .expect("Failed to list user auth tokens");
+
+    assert!(sessions[0].session_id == token.session_id);
+
+    // idm_account_destroy_user_auth_token
+    rsclient
+        .idm_account_destroy_user_auth_token("demo_account", token.session_id)
+        .await
+        .expect("Failed to destroy user auth token");
+
+    let tokens = rsclient
+        .idm_service_account_list_api_token("demo_account")
+        .await
+        .expect("Failed to list user auth tokens");
     assert!(tokens.is_empty());
 
     // No need to test expiry, that's validated in the server internal tests.

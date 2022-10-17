@@ -14,6 +14,8 @@ pub use crate::constants::system_config::*;
 pub use crate::constants::uuids::*;
 pub use crate::constants::values::*;
 
+use std::time::Duration;
+
 // Increment this as we add new schema types and values!!!
 pub const SYSTEM_INDEX_VERSION: i64 = 26;
 // On test builds, define to 60 seconds
@@ -45,3 +47,12 @@ pub const PW_MIN_LENGTH: usize = 10;
 
 // Default
 pub const AUTH_SESSION_EXPIRY: u64 = 3600;
+
+// The time that a token can be used before session
+// status is enforced. This needs to be longer than
+// replication delay/cycle.
+pub const GRACE_WINDOW: Duration = Duration::from_secs(600);
+
+/// How long access tokens should last. This is NOT the length
+/// of the refresh token, which is bound to the issuing session.
+pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 4 * 3600;
