@@ -75,6 +75,7 @@ pub struct KanidmUnixdConfig {
     pub task_sock_path: String,
     pub conn_timeout: u64,
     pub cache_timeout: u64,
+    pub unix_sock_timeout: u64,
     pub pam_allowed_login_groups: Vec<String>,
     pub default_shell: String,
     pub home_prefix: String,
@@ -96,6 +97,7 @@ impl Display for KanidmUnixdConfig {
         writeln!(f, "sock_path: {}", self.sock_path)?;
         writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
         writeln!(f, "conn_timeout: {}", self.conn_timeout)?;
+        writeln!(f, "unix_sock_timeout: {}", self.unix_sock_timeout)?;
         writeln!(f, "cache_timeout: {}", self.cache_timeout)?;
         writeln!(
             f,
@@ -126,6 +128,7 @@ impl KanidmUnixdConfig {
             sock_path: DEFAULT_SOCK_PATH.to_string(),
             task_sock_path: DEFAULT_TASK_SOCK_PATH.to_string(),
             conn_timeout: DEFAULT_CONN_TIMEOUT,
+            unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
             cache_timeout: DEFAULT_CACHE_TIMEOUT,
             pam_allowed_login_groups: Vec::new(),
             default_shell: DEFAULT_SHELL.to_string(),
@@ -185,6 +188,7 @@ impl KanidmUnixdConfig {
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             task_sock_path: config.task_sock_path.unwrap_or(self.task_sock_path),
             conn_timeout: config.conn_timeout.unwrap_or(self.conn_timeout),
+            unix_sock_timeout: config.conn_timeout.unwrap_or(self.conn_timeout) * 2,
             cache_timeout: config.cache_timeout.unwrap_or(self.cache_timeout),
             pam_allowed_login_groups: config
                 .pam_allowed_login_groups

@@ -727,7 +727,7 @@ async fn main() {
                             tokio::spawn(async move {
                                 if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
                                 {
-                                    error!("an error occured; error = {:?}", e);
+                                    error!("handle_client error occured; error = {:?}", e);
                                 }
                             });
                         }
