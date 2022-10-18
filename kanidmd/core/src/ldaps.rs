@@ -166,15 +166,15 @@ pub(crate) async fn create_ldap_server(
     if address.starts_with(":::") {
         // takes :::xxxx to xxxx
         let port = address.replacen(":::", "", 1);
-        eprintln!("Address '{}' looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = '[::]:{}'", address, port, port);
+        error!("Address '{}' looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = '[::]:{}'", address, port, port);
     };
 
     let addr = net::SocketAddr::from_str(address).map_err(|e| {
-        eprintln!("Could not parse LDAP server address {} -> {:?}", address, e);
+        error!("Could not parse LDAP server address {} -> {:?}", address, e);
     })?;
 
     let listener = TcpListener::bind(&addr).await.map_err(|e| {
-        eprintln!(
+        error!(
             "Could not bind to LDAP server address {} -> {:?}",
             address, e
         );
@@ -182,12 +182,12 @@ pub(crate) async fn create_ldap_server(
 
     match opt_tls_params {
         Some(tls_params) => {
-            eprintln!("Starting LDAPS interface ldaps://{} ...", address);
+            info!("Starting LDAPS interface ldaps://{} ...", address);
             let tls_parms = tls_params.build();
             tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref));
         }
         None => {
-            eprintln!("The server won't run without TLS!");
+            error!("The server won't run without TLS!");
             return Err(());
         }
     }

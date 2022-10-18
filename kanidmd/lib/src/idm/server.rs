@@ -1894,6 +1894,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // get the account
         let account = self.target_to_account(&pwu.target_uuid)?;
 
+        info!(session_id = %pwu.target_uuid, "Processing password hash upgrade");
+
         // check, does the pw still match?
         let same = account.check_credential_pw(pwu.existing_password.as_str())?;
 
@@ -1917,6 +1919,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn process_unixpwupgrade(&mut self, pwu: &UnixPasswordUpgrade) -> Result<(), OperationError> {
+        info!(session_id = %pwu.target_uuid, "Processing unix password hash upgrade");
+
         let account = self
             .qs_write
             .internal_search_uuid(&pwu.target_uuid)
@@ -1951,6 +1955,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         wci: &WebauthnCounterIncrement,
     ) -> Result<(), OperationError> {
+        info!(session_id = %wci.target_uuid, "Processing webauthn counter increment");
+
         let mut account = self.target_to_account(&wci.target_uuid)?;
 
         // Generate an optional mod and then attempt to apply it.
@@ -1977,6 +1983,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         bcr: &BackupCodeRemoval,
     ) -> Result<(), OperationError> {
+        info!(session_id = %bcr.target_uuid, "Processing backup code removal");
+
         let account = self.target_to_account(&bcr.target_uuid)?;
         // Generate an optional mod and then attempt to apply it.
         let modlist = account
