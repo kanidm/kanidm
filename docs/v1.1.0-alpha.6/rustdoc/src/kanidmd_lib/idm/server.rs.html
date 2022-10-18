@@ -3828,6 +3828,14 @@
 <span id="3828">3828</span>
 <span id="3829">3829</span>
 <span id="3830">3830</span>
+<span id="3831">3831</span>
+<span id="3832">3832</span>
+<span id="3833">3833</span>
+<span id="3834">3834</span>
+<span id="3835">3835</span>
+<span id="3836">3836</span>
+<span id="3837">3837</span>
+<span id="3838">3838</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core::task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
@@ -5724,6 +5732,8 @@
         <span class="comment">// get the account</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
 
+        <span class="macro">info!</span>(<span class="ident">session_id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>, <span class="string">&quot;Processing password hash upgrade&quot;</span>);
+
         <span class="comment">// check, does the pw still match?</span>
         <span class="kw">let</span> <span class="ident">same</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">check_credential_pw</span>(<span class="ident">pwu</span>.<span class="ident">existing_password</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>;
 
@@ -5747,6 +5757,8 @@
     }
 
     <span class="kw">fn</span> <span class="ident">process_unixpwupgrade</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pwu</span>: <span class="kw-2">&amp;</span><span class="ident">UnixPasswordUpgrade</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">info!</span>(<span class="ident">session_id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>, <span class="string">&quot;Processing unix password hash upgrade&quot;</span>);
+
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_write</span>
             .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>)
@@ -5781,6 +5793,8 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">wci</span>: <span class="kw-2">&amp;</span><span class="ident">WebauthnCounterIncrement</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">info!</span>(<span class="ident">session_id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">wci</span>.<span class="ident">target_uuid</span>, <span class="string">&quot;Processing webauthn counter increment&quot;</span>);
+
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Generate an optional mod and then attempt to apply it.</span>
@@ -5807,6 +5821,8 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">bcr</span>: <span class="kw-2">&amp;</span><span class="ident">BackupCodeRemoval</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">info!</span>(<span class="ident">session_id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">bcr</span>.<span class="ident">target_uuid</span>, <span class="string">&quot;Processing backup code removal&quot;</span>);
+
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">bcr</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
         <span class="comment">// Generate an optional mod and then attempt to apply it.</span>
         <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">account</span>
