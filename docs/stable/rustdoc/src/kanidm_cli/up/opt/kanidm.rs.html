@@ -805,6 +805,16 @@
 <span id="805">805</span>
 <span id="806">806</span>
 <span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Args</span>, <span class="ident">Subcommand</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
@@ -1457,6 +1467,16 @@
     <span class="doccomment">/// Set a new displayname for a resource server</span>
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_displayname&quot;</span>)]</span>
     <span class="ident">SetDisplayname</span>(<span class="ident">Oauth2SetDisplayname</span>),
+    <span class="doccomment">/// Set a new name for this resource server. You may need to update</span>
+    <span class="doccomment">/// your integrated applications after this so that they continue to</span>
+    <span class="doccomment">/// function correctly.</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_name&quot;</span>)]</span>
+    <span class="ident">SetName</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
+        <span class="ident">nopt</span>: <span class="ident">Named</span>,
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;newname&quot;</span>)]</span>
+        <span class="ident">name</span>: <span class="ident">String</span>,
+    },
     <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;enable_pkce&quot;</span>)]</span>
     <span class="doccomment">/// Enable PKCE on this oauth2 resource server. This defaults to being enabled.</span>
     <span class="ident">EnablePkce</span>(<span class="ident">Named</span>),
