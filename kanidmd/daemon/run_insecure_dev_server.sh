@@ -7,7 +7,7 @@ if [ -z "$KANI_TMP" ]; then
 fi
 
 if [ -z "$KANI_CARGO_OPTS" ]; then
-    KANI_CARGO_OPTS=--debug
+    KANI_CARGO_OPTS=""
 fi
 
 CONFIG_FILE="../../examples/insecure_server.toml"

@@ -30,6 +30,7 @@ enum State {
         consent_token: String,
     },
     ConsentGranted(String),
+    AccessDenied(Option<String>),
     ErrInvalidRequest,
 }
 
@@ -48,6 +49,9 @@ pub enum Oauth2Msg {
         consent_token: String,
     },
     Redirect(String),
+    AccessDenied {
+        kopid: Option<String>,
+    },
     Error {
         emsg: String,
         kopid: Option<String>,
@@ -160,6 +164,8 @@ impl Oauth2App {
                     }
                 }
             }
+        } else if status == 403 {
+            Ok(Oauth2Msg::AccessDenied { kopid })
         } else {
             let text = JsFuture::from(resp.text()?).await?;
             let emsg = text.as_string().unwrap_or_else(|| "".to_string());
@@ -380,6 +386,11 @@ impl Component for Oauth2App {
                 // We need to send off fetch task here.
                 true
             }
+            Oauth2Msg::AccessDenied { kopid } => {
+                console::error!(format!("{:?}", kopid).as_str());
+                self.state = State::AccessDenied(kopid);
+                true
+            }
             Oauth2Msg::Error { emsg, kopid } => {
                 self.state = State::ErrInvalidRequest;
                 console::error!(format!("{:?}", kopid).as_str());
@@ -502,6 +513,24 @@ impl Component for Oauth2App {
                 html! {
                     <div class="alert alert-light" role="alert">
                         <h2 class="text-center">{ "Processing ... " }</h2>
+                    </div>
+                }
+            }
+            State::AccessDenied(kopid) => {
+                html! {
+                    <div class="alert alert-danger" role="alert">
+                        <h1>{ "Access Denied" } </h1>
+                        <p>
+                        { "You do not have access to the requested resources." }
+                        </p>
+                        <p>
+                        { if let Some(opid) = kopid {
+                            format!("Operation ID: {}", opid)
+                          } else {
+                            "Operation ID: -".to_string()
+                          }
+                        }
+                        </p>
                     </div>
                 }
             }

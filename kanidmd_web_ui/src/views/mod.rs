@@ -70,6 +70,7 @@ pub enum AdminRoute {
 
 enum State {
     LoginRequired,
+    LoggingOut,
     Verifying,
     Authenticated(String),
     Error { emsg: String, kopid: Option<String> },
@@ -91,6 +92,7 @@ pub struct ViewsApp {
 pub enum ViewsMsg {
     Verified(String),
     Logout,
+    LogoutComplete,
     ProfileInfoRecieved { uat: UserAuthToken },
     Error { emsg: String, kopid: Option<String> },
 }
@@ -159,7 +161,22 @@ impl Component for ViewsApp {
                 true
             }
             ViewsMsg::Logout => {
-                models::clear_bearer_token();
+                match models::get_bearer_token() {
+                    Some(tk) => {
+                        models::clear_bearer_token();
+                        ctx.link().send_future(async {
+                            match Self::fetch_logout(tk).await {
+                                Ok(v) => v,
+                                Err(v) => v.into(),
+                            }
+                        });
+                        self.state = State::LoggingOut;
+                    }
+                    None => self.state = State::LoginRequired,
+                }
+                true
+            }
+            ViewsMsg::LogoutComplete => {
                 self.state = State::LoginRequired;
                 true
             }
@@ -199,7 +216,7 @@ impl Component for ViewsApp {
                     .push(Route::Login);
                 html! { <div></div> }
             }
-            State::Verifying => {
+            State::LoggingOut | State::Verifying => {
                 html! {
                   <main class="text-center form-signin h-100">
                     <div class="vert-center">
@@ -366,7 +383,7 @@ impl ViewsApp {
             Ok(ViewsMsg::Verified(token))
         } else if status == 401 {
             // Not valid, re-auth
-            Ok(ViewsMsg::Logout)
+            Ok(ViewsMsg::LogoutComplete)
         } else {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -389,6 +406,38 @@ impl ViewsApp {
         Ok(ViewsMsg::ProfileInfoRecieved {
             uat: uat.into_inner(),
         })
+    }
+
+    async fn fetch_logout(token: String) -> Result<ViewsMsg, FetchError> {
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+        opts.mode(RequestMode::SameOrigin);
+
+        let request = Request::new_with_str_and_init("/v1/logout", &opts)?;
+
+        request
+            .headers()
+            .set("content-type", "application/json")
+            .expect_throw("failed to set header");
+        request
+            .headers()
+            .set("authorization", format!("Bearer {}", token).as_str())
+            .expect_throw("failed to set header");
+
+        let window = utils::window();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+        let status = resp.status();
+
+        if status == 200 {
+            Ok(ViewsMsg::LogoutComplete)
+        } else {
+            let headers = resp.headers();
+            let kopid = headers.get("x-kanidm-opid").ok().flatten();
+            let text = JsFuture::from(resp.text()?).await?;
+            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            Ok(ViewsMsg::Error { emsg, kopid })
+        }
     }
 }
 

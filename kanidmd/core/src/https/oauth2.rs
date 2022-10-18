@@ -328,6 +328,11 @@ async fn oauth2_authorise(
             res.insert_header("WWW-Authenticate", "Bearer");
             Ok(res)
         }
+        Err(Oauth2Error::AccessDenied) => {
+            // If scopes are not available for this account.
+            let res = tide::Response::new(tide::StatusCode::Forbidden);
+            Ok(res)
+        }
         /*
         RFC - If the request fails due to a missing, invalid, or mismatching
               redirection URI, or if the client identifier is missing or invalid,
@@ -428,7 +433,7 @@ async fn oauth2_authorise_permit(
             // Turns out this instinct was correct:
             //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
             // Possible to use this with a malicious client configuration to phish / spam.
-            tide::Response::new(500)
+            tide::Response::new(tide::StatusCode::InternalServerError)
         }
     };
     res.insert_header("X-KANIDM-OPID", hvalue);
