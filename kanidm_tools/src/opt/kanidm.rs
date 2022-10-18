@@ -650,6 +650,16 @@ pub enum Oauth2Opt {
     /// Set a new displayname for a resource server
     #[clap(name = "set_displayname")]
     SetDisplayname(Oauth2SetDisplayname),
+    /// Set a new name for this resource server. You may need to update
+    /// your integrated applications after this so that they continue to
+    /// function correctly.
+    #[clap(name = "set_name")]
+    SetName {
+        #[clap(flatten)]
+        nopt: Named,
+        #[clap(name = "newname")]
+        name: String,
+    },
     #[clap(name = "enable_pkce")]
     /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
     EnablePkce(Named),

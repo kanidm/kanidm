@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::value::{DISALLOWED_NAMES, INAME_RE};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -97,14 +96,7 @@ impl ValueSetT for ValueSetIname {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.set.iter().all(|s| {
-            match Uuid::parse_str(s) {
-                // It is a uuid, disallow.
-                Ok(_) => false,
-                // Not a uuid, check it against the re.
-                Err(_) => INAME_RE.is_match(s) && !DISALLOWED_NAMES.contains(s.as_str()),
-            }
-        })
+        self.set.iter().all(|s| Value::validate_iname(s.as_str()))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

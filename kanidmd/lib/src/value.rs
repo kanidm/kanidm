@@ -1542,14 +1542,7 @@ impl Value {
         // valid. IE json filter is really a filter, or cred types have supplemental
         // data.
         match &self {
-            Value::Iname(s) => {
-                match Uuid::parse_str(s) {
-                    // It is a uuid, disallow.
-                    Ok(_) => false,
-                    // Not a uuid, check it against the re.
-                    Err(_) => INAME_RE.is_match(s) && !DISALLOWED_NAMES.contains(s.as_str()),
-                }
-            }
+            Value::Iname(s) => Value::validate_iname(s),
             /*
             Value::Cred(_) => match &self.data {
                 Some(v) => matches!(v.as_ref(), DataValue::Cred(_)),
@@ -1564,6 +1557,25 @@ impl Value {
             Value::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
             Value::OauthScopeMap(_, m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
             _ => true,
+        }
+    }
+
+    pub(crate) fn validate_iname(s: &str) -> bool {
+        match Uuid::parse_str(s) {
+            // It is a uuid, disallow.
+            Ok(_) => false,
+            // Not a uuid, check it against the re.
+            Err(_) => {
+                if !INAME_RE.is_match(s) {
+                    warn!("iname values may only contain limited characters - \"{}\" does not pass regex pattern \"{}\"", s, *INAME_RE);
+                    false
+                } else if DISALLOWED_NAMES.contains(s) {
+                    warn!("iname value \"{}\" is in denied list", s);
+                    false
+                } else {
+                    true
+                }
+            }
         }
     }
 }
