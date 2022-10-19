@@ -1265,3 +1265,28 @@ pub const JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: &str = r#"{
         "acp_modify_class": ["service_account", "person"]
     }
 }"#;
+
+pub const JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search"
+        ],
+        "name": ["idm_acp_oauth2_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000043"],
+        "description": ["Builtin IDM Control allowing persons to view oauth2 applications they can access"],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000035\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"oauth2_resource_server\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class",
+            "displayname",
+            "oauth2_rs_name",
+            "oauth2_rs_origin"
+        ]
+    }
+}"#;
