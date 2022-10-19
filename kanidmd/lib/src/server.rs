@@ -2806,6 +2806,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
             JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
             JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
+            JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries

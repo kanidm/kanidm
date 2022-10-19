@@ -270,6 +270,7 @@ pub const _UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000041");
 pub const _UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000042");
+pub const _UUID_IDM_ACP_OAUTH2_READ_PRIV_V1: Uuid = uuid!("00000000-0000-0000-0000-ffffff000043");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
