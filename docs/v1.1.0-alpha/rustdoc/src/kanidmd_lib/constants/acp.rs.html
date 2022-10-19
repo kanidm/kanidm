@@ -1265,6 +1265,31 @@
 <span id="1265">1265</span>
 <span id="1266">1266</span>
 <span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
+<span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
+<span id="1284">1284</span>
+<span id="1285">1285</span>
+<span id="1286">1286</span>
+<span id="1287">1287</span>
+<span id="1288">1288</span>
+<span id="1289">1289</span>
+<span id="1290">1290</span>
+<span id="1291">1291</span>
+<span id="1292">1292</span>
 </pre><pre class="rust"><code><span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
@@ -2530,6 +2555,31 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;class&quot;
         ],
         &quot;acp_modify_class&quot;: [&quot;service_account&quot;, &quot;person&quot;]
+    }
+}&quot;#</span>;
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ACP_OAUTH2_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+    &quot;attrs&quot;: {
+        &quot;class&quot;: [
+            &quot;object&quot;,
+            &quot;access_control_profile&quot;,
+            &quot;access_control_search&quot;
+        ],
+        &quot;name&quot;: [&quot;idm_acp_oauth2_read_priv&quot;],
+        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000043&quot;],
+        &quot;description&quot;: [&quot;Builtin IDM Control allowing persons to view oauth2 applications they can access&quot;],
+        &quot;acp_receiver&quot;: [
+            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000035\&quot;]}&quot;
+        ],
+        &quot;acp_targetscope&quot;: [
+            &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;oauth2_resource_server\&quot;]},{\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
+        ],
+        &quot;acp_search_attr&quot;: [
+            &quot;class&quot;,
+            &quot;displayname&quot;,
+            &quot;oauth2_rs_name&quot;,
+            &quot;oauth2_rs_origin&quot;
+        ]
     }
 }&quot;#</span>;
 </code></pre></div>
