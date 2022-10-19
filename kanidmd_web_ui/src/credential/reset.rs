@@ -416,7 +416,6 @@ impl CredentialResetApp {
         } else {
             html! {
                 <>
-                <h4>{"Registered Passkeys"}</h4>
                 { for status.passkeys.iter()
                     .map(|detail|
                         PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
@@ -449,6 +448,8 @@ impl CredentialResetApp {
               <div class="row g-3">
                   <form class="needs-validation" novalidate=true>
                     <hr class="my-4" />
+                    <h4>{"Passkeys"}</h4>
+                    <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
 
                     { passkey_html }
 
@@ -458,7 +459,9 @@ impl CredentialResetApp {
 
                     <hr class="my-4" />
 
-                    <h4>{"Password / MFA"}</h4>
+                    <h4>{"Password / TOTP"}</h4>
+                    <p>{ "Legacy password paired with other authentication factors." }</p>
+                    <p>{ "It is recommended you avoid setting these if possible." }</p>
                     { pw_html }
 
                     <hr class="my-4" />
