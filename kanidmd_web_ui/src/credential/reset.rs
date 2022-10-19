@@ -270,7 +270,7 @@ impl CredentialResetApp {
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
                 <h2>{ "Credential Reset" } </h2>
                 // TODO: replace this with a call to domain info
-                <h3>{ "idm.example.com" } </h3>
+                // <h3>{ "idm.example.com" } </h3>
             </center>
             <form
                   onsubmit={ ctx.link().callback(|e: FocusEvent| {
