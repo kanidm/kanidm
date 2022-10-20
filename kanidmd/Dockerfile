@@ -1,14 +1,13 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
-# To help mirrors not be as bad
-RUN zypper install -y mirrorsorcerer
-RUN /usr/sbin/mirrorsorcerer -x; true
 RUN zypper refresh --force
 RUN zypper dup -y
 
 # ======================
 FROM repos AS builder
 
+RUN zypper refresh --force
+RUN zypper dup -y
 RUN zypper install -y \
         rustup \
         wasm-pack \

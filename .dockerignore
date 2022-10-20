@@ -1,8 +1,10 @@
 .git
 .github
 .gitignore
+.vscode
 *.md
 Makefile
 target
+docs
 test.db
 kanidmd/sampledata
