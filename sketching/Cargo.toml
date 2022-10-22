@@ -1,5 +1,7 @@
 [package]
 name = "sketching"
+# We do not have tests in this pkg
+autotests = false
 
 version.workspace = true
 authors.workspace = true

@@ -1,5 +1,4 @@
 #![deny(warnings)]
-mod common;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -12,7 +11,7 @@ use kanidm_proto::oauth2::{
 use oauth2_ext::PkceCodeChallenge;
 use url::Url;
 
-use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
+use kanidmd_testkit::{setup_async_test, ADMIN_TEST_PASSWORD};
 
 macro_rules! assert_no_cache {
     ($response:expr) => {{

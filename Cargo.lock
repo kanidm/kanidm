@@ -2278,20 +2278,16 @@ dependencies = [
  "async-trait",
  "chrono",
  "compact_jwt",
- "futures",
  "futures-util",
  "http-types",
- "kanidm_client",
  "kanidm_proto",
  "kanidmd_lib",
  "ldap3_proto",
  "libc",
- "oauth2",
  "openssl",
  "profiles",
  "rand 0.8.5",
  "regex",
- "reqwest",
  "saffron",
  "serde",
  "serde_json",
@@ -2304,9 +2300,7 @@ dependencies = [
  "tokio-openssl",
  "tokio-util",
  "tracing",
- "url",
  "uuid",
- "webauthn-authenticator-rs",
 ]
 
 [[package]]
@@ -2365,6 +2359,27 @@ dependencies = [
  "webauthn-rs-core",
  "whoami",
  "zxcvbn",
+]
+
+[[package]]
+name = "kanidmd_testkit"
+version = "1.1.0-alpha.9"
+dependencies = [
+ "compact_jwt",
+ "futures",
+ "kanidm_client",
+ "kanidm_proto",
+ "kanidmd_core",
+ "kanidmd_lib",
+ "oauth2",
+ "profiles",
+ "reqwest",
+ "serde_json",
+ "sketching",
+ "tokio",
+ "tracing",
+ "url",
+ "webauthn-authenticator-rs",
 ]
 
 [[package]]
@@ -3582,9 +3597,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.20.6"
+version = "0.20.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aab8ee6c7097ed6057f43c187a62418d0c05a4bd5f18b3571db50ee0f9ce033"
+checksum = "539a2bfe908f471bfa933876bd1eb6a19cf2176d375f82ef7f99530a40e48c2c"
 dependencies = [
  "log",
  "ring",

@@ -7,14 +7,13 @@ use kanidm_proto::v1::{
 use kanidmd_lib::credential::totp::Totp;
 use tracing::debug;
 
-mod common;
 use std::str::FromStr;
 
 use compact_jwt::JwsUnverified;
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
+use kanidmd_testkit::{setup_async_test, ADMIN_TEST_PASSWORD};
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 

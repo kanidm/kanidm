@@ -41,13 +41,3 @@ uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [build-dependencies]
 profiles.workspace = true
-
-[dev-dependencies]
-kanidm_client.workspace = true
-futures.workspace = true
-
-webauthn-authenticator-rs.workspace = true
-oauth2_ext = { workspace = true, default-features = false }
-
-url = { workspace = true, features = ["serde"] }
-reqwest = { workspace = true, features=["cookies", "json", "native-tls"] }

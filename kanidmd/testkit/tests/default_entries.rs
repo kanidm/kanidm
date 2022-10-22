@@ -4,8 +4,7 @@ use std::collections::HashSet;
 use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 
-mod common;
-use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
+use kanidmd_testkit::{setup_async_test, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 static USER_READABLE_ATTRS: [&str; 9] = [
     "name",

@@ -15,6 +15,7 @@ members = [
     "kanidmd/daemon",
     "kanidmd/lib",
     "kanidmd/core",
+    "kanidmd/testkit",
     "orca",
     "profiles",
     "sketching"
