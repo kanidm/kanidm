@@ -25,7 +25,7 @@ impl Plugin for Spn {
         skip(qs, cand, _ce)
     )]
     fn pre_create_transform(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -60,7 +60,7 @@ impl Plugin for Spn {
 
     #[instrument(level = "debug", name = "spn_pre_modify", skip(qs, cand, _me))]
     fn pre_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -95,7 +95,7 @@ impl Plugin for Spn {
         skip(qs, pre_cand, cand, _ce)
     )]
     fn post_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -138,7 +138,7 @@ impl Plugin for Spn {
     }
 
     #[instrument(level = "debug", name = "spn_verify", skip(qs))]
-    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
         //   We need to consider the case that an item has a different origin domain too,
         // so we should be able to verify that *those* spns validate to the trusted domain info
@@ -315,7 +315,7 @@ mod tests {
 
     #[qs_test]
     async fn test_spn_regen_domain_rename(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let ex1 = Value::new_spn_str("admin", "example.com");
         let ex2 = Value::new_spn_str("admin", "new.example.com");

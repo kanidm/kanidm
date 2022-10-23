@@ -188,7 +188,7 @@ impl DestroyApiTokenEvent {
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn service_account_generate_api_token(
-        &self,
+        &mut self,
         gte: &GenerateApiTokenEvent,
         ct: Duration,
     ) -> Result<String, OperationError> {
@@ -277,7 +277,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     pub fn service_account_destroy_api_token(
-        &self,
+        &mut self,
         dte: &DestroyApiTokenEvent,
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
@@ -392,7 +392,7 @@ mod tests {
             let past_grc = Duration::from_secs(TEST_CURRENT_TIME + 1) + GRACE_WINDOW;
             let exp = Duration::from_secs(TEST_CURRENT_TIME + 6000);
             let post_exp = Duration::from_secs(TEST_CURRENT_TIME + 6010);
-            let idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             let testaccount_uuid = Uuid::new_v4();
 

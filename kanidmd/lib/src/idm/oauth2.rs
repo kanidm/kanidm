@@ -2111,7 +2111,7 @@ mod tests {
                 drop(idms_prox_read);
                 // start a write,
 
-                let idms_prox_write = task::block_on(idms.proxy_write(ct));
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 // Expire the account, should cause introspect to return inactive.
                 let v_expire =
                     Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
@@ -2682,7 +2682,7 @@ mod tests {
                 drop(idms_prox_read);
 
                 // Great! Now change the scopes on the oauth2 instance, this revokes the permit.
-                let idms_prox_write = task::block_on(idms.proxy_write(ct));
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
                 let me_extend_scopes = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2749,7 +2749,7 @@ mod tests {
                 // Success! We had to consent again due to the change :)
 
                 // Now change the supplemental scopes on the oauth2 instance, this revokes the permit.
-                let idms_prox_write = task::block_on(idms.proxy_write(ct));
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
                 let me_extend_scopes = unsafe {
                     ModifyEvent::new_internal_invalid(

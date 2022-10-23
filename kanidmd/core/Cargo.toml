@@ -2,6 +2,7 @@
 name = "kanidmd_core"
 description = "Kanidm Server Core and Library"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
+autotests = false
 
 version.workspace = true
 authors.workspace = true

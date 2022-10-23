@@ -39,7 +39,7 @@ impl Plugin for Protected {
 
     #[instrument(level = "debug", name = "protected_pre_create", skip(_qs, cand, ce))]
     fn pre_create(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
@@ -67,7 +67,7 @@ impl Plugin for Protected {
 
     #[instrument(level = "debug", name = "protected_pre_modify", skip(_qs, cand, me))]
     fn pre_modify(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // Should these be EntrySealed?
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
@@ -138,7 +138,7 @@ impl Plugin for Protected {
 
     #[instrument(level = "debug", name = "protected_pre_delete", skip(_qs, cand, de))]
     fn pre_delete(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // Should these be EntrySealed
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,

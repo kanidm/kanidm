@@ -84,7 +84,7 @@ impl Plugin for ReferentialIntegrity {
     // be in cand AND db" to simply "is it in the DB?".
     #[instrument(level = "debug", name = "refint_post_create", skip(qs, cand, _ce))]
     fn post_create(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -125,7 +125,7 @@ impl Plugin for ReferentialIntegrity {
         skip(qs, _pre_cand, _cand, me)
     )]
     fn post_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
@@ -165,7 +165,7 @@ impl Plugin for ReferentialIntegrity {
 
     #[instrument(level = "debug", name = "refint_post_delete", skip(qs, cand, _ce))]
     fn post_delete(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -217,7 +217,7 @@ impl Plugin for ReferentialIntegrity {
     }
 
     #[instrument(level = "debug", name = "verify", skip(qs))]
-    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
         let filt_in = filter_all!(f_pres("class"));
@@ -599,7 +599,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 // Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a
                 let de_sin = unsafe {
                     crate::event::DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
@@ -647,7 +647,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             None,
-            |_qs: &QueryServerWriteTransaction| {}
+            |_qs: &mut QueryServerWriteTransaction| {}
         );
     }
 
@@ -689,7 +689,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_qs: &QueryServerWriteTransaction| {}
+            |_qs: &mut QueryServerWriteTransaction| {}
         );
     }
 
@@ -715,7 +715,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_qs: &QueryServerWriteTransaction| {}
+            |_qs: &mut QueryServerWriteTransaction| {}
         );
     }
 
@@ -761,7 +761,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "oauth2_rs_name",

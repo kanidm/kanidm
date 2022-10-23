@@ -27,7 +27,7 @@ impl Plugin for Domain {
         skip(qs, cand, _ce)
     )]
     fn pre_create_transform(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -79,7 +79,7 @@ impl Plugin for Domain {
 
     #[instrument(level = "debug", name = "domain_pre_modify", skip(qs, cand, _me))]
     fn pre_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {

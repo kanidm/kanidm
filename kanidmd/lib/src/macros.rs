@@ -37,7 +37,7 @@ macro_rules! setup_test {
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             qs_write
                 .internal_create($preload_entries)
                 .expect("Failed to preload entries");
@@ -151,7 +151,7 @@ macro_rules! run_create_test {
         };
 
         {
-            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.create(&ce);
             trace!("test result: {:?}", r);
             assert!(r == $expect);
@@ -193,8 +193,8 @@ macro_rules! run_modify_test {
         let qs = setup_test!($preload_entries);
 
         {
-            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
-            $pre_hook(&qs_write);
+            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            $pre_hook(&mut qs_write);
             qs_write.commit().expect("commit failure!");
         }
 
@@ -206,7 +206,7 @@ macro_rules! run_modify_test {
         };
 
         {
-            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.modify(&me);
             $check(&qs_write);
             trace!("test result: {:?}", r);
@@ -254,10 +254,10 @@ macro_rules! run_delete_test {
         };
 
         {
-            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.delete(&de);
             trace!("test result: {:?}", r);
-            $check(&qs_write);
+            $check(&mut qs_write);
             assert!(r == $expect);
             match r {
                 Ok(_) => {

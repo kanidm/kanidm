@@ -2341,7 +2341,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw)?;
         let v_cred = Value::new_credential("primary", cred);
-        let qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
         // now modify and provide a primary credential.
         let me_inv_m = unsafe {
@@ -2756,7 +2756,8 @@ mod tests {
     fn test_idm_unixusertoken() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let idms_prox_write = task::block_on(idms.proxy_write(duration_from_epoch_now()));
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 // Modify admin to have posixaccount
                 let me_posix = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2883,7 +2884,8 @@ mod tests {
                 assert!(idms_auth.commit().is_ok());
 
                 // Check deleting the password
-                let idms_prox_write = task::block_on(idms.proxy_write(duration_from_epoch_now()));
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let me_purge_up = unsafe {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("name", PartialValue::new_iname("admin"))),
@@ -2913,12 +2915,13 @@ mod tests {
     #[test]
     fn test_idm_simple_password_upgrade() {
         run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 // Assert the delayed action queue is empty
                 idms_delayed.check_is_empty_or_panic();
                 // Setup the admin w_ an imported password.
                 {
-                    let qs_write = task::block_on(qs.write(duration_from_epoch_now()));
+                    let mut idms_prox_write =
+                        task::block_on(idms.proxy_write(duration_from_epoch_now()));
                     // now modify and provide a primary credential.
                     let me_inv_m = unsafe {
                         ModifyEvent::new_internal_invalid(
@@ -2930,8 +2933,8 @@ mod tests {
                     )
                     };
                     // go!
-                    assert!(qs_write.modify(&me_inv_m).is_ok());
-                    qs_write.commit().expect("failed to commit");
+                    assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+                    assert!(idms_prox_write.commit().is_ok());
                 }
                 // Still empty
                 idms_delayed.check_is_empty_or_panic();
@@ -2967,7 +2970,8 @@ mod tests {
                 // Assert the delayed action queue is empty
                 idms_delayed.check_is_empty_or_panic();
                 // Setup the admin with an imported unix pw.
-                let idms_prox_write = task::block_on(idms.proxy_write(duration_from_epoch_now()));
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
                 let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
                 let pw = Password::try_from(im_pw).expect("failed to parse");
@@ -3030,7 +3034,7 @@ mod tests {
     const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
 
     async fn set_admin_valid_time(qs: &QueryServer) {
-        let qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
         let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
@@ -3624,7 +3628,7 @@ mod tests {
                 drop(idms_prox_read);
 
                 // Mark the session as invalid now.
-                let idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
                 let dte =
                     DestroySessionTokenEvent::new_internal(uat_inner.uuid, uat_inner.session_id);
                 assert!(idms_prox_write.account_destroy_session_token(&dte).is_ok());
@@ -3782,7 +3786,7 @@ mod tests {
                 //
                 // fernet_private_key_str
                 // es256_private_key_der
-                let idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
                 let me_reset_tokens = unsafe {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
@@ -3821,7 +3825,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
 
             let ident = Identity::from_internal();
             let target_uuid = Uuid::new_v4();

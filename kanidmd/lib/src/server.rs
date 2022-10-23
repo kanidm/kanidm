@@ -820,7 +820,7 @@ impl<'a> QueryServerReadTransaction<'a> {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
-    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
         // If we fail after backend, we need to return NOW because we can't
         // assert any other faith in the DB states.
         //  * backend
@@ -1063,7 +1063,7 @@ impl QueryServer {
         // A major reason here to split to multiple transactions is to allow schema
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
-        let reindex_write_1 = self.write(ts).await;
+        let mut reindex_write_1 = self.write(ts).await;
         reindex_write_1
             .upgrade_reindex(SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit())?;
@@ -1077,19 +1077,19 @@ impl QueryServer {
         // the schema to tell us what's indexed), but because we have the in
         // mem schema that defines how schema is structuded, and this is all
         // marked "system", then we won't have an issue here.
-        let ts_write_1 = self.write(ts).await;
+        let mut ts_write_1 = self.write(ts).await;
         ts_write_1
             .initialise_schema_core()
             .and_then(|_| ts_write_1.commit())?;
 
-        let ts_write_2 = self.write(ts).await;
+        let mut ts_write_2 = self.write(ts).await;
         ts_write_2
             .initialise_schema_idm()
             .and_then(|_| ts_write_2.commit())?;
 
         // reindex and set to version + 1, this way when we bump the version
         // we are essetially pushing this version id back up to step write_1
-        let reindex_write_2 = self.write(ts).await;
+        let mut reindex_write_2 = self.write(ts).await;
         reindex_write_2
             .upgrade_reindex(SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit())?;
@@ -1112,7 +1112,7 @@ impl QueryServer {
         // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
         // be extracted, means that the pres indexes will be valid even though the entries are pending
         // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
-        let migrate_txn = self.write(ts).await;
+        let mut migrate_txn = self.write(ts).await;
         // If we are "in the process of being setup" this is 0, and the migrations will have no
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
@@ -1165,14 +1165,14 @@ impl QueryServer {
     }
 
     pub async fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        let r_txn = self.read().await;
+        let mut r_txn = self.read().await;
         r_txn.verify()
     }
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
-    pub fn create(&self, ce: &CreateEvent) -> Result<(), OperationError> {
+    pub fn create(&mut self, ce: &CreateEvent) -> Result<(), OperationError> {
         // The create event is a raw, read only representation of the request
         // that was made to us, including information about the identity
         // performing the request.
@@ -1323,7 +1323,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[allow(clippy::cognitive_complexity)]
     #[instrument(level = "debug", skip_all)]
-    pub fn delete(&self, de: &DeleteEvent) -> Result<(), OperationError> {
+    pub fn delete(&mut self, de: &DeleteEvent) -> Result<(), OperationError> {
         // Do you have access to view all the set members? Reduce based on your
         // read permissions and attrs
         // THIS IS PRETTY COMPLEX SEE THE DESIGN DOC
@@ -1531,7 +1531,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn revive_recycled(&self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
+    pub fn revive_recycled(&mut self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
         // Revive an entry to live. This is a specialised function, and draws a lot of
         // inspiration from modify.
         //
@@ -1681,7 +1681,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn revive_recycled_legacy(&self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
+    pub fn revive_recycled_legacy(
+        &mut self,
+        re: &ReviveRecycledEvent,
+    ) -> Result<(), OperationError> {
         // Revive an entry to live. This is a specialised function, and draws a lot of
         // inspiration from modify.
         //
@@ -1752,7 +1755,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// and call multiple pre-applies at the same time, else you can cause DB corruption.
     #[instrument(level = "debug", skip_all)]
     pub(crate) unsafe fn modify_pre_apply<'x>(
-        &self,
+        &mut self,
         me: &'x ModifyEvent,
     ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
         // Get the candidates.
@@ -1873,7 +1876,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub(crate) fn modify_apply(&self, mp: ModifyPartial<'_>) -> Result<(), OperationError> {
+    pub(crate) fn modify_apply(&mut self, mp: ModifyPartial<'_>) -> Result<(), OperationError> {
         let ModifyPartial {
             norm_cand,
             pre_candidates,
@@ -1963,7 +1966,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn modify(&self, me: &ModifyEvent) -> Result<(), OperationError> {
+    pub fn modify(&mut self, me: &ModifyEvent) -> Result<(), OperationError> {
         let mp = unsafe { self.modify_pre_apply(me)? };
         if let Some(mp) = mp {
             self.modify_apply(mp)
@@ -2118,7 +2121,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.
     #[instrument(level = "debug", skip_all)]
-    pub fn migrate_2_to_3(&self) -> Result<(), OperationError> {
+    pub fn migrate_2_to_3(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 2 to 3 migration. THIS MAY TAKE A LONG TIME!");
         // Get all entries where pres name or domain_name. INCLUDE TS + RECYCLE.
 
@@ -2190,7 +2193,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Migrate 3 to 4 - this triggers a regen of the domains security token
     /// as we previously did not have it in the entry.
     #[instrument(level = "debug", skip_all)]
-    pub fn migrate_3_to_4(&self) -> Result<(), OperationError> {
+    pub fn migrate_3_to_4(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 3 to 4 migration.");
         let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
         let modlist = ModifyList::new_purge("domain_token_key");
@@ -2201,7 +2204,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Migrate 4 to 5 - this triggers a regen of all oauth2 RS es256 der keys
     /// as we previously did not generate them on entry creation.
     #[instrument(level = "debug", skip_all)]
-    pub fn migrate_4_to_5(&self) -> Result<(), OperationError> {
+    pub fn migrate_4_to_5(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 4 to 5 migration.");
         let filter = filter!(f_and!([
             f_eq("class", (*PVCLASS_OAUTH2_RS).clone()),
@@ -2215,7 +2218,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Migrate 5 to 6 - This updates the domain info item to reset the token
     /// keys based on the new encryption types.
     #[instrument(level = "debug", skip_all)]
-    pub fn migrate_5_to_6(&self) -> Result<(), OperationError> {
+    pub fn migrate_5_to_6(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 5 to 6 migration.");
         let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
         let mut modlist = ModifyList::new_purge("domain_token_key");
@@ -2233,7 +2236,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Modify accounts that are not persons, to be service accounts so that the extension
     /// rules remain valid.
     #[instrument(level = "debug", skip_all)]
-    pub fn migrate_6_to_7(&self) -> Result<(), OperationError> {
+    pub fn migrate_6_to_7(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 6 to 7 migration.");
         let filter = filter!(f_and!([
             f_eq("class", (*PVCLASS_ACCOUNT).clone()),
@@ -2248,7 +2251,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ///
     /// Touch all service accounts to trigger a regen of their es256 jws keys for api tokens
     #[instrument(level = "debug", skip_all)]
-    pub fn migrate_7_to_8(&self) -> Result<(), OperationError> {
+    pub fn migrate_7_to_8(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 7 to 8 migration.");
         let filter = filter!(f_eq("class", (*PVCLASS_SERVICE_ACCOUNT).clone()));
         let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
@@ -2263,7 +2266,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ///
     /// The second change improves the current scope system to remove the implicit scope type.
     #[instrument(level = "debug", skip_all)]
-    pub fn migrate_8_to_9(&self) -> Result<(), OperationError> {
+    pub fn migrate_8_to_9(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 8 to 9 migration.");
         let filt = filter_all!(f_or!([
             f_eq("class", PVCLASS_OAUTH2_RS.clone()),
@@ -2344,7 +2347,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // only, allowing certain plugin by passes etc.
 
     pub fn internal_create(
-        &self,
+        &mut self,
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Result<(), OperationError> {
         // Start the audit scope
@@ -2353,7 +2356,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.create(&ce)
     }
 
-    pub fn internal_delete(&self, filter: &Filter<FilterInvalid>) -> Result<(), OperationError> {
+    pub fn internal_delete(
+        &mut self,
+        filter: &Filter<FilterInvalid>,
+    ) -> Result<(), OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -2363,7 +2369,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn internal_modify(
-        &self,
+        &mut self,
         filter: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
@@ -2378,7 +2384,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn impersonate_modify_valid(
-        &self,
+        &mut self,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         m_valid: ModifyList<ModifyValid>,
@@ -2389,7 +2395,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn impersonate_modify(
-        &self,
+        &mut self,
         filter: &Filter<FilterInvalid>,
         filter_intent: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
@@ -2411,7 +2417,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn impersonate_modify_gen_event(
-        &self,
+        &mut self,
         filter: &Filter<FilterInvalid>,
         filter_intent: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
@@ -2455,7 +2461,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     */
 
     #[instrument(level = "debug", skip_all)]
-    pub fn internal_migrate_or_create_str(&self, e_str: &str) -> Result<(), OperationError> {
+    pub fn internal_migrate_or_create_str(&mut self, e_str: &str) -> Result<(), OperationError> {
         let res = Entry::from_proto_entry_str(e_str, self)
             /*
             .and_then(|e: Entry<EntryInvalid, EntryNew>| {
@@ -2470,7 +2476,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_migrate_or_create(
-        &self,
+        &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
         // if the thing exists, ensure the set of attributes on
@@ -2580,7 +2586,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
     */
 
-    pub fn initialise_schema_core(&self) -> Result<(), OperationError> {
+    pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
@@ -2602,7 +2608,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
-    pub fn initialise_schema_idm(&self) -> Result<(), OperationError> {
+    pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
         // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
@@ -2675,7 +2681,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     // This function is idempotent
-    pub fn initialise_idm(&self) -> Result<(), OperationError> {
+    pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
@@ -3043,7 +3049,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Initiate a domain display name change process. This isn't particularly scary
     /// because it's just a wibbly human-facing thing, not used for secure
     /// activities (yet)
-    pub fn set_domain_display_name(&self, new_domain_name: &str) -> Result<(), OperationError> {
+    pub fn set_domain_display_name(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set(
             "domain_display_name",
             Value::new_utf8(new_domain_name.to_string()),
@@ -3055,7 +3061,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
-    pub fn domain_rename(&self, new_domain_name: &str) -> Result<(), OperationError> {
+    pub fn domain_rename(&mut self, new_domain_name: &str) -> Result<(), OperationError> {
         // We can't use the d_info struct here, because this has the database version of the domain
         // name, not the in memory (config) version. We need to accept the domain's
         // new name from the caller so we can change this.
@@ -3072,7 +3078,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// approached, especially if we have a domain re-name replicated to us. It could
     /// be that we end up needing to have this as a cow cell or similar?
     pub(crate) unsafe fn domain_rename_inner(
-        &self,
+        &mut self,
         new_domain_name: &str,
     ) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
@@ -3092,7 +3098,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_schema.set(true);
     }
 
-    pub(crate) fn upgrade_reindex(&self, v: i64) -> Result<(), OperationError> {
+    pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
 
@@ -3190,7 +3196,7 @@ mod tests {
 
     #[qs_test]
     async fn test_create_user(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
         let admin = server_txn
             .internal_search_uuid(&UUID_ADMIN)
@@ -3243,23 +3249,23 @@ mod tests {
     async fn test_init_idempotent_schema_core(server: &QueryServer) {
         {
             // Setup and abort.
-            let server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await;
             assert!(server_txn.initialise_schema_core().is_ok());
         }
         {
-            let server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await;
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.commit().is_ok());
         }
         {
             // Now do it again in a new txn, but abort
-            let server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await;
             assert!(server_txn.initialise_schema_core().is_ok());
         }
         {
             // Now do it again in a new txn.
-            let server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await;
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.commit().is_ok());
         }
@@ -3268,7 +3274,7 @@ mod tests {
     #[qs_test]
     async fn test_modify(server: &QueryServer) {
         // Create an object
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -3390,7 +3396,7 @@ mod tests {
     async fn test_modify_invalid_class(server: &QueryServer) {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -3462,7 +3468,7 @@ mod tests {
     #[qs_test]
     async fn test_delete(server: &QueryServer) {
         // Create
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -3547,7 +3553,7 @@ mod tests {
         let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
         let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
-        let server_txn = server.write(time_p1).await;
+        let mut server_txn = server.write(time_p1).await;
         let admin = server_txn
             .internal_search_uuid(&UUID_ADMIN)
             .expect("failed");
@@ -3599,7 +3605,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, establish enough time for the recycled items to be purged.
-        let server_txn = server.write(time_p2).await;
+        let mut server_txn = server.write(time_p2).await;
         assert!(server_txn.purge_recycled().is_ok());
 
         // Now test the tombstone properties.
@@ -3656,7 +3662,7 @@ mod tests {
         let time_p1 = duration_from_epoch_now();
         let time_p2 = time_p1 + Duration::from_secs(RECYCLEBIN_MAX_AGE * 2);
 
-        let server_txn = server.write(time_p1).await;
+        let mut server_txn = server.write(time_p1).await;
         let admin = server_txn
             .internal_search_uuid(&UUID_ADMIN)
             .expect("failed");
@@ -3800,7 +3806,7 @@ mod tests {
     #[qs_test]
     async fn test_qs_recycle_advanced(server: &QueryServer) {
         // Create items
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         let admin = server_txn
             .internal_search_uuid(&UUID_ADMIN)
             .expect("failed");
@@ -3844,7 +3850,7 @@ mod tests {
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -3877,7 +3883,7 @@ mod tests {
 
     #[qs_test]
     async fn test_uuid_to_spn(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -3913,7 +3919,7 @@ mod tests {
 
     #[qs_test]
     async fn test_uuid_to_rdn(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -3949,7 +3955,7 @@ mod tests {
 
     #[qs_test]
     async fn test_uuid_to_star_recycle(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -4024,7 +4030,7 @@ mod tests {
 
     #[qs_test]
     async fn test_clone_value(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
             ("class", Value::new_class("person")),
@@ -4090,7 +4096,7 @@ mod tests {
             ("description", Value::new_utf8s("Test Class")),
             ("may", Value::new_iutf8("name"))
         );
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add a new class.
         let ce_class = CreateEvent::new_internal(vec![e_cd.clone()]);
         assert!(server_txn.create(&ce_class).is_ok());
@@ -4102,7 +4108,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add the class to an object
         // should work
         let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -4112,7 +4118,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the class
         let de_class = unsafe {
             DeleteEvent::new_internal_invalid(filter!(f_eq(
@@ -4125,7 +4131,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Trying to add now should fail
         let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
         assert!(server_txn.create(&ce_fail).is_err());
@@ -4168,7 +4174,7 @@ mod tests {
             ("syntax", Value::new_syntaxs("UTF8STRING").expect("syntax"))
         );
 
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add a new attribute.
         let ce_attr = CreateEvent::new_internal(vec![e_ad.clone()]);
         assert!(server_txn.create(&ce_attr).is_ok());
@@ -4180,7 +4186,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add the attr to an object
         // should work
         let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -4190,7 +4196,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the attr
         let de_attr = unsafe {
             DeleteEvent::new_internal_invalid(filter!(f_eq(
@@ -4203,7 +4209,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Trying to add now should fail
         let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
         assert!(server_txn.create(&ce_fail).is_err());
@@ -4235,7 +4241,7 @@ mod tests {
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
         );
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // Add the entry. Today we have no syntax to take simple str to a credential
         // but honestly, that's probably okay :)
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -4311,7 +4317,7 @@ mod tests {
     #[qs_test]
     async fn test_revive_advanced_directmemberships(server: &QueryServer) {
         // Create items
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         let admin = server_txn
             .internal_search_uuid(&UUID_ADMIN)
             .expect("failed");
@@ -4449,20 +4455,20 @@ mod tests {
 
     #[qs_test_no_init]
     async fn test_qs_upgrade_entry_attrs(server: &QueryServer) {
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         assert!(server_txn.upgrade_reindex(SYSTEM_INDEX_VERSION).is_ok());
         assert!(server_txn.commit().is_ok());
 
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         server_txn.initialise_schema_core().unwrap();
         server_txn.initialise_schema_idm().unwrap();
         assert!(server_txn.commit().is_ok());
 
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         assert!(server_txn.upgrade_reindex(SYSTEM_INDEX_VERSION + 1).is_ok());
         assert!(server_txn.commit().is_ok());
 
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         assert!(server_txn
             .internal_migrate_or_create_str(JSON_SYSTEM_INFO_V1)
             .is_ok());
@@ -4474,7 +4480,7 @@ mod tests {
             .is_ok());
         assert!(server_txn.commit().is_ok());
 
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         // ++ Mod the schema to set name to the old string type
         let me_syn = unsafe {
             ModifyEvent::new_internal_invalid(

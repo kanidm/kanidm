@@ -22,7 +22,7 @@ impl Plugin for PasswordImport {
         skip(_qs, cand, _ce)
     )]
     fn pre_create_transform(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -70,7 +70,7 @@ impl Plugin for PasswordImport {
         skip(_qs, cand, _me)
     )]
     fn pre_modify(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {

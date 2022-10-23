@@ -141,7 +141,7 @@ impl DynGroup {
 
     #[instrument(level = "debug", name = "dyngroup_post_create", skip(qs, cand, ce))]
     pub fn post_create(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<Vec<Uuid>, OperationError> {
@@ -242,7 +242,7 @@ impl DynGroup {
         skip(qs, pre_cand, cand, me)
     )]
     pub fn post_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
@@ -352,7 +352,7 @@ impl DynGroup {
 
     // No post_delete handler is needed as refint takes care of this for us.
 
-    pub fn verify(_qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
+    pub fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         vec![]
     }
 }

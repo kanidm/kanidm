@@ -58,7 +58,7 @@ impl QueryServerWriteV1 {
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
@@ -106,7 +106,7 @@ impl QueryServerWriteV1 {
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
@@ -160,7 +160,7 @@ impl QueryServerWriteV1 {
         req: CreateRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
@@ -197,7 +197,7 @@ impl QueryServerWriteV1 {
         req: ModifyRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -233,7 +233,7 @@ impl QueryServerWriteV1 {
         req: DeleteRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -270,7 +270,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         // Given a protoEntry, turn this into a modification set.
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -311,7 +311,7 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -346,7 +346,7 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -430,7 +430,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<String, OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_write = self.idms.proxy_write(ct).await;
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -472,7 +472,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_write = self.idms.proxy_write(ct).await;
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -512,7 +512,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_write = self.idms.proxy_write(ct).await;
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -550,7 +550,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_write = self.idms.proxy_write(ct).await;
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         // We specifically need a uat here to assess the auth type!
         let (ident, uat) = idms_prox_write
@@ -783,7 +783,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_write = self.idms.proxy_write(ct).await;
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -863,7 +863,7 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_write = self.idms.proxy_write(ct).await;
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -914,7 +914,7 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -1179,7 +1179,7 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
@@ -1237,7 +1237,7 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
@@ -1293,7 +1293,7 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write
@@ -1351,7 +1351,7 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_write

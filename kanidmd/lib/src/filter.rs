@@ -1792,7 +1792,7 @@ mod tests {
         let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
         let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
-        let server_txn = server.write(time_p1).await;
+        let mut server_txn = server.write(time_p1).await;
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
                 "attrs": {
