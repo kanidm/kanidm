@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 
-use kanidmd_testkit::{setup_async_test, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
+use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 static USER_READABLE_ATTRS: [&str; 9] = [
     "name",
@@ -285,9 +285,8 @@ async fn test_modify_group(
 // - Read to all self attributes (within security constraints).
 // - Write to a limited set of self attributes, such as:
 //     name, displayname, legalname, ssh-keys, credentials etc.
-#[tokio::test]
-async fn test_default_entries_rbac_users() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_users(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -326,9 +325,8 @@ async fn test_default_entries_rbac_users() {
 // Account Managers
 // read and write to accounts, including write credentials but NOT private data (see people manager)
 // ability to lock and unlock accounts, excluding high access members.
-#[tokio::test]
-async fn test_default_entries_rbac_account_managers() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_account_managers(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -362,9 +360,8 @@ async fn test_default_entries_rbac_account_managers() {
 // Group Managers
 // read all groups
 // write group but not high access
-#[tokio::test]
-async fn test_default_entries_rbac_group_managers() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_group_managers(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -410,9 +407,8 @@ async fn test_default_entries_rbac_group_managers() {
 
 // Admins
 // read and write access control entries.
-#[tokio::test]
-async fn test_default_entries_rbac_admins_access_control_entries() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_admins_access_control_entries(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -462,9 +458,8 @@ async fn test_default_entries_rbac_admins_access_control_entries() {
 
 // read schema entries.
 // TODO #252: write schema entries
-#[tokio::test]
-async fn test_default_entries_rbac_admins_schema_entries() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -578,9 +573,8 @@ async fn test_default_entries_rbac_admins_schema_entries() {
 
 // modify all groups including high access groups.
 // create new accounts (to bootstrap the system).
-#[tokio::test]
-async fn test_default_entries_rbac_admins_group_entries() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_admins_group_entries(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -599,9 +593,8 @@ async fn test_default_entries_rbac_admins_group_entries() {
 }
 
 // modify high access accounts as an escalation for security sensitive accounts.
-#[tokio::test]
-async fn test_default_entries_rbac_admins_ha_accounts() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_admins_ha_accounts(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -616,9 +609,8 @@ async fn test_default_entries_rbac_admins_ha_accounts() {
 }
 
 // recover from the recycle bin
-#[tokio::test]
-async fn test_default_entries_rbac_admins_recycle_accounts() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_admins_recycle_accounts(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -640,9 +632,8 @@ async fn test_default_entries_rbac_admins_recycle_accounts() {
 // People Managers
 // read private or sensitive data of persons, IE legalName
 // write private or sensitive data of persons, IE legalName
-#[tokio::test]
-async fn test_default_entries_rbac_people_managers() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_people_managers(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -683,9 +674,8 @@ async fn test_default_entries_rbac_people_managers() {
 
 // Anonymous Clients + Everyone Else
 // read memberof, unix attrs, name, displayname, class
-#[tokio::test]
-async fn test_default_entries_rbac_anonymous_entry() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_anonymous_entry(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -714,9 +704,8 @@ async fn test_default_entries_rbac_anonymous_entry() {
 // RADIUS Servers
 // Read radius credentials
 // Read other needed attributes to fulfil radius functions.
-#[tokio::test]
-async fn test_default_entries_rbac_radius_servers() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_default_entries_rbac_radius_servers(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
@@ -737,9 +726,8 @@ async fn test_default_entries_rbac_radius_servers() {
     test_write_attrs(&rsclient, "test", &RADIUS_NECESSARY_ATTRS, false).await;
 }
 
-#[tokio::test]
-async fn test_self_write_mail_priv_people() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_self_write_mail_priv_people(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await

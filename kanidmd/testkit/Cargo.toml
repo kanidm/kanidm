@@ -31,6 +31,8 @@ sketching.workspace = true
 tracing = { workspace = true, features = ["attributes"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 
+testkit-macros.workspace = true
+
 [build-dependencies]
 profiles.workspace = true
 
