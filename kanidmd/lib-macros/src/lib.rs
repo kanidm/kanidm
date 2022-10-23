@@ -21,3 +21,8 @@ use proc_macro::TokenStream;
 pub fn qs_test(args: TokenStream, item: TokenStream) -> TokenStream {
     entry::qs_test(args, item)
 }
+
+#[proc_macro_attribute]
+pub fn qs_test_no_init(args: TokenStream, item: TokenStream) -> TokenStream {
+    entry::qs_test_no_init(args, item)
+}

@@ -313,42 +313,40 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_spn_regen_domain_rename() {
-        run_test!(|server: &QueryServer| {
-            let server_txn = server.write(duration_from_epoch_now());
+    #[qs_test]
+    async fn test_spn_regen_domain_rename(server: &QueryServer) {
+        let server_txn = server.write(duration_from_epoch_now()).await;
 
-            let ex1 = Value::new_spn_str("admin", "example.com");
-            let ex2 = Value::new_spn_str("admin", "new.example.com");
-            // get the current domain name
-            // check the spn on admin is admin@<initial domain>
-            let e_pre = server_txn
-                .internal_search_uuid(&UUID_ADMIN)
-                .expect("must not fail");
+        let ex1 = Value::new_spn_str("admin", "example.com");
+        let ex2 = Value::new_spn_str("admin", "new.example.com");
+        // get the current domain name
+        // check the spn on admin is admin@<initial domain>
+        let e_pre = server_txn
+            .internal_search_uuid(&UUID_ADMIN)
+            .expect("must not fail");
 
-            let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
-            assert!(e_pre_spn == ex1);
+        let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
+        assert!(e_pre_spn == ex1);
 
-            // trigger the domain_name change (this will be a cli option to the server
-            // in the final version), but it will still call the same qs function to perform the
-            // change.
-            unsafe {
-                server_txn
-                    .domain_rename_inner("new.example.com")
-                    .expect("should not fail!");
-            }
+        // trigger the domain_name change (this will be a cli option to the server
+        // in the final version), but it will still call the same qs function to perform the
+        // change.
+        unsafe {
+            server_txn
+                .domain_rename_inner("new.example.com")
+                .expect("should not fail!");
+        }
 
-            // check the spn on admin is admin@<new domain>
-            let e_post = server_txn
-                .internal_search_uuid(&UUID_ADMIN)
-                .expect("must not fail");
+        // check the spn on admin is admin@<new domain>
+        let e_post = server_txn
+            .internal_search_uuid(&UUID_ADMIN)
+            .expect("must not fail");
 
-            let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
-            debug!("{:?}", e_post_spn);
-            debug!("{:?}", ex2);
-            assert!(e_post_spn == ex2);
+        let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
+        debug!("{:?}", e_post_spn);
+        debug!("{:?}", ex2);
+        assert!(e_post_spn == ex2);
 
-            server_txn.commit().expect("Must not fail");
-        });
+        server_txn.commit().expect("Must not fail");
     }
 }

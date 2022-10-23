@@ -1571,46 +1571,45 @@ mod tests {
         }};
     }
 
-    #[test]
-    fn test_access_acp_parser() {
-        run_test!(|qs: &QueryServer| {
-            // Test parsing entries to acp. There so no point testing schema violations
-            // because the schema system is well tested an robust. Instead we target
-            // entry misconfigurations, such as missing classes required.
+    #[qs_test]
+    async fn test_access_acp_parser(qs: &QueryServer) {
+        // Test parsing entries to acp. There so no point testing schema violations
+        // because the schema system is well tested an robust. Instead we target
+        // entry misconfigurations, such as missing classes required.
 
-            // Generally, we are testing the *positive* cases here, because schema
-            // really protects us *a lot* here, but it's nice to have defence and
-            // layers of validation.
+        // Generally, we are testing the *positive* cases here, because schema
+        // really protects us *a lot* here, but it's nice to have defence and
+        // layers of validation.
 
-            let mut qs_write = qs.write(duration_from_epoch_now());
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
                     "attrs": {
                         "class": ["object"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                     }
                 }"#,
-                AccessControlProfile
-            );
+            AccessControlProfile
+        );
 
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                     }
                 }"#,
-                AccessControlProfile
-            );
+            AccessControlProfile
+        );
 
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
@@ -1619,42 +1618,40 @@ mod tests {
                         "acp_targetscope": [""]
                     }
                 }"#,
-                AccessControlProfile
-            );
+            AccessControlProfile
+        );
 
-            // "\"Self\""
-            acp_from_entry_ok!(
-                &mut qs_write,
-                entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    (
-                        "acp_receiver",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    (
-                        "acp_targetscope",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    )
+        // "\"Self\""
+        acp_from_entry_ok!(
+            &mut qs_write,
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("access_control_profile")),
+                ("name", Value::new_iname("acp_valid")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                 ),
-                AccessControlProfile
-            );
-        })
+                (
+                    "acp_receiver",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (
+                    "acp_targetscope",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                )
+            ),
+            AccessControlProfile
+        );
     }
 
-    #[test]
-    fn test_access_acp_delete_parser() {
-        run_test!(|qs: &QueryServer| {
-            let mut qs_write = qs.write(duration_from_epoch_now());
+    #[qs_test]
+    async fn test_access_acp_delete_parser(qs: &QueryServer) {
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
@@ -1667,44 +1664,42 @@ mod tests {
                         ]
                     }
                 }"#,
-                AccessControlDelete
-            );
+            AccessControlDelete
+        );
 
-            acp_from_entry_ok!(
-                &mut qs_write,
-                entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("class", Value::new_class("access_control_delete")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    (
-                        "acp_receiver",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    (
-                        "acp_targetscope",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    )
+        acp_from_entry_ok!(
+            &mut qs_write,
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("access_control_profile")),
+                ("class", Value::new_class("access_control_delete")),
+                ("name", Value::new_iname("acp_valid")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                 ),
-                AccessControlDelete
-            );
-        })
+                (
+                    "acp_receiver",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (
+                    "acp_targetscope",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                )
+            ),
+            AccessControlDelete
+        );
     }
 
-    #[test]
-    fn test_access_acp_search_parser() {
-        run_test!(|qs: &QueryServer| {
-            // Test that parsing search access controls works.
-            let mut qs_write = qs.write(duration_from_epoch_now());
+    #[qs_test]
+    async fn test_access_acp_search_parser(qs: &QueryServer) {
+        // Test that parsing search access controls works.
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
-            // Missing class acp
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
+        // Missing class acp
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
                     "attrs": {
                         "class": ["object", "access_control_search"],
                         "name": ["acp_invalid"],
@@ -1718,13 +1713,13 @@ mod tests {
                         "acp_search_attr": ["name", "class"]
                     }
                 }"#,
-                AccessControlSearch
-            );
+            AccessControlSearch
+        );
 
-            // Missing class acs
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
+        // Missing class acs
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
@@ -1738,13 +1733,13 @@ mod tests {
                         "acp_search_attr": ["name", "class"]
                     }
                 }"#,
-                AccessControlSearch
-            );
+            AccessControlSearch
+        );
 
-            // Missing attr acp_search_attr
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
+        // Missing attr acp_search_attr
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_search"],
                         "name": ["acp_invalid"],
@@ -1757,206 +1752,15 @@ mod tests {
                         ]
                     }
                 }"#,
-                AccessControlSearch
-            );
+            AccessControlSearch
+        );
 
-            // All good!
-            acp_from_entry_ok!(
-                &mut qs_write,
-                entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("class", Value::new_class("access_control_search")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    (
-                        "acp_receiver",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    (
-                        "acp_targetscope",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    ("acp_search_attr", Value::new_iutf8("name")),
-                    ("acp_search_attr", Value::new_iutf8("class"))
-                ),
-                AccessControlSearch
-            );
-        })
-    }
-
-    #[test]
-    fn test_access_acp_modify_parser() {
-        run_test!(|qs: &QueryServer| {
-            // Test that parsing modify access controls works.
-            let mut qs_write = qs.write(duration_from_epoch_now());
-
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile"],
-                        "name": ["acp_valid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_modify_removedattr": ["name"],
-                        "acp_modify_presentattr": ["name"],
-                        "acp_modify_class": ["object"]
-                    }
-                }"#,
-                AccessControlModify
-            );
-
-            acp_from_entry_ok!(
-                &mut qs_write,
-                entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("class", Value::new_class("access_control_modify")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    (
-                        "acp_receiver",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    (
-                        "acp_targetscope",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    )
-                ),
-                AccessControlModify
-            );
-
-            acp_from_entry_ok!(
-                &mut qs_write,
-                entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("class", Value::new_class("access_control_modify")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    (
-                        "acp_receiver",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    (
-                        "acp_targetscope",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    ("acp_modify_removedattr", Value::new_iutf8("name")),
-                    ("acp_modify_presentattr", Value::new_iutf8("name")),
-                    ("acp_modify_class", Value::new_iutf8("object"))
-                ),
-                AccessControlModify
-            );
-        })
-    }
-
-    #[test]
-    fn test_access_acp_create_parser() {
-        run_test!(|qs: &QueryServer| {
-            // Test that parsing create access controls works.
-            let mut qs_write = qs.write(duration_from_epoch_now());
-
-            acp_from_entry_err!(
-                &mut qs_write,
-                r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile"],
-                        "name": ["acp_valid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_create_class": ["object"],
-                        "acp_create_attr": ["name"]
-                    }
-                }"#,
-                AccessControlCreate
-            );
-
-            acp_from_entry_ok!(
-                &mut qs_write,
-                entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("class", Value::new_class("access_control_create")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    (
-                        "acp_receiver",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    (
-                        "acp_targetscope",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    )
-                ),
-                AccessControlCreate
-            );
-
-            acp_from_entry_ok!(
-                &mut qs_write,
-                entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("access_control_profile")),
-                    ("class", Value::new_class("access_control_create")),
-                    ("name", Value::new_iname("acp_valid")),
-                    (
-                        "uuid",
-                        Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                    ),
-                    (
-                        "acp_receiver",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    (
-                        "acp_targetscope",
-                        Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
-                    ),
-                    ("acp_create_attr", Value::new_iutf8("name")),
-                    ("acp_create_class", Value::new_iutf8("object"))
-                ),
-                AccessControlCreate
-            );
-        })
-    }
-
-    #[test]
-    fn test_access_acp_compound_parser() {
-        run_test!(|qs: &QueryServer| {
-            // Test that parsing compound access controls works. This means that
-            // given a single &str, we can evaluate all types from a single record.
-            // This is valid, and could exist, IE a rule to allow create, search and modify
-            // over a single scope.
-            let mut qs_write = qs.write(duration_from_epoch_now());
-
-            let e = entry_init!(
+        // All good!
+        acp_from_entry_ok!(
+            &mut qs_write,
+            entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("access_control_profile")),
-                ("class", Value::new_class("access_control_create")),
-                ("class", Value::new_class("access_control_delete")),
-                ("class", Value::new_class("access_control_modify")),
                 ("class", Value::new_class("access_control_search")),
                 ("name", Value::new_iname("acp_valid")),
                 (
@@ -1972,18 +1776,202 @@ mod tests {
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
                 ("acp_search_attr", Value::new_iutf8("name")),
-                ("acp_create_class", Value::new_iutf8("class")),
-                ("acp_create_attr", Value::new_iutf8("name")),
+                ("acp_search_attr", Value::new_iutf8("class"))
+            ),
+            AccessControlSearch
+        );
+    }
+
+    #[qs_test]
+    async fn test_access_acp_modify_parser(qs: &QueryServer) {
+        // Test that parsing modify access controls works.
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
+                    "attrs": {
+                        "class": ["object", "access_control_profile"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_modify_removedattr": ["name"],
+                        "acp_modify_presentattr": ["name"],
+                        "acp_modify_class": ["object"]
+                    }
+                }"#,
+            AccessControlModify
+        );
+
+        acp_from_entry_ok!(
+            &mut qs_write,
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("access_control_profile")),
+                ("class", Value::new_class("access_control_modify")),
+                ("name", Value::new_iname("acp_valid")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                (
+                    "acp_receiver",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (
+                    "acp_targetscope",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                )
+            ),
+            AccessControlModify
+        );
+
+        acp_from_entry_ok!(
+            &mut qs_write,
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("access_control_profile")),
+                ("class", Value::new_class("access_control_modify")),
+                ("name", Value::new_iname("acp_valid")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                (
+                    "acp_receiver",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (
+                    "acp_targetscope",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
                 ("acp_modify_removedattr", Value::new_iutf8("name")),
                 ("acp_modify_presentattr", Value::new_iutf8("name")),
                 ("acp_modify_class", Value::new_iutf8("object"))
-            );
+            ),
+            AccessControlModify
+        );
+    }
 
-            acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlCreate);
-            acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlDelete);
-            acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlModify);
-            acp_from_entry_ok!(&mut qs_write, e, AccessControlSearch);
-        })
+    #[qs_test]
+    async fn test_access_acp_create_parser(qs: &QueryServer) {
+        // Test that parsing create access controls works.
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+
+        acp_from_entry_err!(
+            &mut qs_write,
+            r#"{
+                    "attrs": {
+                        "class": ["object", "access_control_profile"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_create_class": ["object"],
+                        "acp_create_attr": ["name"]
+                    }
+                }"#,
+            AccessControlCreate
+        );
+
+        acp_from_entry_ok!(
+            &mut qs_write,
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("access_control_profile")),
+                ("class", Value::new_class("access_control_create")),
+                ("name", Value::new_iname("acp_valid")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                (
+                    "acp_receiver",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (
+                    "acp_targetscope",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                )
+            ),
+            AccessControlCreate
+        );
+
+        acp_from_entry_ok!(
+            &mut qs_write,
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("access_control_profile")),
+                ("class", Value::new_class("access_control_create")),
+                ("name", Value::new_iname("acp_valid")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                (
+                    "acp_receiver",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (
+                    "acp_targetscope",
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                ("acp_create_attr", Value::new_iutf8("name")),
+                ("acp_create_class", Value::new_iutf8("object"))
+            ),
+            AccessControlCreate
+        );
+    }
+
+    #[qs_test]
+    async fn test_access_acp_compound_parser(qs: &QueryServer) {
+        // Test that parsing compound access controls works. This means that
+        // given a single &str, we can evaluate all types from a single record.
+        // This is valid, and could exist, IE a rule to allow create, search and modify
+        // over a single scope.
+        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+
+        let e = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("access_control_profile")),
+            ("class", Value::new_class("access_control_create")),
+            ("class", Value::new_class("access_control_delete")),
+            ("class", Value::new_class("access_control_modify")),
+            ("class", Value::new_class("access_control_search")),
+            ("name", Value::new_iname("acp_valid")),
+            (
+                "uuid",
+                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+            ),
+            (
+                "acp_receiver",
+                Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+            ),
+            (
+                "acp_targetscope",
+                Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+            ),
+            ("acp_search_attr", Value::new_iutf8("name")),
+            ("acp_create_class", Value::new_iutf8("class")),
+            ("acp_create_attr", Value::new_iutf8("name")),
+            ("acp_modify_removedattr", Value::new_iutf8("name")),
+            ("acp_modify_presentattr", Value::new_iutf8("name")),
+            ("acp_modify_class", Value::new_iutf8("object"))
+        );
+
+        acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlCreate);
+        acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlDelete);
+        acp_from_entry_ok!(&mut qs_write, e.clone(), AccessControlModify);
+        acp_from_entry_ok!(&mut qs_write, e, AccessControlSearch);
     }
 
     macro_rules! test_acp_search {

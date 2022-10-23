@@ -1416,6 +1416,8 @@ mod tests {
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
 
+    use async_std::task;
+
     const TEST_CURRENT_TIME: u64 = 6000;
     const UAT_EXPIRE: u64 = 5;
     const TOKEN_EXPIRE: u64 = 900;
@@ -1466,7 +1468,7 @@ mod tests {
         enable_pkce: bool,
         enable_legacy_crypto: bool,
     ) -> (String, UserAuthToken, Identity, Uuid) {
-        let mut idms_prox_write = idms.proxy_write(ct);
+        let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
         let uuid = Uuid::new_v4();
 
@@ -1543,7 +1545,7 @@ mod tests {
         ct: Duration,
         authtype: AuthType,
     ) -> (UserAuthToken, Identity) {
-        let mut idms_prox_write = idms.proxy_write(ct);
+        let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
         let account = idms_prox_write
             .target_to_account(&UUID_IDM_ADMIN)
             .expect("account must exist");
@@ -1797,7 +1799,7 @@ mod tests {
             let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
                     .target_to_account(&UUID_IDM_ADMIN)
                     .expect("account must exist");
@@ -2109,7 +2111,7 @@ mod tests {
                 drop(idms_prox_read);
                 // start a write,
 
-                let idms_prox_write = idms.proxy_write(ct);
+                let idms_prox_write = task::block_on(idms.proxy_write(ct));
                 // Expire the account, should cause introspect to return inactive.
                 let v_expire =
                     Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
@@ -2147,7 +2149,7 @@ mod tests {
             let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
                     .target_to_account(&UUID_IDM_ADMIN)
                     .expect("account must exist");
@@ -2653,7 +2655,7 @@ mod tests {
                 };
 
                 // Manually submit the consent.
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 assert!(idms_prox_write.process_oauth2consentgrant(&o2cg).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
 
@@ -2680,7 +2682,7 @@ mod tests {
                 drop(idms_prox_read);
 
                 // Great! Now change the scopes on the oauth2 instance, this revokes the permit.
-                let idms_prox_write = idms.proxy_write(ct);
+                let idms_prox_write = task::block_on(idms.proxy_write(ct));
 
                 let me_extend_scopes = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2747,7 +2749,7 @@ mod tests {
                 // Success! We had to consent again due to the change :)
 
                 // Now change the supplemental scopes on the oauth2 instance, this revokes the permit.
-                let idms_prox_write = idms.proxy_write(ct);
+                let idms_prox_write = task::block_on(idms.proxy_write(ct));
 
                 let me_extend_scopes = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2857,7 +2859,7 @@ mod tests {
                 };
 
                 // Manually submit the consent.
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 assert!(idms_prox_write.process_oauth2consentgrant(&o2cg).is_ok());
 
                 let ident = idms_prox_write

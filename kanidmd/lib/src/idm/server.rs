@@ -295,16 +295,17 @@ impl IdmServer {
     }
 
     #[cfg(test)]
-    pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
-        task::block_on(self.proxy_write_async(ts))
+    pub fn proxy_write_blocking(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
+        task::block_on(self.proxy_write(ts))
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn proxy_write_async(&self, ts: Duration) -> IdmServerProxyWriteTransaction<'_> {
+    pub async fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction<'_> {
+        let qs_write = self.qs.write(ts).await;
+
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
-        let qs_write = self.qs.write_async(ts).await;
 
         IdmServerProxyWriteTransaction {
             cred_update_sessions: self.cred_update_sessions.write(),
@@ -343,7 +344,7 @@ impl IdmServer {
         ts: Duration,
         da: DelayedAction,
     ) -> Result<bool, OperationError> {
-        let mut pw = self.proxy_write_async(ts).await;
+        let mut pw = self.proxy_write(ts).await;
         pw.process_delayedaction(da)
             .and_then(|_| pw.commit())
             .map(|()| true)
@@ -2347,11 +2348,11 @@ mod tests {
         )
     }
 
-    fn init_admin_w_password(qs: &QueryServer, pw: &str) -> Result<(), OperationError> {
+    async fn init_admin_w_password(qs: &QueryServer, pw: &str) -> Result<(), OperationError> {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw)?;
         let v_cred = Value::new_credential("primary", cred);
-        let qs_write = qs.write(duration_from_epoch_now());
+        let qs_write = qs.write(duration_from_epoch_now()).await;
 
         // now modify and provide a primary credential.
         let me_inv_m = unsafe {
@@ -2457,7 +2458,8 @@ mod tests {
     fn test_idm_simple_password_auth() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 check_admin_password(idms, TEST_PASSWORD);
 
                 // Clear our the session record
@@ -2472,7 +2474,8 @@ mod tests {
     fn test_idm_simple_password_spn_auth() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
 
                 let sid = init_admin_authsession_sid(
                     idms,
@@ -2530,7 +2533,8 @@ mod tests {
     fn test_idm_simple_password_invalid() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 let sid = init_admin_authsession_sid(
                     idms,
                     Duration::from_secs(TEST_CURRENT_TIME),
@@ -2583,7 +2587,8 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                 let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
 
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 assert!(idms_prox_write.set_account_password(&pce).is_ok());
                 assert!(idms_prox_write.set_account_password(&pce).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
@@ -2597,7 +2602,8 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                 let pce = PasswordChangeEvent::new_internal(&UUID_ANONYMOUS, TEST_PASSWORD);
 
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 assert!(idms_prox_write.set_account_password(&pce).is_err());
                 assert!(idms_prox_write.commit().is_ok());
             }
@@ -2608,7 +2614,8 @@ mod tests {
     fn test_idm_session_expire() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 let sid = init_admin_authsession_sid(
                     idms,
                     Duration::from_secs(TEST_CURRENT_TIME),
@@ -2637,7 +2644,8 @@ mod tests {
     fn test_idm_regenerate_radius_secret() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
 
                 // Generates a new credential when none exists
@@ -2657,7 +2665,8 @@ mod tests {
     fn test_idm_radius_secret_rejected_from_account_credential() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
 
                 let r1 = idms_prox_write
@@ -2682,7 +2691,8 @@ mod tests {
     fn test_idm_radiusauthtoken() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
                 let r1 = idms_prox_write
                     .regenerate_radius_secret(&rrse)
@@ -2706,7 +2716,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                 // len check
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
                 let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password");
                 let e = idms_prox_write.set_account_password(&pce);
@@ -2739,7 +2750,8 @@ mod tests {
     fn test_idm_simple_password_reject_badlist() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
                 // Check that the badlist password inserted is rejected.
                 let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "bad@no3IBTyqHu$list");
@@ -2755,7 +2767,7 @@ mod tests {
     fn test_idm_unixusertoken() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let idms_prox_write = task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 // Modify admin to have posixaccount
                 let me_posix = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2837,7 +2849,8 @@ mod tests {
     fn test_idm_simple_unix_password_reset() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 // make the admin a valid posix account
                 let me_posix = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2881,7 +2894,7 @@ mod tests {
                 assert!(idms_auth.commit().is_ok());
 
                 // Check deleting the password
-                let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let idms_prox_write = task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let me_purge_up = unsafe {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("name", PartialValue::new_iname("admin"))),
@@ -2916,7 +2929,7 @@ mod tests {
                 idms_delayed.check_is_empty_or_panic();
                 // Setup the admin w_ an imported password.
                 {
-                    let qs_write = qs.write(duration_from_epoch_now());
+                    let qs_write = task::block_on(qs.write(duration_from_epoch_now()));
                     // now modify and provide a primary credential.
                     let me_inv_m = unsafe {
                         ModifyEvent::new_internal_invalid(
@@ -2965,7 +2978,7 @@ mod tests {
                 // Assert the delayed action queue is empty
                 idms_delayed.check_is_empty_or_panic();
                 // Setup the admin with an imported unix pw.
-                let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let idms_prox_write = task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
                 let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
                 let pw = Password::try_from(im_pw).expect("failed to parse");
@@ -3027,8 +3040,8 @@ mod tests {
     const TEST_EXPIRE_TIME: u64 = TEST_CURRENT_TIME + 120;
     const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
 
-    fn set_admin_valid_time(qs: &QueryServer) {
-        let qs_write = qs.write(duration_from_epoch_now());
+    async fn set_admin_valid_time(qs: &QueryServer) {
+        let qs_write = qs.write(duration_from_epoch_now()).await;
 
         let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
@@ -3055,10 +3068,11 @@ mod tests {
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
                 // Any account taht is not yet valrid / expired can't auth.
 
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 // Set the valid bounds high/low
                 // TEST_VALID_FROM_TIME/TEST_EXPIRE_TIME
-                set_admin_valid_time(qs);
+                task::block_on(set_admin_valid_time(qs));
 
                 let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
                 let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
@@ -3114,14 +3128,16 @@ mod tests {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
                 // Any account that is expired can't unix auth.
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
-                set_admin_valid_time(qs);
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
+                task::block_on(set_admin_valid_time(qs));
 
                 let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
                 let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
                 // make the admin a valid posix account
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let me_posix = unsafe {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("name", PartialValue::new_iname("admin"))),
@@ -3187,13 +3203,15 @@ mod tests {
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
                 // Any account not valid/expiry should not return
                 // a radius packet.
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
-                set_admin_valid_time(qs);
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
+                task::block_on(set_admin_valid_time(qs));
 
                 let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
                 let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
                 let _r1 = idms_prox_write
                     .regenerate_radius_secret(&rrse)
@@ -3225,7 +3243,8 @@ mod tests {
     fn test_idm_account_softlocking() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
 
                 // Auth invalid, no softlock present.
                 let sid = init_admin_authsession_sid(
@@ -3378,7 +3397,8 @@ mod tests {
     fn test_idm_account_softlocking_interleaved() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
 
                 // Start an *early* auth session.
                 let sid_early = init_admin_authsession_sid(
@@ -3472,9 +3492,11 @@ mod tests {
     fn test_idm_account_unix_softlocking() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 // make the admin a valid posix account
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 let me_posix = unsafe {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("name", PartialValue::new_iname("admin"))),
@@ -3535,7 +3557,8 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
                 // Do an authenticate
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 let token = check_admin_password(idms, TEST_PASSWORD);
 
                 // Clear our the session record
@@ -3580,7 +3603,8 @@ mod tests {
                 assert!(post_grace < expiry);
 
                 // Do an authenticate
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 let token = check_admin_password(idms, TEST_PASSWORD);
 
                 // Process the session info.
@@ -3611,7 +3635,7 @@ mod tests {
                 drop(idms_prox_read);
 
                 // Mark the session as invalid now.
-                let idms_prox_write = idms.proxy_write(ct.clone());
+                let idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
                 let dte =
                     DestroySessionTokenEvent::new_internal(uat_inner.uuid, uat_inner.session_id);
                 assert!(idms_prox_write.account_destroy_session_token(&dte).is_ok());
@@ -3642,7 +3666,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = idms.proxy_write(ct.clone());
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
 
             // get an account.
             let account = idms_prox_write
@@ -3746,7 +3770,8 @@ mod tests {
             |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
                 let token = check_admin_password(idms, TEST_PASSWORD);
 
                 // Clear the session record
@@ -3768,7 +3793,7 @@ mod tests {
                 //
                 // fernet_private_key_str
                 // es256_private_key_der
-                let idms_prox_write = idms.proxy_write(ct.clone());
+                let idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
                 let me_reset_tokens = unsafe {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
@@ -3807,7 +3832,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let idms_prox_write = idms.proxy_write(ct.clone());
+            let idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
 
             let ident = Identity::from_internal();
             let target_uuid = Uuid::new_v4();

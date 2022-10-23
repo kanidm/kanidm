@@ -93,5 +93,5 @@ pub mod prelude {
     };
 
     #[cfg(test)]
-    pub use kanidmd_lib_macros::qs_test;
+    pub use kanidmd_lib_macros::*;
 }

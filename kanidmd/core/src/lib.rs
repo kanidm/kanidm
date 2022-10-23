@@ -96,7 +96,7 @@ fn setup_backend_vacuum(
 // outside of this call, then pass in "what we need" in a cloneable
 // form, this way we could have seperate Idm vs Qs threads, and dedicated
 // threads for write vs read
-fn setup_qs_idms(
+async fn setup_qs_idms(
     be: Backend,
     schema: Schema,
     config: &Configuration,
@@ -112,7 +112,9 @@ fn setup_qs_idms(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server.initialise_helper(duration_from_epoch_now())?;
+    query_server
+        .initialise_helper(duration_from_epoch_now())
+        .await?;
 
     // We generate a SINGLE idms only!
 
@@ -121,7 +123,7 @@ fn setup_qs_idms(
     Ok((query_server, idms, idms_delayed))
 }
 
-fn setup_qs(
+async fn setup_qs(
     be: Backend,
     schema: Schema,
     config: &Configuration,
@@ -137,7 +139,9 @@ fn setup_qs(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server.initialise_helper(duration_from_epoch_now())?;
+    query_server
+        .initialise_helper(duration_from_epoch_now())
+        .await?;
 
     Ok(query_server)
 }
@@ -261,7 +265,7 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
     // Let the txn abort, even on success.
 }
 
-pub fn restore_server_core(config: &Configuration, dst_path: &str) {
+pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
     touch_file_or_quit(config.db_path.as_str());
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
@@ -292,7 +296,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -303,7 +307,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Start reindex phase ...");
 
-    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
+    let qs_write = qs.write(duration_from_epoch_now()).await;
     let r = qs_write.reindex().and_then(|_| qs_write.commit());
 
     match r {
@@ -317,7 +321,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
     info!("✅ Restore Success!");
 }
 
-pub fn reindex_server_core(config: &Configuration) {
+pub async fn reindex_server_core(config: &Configuration) {
     eprintln!("Start Index Phase 1 ...");
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new() {
@@ -349,7 +353,7 @@ pub fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -360,7 +364,7 @@ pub fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Start Index Phase 2 ...");
 
-    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
+    let qs_write = qs.write(duration_from_epoch_now()).await;
     let r = qs_write.reindex().and_then(|_| qs_write.commit());
 
     match r {
@@ -394,7 +398,7 @@ pub fn vacuum_server_core(config: &Configuration) {
     };
 }
 
-pub fn domain_rename_core(config: &Configuration) {
+pub async fn domain_rename_core(config: &Configuration) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -413,7 +417,7 @@ pub fn domain_rename_core(config: &Configuration) {
     };
 
     // Setup the qs, and perform any migrations and changes we may have.
-    let qs = match setup_qs(be, schema, config) {
+    let qs = match setup_qs(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server -> {:?}", e);
@@ -443,7 +447,7 @@ pub fn domain_rename_core(config: &Configuration) {
         }
     }
 
-    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
+    let qs_write = qs.write(duration_from_epoch_now()).await;
     let r = qs_write
         .domain_rename(new_domain_name)
         .and_then(|_| qs_write.commit());
@@ -492,7 +496,7 @@ pub fn verify_server_core(config: &Configuration) {
     // Now add IDM server verifications?
 }
 
-pub fn recover_account_core(config: &Configuration, name: &str) {
+pub async fn recover_account_core(config: &Configuration, name: &str) {
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
@@ -510,7 +514,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed) = match setup_qs_idms(be, schema, config) {
+    let (_qs, idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -519,7 +523,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
     };
 
     // Run the password change.
-    let mut idms_prox_write = task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
+    let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
     let new_pw = match idms_prox_write.recover_account(name, None) {
         Ok(new_pw) => match idms_prox_write.commit() {
             Ok(_) => new_pw,
@@ -601,7 +605,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
         }
     };
     // Start the IDM server.
-    let (_qs, idms, mut idms_delayed) = match setup_qs_idms(be, schema, &config) {
+    let (_qs, idms, mut idms_delayed) = match setup_qs_idms(be, schema, &config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -622,8 +626,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
-            let mut idms_prox_write =
-                task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
             match idms_prox_write.recover_account("admin", Some(&itc.admin_password)) {
                 Ok(_) => {}
                 Err(e) => {

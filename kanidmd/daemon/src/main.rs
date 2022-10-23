@@ -374,7 +374,7 @@ async fn main() {
                             std::process::exit(1);
                         }
                     };
-                    restore_server_core(&config, p);
+                    restore_server_core(&config, p).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Verify(_vopt),
@@ -384,13 +384,13 @@ async fn main() {
                 }
                 KanidmdOpt::RecoverAccount(raopt) => {
                     eprintln!("Running account recovery ...");
-                    recover_account_core(&config, &raopt.name);
+                    recover_account_core(&config, &raopt.name).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Reindex(_copt),
                 } => {
                     eprintln!("Running in reindex mode ...");
-                    reindex_server_core(&config);
+                    reindex_server_core(&config).await;
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndexes(_),
@@ -426,7 +426,7 @@ async fn main() {
                     commands: DomainSettingsCmds::DomainChange(_dopt),
                 } => {
                     eprintln!("Running in domain name change mode ... this may take a long time ...");
-                    domain_rename_core(&config);
+                    domain_rename_core(&config).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Vacuum(_copt),

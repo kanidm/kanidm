@@ -564,7 +564,8 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                 let ldaps = LdapServer::new(idms).expect("failed to start ldap");
 
-                let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+                let mut idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 // make the admin a valid posix account
                 let me_posix = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -755,7 +756,7 @@ mod tests {
                         ("ssh_publickey", Value::new_sshkey_str("test", ssh_ed25519))
                     );
 
-                    let server_txn = idms.proxy_write(duration_from_epoch_now());
+                    let server_txn = task::block_on(idms.proxy_write(duration_from_epoch_now()));
                     let ce = CreateEvent::new_internal(vec![e1]);
                     assert!(server_txn
                         .qs_write
@@ -925,7 +926,7 @@ mod tests {
 
                     let ct = duration_from_epoch_now();
 
-                    let server_txn = idms.proxy_write(ct);
+                    let server_txn = task::block_on(idms.proxy_write(ct));
                     let ce = CreateEvent::new_internal(vec![e1, e2]);
                     assert!(server_txn.qs_write.create(&ce).is_ok());
 
