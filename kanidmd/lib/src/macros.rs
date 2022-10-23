@@ -99,7 +99,7 @@ macro_rules! run_idm_test_inner {
         $test_fn(&test_server, &test_idm_server, &mut idms_delayed);
         // Any needed teardown?
         // Make sure there are no errors.
-        assert!(test_server.verify().len() == 0);
+        assert!(async_std::task::block_on(test_server.verify()).len() == 0);
         idms_delayed.check_is_empty_or_panic();
     }};
 }
@@ -151,7 +151,7 @@ macro_rules! run_create_test {
         };
 
         {
-            let qs_write = qs.write_blocking(duration_from_epoch_now());
+            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.create(&ce);
             trace!("test result: {:?}", r);
             assert!(r == $expect);
@@ -167,7 +167,7 @@ macro_rules! run_create_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = qs.verify();
+        let ver = async_std::task::block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
@@ -193,7 +193,7 @@ macro_rules! run_modify_test {
         let qs = setup_test!($preload_entries);
 
         {
-            let qs_write = qs.write_blocking(duration_from_epoch_now());
+            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             $pre_hook(&qs_write);
             qs_write.commit().expect("commit failure!");
         }
@@ -206,7 +206,7 @@ macro_rules! run_modify_test {
         };
 
         {
-            let qs_write = qs.write_blocking(duration_from_epoch_now());
+            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.modify(&me);
             $check(&qs_write);
             trace!("test result: {:?}", r);
@@ -222,7 +222,7 @@ macro_rules! run_modify_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = qs.verify();
+        let ver = async_std::task::block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
@@ -254,7 +254,7 @@ macro_rules! run_delete_test {
         };
 
         {
-            let qs_write = qs.write_blocking(duration_from_epoch_now());
+            let qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.delete(&de);
             trace!("test result: {:?}", r);
             $check(&qs_write);
@@ -270,7 +270,7 @@ macro_rules! run_delete_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = qs.verify();
+        let ver = async_std::task::block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};

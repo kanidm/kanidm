@@ -34,7 +34,6 @@ mod ldaps;
 
 use std::sync::Arc;
 
-use async_std::task;
 use compact_jwt::JwsSigner;
 use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
@@ -428,7 +427,7 @@ pub async fn domain_rename_core(config: &Configuration) {
     let new_domain_name = config.domain.as_str();
 
     // make sure we're actually changing the domain name...
-    match task::block_on(qs.read_async()).get_db_domain_name() {
+    match qs.read().await.get_db_domain_name() {
         Ok(old_domain_name) => {
             admin_info!(?old_domain_name, ?new_domain_name);
             if &old_domain_name == &new_domain_name {
@@ -461,7 +460,7 @@ pub async fn domain_rename_core(config: &Configuration) {
     };
 }
 
-pub fn verify_server_core(config: &Configuration) {
+pub async fn verify_server_core(config: &Configuration) {
     // setup the qs - without initialise!
     let schema_mem = match Schema::new() {
         Ok(sc) => sc,
@@ -481,7 +480,7 @@ pub fn verify_server_core(config: &Configuration) {
     let server = QueryServer::new(be, schema_mem, config.domain.clone());
 
     // Run verifications.
-    let r = server.verify();
+    let r = server.verify().await;
 
     if r.is_empty() {
         eprintln!("Verification passed!");

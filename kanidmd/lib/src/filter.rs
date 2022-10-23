@@ -1890,7 +1890,7 @@ mod tests {
 
     #[qs_test]
     async fn test_filter_depth_limits(server: &QueryServer) {
-        let r_txn = server.read();
+        let r_txn = server.read().await;
 
         let mut inv_proto = ProtoFilter::Pres("class".to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
@@ -1924,7 +1924,7 @@ mod tests {
     #[qs_test]
     async fn test_filter_max_element_limits(server: &QueryServer) {
         const LIMIT: usize = 4;
-        let r_txn = server.read();
+        let r_txn = server.read().await;
 
         let inv_proto = ProtoFilter::And(
             (0..(LIMIT * 2))

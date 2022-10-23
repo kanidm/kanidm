@@ -7,7 +7,6 @@ use std::cell::Cell;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_std::task;
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
@@ -977,18 +976,13 @@ impl QueryServer {
         }
     }
 
-    #[cfg(test)]
-    pub fn read(&self) -> QueryServerReadTransaction {
-        task::block_on(self.read_async())
-    }
-
     pub fn try_quiesce(&self) {
         self.be.try_quiesce();
         self.accesscontrols.try_quiesce();
         self.resolve_filter_cache.try_quiesce();
     }
 
-    pub async fn read_async(&self) -> QueryServerReadTransaction<'_> {
+    pub async fn read(&self) -> QueryServerReadTransaction<'_> {
         // We need to ensure a db conn will be available
         #[allow(clippy::expect_used)]
         let db_ticket = self
@@ -1005,12 +999,6 @@ impl QueryServer {
             _db_ticket: db_ticket,
             resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
         }
-    }
-
-    #[cfg(test)]
-    pub fn write_blocking(&self, ts: Duration) -> QueryServerWriteTransaction {
-        // Feed the current schema index metadata to the be write transaction.
-        task::block_on(self.write(ts))
     }
 
     pub async fn write(&self, ts: Duration) -> QueryServerWriteTransaction<'_> {
@@ -1176,8 +1164,8 @@ impl QueryServer {
         Ok(())
     }
 
-    pub fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        let r_txn = task::block_on(self.read_async());
+    pub async fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        let r_txn = self.read().await;
         r_txn.verify()
     }
 }

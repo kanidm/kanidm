@@ -162,7 +162,7 @@ impl IdmServer {
 
         // Get the domain name, as the relying party id.
         let (rp_id, rp_name, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
-            let qs_read = task::block_on(qs.read_async());
+            let qs_read = task::block_on(qs.read());
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
@@ -257,11 +257,11 @@ impl IdmServer {
     }
 
     pub async fn auth_async(&self) -> IdmServerAuthTransaction<'_> {
+        let qs_read = self.qs.read().await;
+
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
-
-        let qs_read = self.qs.read_async().await;
 
         IdmServerAuthTransaction {
             session_ticket: &self.session_ticket,
@@ -277,26 +277,15 @@ impl IdmServer {
         }
     }
 
-    /// Perform a blocking read transaction on the database.
-    #[cfg(test)]
-    pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
-        task::block_on(self.proxy_read_async())
-    }
-
     /// Read from the database, in a transaction.
     #[instrument(level = "debug", skip_all)]
-    pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
+    pub async fn proxy_read(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
-            qs_read: self.qs.read_async().await,
+            qs_read: self.qs.read().await,
             uat_jwt_validator: self.uat_jwt_validator.read(),
             oauth2rs: self.oauth2rs.read(),
             async_tx: self.async_tx.clone(),
         }
-    }
-
-    #[cfg(test)]
-    pub fn proxy_write_blocking(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
-        task::block_on(self.proxy_write(ts))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -328,7 +317,7 @@ impl IdmServer {
 
     pub async fn cred_update_transaction_async(&self) -> IdmServerCredUpdateTransaction<'_> {
         IdmServerCredUpdateTransaction {
-            _qs_read: self.qs.read_async().await,
+            _qs_read: self.qs.read().await,
             // sid: Sid,
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
@@ -2699,7 +2688,7 @@ mod tests {
                     .expect("Failed to reset radius credential 1");
                 idms_prox_write.commit().expect("failed to commit");
 
-                let mut idms_prox_read = idms.proxy_read();
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
                 let tok_r = idms_prox_read
                     .get_radiusauthtoken(&rate, duration_from_epoch_now())
@@ -2805,7 +2794,7 @@ mod tests {
 
                 idms_prox_write.commit().expect("failed to commit");
 
-                let mut idms_prox_read = idms.proxy_read();
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 let ugte = UnixGroupTokenEvent::new_internal(
                     Uuid::parse_str("01609135-a1c4-43d5-966b-a28227644445")
@@ -3177,7 +3166,7 @@ mod tests {
 
                 idms_auth.commit().expect("Must not fail");
                 // Also check the generated unix tokens are invalid.
-                let mut idms_prox_read = idms.proxy_read();
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
 
                 let tok_r = idms_prox_read
@@ -3218,7 +3207,7 @@ mod tests {
                     .expect("Failed to reset radius credential 1");
                 idms_prox_write.commit().expect("failed to commit");
 
-                let mut idms_prox_read = idms.proxy_read();
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
                 let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_low);
 
@@ -3568,7 +3557,7 @@ mod tests {
                 assert!(Ok(true) == r);
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -3620,7 +3609,7 @@ mod tests {
                     .expect("Embedded jwk not found");
                 let uat_inner = uat_inner.into_inner();
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -3642,7 +3631,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // Now check again with the session destroyed.
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Now, within gracewindow, it's still valid.
                 idms_prox_read
@@ -3779,7 +3768,7 @@ mod tests {
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -3814,7 +3803,7 @@ mod tests {
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
                 assert!(idms_prox_read
                     .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
                     .is_err());

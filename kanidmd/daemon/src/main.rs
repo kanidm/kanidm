@@ -380,7 +380,7 @@ async fn main() {
                     commands: DbCommands::Verify(_vopt),
                 } => {
                     eprintln!("Running in db verification mode ...");
-                    verify_server_core(&config);
+                    verify_server_core(&config).await;
                 }
                 KanidmdOpt::RecoverAccount(raopt) => {
                     eprintln!("Running account recovery ...");

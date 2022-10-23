@@ -12,7 +12,6 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-async-std = { workspace = true, features = ["tokio1"] }
 async-trait.workspace = true
 chrono.workspace = true
 compact_jwt.workspace = true
