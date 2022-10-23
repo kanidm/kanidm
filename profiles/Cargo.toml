@@ -2,6 +2,8 @@
 name = "profiles"
 description = "Kanidm Build System Profiles"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
+# We do not have tests in this pkg
+autotests = false
 
 version.workspace = true
 authors.workspace = true

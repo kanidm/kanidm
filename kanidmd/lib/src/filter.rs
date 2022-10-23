@@ -1786,16 +1786,15 @@ mod tests {
         assert!(f_t2a.get_attr_set() == f_expect);
     }
 
-    #[test]
-    fn test_filter_resolve_value() {
-        run_test!(|server: &QueryServer| {
-            let time_p1 = duration_from_epoch_now();
-            let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
-            let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+    #[qs_test]
+    async fn test_filter_resolve_value(server: &QueryServer) {
+        let time_p1 = duration_from_epoch_now();
+        let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+        let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
-            let server_txn = server.write(time_p1);
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
+        let mut server_txn = server.write(time_p1).await;
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
                 "attrs": {
                     "class": ["object", "person", "account"],
                     "name": ["testperson1"],
@@ -1804,9 +1803,9 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            );
-            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
+        );
+        let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson2"],
@@ -1815,152 +1814,147 @@ mod tests {
                     "displayname": ["testperson2"]
                 }
             }"#,
-            );
+        );
 
-            // We need to add these and then push through the state machine.
-            let e_ts = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("person")),
-                ("name", Value::new_iname("testperson3")),
-                (
-                    "uuid",
-                    Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
-                ),
-                ("description", Value::new_utf8s("testperson3")),
-                ("displayname", Value::new_utf8s("testperson3"))
-            );
+        // We need to add these and then push through the state machine.
+        let e_ts = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson3")),
+            (
+                "uuid",
+                Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
+            ),
+            ("description", Value::new_utf8s("testperson3")),
+            ("displayname", Value::new_utf8s("testperson3"))
+        );
 
-            let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
-            let cr = server_txn.create(&ce);
-            assert!(cr.is_ok());
+        let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
 
-            let de_sin = unsafe {
-                DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                    "name",
-                    PartialValue::new_iname("testperson3")
-                )])))
-            };
-            assert!(server_txn.delete(&de_sin).is_ok());
+        let de_sin = unsafe {
+            DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+                "name",
+                PartialValue::new_iname("testperson3")
+            )])))
+        };
+        assert!(server_txn.delete(&de_sin).is_ok());
 
-            // Commit
-            assert!(server_txn.commit().is_ok());
+        // Commit
+        assert!(server_txn.commit().is_ok());
 
-            // Now, establish enough time for the recycled items to be purged.
-            let server_txn = server.write(time_p2);
-            assert!(server_txn.purge_recycled().is_ok());
-            assert!(server_txn.commit().is_ok());
+        // Now, establish enough time for the recycled items to be purged.
+        let server_txn = server.write(time_p2).await;
+        assert!(server_txn.purge_recycled().is_ok());
+        assert!(server_txn.commit().is_ok());
 
-            let server_txn = server.write(time_p3);
-            assert!(server_txn.purge_tombstones().is_ok());
+        let server_txn = server.write(time_p3).await;
+        assert!(server_txn.purge_tombstones().is_ok());
 
-            // ===== ✅ now ready to test!
+        // ===== ✅ now ready to test!
 
-            // Resolving most times should yield expected results
-            let t1 = vs_utf8!["teststring".to_string()] as _;
-            let r1 = server_txn.resolve_valueset(&t1);
-            assert!(r1 == Ok(vec!["teststring".to_string()]));
+        // Resolving most times should yield expected results
+        let t1 = vs_utf8!["teststring".to_string()] as _;
+        let r1 = server_txn.resolve_valueset(&t1);
+        assert!(r1 == Ok(vec!["teststring".to_string()]));
 
-            // Resolve UUID with matching spn
-            let t_uuid =
-                vs_refer![Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()] as _;
-            let r_uuid = server_txn.resolve_valueset(&t_uuid);
-            debug!("{:?}", r_uuid);
-            assert!(r_uuid == Ok(vec!["testperson1@example.com".to_string()]));
+        // Resolve UUID with matching spn
+        let t_uuid =
+            vs_refer![Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()] as _;
+        let r_uuid = server_txn.resolve_valueset(&t_uuid);
+        debug!("{:?}", r_uuid);
+        assert!(r_uuid == Ok(vec!["testperson1@example.com".to_string()]));
 
-            // Resolve UUID with matching name
-            let t_uuid =
-                vs_refer![Uuid::parse_str("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap()] as _;
-            let r_uuid = server_txn.resolve_valueset(&t_uuid);
-            debug!("{:?}", r_uuid);
-            assert!(r_uuid == Ok(vec!["testperson2".to_string()]));
+        // Resolve UUID with matching name
+        let t_uuid =
+            vs_refer![Uuid::parse_str("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap()] as _;
+        let r_uuid = server_txn.resolve_valueset(&t_uuid);
+        debug!("{:?}", r_uuid);
+        assert!(r_uuid == Ok(vec!["testperson2".to_string()]));
 
-            // Resolve UUID non-exist
-            let t_uuid_non =
-                vs_refer![Uuid::parse_str("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap()] as _;
-            let r_uuid_non = server_txn.resolve_valueset(&t_uuid_non);
-            debug!("{:?}", r_uuid_non);
-            assert!(r_uuid_non == Ok(vec!["b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()]));
+        // Resolve UUID non-exist
+        let t_uuid_non =
+            vs_refer![Uuid::parse_str("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap()] as _;
+        let r_uuid_non = server_txn.resolve_valueset(&t_uuid_non);
+        debug!("{:?}", r_uuid_non);
+        assert!(r_uuid_non == Ok(vec!["b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()]));
 
-            // Resolve UUID to tombstone/recycled (same an non-exst)
-            let t_uuid_ts =
-                vs_refer![Uuid::parse_str("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap()] as _;
-            let r_uuid_ts = server_txn.resolve_valueset(&t_uuid_ts);
-            debug!("{:?}", r_uuid_ts);
-            assert!(r_uuid_ts == Ok(vec!["9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()]));
-        })
+        // Resolve UUID to tombstone/recycled (same an non-exst)
+        let t_uuid_ts =
+            vs_refer![Uuid::parse_str("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap()] as _;
+        let r_uuid_ts = server_txn.resolve_valueset(&t_uuid_ts);
+        debug!("{:?}", r_uuid_ts);
+        assert!(r_uuid_ts == Ok(vec!["9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()]));
     }
 
-    #[test]
-    fn test_filter_depth_limits() {
-        run_test!(|server: &QueryServer| {
-            let r_txn = server.read();
+    #[qs_test]
+    async fn test_filter_depth_limits(server: &QueryServer) {
+        let r_txn = server.read().await;
 
-            let mut inv_proto = ProtoFilter::Pres("class".to_string());
-            for _i in 0..(FILTER_DEPTH_MAX + 1) {
-                inv_proto = ProtoFilter::And(vec![inv_proto]);
-            }
+        let mut inv_proto = ProtoFilter::Pres("class".to_string());
+        for _i in 0..(FILTER_DEPTH_MAX + 1) {
+            inv_proto = ProtoFilter::And(vec![inv_proto]);
+        }
 
-            let mut inv_ldap = LdapFilter::Present("class".to_string());
-            for _i in 0..(FILTER_DEPTH_MAX + 1) {
-                inv_ldap = LdapFilter::And(vec![inv_ldap]);
-            }
+        let mut inv_ldap = LdapFilter::Present("class".to_string());
+        for _i in 0..(FILTER_DEPTH_MAX + 1) {
+            inv_ldap = LdapFilter::And(vec![inv_ldap]);
+        }
 
-            let ev = Identity::from_internal();
+        let ev = Identity::from_internal();
 
-            // Test proto + read
-            let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
-            assert!(res == Err(OperationError::ResourceLimit));
+        // Test proto + read
+        let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
+        assert!(res == Err(OperationError::ResourceLimit));
 
-            // ldap
-            let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
-            assert!(res == Err(OperationError::ResourceLimit));
+        // ldap
+        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
+        assert!(res == Err(OperationError::ResourceLimit));
 
-            // Can only have one db conn at a time.
-            std::mem::drop(r_txn);
+        // Can only have one db conn at a time.
+        std::mem::drop(r_txn);
 
-            // proto + write
-            let wr_txn = server.write(duration_from_epoch_now());
-            let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
-            assert!(res == Err(OperationError::ResourceLimit));
-        })
+        // proto + write
+        let wr_txn = server.write(duration_from_epoch_now()).await;
+        let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
+        assert!(res == Err(OperationError::ResourceLimit));
     }
 
-    #[test]
-    fn test_filter_max_element_limits() {
-        run_test!(|server: &QueryServer| {
-            const LIMIT: usize = 4;
-            let r_txn = server.read();
+    #[qs_test]
+    async fn test_filter_max_element_limits(server: &QueryServer) {
+        const LIMIT: usize = 4;
+        let r_txn = server.read().await;
 
-            let inv_proto = ProtoFilter::And(
-                (0..(LIMIT * 2))
-                    .map(|_| ProtoFilter::Pres("class".to_string()))
-                    .collect(),
-            );
+        let inv_proto = ProtoFilter::And(
+            (0..(LIMIT * 2))
+                .map(|_| ProtoFilter::Pres("class".to_string()))
+                .collect(),
+        );
 
-            let inv_ldap = LdapFilter::And(
-                (0..(LIMIT * 2))
-                    .map(|_| LdapFilter::Present("class".to_string()))
-                    .collect(),
-            );
+        let inv_ldap = LdapFilter::And(
+            (0..(LIMIT * 2))
+                .map(|_| LdapFilter::Present("class".to_string()))
+                .collect(),
+        );
 
-            let mut ev = Identity::from_internal();
-            ev.limits.filter_max_elements = LIMIT;
+        let mut ev = Identity::from_internal();
+        ev.limits.filter_max_elements = LIMIT;
 
-            // Test proto + read
-            let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
-            assert!(res == Err(OperationError::ResourceLimit));
+        // Test proto + read
+        let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
+        assert!(res == Err(OperationError::ResourceLimit));
 
-            // ldap
-            let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
-            assert!(res == Err(OperationError::ResourceLimit));
+        // ldap
+        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
+        assert!(res == Err(OperationError::ResourceLimit));
 
-            // Can only have one db conn at a time.
-            std::mem::drop(r_txn);
+        // Can only have one db conn at a time.
+        std::mem::drop(r_txn);
 
-            // proto + write
-            let wr_txn = server.write(duration_from_epoch_now());
-            let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
-            assert!(res == Err(OperationError::ResourceLimit));
-        })
+        // proto + write
+        let wr_txn = server.write(duration_from_epoch_now()).await;
+        let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
+        assert!(res == Err(OperationError::ResourceLimit));
     }
 }

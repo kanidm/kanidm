@@ -1416,6 +1416,8 @@ mod tests {
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
 
+    use async_std::task;
+
     const TEST_CURRENT_TIME: u64 = 6000;
     const UAT_EXPIRE: u64 = 5;
     const TOKEN_EXPIRE: u64 = 900;
@@ -1466,7 +1468,7 @@ mod tests {
         enable_pkce: bool,
         enable_legacy_crypto: bool,
     ) -> (String, UserAuthToken, Identity, Uuid) {
-        let mut idms_prox_write = idms.proxy_write(ct);
+        let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
         let uuid = Uuid::new_v4();
 
@@ -1543,7 +1545,7 @@ mod tests {
         ct: Duration,
         authtype: AuthType,
     ) -> (UserAuthToken, Identity) {
-        let mut idms_prox_write = idms.proxy_write(ct);
+        let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
         let account = idms_prox_write
             .target_to_account(&UUID_IDM_ADMIN)
             .expect("account must exist");
@@ -1567,7 +1569,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Get an ident/uat for now.
 
@@ -1636,7 +1638,7 @@ mod tests {
             let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct, AuthType::PasswordMfa);
 
             // Need a uat from a user not in the group. Probs anonymous.
-            let idms_prox_read = idms.proxy_read();
+            let idms_prox_read = task::block_on(idms.proxy_read());
 
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -1797,7 +1799,7 @@ mod tests {
             let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
                     .target_to_account(&UUID_IDM_ADMIN)
                     .expect("account must exist");
@@ -1811,7 +1813,7 @@ mod tests {
                 (uat2, ident2)
             };
 
-            let idms_prox_read = idms.proxy_read();
+            let idms_prox_read = task::block_on(idms.proxy_read());
 
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -1884,7 +1886,7 @@ mod tests {
                         + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1),
                 );
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -2045,7 +2047,7 @@ mod tests {
                 let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -2109,7 +2111,7 @@ mod tests {
                 drop(idms_prox_read);
                 // start a write,
 
-                let idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 // Expire the account, should cause introspect to return inactive.
                 let v_expire =
                     Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
@@ -2128,7 +2130,7 @@ mod tests {
 
                 // start a new read
                 // check again.
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
                 let intr_response = idms_prox_read
                     .check_oauth2_token_introspect(&client_authz.unwrap(), &intr_request, ct)
                     .expect("Failed to inspect token");
@@ -2147,7 +2149,7 @@ mod tests {
             let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
                     .target_to_account(&UUID_IDM_ADMIN)
                     .expect("account must exist");
@@ -2161,7 +2163,7 @@ mod tests {
                 (uat2, ident2)
             };
 
-            let idms_prox_read = idms.proxy_read();
+            let idms_prox_read = task::block_on(idms.proxy_read());
             let redirect_uri = Url::parse("https://demo.example.com/oauth2/result").unwrap();
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -2226,7 +2228,7 @@ mod tests {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
             let (_secret, _uat, _ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
-            let idms_prox_read = idms.proxy_read();
+            let idms_prox_read = task::block_on(idms.proxy_read());
 
             // check the discovery end point works as we expect
             assert!(
@@ -2367,7 +2369,7 @@ mod tests {
                 let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -2491,7 +2493,7 @@ mod tests {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
             let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
 
-            let idms_prox_read = idms.proxy_read();
+            let idms_prox_read = task::block_on(idms.proxy_read());
 
             // == Setup the authorisation request
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -2525,7 +2527,7 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, true);
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
                 // The public key url should offer an rs key
                 // discovery should offer RS256
                 let discovery = idms_prox_read
@@ -2623,7 +2625,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
                 let consent_request =
@@ -2653,12 +2655,12 @@ mod tests {
                 };
 
                 // Manually submit the consent.
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 assert!(idms_prox_write.process_oauth2consentgrant(&o2cg).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
 
                 // == Now try the authorise again, should be in the permitted state.
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // We need to reload our identity
                 let ident = idms_prox_read
@@ -2680,7 +2682,7 @@ mod tests {
                 drop(idms_prox_read);
 
                 // Great! Now change the scopes on the oauth2 instance, this revokes the permit.
-                let idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
                 let me_extend_scopes = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2704,7 +2706,7 @@ mod tests {
 
                 // And do the workflow once more to see if we need to consent again.
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // We need to reload our identity
                 let ident = idms_prox_read
@@ -2747,7 +2749,7 @@ mod tests {
                 // Success! We had to consent again due to the change :)
 
                 // Now change the supplemental scopes on the oauth2 instance, this revokes the permit.
-                let idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
                 let me_extend_scopes = unsafe {
                     ModifyEvent::new_internal_invalid(
@@ -2771,7 +2773,7 @@ mod tests {
 
                 // And do the workflow once more to see if we need to consent again.
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // We need to reload our identity
                 let ident = idms_prox_read
@@ -2827,7 +2829,7 @@ mod tests {
                 // Assert there are no consent maps yet.
                 assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
                 let consent_request =
@@ -2857,7 +2859,7 @@ mod tests {
                 };
 
                 // Manually submit the consent.
-                let mut idms_prox_write = idms.proxy_write(ct);
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 assert!(idms_prox_write.process_oauth2consentgrant(&o2cg).is_ok());
 
                 let ident = idms_prox_write
@@ -2917,7 +2919,7 @@ mod tests {
                 // Enable pkce is set to FALSE
                 let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
 
-                let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Get an ident/uat for now.
 

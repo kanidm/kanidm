@@ -7,20 +7,19 @@ use kanidm_proto::v1::{
 use kanidmd_lib::credential::totp::Totp;
 use tracing::debug;
 
-mod common;
 use std::str::FromStr;
 
 use compact_jwt::JwsUnverified;
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
+use kanidm_client::KanidmClient;
+use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
-#[tokio::test]
-async fn test_server_create() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_create(rsclient: KanidmClient) {
     let e: Entry = serde_json::from_str(
         r#"{
             "attrs": {
@@ -45,11 +44,9 @@ async fn test_server_create() {
     assert!(res.is_ok());
 }
 
-#[tokio::test]
-async fn test_server_modify() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_modify(rsclient: KanidmClient) {
     // Build a self mod.
-
     let f = Filter::SelfUuid;
     let m = ModifyList::new_list(vec![
         Modify::Purged("displayname".to_string()),
@@ -70,9 +67,8 @@ async fn test_server_modify() {
     assert!(res.is_ok());
 }
 
-#[tokio::test]
-async fn test_server_whoami_anonymous() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_whoami_anonymous(rsclient: KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
@@ -97,9 +93,8 @@ async fn test_server_whoami_anonymous() {
     assert!(res.is_ok());
 }
 
-#[tokio::test]
-async fn test_server_whoami_admin_simple_password() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_whoami_admin_simple_password(rsclient: KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
@@ -120,9 +115,8 @@ async fn test_server_whoami_admin_simple_password() {
     assert!(e.attrs.get("spn") == Some(&vec!["admin@localhost".to_string()]));
 }
 
-#[tokio::test]
-async fn test_server_search() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_search(rsclient: KanidmClient) {
     // First show we are un-authenticated.
     let pre_res = rsclient.whoami().await;
     // This means it was okay whoami, but no uat attached.
@@ -146,9 +140,8 @@ async fn test_server_search() {
 }
 
 // test the rest group endpoint.
-#[tokio::test]
-async fn test_server_rest_group_read() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_group_read(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -163,9 +156,8 @@ async fn test_server_rest_group_read() {
     println!("{:?}", g);
 }
 
-#[tokio::test]
-async fn test_server_rest_group_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -238,9 +230,8 @@ async fn test_server_rest_group_lifecycle() {
     assert!(members == Some(vec!["idm_admin@localhost".to_string()]));
 }
 
-#[tokio::test]
-async fn test_server_rest_account_read() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_account_read(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -255,9 +246,8 @@ async fn test_server_rest_account_read() {
     println!("{:?}", a);
 }
 
-#[tokio::test]
-async fn test_server_rest_schema_read() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_schema_read(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -284,9 +274,8 @@ async fn test_server_rest_schema_read() {
 }
 
 // Test resetting a radius cred, and then checking/viewing it.
-#[tokio::test]
-async fn test_server_radius_credential_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_radius_credential_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -356,9 +345,8 @@ async fn test_server_radius_credential_lifecycle() {
     assert!(n_sec.is_none());
 }
 
-#[tokio::test]
-async fn test_server_rest_person_account_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -408,9 +396,8 @@ async fn test_server_rest_person_account_lifecycle() {
         .unwrap();
 }
 
-#[tokio::test]
-async fn test_server_rest_sshkey_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -466,9 +453,8 @@ async fn test_server_rest_sshkey_lifecycle() {
     assert!(skn.unwrap() == Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst".to_string()));
 }
 
-#[tokio::test]
-async fn test_server_rest_domain_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -497,9 +483,8 @@ async fn test_server_rest_domain_lifecycle() {
     );
 }
 
-#[tokio::test]
-async fn test_server_rest_posix_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -594,9 +579,8 @@ async fn test_server_rest_posix_lifecycle() {
     assert!(r3.name == "posix_group");
 }
 
-#[tokio::test]
-async fn test_server_rest_posix_auth_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -667,9 +651,8 @@ async fn test_server_rest_posix_auth_lifecycle() {
     };
 }
 
-#[tokio::test]
-async fn test_server_rest_recycle_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -722,9 +705,8 @@ async fn test_server_rest_recycle_lifecycle() {
     assert!(acc.is_some());
 }
 
-#[tokio::test]
-async fn test_server_rest_account_import_password() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_account_import_password(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -784,9 +766,8 @@ async fn test_server_rest_account_import_password() {
     }
 }
 
-#[tokio::test]
-async fn test_server_rest_oauth2_basic_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -922,9 +903,8 @@ async fn test_server_rest_oauth2_basic_lifecycle() {
     assert!(final_configs.is_empty());
 }
 
-#[tokio::test]
-async fn test_server_credential_update_session_pw() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -981,9 +961,8 @@ async fn test_server_credential_update_session_pw() {
     assert!(res.is_ok());
 }
 
-#[tokio::test]
-async fn test_server_credential_update_session_totp_pw() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1099,9 +1078,8 @@ async fn test_server_credential_update_session_totp_pw() {
     assert!(res.is_ok());
 }
 
-#[tokio::test]
-async fn test_server_credential_update_session_passkey() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1188,9 +1166,8 @@ async fn test_server_credential_update_session_passkey() {
     assert!(res.is_ok());
 }
 
-#[tokio::test]
-async fn test_server_api_token_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1247,9 +1224,8 @@ async fn test_server_api_token_lifecycle() {
     // No need to test expiry, that's validated in the server internal tests.
 }
 
-#[tokio::test]
-async fn test_server_user_auth_token_lifecycle() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;

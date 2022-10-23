@@ -1672,9 +1672,8 @@ mod tests {
 
     #[test]
     fn test_schema_attribute_from_entry() {
-        run_test!(|_qs: &QueryServer| {
-            sch_from_entry_err!(
-                r#"{
+        sch_from_entry_err!(
+            r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1682,11 +1681,11 @@ mod tests {
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
                 }"#,
-                SchemaAttribute
-            );
+            SchemaAttribute
+        );
 
-            sch_from_entry_err!(
-                r#"{
+        sch_from_entry_err!(
+            r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1697,11 +1696,11 @@ mod tests {
                         "syntax": ["UTF8STRING"]
                     }
                 }"#,
-                SchemaAttribute
-            );
+            SchemaAttribute
+        );
 
-            sch_from_entry_err!(
-                r#"{
+        sch_from_entry_err!(
+            r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1713,11 +1712,11 @@ mod tests {
                         "syntax": ["UTF8STRING"]
                     }
                 }"#,
-                SchemaAttribute
-            );
+            SchemaAttribute
+        );
 
-            sch_from_entry_err!(
-                r#"{
+        sch_from_entry_err!(
+            r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1729,11 +1728,11 @@ mod tests {
                         "syntax": ["UTF8STRING"]
                     }
                 }"#,
-                SchemaAttribute
-            );
+            SchemaAttribute
+        );
 
-            sch_from_entry_err!(
-                r#"{
+        sch_from_entry_err!(
+            r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1745,12 +1744,12 @@ mod tests {
                         "syntax": ["TNEOUNTUH"]
                     }
                 }"#,
-                SchemaAttribute
-            );
+            SchemaAttribute
+        );
 
-            // Index is allowed to be empty
-            sch_from_entry_ok!(
-                r#"{
+        // Index is allowed to be empty
+        sch_from_entry_ok!(
+            r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1761,12 +1760,12 @@ mod tests {
                         "syntax": ["UTF8STRING"]
                     }
                 }"#,
-                SchemaAttribute
-            );
+            SchemaAttribute
+        );
 
-            // Index present
-            sch_from_entry_ok!(
-                r#"{
+        // Index present
+        sch_from_entry_ok!(
+            r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1778,27 +1777,25 @@ mod tests {
                         "syntax": ["UTF8STRING"]
                     }
                 }"#,
-                SchemaAttribute
-            );
-        });
+            SchemaAttribute
+        );
     }
 
     #[test]
     fn test_schema_class_from_entry() {
-        run_test!(|_qs: &QueryServer| {
-            sch_from_entry_err!(
-                r#"{
+        sch_from_entry_err!(
+            r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
                 }"#,
-                SchemaClass
-            );
+            SchemaClass
+        );
 
-            sch_from_entry_err!(
-                r#"{
+        sch_from_entry_err!(
+            r#"{
                     "attrs": {
                         "class": ["object"],
                         "classname": ["schema_class_test"],
@@ -1806,12 +1803,12 @@ mod tests {
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
                 }"#,
-                SchemaClass
-            );
+            SchemaClass
+        );
 
-            // Classes can be valid with no attributes provided.
-            sch_from_entry_ok!(
-                r#"{
+        // Classes can be valid with no attributes provided.
+        sch_from_entry_ok!(
+            r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1819,12 +1816,12 @@ mod tests {
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
                 }"#,
-                SchemaClass
-            );
+            SchemaClass
+        );
 
-            // Classes with various may/must
-            sch_from_entry_ok!(
-                r#"{
+        // Classes with various may/must
+        sch_from_entry_ok!(
+            r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1833,11 +1830,11 @@ mod tests {
                         "systemmust": ["d"]
                     }
                 }"#,
-                SchemaClass
-            );
+            SchemaClass
+        );
 
-            sch_from_entry_ok!(
-                r#"{
+        sch_from_entry_ok!(
+            r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1846,11 +1843,11 @@ mod tests {
                         "systemmay": ["c"]
                     }
                 }"#,
-                SchemaClass
-            );
+            SchemaClass
+        );
 
-            sch_from_entry_ok!(
-                r#"{
+        sch_from_entry_ok!(
+            r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1860,11 +1857,11 @@ mod tests {
                         "must": ["b"]
                     }
                 }"#,
-                SchemaClass
-            );
+            SchemaClass
+        );
 
-            sch_from_entry_ok!(
-                r#"{
+        sch_from_entry_ok!(
+            r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1876,9 +1873,8 @@ mod tests {
                         "systemmust": ["d"]
                     }
                 }"#,
-                SchemaClass
-            );
-        });
+            SchemaClass
+        );
     }
 
     #[test]

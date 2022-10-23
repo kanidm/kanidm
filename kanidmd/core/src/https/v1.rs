@@ -1,7 +1,6 @@
 use std::str::FromStr;
 use std::time::Duration;
 
-use async_std::task;
 use compact_jwt::Jws;
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
@@ -1068,12 +1067,8 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
             let AuthResult {
                 state,
                 sessionid,
-                delay,
+                delay: _,
             } = ar;
-            // If there is a delay, honour it now.
-            if let Some(delay_timer) = delay {
-                task::sleep(delay_timer).await;
-            }
             // Do some response/state management.
             match state {
                 AuthState::Choose(allowed) => {

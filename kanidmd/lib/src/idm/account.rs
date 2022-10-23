@@ -502,7 +502,7 @@ impl DestroySessionTokenEvent {
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn account_destroy_session_token(
-        &self,
+        &mut self,
         dte: &DestroySessionTokenEvent,
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
@@ -534,7 +534,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     pub fn service_account_into_person(
-        &self,
+        &mut self,
         ident: &Identity,
         target_uuid: Uuid,
     ) -> Result<(), OperationError> {

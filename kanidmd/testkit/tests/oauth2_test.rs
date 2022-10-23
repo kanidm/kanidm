@@ -1,5 +1,4 @@
 #![deny(warnings)]
-mod common;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -12,7 +11,8 @@ use kanidm_proto::oauth2::{
 use oauth2_ext::PkceCodeChallenge;
 use url::Url;
 
-use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
+use kanidm_client::KanidmClient;
+use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 
 macro_rules! assert_no_cache {
     ($response:expr) => {{
@@ -38,9 +38,8 @@ macro_rules! assert_no_cache {
     }};
 }
 
-#[tokio::test]
-async fn test_oauth2_openid_basic_flow() {
-    let rsclient = setup_async_test().await;
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;

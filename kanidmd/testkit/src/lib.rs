@@ -1,3 +1,15 @@
+#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
+
 use std::net::TcpStream;
 use std::sync::atomic::{AtomicU16, Ordering};
 
@@ -9,6 +21,8 @@ use tokio::task;
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 pub static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
+
+pub use testkit_macros::test;
 
 pub fn is_free_port(port: u16) -> bool {
     // TODO: Refactor to use `Result::is_err` in a future PR
@@ -50,7 +64,7 @@ pub async fn setup_async_test() -> KanidmClient {
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
-    config.role = ServerRole::WriteReplicaNoUI;
+    config.role = ServerRole::WriteReplica;
     config.domain = "localhost".to_string();
     config.origin = addr.clone();
     // config.log_level = Some(LogLevel::Verbose as u32);
@@ -64,10 +78,12 @@ pub async fn setup_async_test() -> KanidmClient {
     task::yield_now().await;
 
     let rsclient = KanidmClientBuilder::new()
-        .address(addr)
+        .address(addr.clone())
         .no_proxy()
         .build()
         .expect("Failed to build client");
+
+    tracing::info!("Testkit server setup complete - {}", addr);
 
     rsclient
 }

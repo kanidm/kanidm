@@ -52,6 +52,8 @@ mod repl;
 pub mod schema;
 pub mod server;
 pub mod status;
+#[cfg(test)]
+mod testkit;
 
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
@@ -89,4 +91,7 @@ pub mod prelude {
         ValueSetSecret, ValueSetSpn, ValueSetSyntax, ValueSetT, ValueSetUint32, ValueSetUtf8,
         ValueSetUuid,
     };
+
+    #[cfg(test)]
+    pub use kanidmd_lib_macros::*;
 }

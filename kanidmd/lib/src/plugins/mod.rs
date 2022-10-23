@@ -15,13 +15,11 @@ mod attrunique;
 mod base;
 mod domain;
 pub(crate) mod dyngroup;
-mod failure;
 mod gidnumber;
 mod jwskeygen;
 mod memberof;
 mod password_import;
 mod protected;
-mod recycle;
 mod refint;
 mod spn;
 
@@ -29,7 +27,7 @@ trait Plugin {
     fn id() -> &'static str;
 
     fn pre_create_transform(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -41,7 +39,7 @@ trait Plugin {
     }
 
     fn pre_create(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         _cand: &[Entry<EntrySealed, EntryNew>],
         _ce: &CreateEvent,
@@ -51,7 +49,7 @@ trait Plugin {
     }
 
     fn post_create(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we commited that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
@@ -61,7 +59,7 @@ trait Plugin {
     }
 
     fn pre_modify(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -70,7 +68,7 @@ trait Plugin {
     }
 
     fn post_modify(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
         _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -81,7 +79,7 @@ trait Plugin {
     }
 
     fn pre_delete(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -90,7 +88,7 @@ trait Plugin {
     }
 
     fn post_delete(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we delete that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
@@ -99,7 +97,7 @@ trait Plugin {
         Err(OperationError::InvalidState)
     }
 
-    fn verify(_qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         admin_error!("plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
     }
@@ -121,7 +119,7 @@ macro_rules! run_verify_plugin {
 impl Plugins {
     #[instrument(level = "debug", name = "plugins::run_pre_create_transform", skip_all)]
     pub fn run_pre_create_transform(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -137,7 +135,7 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_pre_create", skip_all)]
     pub fn run_pre_create(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -146,7 +144,7 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_post_create", skip_all)]
     pub fn run_post_create(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -156,7 +154,7 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_pre_modify", skip_all)]
     pub fn run_pre_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -173,7 +171,7 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_post_modify", skip_all)]
     pub fn run_post_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
@@ -185,7 +183,7 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_pre_delete", skip_all)]
     pub fn run_pre_delete(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -194,7 +192,7 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_post_delete", skip_all)]
     pub fn run_post_delete(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -204,7 +202,7 @@ impl Plugins {
 
     #[instrument(level = "debug", name = "plugins::run_verify", skip_all)]
     pub fn run_verify(
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
         run_verify_plugin!(qs, results, base::Base);

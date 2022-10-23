@@ -1500,7 +1500,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = idms.proxy_write(ct);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             let testaccount_uuid = Uuid::new_v4();
 
@@ -1607,7 +1607,7 @@ mod tests {
         idms: &IdmServer,
         ct: Duration,
     ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
-        let mut idms_prox_write = idms.proxy_write(ct);
+        let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
         let e2 = entry_init!(
             ("class", Value::new_class("object")),
@@ -1642,7 +1642,7 @@ mod tests {
         idms: &IdmServer,
         ct: Duration,
     ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
-        let mut idms_prox_write = idms.proxy_write(ct);
+        let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
         let testperson = idms_prox_write
             .qs_write
@@ -1660,7 +1660,7 @@ mod tests {
     }
 
     fn commit_session(idms: &IdmServer, ct: Duration, cust: CredentialUpdateSessionToken) {
-        let mut idms_prox_write = idms.proxy_write(ct);
+        let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
         idms_prox_write
             .commit_credential_update(&cust, ct)

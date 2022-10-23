@@ -33,7 +33,7 @@ impl Plugin for Base {
     )]
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -153,7 +153,7 @@ impl Plugin for Base {
 
     #[instrument(level = "debug", name = "base_pre_modify", skip(_qs, _cand, me))]
     fn pre_modify(
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -172,7 +172,7 @@ impl Plugin for Base {
     }
 
     #[instrument(level = "debug", name = "base_verify", skip(qs))]
-    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Search for class = *
         let entries = match qs.internal_search(filter!(f_pres("class"))) {
             Ok(v) => v,

@@ -1,0 +1,41 @@
+[package]
+name = "kanidmd_testkit"
+description = "Kanidm Server Test Framework"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+name = "kanidmd_testkit"
+path = "src/lib.rs"
+
+[dependencies]
+kanidm_client.workspace = true
+kanidm_proto.workspace = true
+kanidmd_core.workspace = true
+kanidmd_lib.workspace = true
+futures.workspace = true
+
+webauthn-authenticator-rs.workspace = true
+oauth2_ext = { workspace = true, default-features = false }
+
+url = { workspace = true, features = ["serde"] }
+reqwest = { workspace = true, features=["cookies", "json", "native-tls"] }
+sketching.workspace = true
+testkit-macros.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
+tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
+
+
+[build-dependencies]
+profiles.workspace = true
+
+[dev-dependencies]
+compact_jwt.workspace = true
+serde_json.workspace = true

@@ -96,7 +96,7 @@ fn do_memberof(
 
 #[allow(clippy::cognitive_complexity)]
 fn apply_memberof(
-    qs: &QueryServerWriteTransaction,
+    qs: &mut QueryServerWriteTransaction,
     // TODO: Experiment with HashSet/BTreeSet here instead of vec.
     // May require https://github.com/rust-lang/rust/issues/62924 to allow poping
     mut group_affect: Vec<Uuid>,
@@ -212,7 +212,7 @@ impl Plugin for MemberOf {
 
     #[instrument(level = "debug", name = "memberof_post_create", skip(qs, cand, ce))]
     fn post_create(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -245,7 +245,7 @@ impl Plugin for MemberOf {
         skip(qs, pre_cand, cand, me)
     )]
     fn post_modify(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
@@ -310,7 +310,7 @@ impl Plugin for MemberOf {
 
     #[instrument(level = "debug", name = "memberof_post_delete", skip(qs, cand, _de))]
     fn post_delete(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -333,7 +333,7 @@ impl Plugin for MemberOf {
     }
 
     #[instrument(level = "debug", name = "memberof_verify", skip(qs))]
-    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
         let filt_in = filter!(f_pres("class"));
