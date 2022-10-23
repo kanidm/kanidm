@@ -3201,208 +3201,202 @@ mod tests {
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
     use crate::prelude::*;
 
-    #[test]
-    fn test_qs_create_user() {
-        run_test!(|server: &QueryServer| {
+    #[qs_test]
+    async fn test_create_user(server: &QueryServer) {
+        let server_txn = server.write_async(duration_from_epoch_now()).await;
+        let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
+        let admin = server_txn
+            .internal_search_uuid(&UUID_ADMIN)
+            .expect("failed");
+
+        let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
+        let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
+
+        let mut e = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson")),
+            ("spn", Value::new_spn_str("testperson", "example.com")),
+            (
+                "uuid",
+                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e.clone()]);
+
+        let r1 = server_txn.search(&se1).expect("search failure");
+        assert!(r1.is_empty());
+
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        let r2 = server_txn.search(&se2).expect("search failure");
+        debug!("--> {:?}", r2);
+        assert!(r2.len() == 1);
+
+        // We apply some member-of in the server now, so we add these before we seal.
+        e.add_ava("class", Value::new_class("memberof"));
+        e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
+
+        let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
+
+        assert_eq!(r2, expected);
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_test]
+    async fn test_init_idempotent_schema_core(server: &QueryServer) {
+        {
+            // Setup and abort.
             let server_txn = server.write(duration_from_epoch_now());
-            let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
-            let admin = server_txn
-                .internal_search_uuid(&UUID_ADMIN)
-                .expect("failed");
-
-            let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
-            let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
-
-            let mut e = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("person")),
-                ("class", Value::new_class("account")),
-                ("name", Value::new_iname("testperson")),
-                ("spn", Value::new_spn_str("testperson", "example.com")),
-                (
-                    "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                ),
-                ("description", Value::new_utf8s("testperson")),
-                ("displayname", Value::new_utf8s("testperson"))
-            );
-
-            let ce = CreateEvent::new_internal(vec![e.clone()]);
-
-            let r1 = server_txn.search(&se1).expect("search failure");
-            assert!(r1.is_empty());
-
-            let cr = server_txn.create(&ce);
-            assert!(cr.is_ok());
-
-            let r2 = server_txn.search(&se2).expect("search failure");
-            debug!("--> {:?}", r2);
-            assert!(r2.len() == 1);
-
-            // We apply some member-of in the server now, so we add these before we seal.
-            e.add_ava("class", Value::new_class("memberof"));
-            e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
-            e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
-            e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
-            e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
-
-            let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
-
-            assert_eq!(r2, expected);
-
+            assert!(server_txn.initialise_schema_core().is_ok());
+        }
+        {
+            let server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn.initialise_schema_core().is_ok());
+            assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.commit().is_ok());
-        });
-    }
-
-    #[test]
-    fn test_qs_init_idempotent_schema_core() {
-        run_test!(|server: &QueryServer| {
-            {
-                // Setup and abort.
-                let server_txn = server.write(duration_from_epoch_now());
-                assert!(server_txn.initialise_schema_core().is_ok());
-            }
-            {
-                let server_txn = server.write(duration_from_epoch_now());
-                assert!(server_txn.initialise_schema_core().is_ok());
-                assert!(server_txn.initialise_schema_core().is_ok());
-                assert!(server_txn.commit().is_ok());
-            }
-            {
-                // Now do it again in a new txn, but abort
-                let server_txn = server.write(duration_from_epoch_now());
-                assert!(server_txn.initialise_schema_core().is_ok());
-            }
-            {
-                // Now do it again in a new txn.
-                let server_txn = server.write(duration_from_epoch_now());
-                assert!(server_txn.initialise_schema_core().is_ok());
-                assert!(server_txn.commit().is_ok());
-            }
-        });
-    }
-
-    #[test]
-    fn test_qs_modify() {
-        run_test!(|server: &QueryServer| {
-            // Create an object
+        }
+        {
+            // Now do it again in a new txn, but abort
             let server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn.initialise_schema_core().is_ok());
+        }
+        {
+            // Now do it again in a new txn.
+            let server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn.initialise_schema_core().is_ok());
+            assert!(server_txn.commit().is_ok());
+        }
+    }
 
-            let e1 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("person")),
-                ("name", Value::new_iname("testperson1")),
-                (
-                    "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-                ),
-                ("description", Value::new_utf8s("testperson1")),
-                ("displayname", Value::new_utf8s("testperson1"))
-            );
+    #[qs_test]
+    fn test_modify(server: &QueryServer) {
+        // Create an object
+        let server_txn = server.write(duration_from_epoch_now());
 
-            let e2 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("person")),
-                ("name", Value::new_iname("testperson2")),
-                (
-                    "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
-                ),
-                ("description", Value::new_utf8s("testperson2")),
-                ("displayname", Value::new_utf8s("testperson2"))
-            );
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            (
+                "uuid",
+                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+            ),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        );
 
-            let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
+        let e2 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson2")),
+            (
+                "uuid",
+                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
+            ),
+            ("description", Value::new_utf8s("testperson2")),
+            ("displayname", Value::new_utf8s("testperson2"))
+        );
 
-            let cr = server_txn.create(&ce);
-            assert!(cr.is_ok());
+        let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
 
-            // Empty Modlist (filter is valid)
-            let me_emp = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_pres("class")),
-                    ModifyList::new_list(vec![]),
-                )
-            };
-            assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
 
-            // Mod changes no objects
-            let me_nochg = unsafe {
-                ModifyEvent::new_impersonate_entry_ser(
-                    JSON_ADMIN_V1,
-                    filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
-                    ModifyList::new_list(vec![Modify::Present(
-                        AttrString::from("description"),
-                        Value::from("anusaosu"),
-                    )]),
-                )
-            };
-            assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
+        // Empty Modlist (filter is valid)
+        let me_emp = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_pres("class")),
+                ModifyList::new_list(vec![]),
+            )
+        };
+        assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
 
-            // Filter is invalid to schema - to check this due to changes in the way events are
-            // handled, we put this via the internal modify function to get the modlist
-            // checked for us. Normal server operation doesn't allow weird bypasses like
-            // this.
-            let r_inv_1 = server_txn.internal_modify(
-                &filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
-                &ModifyList::new_list(vec![Modify::Present(
+        // Mod changes no objects
+        let me_nochg = unsafe {
+            ModifyEvent::new_impersonate_entry_ser(
+                JSON_ADMIN_V1,
+                filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
+                ModifyList::new_list(vec![Modify::Present(
                     AttrString::from("description"),
                     Value::from("anusaosu"),
                 )]),
-            );
-            assert!(
-                r_inv_1
-                    == Err(OperationError::SchemaViolation(
-                        SchemaError::InvalidAttribute("tnanuanou".to_string())
-                    ))
-            );
+            )
+        };
+        assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
 
-            // Mod is invalid to schema
-            let me_inv_m = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_pres("class")),
-                    ModifyList::new_list(vec![Modify::Present(
-                        AttrString::from("htnaonu"),
-                        Value::from("anusaosu"),
-                    )]),
-                )
-            };
-            assert!(
-                server_txn.modify(&me_inv_m)
-                    == Err(OperationError::SchemaViolation(
-                        SchemaError::InvalidAttribute("htnaonu".to_string())
-                    ))
-            );
+        // Filter is invalid to schema - to check this due to changes in the way events are
+        // handled, we put this via the internal modify function to get the modlist
+        // checked for us. Normal server operation doesn't allow weird bypasses like
+        // this.
+        let r_inv_1 = server_txn.internal_modify(
+            &filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
+            &ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("description"),
+                Value::from("anusaosu"),
+            )]),
+        );
+        assert!(
+            r_inv_1
+                == Err(OperationError::SchemaViolation(
+                    SchemaError::InvalidAttribute("tnanuanou".to_string())
+                ))
+        );
 
-            // Mod single object
-            let me_sin = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
-                    ModifyList::new_list(vec![
-                        Modify::Purged(AttrString::from("description")),
-                        Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
-                    ]),
-                )
-            };
-            assert!(server_txn.modify(&me_sin).is_ok());
+        // Mod is invalid to schema
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_pres("class")),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("htnaonu"),
+                    Value::from("anusaosu"),
+                )]),
+            )
+        };
+        assert!(
+            server_txn.modify(&me_inv_m)
+                == Err(OperationError::SchemaViolation(
+                    SchemaError::InvalidAttribute("htnaonu".to_string())
+                ))
+        );
 
-            // Mod multiple object
-            let me_mult = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_or!([
-                        f_eq("name", PartialValue::new_iname("testperson1")),
-                        f_eq("name", PartialValue::new_iname("testperson2")),
-                    ])),
-                    ModifyList::new_list(vec![
-                        Modify::Purged(AttrString::from("description")),
-                        Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
-                    ]),
-                )
-            };
-            assert!(server_txn.modify(&me_mult).is_ok());
+        // Mod single object
+        let me_sin = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
+                ModifyList::new_list(vec![
+                    Modify::Purged(AttrString::from("description")),
+                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+                ]),
+            )
+        };
+        assert!(server_txn.modify(&me_sin).is_ok());
 
-            assert!(server_txn.commit().is_ok());
-        })
+        // Mod multiple object
+        let me_mult = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_or!([
+                    f_eq("name", PartialValue::new_iname("testperson1")),
+                    f_eq("name", PartialValue::new_iname("testperson2")),
+                ])),
+                ModifyList::new_list(vec![
+                    Modify::Purged(AttrString::from("description")),
+                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+                ]),
+            )
+        };
+        assert!(server_txn.modify(&me_mult).is_ok());
+
+        assert!(server_txn.commit().is_ok());
     }
 
     #[test]

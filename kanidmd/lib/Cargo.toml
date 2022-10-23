@@ -35,6 +35,7 @@ hashbrown.workspace = true
 hex.workspace = true
 idlset.workspace = true
 kanidm_proto.workspace = true
+kanidmd_lib_macros.workspace = true
 lazy_static.workspace = true
 ldap3_proto.workspace = true
 libc.workspace = true

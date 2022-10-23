@@ -2323,6 +2323,7 @@ dependencies = [
  "hex",
  "idlset",
  "kanidm_proto",
+ "kanidmd_lib_macros",
  "lazy_static",
  "ldap3_proto",
  "libc",
@@ -2359,6 +2360,15 @@ dependencies = [
  "webauthn-rs-core",
  "whoami",
  "zxcvbn",
+]
+
+[[package]]
+name = "kanidmd_lib_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

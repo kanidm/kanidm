@@ -14,6 +14,7 @@ members = [
     "kanidmd_web_ui",
     "kanidmd/daemon",
     "kanidmd/lib",
+    "kanidmd/lib-macros",
     "kanidmd/core",
     "kanidmd/testkit",
     "kanidmd/testkit-macros",
@@ -74,6 +75,7 @@ js-sys = "^0.3.58"
 kanidmd_core = { path = "./kanidmd/core" }
 kanidmd_idm = { path = "./kanidmd/idm" }
 kanidmd_lib = { path = "./kanidmd/lib" }
+kanidmd_lib_macros = { path = "./kanidmd/lib-macros" }
 kanidmd_testkit = { path = "./kanidmd/testkit" }
 kanidm_client = { path = "./kanidm_client" }
 kanidm_proto = { path = "./kanidm_proto" }
