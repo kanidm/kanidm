@@ -38,7 +38,7 @@ repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
 async-std = { version = "^1.12.0", features = ["tokio1"] }
-async-trait = "^0.1.57"
+async-trait = "^0.1.58"
 base32 = "^0.4.0"
 base64 = "^0.13.1"
 base64urlsafedata = "0.1.0"
