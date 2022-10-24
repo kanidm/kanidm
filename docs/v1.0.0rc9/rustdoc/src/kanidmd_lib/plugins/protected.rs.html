@@ -473,7 +473,7 @@
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;protected_pre_create&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">ce</span>))]</span>
     <span class="kw">fn</span> <span class="ident">pre_create</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="comment">// List of what we will commit that is valid?</span>
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span>],
         <span class="ident">ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
@@ -501,7 +501,7 @@
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;protected_pre_modify&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))]</span>
     <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="comment">// Should these be EntrySealed?</span>
         <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
@@ -572,7 +572,7 @@
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;protected_pre_delete&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">de</span>))]</span>
     <span class="kw">fn</span> <span class="ident">pre_delete</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="comment">// Should these be EntrySealed</span>
         <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">de</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,

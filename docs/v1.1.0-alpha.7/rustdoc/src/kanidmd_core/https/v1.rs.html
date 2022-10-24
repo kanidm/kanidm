@@ -1182,15 +1182,9 @@
 <span id="1182">1182</span>
 <span id="1183">1183</span>
 <span id="1184">1184</span>
-<span id="1185">1185</span>
-<span id="1186">1186</span>
-<span id="1187">1187</span>
-<span id="1188">1188</span>
-<span id="1189">1189</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
-<span class="kw">use</span> <span class="ident">async_std::task</span>;
 <span class="kw">use</span> <span class="ident">compact_jwt::Jws</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
     <span class="ident">AccountUnixExtend</span>, <span class="ident">ApiTokenGenerate</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span> <span class="kw">as</span> <span class="ident">ProtoAuthState</span>,
@@ -2257,12 +2251,8 @@
             <span class="kw">let</span> <span class="ident">AuthResult</span> {
                 <span class="ident">state</span>,
                 <span class="ident">sessionid</span>,
-                <span class="ident">delay</span>,
+                <span class="ident">delay</span>: <span class="kw">_</span>,
             } <span class="op">=</span> <span class="ident">ar</span>;
-            <span class="comment">// If there is a delay, honour it now.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">delay_timer</span>) <span class="op">=</span> <span class="ident">delay</span> {
-                <span class="ident">task::sleep</span>(<span class="ident">delay_timer</span>).<span class="kw">await</span>;
-            }
             <span class="comment">// Do some response/state management.</span>
             <span class="kw">match</span> <span class="ident">state</span> {
                 <span class="ident">AuthState::Choose</span>(<span class="ident">allowed</span>) =&gt; {

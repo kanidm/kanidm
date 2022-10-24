@@ -1014,6 +1014,8 @@
 <span id="1014">1014</span>
 <span id="1015">1015</span>
 <span id="1016">1016</span>
+<span id="1017">1017</span>
+<span id="1018">1018</span>
 </pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations</span>
 <span class="doccomment">//! are sent to for processing.</span>
 
@@ -1077,7 +1079,7 @@
 <span class="kw">impl</span> <span class="ident">LdapServer</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// let ct = duration_from_epoch_now();</span>
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>());
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
         <span class="comment">// This is the rootdse path.</span>
         <span class="comment">// get the domain_info item</span>
         <span class="kw">let</span> <span class="ident">domain_entry</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
@@ -1270,7 +1272,7 @@
             <span class="macro">admin_info!</span>(<span class="ident">attr</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">k_attrs</span>, <span class="string">&quot;LDAP Search Request Mapped Attrs&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-            <span class="kw">let</span> <span class="ident">idm_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="ident">idm_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
             <span class="comment">// Now start the txn - we need it for resolving filter components.</span>
 
             <span class="comment">// join the filter, with ext_filter</span>
@@ -1580,7 +1582,8 @@
             <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServerDelayed</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">ldaps</span> <span class="op">=</span> <span class="ident">LdapServer::new</span>(<span class="ident">idms</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to start ldap&quot;</span>);
 
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">duration_from_epoch_now</span>());
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span>
+                    <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">duration_from_epoch_now</span>()));
                 <span class="comment">// make the admin a valid posix account</span>
                 <span class="kw">let</span> <span class="ident">me_posix</span> <span class="op">=</span> <span class="kw">unsafe</span> {
                     <span class="ident">ModifyEvent::new_internal_invalid</span>(
@@ -1771,7 +1774,8 @@
                         (<span class="string">&quot;ssh_publickey&quot;</span>, <span class="ident">Value::new_sshkey_str</span>(<span class="string">&quot;test&quot;</span>, <span class="ident">ssh_ed25519</span>))
                     );
 
-                    <span class="kw">let</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">duration_from_epoch_now</span>());
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server_txn</span> <span class="op">=</span>
+                        <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">duration_from_epoch_now</span>()));
                     <span class="kw">let</span> <span class="ident">ce</span> <span class="op">=</span> <span class="ident">CreateEvent::new_internal</span>(<span class="macro">vec!</span>[<span class="ident">e1</span>]);
                     <span class="macro">assert!</span>(<span class="ident">server_txn</span>
                         .<span class="ident">qs_write</span>
@@ -1941,7 +1945,7 @@
 
                     <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
 
-                    <span class="kw">let</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
                     <span class="kw">let</span> <span class="ident">ce</span> <span class="op">=</span> <span class="ident">CreateEvent::new_internal</span>(<span class="macro">vec!</span>[<span class="ident">e1</span>, <span class="ident">e2</span>]);
                     <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">qs_write</span>.<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">ce</span>).<span class="ident">is_ok</span>());
 

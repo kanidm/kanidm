@@ -2985,6 +2985,8 @@
 <span id="2985">2985</span>
 <span id="2986">2986</span>
 <span id="2987">2987</span>
+<span id="2988">2988</span>
+<span id="2989">2989</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -4403,6 +4405,8 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerTransaction</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 
+    <span class="kw">use</span> <span class="ident">async_std::task</span>;
+
     <span class="kw">const</span> <span class="ident">TEST_CURRENT_TIME</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">6000</span>;
     <span class="kw">const</span> <span class="ident">UAT_EXPIRE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">5</span>;
     <span class="kw">const</span> <span class="ident">TOKEN_EXPIRE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">900</span>;
@@ -4453,7 +4457,7 @@
         <span class="ident">enable_pkce</span>: <span class="ident">bool</span>,
         <span class="ident">enable_legacy_crypto</span>: <span class="ident">bool</span>,
     ) -&gt; (<span class="ident">String</span>, <span class="ident">UserAuthToken</span>, <span class="ident">Identity</span>, <span class="ident">Uuid</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
 
         <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
 
@@ -4530,7 +4534,7 @@
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
         <span class="ident">authtype</span>: <span class="ident">AuthType</span>,
     ) -&gt; (<span class="ident">UserAuthToken</span>, <span class="ident">Identity</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
             .<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_IDM_ADMIN</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;account must exist&quot;</span>);
@@ -4554,7 +4558,7 @@
                 <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
                 <span class="kw">let</span> (<span class="ident">secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="comment">// Get an ident/uat for now.</span>
 
@@ -4623,7 +4627,7 @@
             <span class="kw">let</span> (<span class="ident">idm_admin_uat</span>, <span class="ident">idm_admin_ident</span>) <span class="op">=</span> <span class="ident">setup_idm_admin</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="ident">AuthType::PasswordMfa</span>);
 
             <span class="comment">// Need a uat from a user not in the group. Probs anonymous.</span>
-            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
             <span class="kw">let</span> (<span class="ident">_code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
 
@@ -4784,7 +4788,7 @@
             <span class="kw">let</span> (<span class="ident">_secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
 
             <span class="kw">let</span> (<span class="ident">uat2</span>, <span class="ident">ident2</span>) <span class="op">=</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
                 <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                     .<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_IDM_ADMIN</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;account must exist&quot;</span>);
@@ -4798,7 +4802,7 @@
                 (<span class="ident">uat2</span>, <span class="ident">ident2</span>)
             };
 
-            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
             <span class="kw">let</span> (<span class="ident">_code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
 
@@ -4871,7 +4875,7 @@
                         <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span> <span class="op">+</span> <span class="ident">UAT_EXPIRE</span> <span class="op">-</span> <span class="number">1</span>),
                 );
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="comment">// == Setup the authorisation request</span>
                 <span class="kw">let</span> (<span class="ident">code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
@@ -5032,7 +5036,7 @@
                 <span class="kw">let</span> (<span class="ident">secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
                 <span class="kw">let</span> <span class="ident">client_authz</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">base64::encode</span>(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, <span class="ident">secret</span>)));
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="comment">// == Setup the authorisation request</span>
                 <span class="kw">let</span> (<span class="ident">code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
@@ -5096,7 +5100,7 @@
                 <span class="ident">drop</span>(<span class="ident">idms_prox_read</span>);
                 <span class="comment">// start a write,</span>
 
-                <span class="kw">let</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
                 <span class="comment">// Expire the account, should cause introspect to return inactive.</span>
                 <span class="kw">let</span> <span class="ident">v_expire</span> <span class="op">=</span>
                     <span class="ident">Value::new_datetime_epoch</span>(<span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span> <span class="op">-</span> <span class="number">1</span>));
@@ -5115,7 +5119,7 @@
 
                 <span class="comment">// start a new read</span>
                 <span class="comment">// check again.</span>
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
                 <span class="kw">let</span> <span class="ident">intr_response</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_introspect</span>(<span class="kw-2">&amp;</span><span class="ident">client_authz</span>.<span class="ident">unwrap</span>(), <span class="kw-2">&amp;</span><span class="ident">intr_request</span>, <span class="ident">ct</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to inspect token&quot;</span>);
@@ -5134,7 +5138,7 @@
             <span class="kw">let</span> (<span class="ident">_secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
 
             <span class="kw">let</span> (<span class="ident">uat2</span>, <span class="ident">ident2</span>) <span class="op">=</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
                 <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                     .<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_IDM_ADMIN</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;account must exist&quot;</span>);
@@ -5148,7 +5152,7 @@
                 (<span class="ident">uat2</span>, <span class="ident">ident2</span>)
             };
 
-            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
             <span class="kw">let</span> <span class="ident">redirect_uri</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>();
             <span class="kw">let</span> (<span class="ident">_code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
 
@@ -5213,7 +5217,7 @@
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
             <span class="kw">let</span> (<span class="ident">_secret</span>, <span class="ident">_uat</span>, <span class="ident">_ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
 
-            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
             <span class="comment">// check the discovery end point works as we expect</span>
             <span class="macro">assert!</span>(
@@ -5354,7 +5358,7 @@
                 <span class="kw">let</span> (<span class="ident">secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
                 <span class="kw">let</span> <span class="ident">client_authz</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">base64::encode</span>(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, <span class="ident">secret</span>)));
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="kw">let</span> (<span class="ident">code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
 
@@ -5478,7 +5482,7 @@
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
             <span class="kw">let</span> (<span class="ident">_secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
-            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
             <span class="comment">// == Setup the authorisation request</span>
             <span class="kw">let</span> (<span class="ident">_code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
@@ -5512,7 +5516,7 @@
             <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
                 <span class="kw">let</span> (<span class="ident">secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
                 <span class="comment">// The public key url should offer an rs key</span>
                 <span class="comment">// discovery should offer RS256</span>
                 <span class="kw">let</span> <span class="ident">discovery</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
@@ -5610,7 +5614,7 @@
                 <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
                 <span class="kw">let</span> (<span class="ident">_secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="kw">let</span> (<span class="ident">_code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
                 <span class="kw">let</span> <span class="ident">consent_request</span> <span class="op">=</span>
@@ -5640,12 +5644,12 @@
                 };
 
                 <span class="comment">// Manually submit the consent.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">process_oauth2consentgrant</span>(<span class="kw-2">&amp;</span><span class="ident">o2cg</span>).<span class="ident">is_ok</span>());
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
 
                 <span class="comment">// == Now try the authorise again, should be in the permitted state.</span>
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="comment">// We need to reload our identity</span>
                 <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
@@ -5667,7 +5671,7 @@
                 <span class="ident">drop</span>(<span class="ident">idms_prox_read</span>);
 
                 <span class="comment">// Great! Now change the scopes on the oauth2 instance, this revokes the permit.</span>
-                <span class="kw">let</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
 
                 <span class="kw">let</span> <span class="ident">me_extend_scopes</span> <span class="op">=</span> <span class="kw">unsafe</span> {
                     <span class="ident">ModifyEvent::new_internal_invalid</span>(
@@ -5691,7 +5695,7 @@
 
                 <span class="comment">// And do the workflow once more to see if we need to consent again.</span>
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="comment">// We need to reload our identity</span>
                 <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
@@ -5734,7 +5738,7 @@
                 <span class="comment">// Success! We had to consent again due to the change :)</span>
 
                 <span class="comment">// Now change the supplemental scopes on the oauth2 instance, this revokes the permit.</span>
-                <span class="kw">let</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
 
                 <span class="kw">let</span> <span class="ident">me_extend_scopes</span> <span class="op">=</span> <span class="kw">unsafe</span> {
                     <span class="ident">ModifyEvent::new_internal_invalid</span>(
@@ -5758,7 +5762,7 @@
 
                 <span class="comment">// And do the workflow once more to see if we need to consent again.</span>
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="comment">// We need to reload our identity</span>
                 <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
@@ -5814,7 +5818,7 @@
                 <span class="comment">// Assert there are no consent maps yet.</span>
                 <span class="macro">assert!</span>(<span class="ident">ident</span>.<span class="ident">get_oauth2_consent_scopes</span>(<span class="ident">o2rs_uuid</span>).<span class="ident">is_none</span>());
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="kw">let</span> (<span class="ident">_code_verifier</span>, <span class="ident">code_challenge</span>) <span class="op">=</span> <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
                 <span class="kw">let</span> <span class="ident">consent_request</span> <span class="op">=</span>
@@ -5844,7 +5848,7 @@
                 };
 
                 <span class="comment">// Manually submit the consent.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">process_oauth2consentgrant</span>(<span class="kw-2">&amp;</span><span class="ident">o2cg</span>).<span class="ident">is_ok</span>());
 
                 <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
@@ -5904,7 +5908,7 @@
                 <span class="comment">// Enable pkce is set to FALSE</span>
                 <span class="kw">let</span> (<span class="ident">secret</span>, <span class="ident">uat</span>, <span class="ident">ident</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_oauth2_resource_server</span>(<span class="ident">idms</span>, <span class="ident">ct</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
-                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>();
+                <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
 
                 <span class="comment">// Get an ident/uat for now.</span>
 

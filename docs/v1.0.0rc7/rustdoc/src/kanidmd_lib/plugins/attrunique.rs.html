@@ -471,7 +471,7 @@
         <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">_ce</span>)
     )]</span>
     <span class="kw">fn</span> <span class="ident">pre_create_transform</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -489,7 +489,7 @@
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;attrunique_pre_modify&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">_me</span>))]</span>
     <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -506,7 +506,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;attrunique_verify&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Only check live entries, not recycled.</span>
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
 

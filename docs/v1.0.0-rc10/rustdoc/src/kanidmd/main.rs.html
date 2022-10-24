@@ -817,23 +817,23 @@
                             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
                         }
                     };
-                    <span class="ident">restore_server_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>, <span class="ident">p</span>);
+                    <span class="ident">restore_server_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>, <span class="ident">p</span>).<span class="kw">await</span>;
                 }
                 <span class="ident">KanidmdOpt::Database</span> {
                     <span class="ident">commands</span>: <span class="ident">DbCommands::Verify</span>(<span class="ident">_vopt</span>),
                 } =&gt; {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;Running in db verification mode ...&quot;</span>);
-                    <span class="ident">verify_server_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>);
+                    <span class="ident">verify_server_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>).<span class="kw">await</span>;
                 }
                 <span class="ident">KanidmdOpt::RecoverAccount</span>(<span class="ident">raopt</span>) =&gt; {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;Running account recovery ...&quot;</span>);
-                    <span class="ident">recover_account_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">raopt</span>.<span class="ident">name</span>);
+                    <span class="ident">recover_account_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">raopt</span>.<span class="ident">name</span>).<span class="kw">await</span>;
                 }
                 <span class="ident">KanidmdOpt::Database</span> {
                     <span class="ident">commands</span>: <span class="ident">DbCommands::Reindex</span>(<span class="ident">_copt</span>),
                 } =&gt; {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;Running in reindex mode ...&quot;</span>);
-                    <span class="ident">reindex_server_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>);
+                    <span class="ident">reindex_server_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>).<span class="kw">await</span>;
                 }
                 <span class="ident">KanidmdOpt::DbScan</span> {
                     <span class="ident">commands</span>: <span class="ident">DbScanOpt::ListIndexes</span>(<span class="kw">_</span>),
@@ -869,7 +869,7 @@
                     <span class="ident">commands</span>: <span class="ident">DomainSettingsCmds::DomainChange</span>(<span class="ident">_dopt</span>),
                 } =&gt; {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;Running in domain name change mode ... this may take a long time ...&quot;</span>);
-                    <span class="ident">domain_rename_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>);
+                    <span class="ident">domain_rename_core</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>).<span class="kw">await</span>;
                 }
                 <span class="ident">KanidmdOpt::Database</span> {
                     <span class="ident">commands</span>: <span class="ident">DbCommands::Vacuum</span>(<span class="ident">_copt</span>),

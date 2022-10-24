@@ -90,6 +90,11 @@
 <span id="90">90</span>
 <span id="91">91</span>
 <span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server</span>
 <span class="doccomment">//! which is used to process authentication, store identities and enforce access controls.</span>
 
@@ -144,6 +149,8 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">schema</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">server</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">status</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">testkit</span>;
 
 <span class="doccomment">/// A prelude of imports that should be imported by all other Kanidm modules to</span>
 <span class="doccomment">/// help make imports cleaner.</span>
@@ -181,6 +188,9 @@
         <span class="ident">ValueSetSecret</span>, <span class="ident">ValueSetSpn</span>, <span class="ident">ValueSetSyntax</span>, <span class="ident">ValueSetT</span>, <span class="ident">ValueSetUint32</span>, <span class="ident">ValueSetUtf8</span>,
         <span class="ident">ValueSetUuid</span>,
     };
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">kanidmd_lib_macros</span>::<span class="kw-2">*</span>;
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>

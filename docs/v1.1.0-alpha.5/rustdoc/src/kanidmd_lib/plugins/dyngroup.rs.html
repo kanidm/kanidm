@@ -1065,7 +1065,7 @@
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;dyngroup_post_create&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">ce</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_create</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -1166,7 +1166,7 @@
         <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">pre_cand</span>, <span class="ident">cand</span>, <span class="ident">me</span>)
     )]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_modify</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
@@ -1276,7 +1276,7 @@
 
     <span class="comment">// No post_delete handler is needed as refint takes care of this for us.</span>
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="macro">vec!</span>[]
     }
 }

@@ -350,8 +350,6 @@
 <span id="350">350</span>
 <span id="351">351</span>
 <span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
 </pre><pre class="rust"><code><span class="comment">// Generate and manage spn&#39;s for all entries in the domain. Also deals with</span>
 <span class="comment">// the infrequent - but possible - case where a domain is renamed.</span>
 <span class="kw">use</span> <span class="ident">std::iter::once</span>;
@@ -379,7 +377,7 @@
         <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">_ce</span>)
     )]</span>
     <span class="kw">fn</span> <span class="ident">pre_create_transform</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -414,7 +412,7 @@
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;spn_pre_modify&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">_me</span>))]</span>
     <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -449,7 +447,7 @@
         <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">pre_cand</span>, <span class="ident">cand</span>, <span class="ident">_ce</span>)
     )]</span>
     <span class="kw">fn</span> <span class="ident">post_modify</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
+        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
         <span class="comment">// List of what we modified that was valid?</span>
         <span class="ident">pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
@@ -492,7 +490,7 @@
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;spn_verify&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Verify that all items with spn&#39;s have valid spns.</span>
         <span class="comment">//   We need to consider the case that an item has a different origin domain too,</span>
         <span class="comment">// so we should be able to verify that *those* spns validate to the trusted domain info</span>
@@ -667,43 +665,41 @@
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_spn_regen_domain_rename</span>() {
-        <span class="macro">run_test!</span>(<span class="op">|</span><span class="ident">server</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
+    <span class="attribute">#[<span class="ident">qs_test</span>]</span>
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_spn_regen_domain_rename</span>(<span class="ident">server</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>()).<span class="kw">await</span>;
 
-            <span class="kw">let</span> <span class="ident">ex1</span> <span class="op">=</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;admin&quot;</span>, <span class="string">&quot;example.com&quot;</span>);
-            <span class="kw">let</span> <span class="ident">ex2</span> <span class="op">=</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;admin&quot;</span>, <span class="string">&quot;new.example.com&quot;</span>);
-            <span class="comment">// get the current domain name</span>
-            <span class="comment">// check the spn on admin is admin@&lt;initial domain&gt;</span>
-            <span class="kw">let</span> <span class="ident">e_pre</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
+        <span class="kw">let</span> <span class="ident">ex1</span> <span class="op">=</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;admin&quot;</span>, <span class="string">&quot;example.com&quot;</span>);
+        <span class="kw">let</span> <span class="ident">ex2</span> <span class="op">=</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;admin&quot;</span>, <span class="string">&quot;new.example.com&quot;</span>);
+        <span class="comment">// get the current domain name</span>
+        <span class="comment">// check the spn on admin is admin@&lt;initial domain&gt;</span>
+        <span class="kw">let</span> <span class="ident">e_pre</span> <span class="op">=</span> <span class="ident">server_txn</span>
+            .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
 
-            <span class="kw">let</span> <span class="ident">e_pre_spn</span> <span class="op">=</span> <span class="ident">e_pre</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">e_pre_spn</span> <span class="op">==</span> <span class="ident">ex1</span>);
+        <span class="kw">let</span> <span class="ident">e_pre_spn</span> <span class="op">=</span> <span class="ident">e_pre</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
+        <span class="macro">assert!</span>(<span class="ident">e_pre_spn</span> <span class="op">==</span> <span class="ident">ex1</span>);
 
-            <span class="comment">// trigger the domain_name change (this will be a cli option to the server</span>
-            <span class="comment">// in the final version), but it will still call the same qs function to perform the</span>
-            <span class="comment">// change.</span>
-            <span class="kw">unsafe</span> {
-                <span class="ident">server_txn</span>
-                    .<span class="ident">domain_rename_inner</span>(<span class="string">&quot;new.example.com&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;should not fail!&quot;</span>);
-            }
+        <span class="comment">// trigger the domain_name change (this will be a cli option to the server</span>
+        <span class="comment">// in the final version), but it will still call the same qs function to perform the</span>
+        <span class="comment">// change.</span>
+        <span class="kw">unsafe</span> {
+            <span class="ident">server_txn</span>
+                .<span class="ident">domain_rename_inner</span>(<span class="string">&quot;new.example.com&quot;</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;should not fail!&quot;</span>);
+        }
 
-            <span class="comment">// check the spn on admin is admin@&lt;new domain&gt;</span>
-            <span class="kw">let</span> <span class="ident">e_post</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
+        <span class="comment">// check the spn on admin is admin@&lt;new domain&gt;</span>
+        <span class="kw">let</span> <span class="ident">e_post</span> <span class="op">=</span> <span class="ident">server_txn</span>
+            .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
 
-            <span class="kw">let</span> <span class="ident">e_post_spn</span> <span class="op">=</span> <span class="ident">e_post</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
-            <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e_post_spn</span>);
-            <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">ex2</span>);
-            <span class="macro">assert!</span>(<span class="ident">e_post_spn</span> <span class="op">==</span> <span class="ident">ex2</span>);
+        <span class="kw">let</span> <span class="ident">e_post_spn</span> <span class="op">=</span> <span class="ident">e_post</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e_post_spn</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">ex2</span>);
+        <span class="macro">assert!</span>(<span class="ident">e_post_spn</span> <span class="op">==</span> <span class="ident">ex2</span>);
 
-            <span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
-        });
+        <span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
     }
 }
 </code></pre></div>

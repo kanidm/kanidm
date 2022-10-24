@@ -1455,7 +1455,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SearchResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Begin a read</span>
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -1551,7 +1551,7 @@
 
         <span class="comment">// Scope to limit the read txn.</span>
         {
-            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
             <span class="ident">idms_prox_read</span>
                 .<span class="ident">qs_read</span>
                 .<span class="ident">get_be_txn</span>()
@@ -1664,7 +1664,7 @@
         <span class="comment">// TODO #62: Move this to IdmServer!!!</span>
         <span class="comment">// Begin a read</span>
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="comment">// Make an event from the whoami request. This will process the event and</span>
         <span class="comment">// generate a selfuuid search.</span>
         <span class="comment">//</span>
@@ -1711,7 +1711,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -1754,7 +1754,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
@@ -1797,7 +1797,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -1857,7 +1857,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
@@ -1904,7 +1904,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
@@ -1951,7 +1951,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -1997,7 +1997,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2060,7 +2060,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2124,7 +2124,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ApiToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2156,7 +2156,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UatStatus</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2238,7 +2238,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
@@ -2284,7 +2284,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
@@ -2490,7 +2490,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_token_to_ident</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2540,7 +2540,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthoriseResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> (<span class="ident">ident</span>, <span class="ident">uat</span>) <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_uat</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> {
@@ -2569,7 +2569,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisePermitSuccess</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> (<span class="ident">ident</span>, <span class="ident">uat</span>) <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_uat</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> {
@@ -2597,7 +2597,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> (<span class="ident">ident</span>, <span class="ident">uat</span>) <span class="op">=</span> <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_uat</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> {
@@ -2625,7 +2625,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="comment">// Now we can send to the idm server for authorisation checking.</span>
         <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
     }
@@ -2642,7 +2642,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="comment">// Now we can send to the idm server for introspection checking.</span>
         <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_token_introspect</span>(<span class="kw-2">&amp;</span><span class="ident">client_authz</span>, <span class="kw-2">&amp;</span><span class="ident">intr_req</span>, <span class="ident">ct</span>)
     }
@@ -2659,7 +2659,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_userinfo</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>, <span class="kw-2">&amp;</span><span class="ident">client_authz</span>, <span class="ident">ct</span>)
     }
 
@@ -2673,7 +2673,7 @@
         <span class="ident">client_id</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_discovery</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>)
     }
 
@@ -2687,7 +2687,7 @@
         <span class="ident">client_id</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_publickey</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>)
     }
 
@@ -2697,7 +2697,7 @@
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_domain_display_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">eventid</span>: <span class="ident">Uuid</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
         <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">get_domain_display_name</span>().<span class="ident">to_string</span>()
     }
 
@@ -2712,7 +2712,7 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
 
         <span class="ident">idms_prox_read</span>
             .<span class="ident">validate_and_parse_uat</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
