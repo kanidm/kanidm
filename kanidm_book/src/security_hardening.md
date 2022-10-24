@@ -1,7 +1,7 @@
 # Security Hardening
 
 Kanidm ships with a secure-by-default configuration, however that is only as strong
-as the platform that Kanidm operates in. This could be your container environment
+as the environment that Kanidm operates in. This could be your container environment
 or your Unix-like system.
 
 This chapter will detail a number of warnings and security practices you should
@@ -136,7 +136,7 @@ changes to help isolate these changes:
     sed -i -e "s/db_path.*/db_path = \"\/data\/db\/kanidm.db\"/g" /data/server.toml
     chown root:root /data/server.toml
     chmod 644 /data/server.toml
-    
+
 Note that the example commands all run inside the docker container.
 
 You can then use this to run the Kanidm server in docker with a user:
@@ -146,3 +146,4 @@ You can then use this to run the Kanidm server in docker with a user:
 > **HINT**
 > You need to use the UID or GID number with the `-u` argument, as the container can't resolve
 > usernames from the host system.
+

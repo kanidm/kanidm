@@ -22,8 +22,7 @@ have unique ownership of these domains, if you move your machine to a foreign ne
 you may leak credentials or other cookies to these domains. TLS in a majority of cases can and will
 protect you from such leaks however, but it should not always be relied upon as a sole line of defence.
 
-Failure to use a unique domain you own, may allow DNS hijacking or other credential leaks when you are *not* on
-your own network.
+Failure to use a unique domain you own, may allow DNS hijacking or other credential leaks in some circumstances.
 
 ### Subdomains
 
@@ -34,7 +33,7 @@ to cookies from `a.example.com` and `example.com`.
 For this reason your kanidm host (or hosts) should be on a unique subdomain, with no other services
 registered under that subdomain. For example, consider `idm.example.com` as a subdomain for exclusive
 use of kanidm. This is *inverse* to Active Directory which often has it's domain name selected to be
-the domain (`example.com`).
+the parent (toplevel) domain (`example.com`).
 
 Failure to use a unique subdomain may allow cookies to leak to other entities within your domain, and
 may allow webauthn to be used on entities you did not intend for which may or may not lead to some phishing
@@ -42,7 +41,7 @@ scenarioes.
 
 ## Examples
 
-### Good Example
+### Good Domain Names
 
 Consider we own `kanidm.com`. If we were to run geographical instances, and have testing environments
 the following domain and hostnames could be used.
@@ -68,7 +67,7 @@ Note that due to the name being `idm.dev.kanidm.com` vs `idm.kanidm.com`, the te
 a subdomain of production, meaning the cookies and webauthn tokens can NOT be transferred between
 them. This provides proper isolation between the instances.
 
-### Bad Examples
+### Bad Domain Names
 
 `idm.local` - This is a bad example as `.local` is an mDNS domain name suffix which means that client
 machines if they visit another network *may* try to contact `idm.local` believing they are on their
