@@ -203,6 +203,26 @@ In a new terminal, you can now build and run the client tools with:
     cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
     cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
 
+### Raw actions
+
+The server has a low-level stateful API you can use for more complex or advanced tasks on large numbers
+of entries at once. Some examples are below, but generally we advise you to use the APIs or CLI tools. These are
+very handy to "unbreak" something if you make a mistake however!
+
+    # Create from json (group or account)
+    kanidm raw create -H https://localhost:8443 -C ../insecure/ca.pem -D admin example.create.account.json
+    kanidm raw create  -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin example.create.group.json
+
+    # Apply a json stateful modification to all entries matching a filter
+    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"or": [ {"eq": ["name", "idm_person_account_create_priv"]}, {"eq": ["name", "idm_service_account_create_priv"]}, {"eq": ["name", "idm_account_write_priv"]}, {"eq": ["name", "idm_group_write_priv"]}, {"eq": ["name", "idm_people_write_priv"]}, {"eq": ["name", "idm_group_create_priv"]} ]}' example.modify.idm_admin.json
+    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "idm_admins"]}' example.modify.idm_admin.json
+
+    # Search and show the database representations
+    kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"eq": ["name", "idm_admin"]}'
+
+    # Delete all entries matching a filter
+    kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "test_account_delete_me"]}'
+
 ### Building the Web UI
 
 __NOTE:__ There is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`, 

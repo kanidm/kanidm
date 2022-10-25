@@ -1,7 +1,6 @@
 ## Release Schedule
 
-In the alpha phase, Kanidm will be released on a 3 month (quarterly) basis,
-starting on July 1st 2020.
+Kanidm is released on a 3 month (quarterly) basis.
 
 * February 1st
 * May 1st
@@ -16,17 +15,13 @@ estimated date for 1.2.0.
 
 ## Support
 
-Releases during alpha will not recieve fixes or improvements once released, with the exception of:
+Releases during alpha will recieve limited fixes once released. Specifically we will resolve:
 
-* Major security issues
+* Moderate security issues and above
 * Flaws leading to dataloss or corruption
-* Other fixes at the discrestion of the project team
+* Other quality fixes at the discrestion of the project team
 
-In the case these issues are found, an out of band alpha snapshot will be made based on the current
-stable branch.
-
-Alpha releases are "best effort", and are trial releases, to help get early feedback and improvements
-from the community, while still allowing us to make large, breaking changes that may be needed.
+These will be backported to the latest stable branch only.
 
 ## API stability
 
