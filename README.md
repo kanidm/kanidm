@@ -10,7 +10,7 @@ Kanidm is a simple and secure identity management platform, which provides servi
 other systems and application to authenticate against. The project aims for the highest levels
 of reliability, security and ease of use.
 
-The goal of this project is to be a complete idetity management provider, covering the broadest
+The goal of this project is to be a complete identity management provider, covering the broadest
 possible set of requirements and integrations. You should not need any other components (like Keycloak)
 when you use Kanidm. We want to create a project that will be suitable for everything
 from personal home deployments, to the largest enterprise needs.
