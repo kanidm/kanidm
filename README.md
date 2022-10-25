@@ -35,7 +35,7 @@ If you want to host your own centralised authentication service, then Kanidm is 
 
 ## Documentation / Getting Started / Install
 
-If you want to deploy Kanidm to see what it can do, you should read the kanidm book.
+If you want to deploy Kanidm to see what it can do, you should read the Kanidm book.
 
 - [Kanidm book (Latest stable)](https://kanidm.github.io/kanidm/stable/)
 - [Kanidm book (Latest commit)](https://kanidm.github.io/kanidm/master/)
