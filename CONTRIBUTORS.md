@@ -19,6 +19,7 @@
 * Carla Schroder (cjschroder)
 * Thomas Sanchez (daedric)
 * Dominik Süß (theSuess)
+* Florian Klink (flokli)
 
 ## Acknowledgements
 
