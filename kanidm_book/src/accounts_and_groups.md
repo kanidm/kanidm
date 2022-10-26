@@ -14,7 +14,7 @@ accounts have different properties and methods of authentication and management.
 ## Groups
 
 Groups represent a collection of entities. This generally is a collection of persons or service accounts.
-Groups are commonly used to assign privileges to the accouts that are members of a group. This allows
+Groups are commonly used to assign privileges to the accounts that are members of a group. This allows
 easier administration over larger systems where privileges can be assigned to groups in a logical
 manner, and then only membership of the groups need administration, rather than needing to assign
 privileges to each entity directly and uniquely.
@@ -264,7 +264,7 @@ kanidm account get nest_example --name anonymous
 
 ## Account Validity
 
-Kanidm supports accounts that are only able authenticate between a pair of dates and times; the "valid
+Kanidm supports accounts that are only able to authenticate between a pair of dates and times; the "valid
 from" and "expires" timestamps define these points in time.
 
 This can be displayed with:
