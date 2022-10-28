@@ -438,6 +438,21 @@ pub const JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: &str = r#"{
     }
 }"#;
 
+/// Builtin System Admin account.
+pub const JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_sync_account_manage_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000037"],
+        "description": ["Builtin IDM Group for managing sychronisation from external identity sources"],
+        "member": [
+            "00000000-0000-0000-0000-000000000019"
+        ]
+    }
+}"#;
+
+// == dyn groups
+
 pub const JSON_IDM_ALL_PERSONS: &str = r#"{
     "attrs": {
         "class": ["dyngroup", "group", "object"],
@@ -497,6 +512,7 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
             "00000000-0000-0000-0000-000000000031",
             "00000000-0000-0000-0000-000000000032",
             "00000000-0000-0000-0000-000000000034",
+            "00000000-0000-0000-0000-000000000037",
             "00000000-0000-0000-0000-000000001000"
         ]
     }

@@ -77,6 +77,7 @@ impl ValueSetSession {
                         let issued_by = match issued_by {
                             DbValueIdentityId::V1Internal => IdentityId::Internal,
                             DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
+                            DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
                         };
 
                         let scope = match scope {
@@ -201,6 +202,7 @@ impl ValueSetT for ValueSetSession {
                     issued_by: match m.issued_by {
                         IdentityId::Internal => DbValueIdentityId::V1Internal,
                         IdentityId::User(u) => DbValueIdentityId::V1Uuid(u),
+                        IdentityId::Synch(u) => DbValueIdentityId::V1Sync(u),
                     },
                     scope: match m.scope {
                         AccessScope::IdentityOnly => DbValueAccessScopeV1::IdentityOnly,

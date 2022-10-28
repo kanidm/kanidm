@@ -1290,3 +1290,51 @@ pub const JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
+pub const JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_delete",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_hp_sync_account_manage_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000044"],
+        "description": ["Builtin IDM Control for managing IDM synchronisation accounts / connections"],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000037\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"sync_account\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class",
+            "name",
+            "description",
+            "jws_es256_private_key",
+            "sync_token_session",
+            "sync_cookie"
+        ],
+        "acp_modify_removedattr": [
+            "name",
+            "description",
+            "jws_es256_private_key",
+            "sync_token_session",
+            "sync_cookie"
+        ],
+        "acp_modify_presentattr": [
+            "name",
+            "description"
+        ],
+        "acp_modify_class": [],
+        "acp_create_attr": [
+            "class",
+            "name",
+            "description"
+        ],
+        "acp_create_class": ["sync_account", "object"]
+    }
+}"#;

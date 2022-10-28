@@ -1,7 +1,8 @@
 //! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
-#![deny(warnings)]
+// #![deny(warnings)]
+
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -78,7 +79,7 @@ pub mod prelude {
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
         FilterInvalid, FC,
     };
-    pub use crate::identity::{AccessScope, Identity};
+    pub use crate::identity::{AccessScope, IdentType, Identity};
     pub use crate::modify::{m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList};
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,

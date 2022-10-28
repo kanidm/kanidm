@@ -30,6 +30,7 @@ lazy_static! {
     pub static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
     pub static ref PVCLASS_SERVICE_ACCOUNT: PartialValue =
         PartialValue::new_class("service_account");
+    pub static ref PVCLASS_SYNC_ACCOUNT: PartialValue = PartialValue::new_class("sync_account");
     pub static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
     pub static ref PVCLASS_SYSTEM_INFO: PartialValue = PartialValue::new_class("system_info");
     pub static ref PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class("system_config");

@@ -509,6 +509,10 @@ pub trait AccessControlsTransaction<'a> {
                 // No need to check ACS
                 return Ok(entries);
             }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
+            }
             IdentType::User(u) => &u.entry,
         };
         info!(event = %se.ident, "Access check for search (filter) event");
@@ -611,6 +615,10 @@ pub trait AccessControlsTransaction<'a> {
                     // No need to check ACS
                     return Ok(Vec::new());
                 }
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
             }
             IdentType::User(u) => &u.entry,
         };
@@ -768,6 +776,10 @@ pub trait AccessControlsTransaction<'a> {
                 trace!("Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
             }
             IdentType::User(u) => &u.entry,
         };
@@ -940,6 +952,10 @@ pub trait AccessControlsTransaction<'a> {
                 // No need to check ACS
                 return Ok(true);
             }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
+            }
             IdentType::User(u) => &u.entry,
         };
         info!(event = %ce.ident, "Access check for create event");
@@ -1081,6 +1097,10 @@ pub trait AccessControlsTransaction<'a> {
                 // No need to check ACS
                 return Ok(true);
             }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
+            }
             IdentType::User(u) => &u.entry,
         };
         info!(event = %de.ident, "Access check for delete event");
@@ -1192,6 +1212,10 @@ pub trait AccessControlsTransaction<'a> {
                 // empty sets.
                 security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
                 // No need to check ACS
+                return Err(OperationError::InvalidState);
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
             IdentType::User(u) => &u.entry,

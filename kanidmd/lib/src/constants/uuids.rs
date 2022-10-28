@@ -194,6 +194,10 @@ pub const _UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000112");
 pub const _UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000113");
+pub const _UUID_SCHEMA_CLASS_SYNC_ACCOUNT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000114");
+pub const _UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000115");
+pub const _UUID_SCHEMA_ATTR_SYNC_COOKIE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000116");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
@@ -271,6 +275,8 @@ pub const _UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1: Uuid =
 pub const _UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000042");
 pub const _UUID_IDM_ACP_OAUTH2_READ_PRIV_V1: Uuid = uuid!("00000000-0000-0000-0000-ffffff000043");
+pub const _UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: Uuid =
+    uuid!("00000000-0000-0000-0000-ffffff000044");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");

@@ -3,4 +3,5 @@
 //! if they are read or write transactions internally.
 
 pub mod v1_read;
+pub mod v1_scim;
 pub mod v1_write;

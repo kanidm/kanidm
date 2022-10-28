@@ -1171,6 +1171,66 @@ pub const JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A session entry related to an issued sync token"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "sync_token_session"
+      ],
+      "syntax": [
+        "SESSION"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000115"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_SYNC_COOKIE: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A private sync cookie for a remote IDM source"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "sync_cookie"
+      ],
+      "syntax": [
+        "PRIVATE_BINARY"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000116"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1354,6 +1414,38 @@ pub const JSON_SCHEMA_CLASS_SERVICE_ACCOUNT: &str = r#"
       ],
       "systemexcludes": [
         "person"
+      ]
+    }
+  }
+"#;
+
+pub const JSON_SCHEMA_CLASS_SYNC_ACCOUNT: &str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Object representation of sync account"
+      ],
+      "classname": [
+        "sync_account"
+      ],
+      "systemmust": [
+        "name",
+        "jws_es256_private_key"
+      ],
+      "systemmay": [
+        "sync_token_session",
+        "sync_cookie"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000114"
+      ],
+      "systemexcludes": [
+        "account"
       ]
     }
   }

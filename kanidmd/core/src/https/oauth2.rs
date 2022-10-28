@@ -7,6 +7,7 @@ use kanidmd_lib::idm::oauth2::{
 use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::routemaps::{RouteMap, RouteMaps};
 use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::{to_tide_response, AppState, RequestExtensions};
 
@@ -716,4 +717,54 @@ pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> t
         res.insert_header("X-KANIDM-OPID", hvalue);
         res
     })
+}
+
+pub fn oauth2_route_setup(appserver: &mut tide::Route<'_, AppState>, routemap: &mut RouteMap) {
+    let mut oauth2_process = appserver.at("/oauth2");
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    oauth2_process
+        .at("/authorise")
+        .mapped_post(routemap, oauth2_authorise_post)
+        .mapped_get(routemap, oauth2_authorise_get);
+
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    oauth2_process
+        .at("/authorise/permit")
+        .mapped_post(routemap, oauth2_authorise_permit_post)
+        .mapped_get(routemap, oauth2_authorise_permit_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    oauth2_process
+        .at("/authorise/reject")
+        .mapped_post(routemap, oauth2_authorise_reject_post)
+        .mapped_get(routemap, oauth2_authorise_reject_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    oauth2_process
+        .at("/token")
+        .mapped_post(routemap, oauth2_token_post);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    oauth2_process
+        .at("/token/introspect")
+        .mapped_post(routemap, oauth2_token_introspect_post);
+
+    let mut openid_process = appserver.at("/oauth2/openid");
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    openid_process
+        .at("/:client_id/.well-known/openid-configuration")
+        .mapped_get(routemap, oauth2_openid_discovery_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    openid_process
+        .at("/:client_id/userinfo")
+        .mapped_get(routemap, oauth2_openid_userinfo_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    openid_process
+        .at("/:client_id/public_key.jwk")
+        .mapped_get(routemap, oauth2_openid_publickey_get);
 }

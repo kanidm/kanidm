@@ -3,6 +3,7 @@ pub mod middleware;
 mod oauth2;
 mod routemaps;
 mod v1;
+mod v1_scim;
 
 use std::fs::canonicalize;
 use std::path::PathBuf;
@@ -22,6 +23,7 @@ use self::middleware::*;
 use self::oauth2::*;
 use self::routemaps::{RouteMap, RouteMaps};
 use self::v1::*;
+use self::v1_scim::*;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{ServerRole, TlsConfiguration};
@@ -70,6 +72,8 @@ pub struct AppState {
 pub trait RequestExtensions {
     fn get_current_uat(&self) -> Option<String>;
 
+    fn get_auth_bearer(&self) -> Option<&str>;
+
     fn get_current_auth_session_id(&self) -> Option<Uuid>;
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error>;
@@ -80,6 +84,21 @@ pub trait RequestExtensions {
 }
 
 impl RequestExtensions for tide::Request<AppState> {
+    fn get_auth_bearer(&self) -> Option<&str> {
+        // Contact the QS to get it to validate wtf is up.
+        // let kref = &self.state().bundy_handle;
+        // self.session().get::<UserAuthToken>("uat")
+        self.header(tide::http::headers::AUTHORIZATION)
+            .and_then(|hv| {
+                // Get the first header value.
+                hv.get(0)
+            })
+            .and_then(|h| {
+                // Turn it to a &str, and then check the prefix
+                h.as_str().strip_prefix("Bearer ")
+            })
+    }
+
     fn get_current_uat(&self) -> Option<String> {
         // Contact the QS to get it to validate wtf is up.
         // let kref = &self.state().bundy_handle;
@@ -474,55 +493,12 @@ pub fn create_https_server(
     appserver
         .at("/status")
         .mapped_get(&mut routemap, self::status);
+
     // == oauth endpoints.
+    oauth2_route_setup(&mut appserver, &mut routemap);
 
-    let mut oauth2_process = appserver.at("/oauth2");
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/authorise")
-        .mapped_post(&mut routemap, oauth2_authorise_post)
-        .mapped_get(&mut routemap, oauth2_authorise_get);
-
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/authorise/permit")
-        .mapped_post(&mut routemap, oauth2_authorise_permit_post)
-        .mapped_get(&mut routemap, oauth2_authorise_permit_get);
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/authorise/reject")
-        .mapped_post(&mut routemap, oauth2_authorise_reject_post)
-        .mapped_get(&mut routemap, oauth2_authorise_reject_get);
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/token")
-        .mapped_post(&mut routemap, oauth2_token_post);
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/token/introspect")
-        .mapped_post(&mut routemap, oauth2_token_introspect_post);
-
-    let mut openid_process = appserver.at("/oauth2/openid");
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    openid_process
-        .at("/:client_id/.well-known/openid-configuration")
-        .mapped_get(&mut routemap, oauth2_openid_discovery_get);
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    openid_process
-        .at("/:client_id/userinfo")
-        .mapped_get(&mut routemap, oauth2_openid_userinfo_get);
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    openid_process
-        .at("/:client_id/public_key.jwk")
-        .mapped_get(&mut routemap, oauth2_openid_publickey_get);
+    // == scim endpoints.
+    scim_route_setup(&mut appserver, &mut routemap);
 
     let mut raw_route = appserver.at("/v1/raw");
     raw_route.at("/create").mapped_post(&mut routemap, create);
@@ -740,8 +716,6 @@ pub fn create_https_server(
     service_account_route
         .at("/:id/_unix")
         .mapped_post(&mut routemap, account_post_id_unix);
-
-    // TODO: Apis for token management
 
     // Shared account features only - mainly this is for unix-like
     // features.

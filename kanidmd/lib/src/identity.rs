@@ -123,6 +123,7 @@ pub struct IdentUser {
 /// The type of Identity that is related to this session.
 pub enum IdentType {
     User(IdentUser),
+    Synch(Uuid),
     Internal,
 }
 
@@ -133,6 +134,7 @@ pub enum IdentityId {
     // Time stamp of the originating event.
     // The uuid of the originiating user
     User(Uuid),
+    Synch(Uuid),
     Internal,
 }
 
@@ -141,6 +143,7 @@ impl From<&IdentType> for IdentityId {
         match idt {
             IdentType::Internal => IdentityId::Internal,
             IdentType::User(u) => IdentityId::User(u.entry.get_uuid()),
+            IdentType::Synch(u) => IdentityId::Synch(*u),
         }
     }
 }
@@ -162,6 +165,7 @@ impl std::fmt::Display for Identity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self.origin {
             IdentType::Internal => write!(f, "Internal ({})", self.scope),
+            IdentType::Synch(u) => write!(f, "Synchronise ({}) ({})", u, self.scope),
             IdentType::User(u) => {
                 let nv = u.entry.get_uuid2spn();
                 write!(
@@ -245,6 +249,7 @@ impl Identity {
         match &self.origin {
             IdentType::Internal => None,
             IdentType::User(u) => Some(u.entry.get_uuid()),
+            IdentType::Synch(u) => Some(*u),
         }
     }
 
@@ -255,7 +260,7 @@ impl Identity {
     #[cfg(test)]
     pub fn has_claim(&self, claim: &str) -> bool {
         match &self.origin {
-            IdentType::Internal => false,
+            IdentType::Internal | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
                 .attribute_equality("claim", &PartialValue::new_iutf8(claim)),
@@ -264,7 +269,7 @@ impl Identity {
 
     pub fn is_memberof(&self, group: Uuid) -> bool {
         match &self.origin {
-            IdentType::Internal => false,
+            IdentType::Internal | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
                 .attribute_equality("memberof", &PartialValue::new_refer(group)),
@@ -273,7 +278,7 @@ impl Identity {
 
     pub fn get_oauth2_consent_scopes(&self, oauth2_rs: Uuid) -> Option<&BTreeSet<String>> {
         match &self.origin {
-            IdentType::Internal => None,
+            IdentType::Internal | IdentType::Synch(_) => None,
             IdentType::User(u) => u
                 .entry
                 .get_ava_as_oauthscopemaps("oauth2_consent_scope_map")
