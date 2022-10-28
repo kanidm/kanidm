@@ -2112,6 +2112,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    #[allow(clippy::mut_from_ref)]
     pub(crate) fn get_dyngroup_cache(&self) -> &mut DynGroupCache {
         unsafe {
             let mptr = self.dyngroup_cache.as_ptr();

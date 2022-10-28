@@ -101,12 +101,11 @@ impl PwBadlistOpt {
 
                 let results = task_handles.join().await;
 
-                let results: Vec<_> = results
+                let filt_pwset: Vec<_> = results
                     .into_iter()
                     .map(|res| res.expect("Thread join failure"))
+                    .flatten()
                     .collect();
-
-                let filt_pwset: Vec<String> = results.into_iter().flatten().collect();
 
                 info!(
                     "{} passwords passed zxcvbn, uploading ...",

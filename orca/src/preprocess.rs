@@ -275,7 +275,7 @@ pub fn doit(input: &Path, output: &Path) {
             } else {
                 // Choose the number of members:
                 let m = rng.gen_range(0..max_m);
-                let members = (&precreate).choose_multiple(&mut rng, m).cloned().collect();
+                let members = (precreate).choose_multiple(&mut rng, m).cloned().collect();
                 Entity::Group(Group::generate(*id, members))
             };
             (*id, ent)

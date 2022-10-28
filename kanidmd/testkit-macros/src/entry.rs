@@ -4,7 +4,7 @@ use syn::spanned::Spanned;
 
 use quote::{quote, quote_spanned, ToTokens};
 
-fn parse_knobs(input: syn::ItemFn) -> TokenStream {
+fn parse_knobs(input: &syn::ItemFn) -> TokenStream {
     // If type mismatch occurs, the current rustc points to the last statement.
     let (last_stmt_start_span, _last_stmt_end_span) = {
         let mut last_stmt = input
@@ -65,7 +65,7 @@ fn token_stream_with_error(mut tokens: TokenStream, error: syn::Error) -> TokenS
     tokens
 }
 
-pub(crate) fn test(_args: TokenStream, item: TokenStream) -> TokenStream {
+pub(crate) fn test(_args: &TokenStream, item: TokenStream) -> TokenStream {
     // If any of the steps for this macro fail, we still want to expand to an item that is as close
     // to the expected output as possible. This helps out IDEs such that completions and other
     // related features keep working.
@@ -84,5 +84,5 @@ pub(crate) fn test(_args: TokenStream, item: TokenStream) -> TokenStream {
         return token_stream_with_error(item, syn::Error::new_spanned(input.sig.fn_token, msg));
     }
 
-    parse_knobs(input)
+    parse_knobs(&input)
 }

@@ -23,7 +23,7 @@ impl ValueSetJwsKeyEs256 {
         self.set.insert(k)
     }
 
-    pub fn from_dbvs2(data: Vec<Vec<u8>>) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: &[Vec<u8>]) -> Result<ValueSet, OperationError> {
         let set = data
             .iter()
             .map(|b| {
@@ -179,7 +179,7 @@ impl ValueSetJwsKeyRs256 {
         self.set.insert(k)
     }
 
-    pub fn from_dbvs2(data: Vec<Vec<u8>>) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: &[Vec<u8>]) -> Result<ValueSet, OperationError> {
         let set = data
             .iter()
             .map(|b| {

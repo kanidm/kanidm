@@ -28,7 +28,7 @@ pub enum LdapResponseState {
     BindMultiPartResponse(LdapBoundToken, Vec<LdapMsg>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LdapSession {
     // Maps through and provides anon read, but allows us to check the validity
     // of the account still.

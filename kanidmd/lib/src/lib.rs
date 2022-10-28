@@ -1,8 +1,7 @@
 //! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -10,10 +9,10 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
+#![allow(clippy::unreachable)]
 
 #[cfg(all(jemallocator, test, not(target_family = "windows")))]
 #[global_allocator]

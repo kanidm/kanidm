@@ -7,17 +7,9 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::FilterInvalid;
 use crate::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DynGroupCache {
     insts: BTreeMap<Uuid, Filter<FilterInvalid>>,
-}
-
-impl Default for DynGroupCache {
-    fn default() -> Self {
-        DynGroupCache {
-            insts: BTreeMap::default(),
-        }
-    }
 }
 
 pub struct DynGroup;

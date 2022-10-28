@@ -467,7 +467,7 @@ pub trait IdmServerTransaction<'a> {
                 .get_qs_txn()
                 .internal_search(filter!(f_eq(
                     "jws_es256_private_key",
-                    PartialValue::new_iutf8(&kid)
+                    PartialValue::new_iutf8(kid)
                 )))
                 .and_then(|mut vs| match vs.pop() {
                     Some(entry) if vs.is_empty() => Ok(entry),
@@ -692,7 +692,7 @@ pub trait IdmServerTransaction<'a> {
                 let entry = if uuid == &UUID_ANONYMOUS {
                     anon_entry.clone()
                 } else {
-                    self.get_qs_txn().internal_search_uuid(&uuid).map_err(|e| {
+                    self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
                         admin_error!("Failed to start auth ldap -> {:?}", e);
                         e
                     })?
@@ -718,7 +718,7 @@ pub trait IdmServerTransaction<'a> {
                     Err(OperationError::SessionExpired)
                 }
             }
-            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct),
+            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct),
             LdapSession::ApiToken(apit) => {
                 let entry = self
                     .get_qs_txn()
@@ -728,7 +728,7 @@ pub trait IdmServerTransaction<'a> {
                         e
                     })?;
 
-                self.process_apit_to_identity(&apit, entry, ct)
+                self.process_apit_to_identity(apit, entry, ct)
             }
         }
     }
@@ -760,7 +760,7 @@ pub trait IdmServerTransaction<'a> {
             .get_qs_txn()
             .internal_search(filter!(f_eq(
                 "jws_es256_private_key",
-                PartialValue::new_iutf8(&kid)
+                PartialValue::new_iutf8(kid)
             )))
             .and_then(|mut vs| match vs.pop() {
                 Some(entry) if vs.is_empty() => Ok(entry),
@@ -1224,9 +1224,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }))
             }
             Token::ApiToken(apit, entry) => {
-                let spn = entry.get_ava_single_proto_string("spn").ok_or(
-                    OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
-                )?;
+                let spn = entry.get_ava_single_proto_string("spn").ok_or_else(|| {
+                    OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+                })?;
 
                 Ok(Some(LdapBoundToken {
                     session_id: apit.token_id,
@@ -1604,7 +1604,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
-        if (&*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
+        if (*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
             security_info!("Password found in badlist, rejecting");
             Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::BadListed,

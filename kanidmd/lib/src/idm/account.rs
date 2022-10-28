@@ -199,9 +199,7 @@ impl Account {
         let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY);
         let issued_at = OffsetDateTime::unix_epoch() + ct;
         // TODO: Apply priv expiry.
-        let purpose = UatPurpose::ReadWrite {
-            expiry: expiry.clone(),
-        };
+        let purpose = UatPurpose::ReadWrite { expiry: expiry };
 
         Some(UserAuthToken {
             session_id,
@@ -646,8 +644,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                                             .map(|purpose| UatStatus {
                                                 account_id,
                                                 session_id: *u,
-                                                expiry: s.expiry.clone(),
-                                                issued_at: s.issued_at.clone(),
+                                                expiry: s.expiry,
+                                                issued_at: s.issued_at,
                                                 purpose,
                                             })
                                             .map_err(|e| {

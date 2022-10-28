@@ -154,7 +154,7 @@ impl TryFrom<&str> for Password {
         }
 
         if value.starts_with("ipaNTHash: ") {
-            let nt_md4 = match value.split_once(" ") {
+            let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
                     unreachable!();
@@ -168,7 +168,7 @@ impl TryFrom<&str> for Password {
         }
 
         if value.starts_with("sambaNTPassword: ") {
-            let nt_md4 = match value.split_once(" ") {
+            let nt_md4 = match value.split_once(' ') {
                 Some((_, v)) => v,
                 None => {
                     unreachable!();
@@ -199,7 +199,7 @@ impl TryFrom<&str> for Password {
             || value.starts_with("{PBKDF2-SHA256}")
             || value.starts_with("{PBKDF2-SHA512}")
         {
-            let ol_pbkdf2 = match value.split_once("}") {
+            let ol_pbkdf2 = match value.split_once('}') {
                 Some((_, v)) => v,
                 None => {
                     unreachable!();

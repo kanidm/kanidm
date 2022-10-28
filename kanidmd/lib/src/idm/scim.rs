@@ -14,6 +14,7 @@ use crate::value::Session;
 
 // Internals of a Scim Sync token
 
+#[allow(dead_code)]
 pub(crate) struct SyncAccount {
     pub name: String,
     pub uuid: Uuid,
@@ -275,7 +276,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         };
 
         // Get the sync cookie of that session.
-        let sync_entry = self.qs_read.internal_search_uuid(&sync_uuid)?;
+        let sync_entry = self.qs_read.internal_search_uuid(sync_uuid)?;
 
         Ok(
             match sync_entry.get_ava_single_private_binary("sync_cookie") {

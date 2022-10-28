@@ -644,8 +644,8 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
         DbValueSetV2::DeviceKey(set) => ValueSetDeviceKey::from_dbvs2(set),
         DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(set),
-        DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(set),
-        DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(set),
+        DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
+        DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
             unimplemented!()
         }
