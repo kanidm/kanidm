@@ -717,6 +717,57 @@
 <span id="717">717</span>
 <span id="718">718</span>
 <span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm_proto::oauth2::AuthorisationResponse</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>;
 <span class="kw">use</span> <span class="ident">kanidmd_lib::idm::oauth2</span>::{
@@ -726,6 +777,7 @@
 <span class="kw">use</span> <span class="ident">kanidmd_lib::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::routemaps</span>::{<span class="ident">RouteMap</span>, <span class="ident">RouteMaps</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::v1</span>::{<span class="ident">json_rest_event_get</span>, <span class="ident">json_rest_event_post</span>};
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
 
@@ -1435,6 +1487,56 @@
         <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
         <span class="ident">res</span>
     })
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">oauth2_route_setup</span>(<span class="ident">appserver</span>: <span class="kw-2">&amp;mut</span> <span class="ident">tide::Route</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">AppState</span><span class="op">&gt;</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>) {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oauth2_process</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/oauth2&quot;</span>);
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/authorise&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_authorise_post</span>)
+        .<span class="ident">mapped_get</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_authorise_get</span>);
+
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/authorise/permit&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_authorise_permit_post</span>)
+        .<span class="ident">mapped_get</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_authorise_permit_get</span>);
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/authorise/reject&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_authorise_reject_post</span>)
+        .<span class="ident">mapped_get</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_authorise_reject_get</span>);
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/token&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_token_post</span>);
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/token/introspect&quot;</span>)
+        .<span class="ident">mapped_post</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_token_introspect_post</span>);
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">openid_process</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/oauth2/openid&quot;</span>);
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">openid_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:client_id/.well-known/openid-configuration&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_openid_discovery_get</span>);
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">openid_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:client_id/userinfo&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_openid_userinfo_get</span>);
+    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
+    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
+    <span class="ident">openid_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:client_id/public_key.jwk&quot;</span>)
+        .<span class="ident">mapped_get</span>(<span class="ident">routemap</span>, <span class="ident">oauth2_openid_publickey_get</span>);
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>

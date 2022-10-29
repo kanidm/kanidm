@@ -2906,6 +2906,35 @@
 <span id="2906">2906</span>
 <span id="2907">2907</span>
 <span id="2908">2908</span>
+<span id="2909">2909</span>
+<span id="2910">2910</span>
+<span id="2911">2911</span>
+<span id="2912">2912</span>
+<span id="2913">2913</span>
+<span id="2914">2914</span>
+<span id="2915">2915</span>
+<span id="2916">2916</span>
+<span id="2917">2917</span>
+<span id="2918">2918</span>
+<span id="2919">2919</span>
+<span id="2920">2920</span>
+<span id="2921">2921</span>
+<span id="2922">2922</span>
+<span id="2923">2923</span>
+<span id="2924">2924</span>
+<span id="2925">2925</span>
+<span id="2926">2926</span>
+<span id="2927">2927</span>
+<span id="2928">2928</span>
+<span id="2929">2929</span>
+<span id="2930">2930</span>
+<span id="2931">2931</span>
+<span id="2932">2932</span>
+<span id="2933">2933</span>
+<span id="2934">2934</span>
+<span id="2935">2935</span>
+<span id="2936">2936</span>
+<span id="2937">2937</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Access Control Profiles</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This is a pretty important and security sensitive part of the code - it&#39;s</span>
@@ -3364,12 +3393,17 @@
                 <span class="comment">// A possible solution is to change the filter resolve function</span>
                 <span class="comment">// such that it takes an entry, rather than an event, but that</span>
                 <span class="comment">// would create issues in search.</span>
-                <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">acs</span>.<span class="ident">acp</span>.<span class="ident">receiver</span>).<span class="ident">resolve</span>(<span class="ident">ident</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">acp_resolve_filter_cache</span>)) {
+                <span class="kw">match</span> <span class="ident">acs</span>
+                    .<span class="ident">acp</span>
+                    .<span class="ident">receiver</span>
+                    .<span class="ident">resolve</span>(<span class="ident">ident</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">acp_resolve_filter_cache</span>))
+                {
                     <span class="prelude-val">Ok</span>(<span class="ident">f_res</span>) =&gt; {
                         <span class="kw">if</span> <span class="ident">rec_entry</span>.<span class="ident">entry_match_no_index</span>(<span class="kw-2">&amp;</span><span class="ident">f_res</span>) {
                             <span class="comment">// Now, for each of the acp&#39;s that apply to our receiver, resolve their</span>
                             <span class="comment">// related target filters.</span>
-                            (<span class="kw-2">&amp;</span><span class="ident">acs</span>.<span class="ident">acp</span>.<span class="ident">targetscope</span>)
+                            <span class="ident">acs</span>.<span class="ident">acp</span>
+                                .<span class="ident">targetscope</span>
                                 .<span class="ident">resolve</span>(<span class="ident">ident</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">acp_resolve_filter_cache</span>))
                                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                                     <span class="macro">admin_error!</span>(
@@ -3416,6 +3450,10 @@
                 <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, bypassing access check&quot;</span>);
                 <span class="comment">// No need to check ACS</span>
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">entries</span>);
+            }
+            <span class="ident">IdentType::Synch</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">security_critical!</span>(<span class="string">&quot;Blocking sync check&quot;</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
             }
             <span class="ident">IdentType::User</span>(<span class="ident">u</span>) =&gt; <span class="kw-2">&amp;</span><span class="ident">u</span>.<span class="ident">entry</span>,
         };
@@ -3519,6 +3557,10 @@
                     <span class="comment">// No need to check ACS</span>
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">Vec::new</span>());
                 }
+            }
+            <span class="ident">IdentType::Synch</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">security_critical!</span>(<span class="string">&quot;Blocking sync check&quot;</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
             }
             <span class="ident">IdentType::User</span>(<span class="ident">u</span>) =&gt; <span class="kw-2">&amp;</span><span class="ident">u</span>.<span class="ident">entry</span>,
         };
@@ -3632,10 +3674,10 @@
                 <span class="ident">modify_state</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">acs</span><span class="op">|</span> {
-                    <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">acs</span>.<span class="ident">acp</span>.<span class="ident">receiver</span>).<span class="ident">resolve</span>(<span class="ident">ident</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">acp_resolve_filter_cache</span>)) {
+                    <span class="kw">match</span> <span class="ident">acs</span>.<span class="ident">acp</span>.<span class="ident">receiver</span>.<span class="ident">resolve</span>(<span class="ident">ident</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">acp_resolve_filter_cache</span>)) {
                         <span class="prelude-val">Ok</span>(<span class="ident">f_res</span>) =&gt; {
                             <span class="kw">if</span> <span class="ident">rec_entry</span>.<span class="ident">entry_match_no_index</span>(<span class="kw-2">&amp;</span><span class="ident">f_res</span>) {
-                                (<span class="kw-2">&amp;</span><span class="ident">acs</span>.<span class="ident">acp</span>.<span class="ident">targetscope</span>)
+                                <span class="ident">acs</span>.<span class="ident">acp</span>.<span class="ident">targetscope</span>
                                     .<span class="ident">resolve</span>(<span class="ident">ident</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">acp_resolve_filter_cache</span>))
                                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                                         <span class="macro">admin_error!</span>(
@@ -3676,6 +3718,10 @@
                 <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, bypassing access check&quot;</span>);
                 <span class="comment">// No need to check ACS</span>
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
+            }
+            <span class="ident">IdentType::Synch</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">security_critical!</span>(<span class="string">&quot;Blocking sync check&quot;</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
             }
             <span class="ident">IdentType::User</span>(<span class="ident">u</span>) =&gt; <span class="kw-2">&amp;</span><span class="ident">u</span>.<span class="ident">entry</span>,
         };
@@ -3848,6 +3894,10 @@
                 <span class="comment">// No need to check ACS</span>
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
             }
+            <span class="ident">IdentType::Synch</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">security_critical!</span>(<span class="string">&quot;Blocking sync check&quot;</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
+            }
             <span class="ident">IdentType::User</span>(<span class="ident">u</span>) =&gt; <span class="kw-2">&amp;</span><span class="ident">u</span>.<span class="ident">entry</span>,
         };
         <span class="macro">info!</span>(<span class="ident">event</span> <span class="op">=</span> <span class="op">%</span><span class="ident">ce</span>.<span class="ident">ident</span>, <span class="string">&quot;Access check for create event&quot;</span>);
@@ -3989,6 +4039,10 @@
                 <span class="comment">// No need to check ACS</span>
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
             }
+            <span class="ident">IdentType::Synch</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">security_critical!</span>(<span class="string">&quot;Blocking sync check&quot;</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
+            }
             <span class="ident">IdentType::User</span>(<span class="ident">u</span>) =&gt; <span class="kw-2">&amp;</span><span class="ident">u</span>.<span class="ident">entry</span>,
         };
         <span class="macro">info!</span>(<span class="ident">event</span> <span class="op">=</span> <span class="op">%</span><span class="ident">de</span>.<span class="ident">ident</span>, <span class="string">&quot;Access check for delete event&quot;</span>);
@@ -4100,6 +4154,10 @@
                 <span class="comment">// empty sets.</span>
                 <span class="macro">security_critical!</span>(<span class="string">&quot;IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.&quot;</span>);
                 <span class="comment">// No need to check ACS</span>
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
+            }
+            <span class="ident">IdentType::Synch</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">security_critical!</span>(<span class="string">&quot;Blocking sync check&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
             }
             <span class="ident">IdentType::User</span>(<span class="ident">u</span>) =&gt; <span class="kw-2">&amp;</span><span class="ident">u</span>.<span class="ident">entry</span>,

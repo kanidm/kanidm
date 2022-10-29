@@ -47,6 +47,7 @@
 <span id="47">47</span>
 <span id="48">48</span>
 <span id="49">49</span>
+<span id="50">50</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::uuids::UUID_DOMAIN_INFO</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value</span>::{<span class="ident">PartialValue</span>, <span class="ident">Value</span>};
 <span class="kw">use</span> <span class="ident">url::Url</span>;
@@ -79,6 +80,7 @@
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_RECYCLED</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;recycled&quot;</span>);
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_SERVICE_ACCOUNT</span>: <span class="ident">PartialValue</span> <span class="op">=</span>
         <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;service_account&quot;</span>);
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_SYNC_ACCOUNT</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;sync_account&quot;</span>);
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_SYSTEM</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;system&quot;</span>);
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_SYSTEM_INFO</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;system_info&quot;</span>);
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_SYSTEM_CONFIG</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;system_config&quot;</span>);

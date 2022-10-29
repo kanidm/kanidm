@@ -1480,7 +1480,7 @@
 <span class="kw">use</span> <span class="ident">kanidmd_lib::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueryServerWriteV1</span> {
-    <span class="ident">idms</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">IdmServer</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">idms</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">IdmServer</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">QueryServerWriteV1</span> {

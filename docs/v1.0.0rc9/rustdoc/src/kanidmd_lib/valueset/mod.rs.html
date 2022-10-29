@@ -1297,8 +1297,8 @@
         <span class="ident">DbValueSetV2::Passkey</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetPasskey::from_dbvs2</span>(<span class="ident">set</span>),
         <span class="ident">DbValueSetV2::DeviceKey</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetDeviceKey::from_dbvs2</span>(<span class="ident">set</span>),
         <span class="ident">DbValueSetV2::Session</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetSession::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::JwsKeyEs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetJwsKeyEs256::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::JwsKeyRs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetJwsKeyEs256::from_dbvs2</span>(<span class="ident">set</span>),
+        <span class="ident">DbValueSetV2::JwsKeyEs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetJwsKeyEs256::from_dbvs2</span>(<span class="kw-2">&amp;</span><span class="ident">set</span>),
+        <span class="ident">DbValueSetV2::JwsKeyRs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetJwsKeyEs256::from_dbvs2</span>(<span class="kw-2">&amp;</span><span class="ident">set</span>),
         <span class="ident">DbValueSetV2::PhoneNumber</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">DbValueSetV2::TrustedDeviceEnrollment</span>(<span class="kw">_</span>) =&gt; {
             <span class="macro">unimplemented!</span>()
         }

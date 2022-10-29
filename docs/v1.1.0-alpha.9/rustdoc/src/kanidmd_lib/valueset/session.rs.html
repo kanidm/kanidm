@@ -248,6 +248,8 @@
 <span id="248">248</span>
 <span id="249">249</span>
 <span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::btree_map::Entry</span> <span class="kw">as</span> <span class="ident">BTreeEntry</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
@@ -327,6 +329,7 @@
                         <span class="kw">let</span> <span class="ident">issued_by</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">issued_by</span> {
                             <span class="ident">DbValueIdentityId::V1Internal</span> =&gt; <span class="ident">IdentityId::Internal</span>,
                             <span class="ident">DbValueIdentityId::V1Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">IdentityId::User</span>(<span class="ident">u</span>),
+                            <span class="ident">DbValueIdentityId::V1Sync</span>(<span class="ident">u</span>) =&gt; <span class="ident">IdentityId::Synch</span>(<span class="ident">u</span>),
                         };
 
                         <span class="kw">let</span> <span class="ident">scope</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">scope</span> {
@@ -451,6 +454,7 @@
                     <span class="ident">issued_by</span>: <span class="kw">match</span> <span class="ident">m</span>.<span class="ident">issued_by</span> {
                         <span class="ident">IdentityId::Internal</span> =&gt; <span class="ident">DbValueIdentityId::V1Internal</span>,
                         <span class="ident">IdentityId::User</span>(<span class="ident">u</span>) =&gt; <span class="ident">DbValueIdentityId::V1Uuid</span>(<span class="ident">u</span>),
+                        <span class="ident">IdentityId::Synch</span>(<span class="ident">u</span>) =&gt; <span class="ident">DbValueIdentityId::V1Sync</span>(<span class="ident">u</span>),
                     },
                     <span class="ident">scope</span>: <span class="kw">match</span> <span class="ident">m</span>.<span class="ident">scope</span> {
                         <span class="ident">AccessScope::IdentityOnly</span> =&gt; <span class="ident">DbValueAccessScopeV1::IdentityOnly</span>,

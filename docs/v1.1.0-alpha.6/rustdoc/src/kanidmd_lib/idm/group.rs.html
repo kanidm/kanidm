@@ -121,9 +121,6 @@
 <span id="121">121</span>
 <span id="122">122</span>
 <span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">Group</span> <span class="kw">as</span> <span class="ident">ProtoGroup</span>, <span class="ident">OperationError</span>};
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
@@ -231,12 +228,9 @@
                 OperationError::InvalidAccountState(&quot;Missing attribute: name&quot;.to_string())
             })?;
         */</span>
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span>
-            <span class="ident">value</span>
-                .<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>)
-                .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                    <span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>(),
-                ))<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
+        })<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_uuid</span>();
 

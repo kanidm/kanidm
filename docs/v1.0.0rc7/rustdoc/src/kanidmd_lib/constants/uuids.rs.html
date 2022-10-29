@@ -275,6 +275,15 @@
 <span id="275">275</span>
 <span id="276">276</span>
 <span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">uuid</span>::{<span class="ident">uuid</span>, <span class="ident">Uuid</span>};
@@ -326,6 +335,9 @@
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_IDM_ALL_PERSONS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000035&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_IDM_ALL_ACCOUNTS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000036&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000037&quot;</span>);
+
 <span class="comment">//</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HIGH_PRIVILEGE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000001000&quot;</span>);
 
@@ -471,6 +483,10 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000112&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION</span>: <span class="ident">Uuid</span> <span class="op">=</span>
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000113&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_SYNC_ACCOUNT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000114&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000115&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_SYNC_COOKIE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000116&quot;</span>);
 
 <span class="comment">// System and domain infos</span>
 <span class="comment">// I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.</span>
@@ -548,6 +564,8 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000042&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_OAUTH2_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000043&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000044&quot;</span>);
 
 <span class="comment">// End of system ranges</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_DOES_NOT_EXIST</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-fffffffffffe&quot;</span>);

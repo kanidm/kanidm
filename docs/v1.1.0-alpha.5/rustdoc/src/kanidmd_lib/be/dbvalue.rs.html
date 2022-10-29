@@ -642,6 +642,8 @@
 <span id="642">642</span>
 <span id="643">643</span>
 <span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
@@ -1021,6 +1023,8 @@
     <span class="ident">V1Internal</span>,
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v1u&quot;</span>)]</span>
     <span class="ident">V1Uuid</span>(<span class="ident">Uuid</span>),
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v1s&quot;</span>)]</span>
+    <span class="ident">V1Sync</span>(<span class="ident">Uuid</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>

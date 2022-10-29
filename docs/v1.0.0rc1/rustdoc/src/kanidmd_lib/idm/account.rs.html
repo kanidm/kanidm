@@ -691,8 +691,6 @@
 <span id="691">691</span>
 <span id="692">692</span>
 <span id="693">693</span>
-<span id="694">694</span>
-<span id="695">695</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
@@ -894,9 +892,7 @@
         <span class="kw">let</span> <span class="ident">expiry</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">AUTH_SESSION_EXPIRY</span>);
         <span class="kw">let</span> <span class="ident">issued_at</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
         <span class="comment">// TODO: Apply priv expiry.</span>
-        <span class="kw">let</span> <span class="ident">purpose</span> <span class="op">=</span> <span class="ident">UatPurpose::ReadWrite</span> {
-            <span class="ident">expiry</span>: <span class="ident">expiry</span>.<span class="ident">clone</span>(),
-        };
+        <span class="kw">let</span> <span class="ident">purpose</span> <span class="op">=</span> <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span>: <span class="ident">expiry</span> };
 
         <span class="prelude-val">Some</span>(<span class="ident">UserAuthToken</span> {
             <span class="ident">session_id</span>,
@@ -1341,8 +1337,8 @@
                                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">purpose</span><span class="op">|</span> <span class="ident">UatStatus</span> {
                                                 <span class="ident">account_id</span>,
                                                 <span class="ident">session_id</span>: <span class="kw-2">*</span><span class="ident">u</span>,
-                                                <span class="ident">expiry</span>: <span class="ident">s</span>.<span class="ident">expiry</span>.<span class="ident">clone</span>(),
-                                                <span class="ident">issued_at</span>: <span class="ident">s</span>.<span class="ident">issued_at</span>.<span class="ident">clone</span>(),
+                                                <span class="ident">expiry</span>: <span class="ident">s</span>.<span class="ident">expiry</span>,
+                                                <span class="ident">issued_at</span>: <span class="ident">s</span>.<span class="ident">issued_at</span>,
                                                 <span class="ident">purpose</span>,
                                             })
                                             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {

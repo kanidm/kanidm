@@ -1046,7 +1046,7 @@
     <span class="ident">BindMultiPartResponse</span>(<span class="ident">LdapBoundToken</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LdapMsg</span><span class="op">&gt;</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LdapSession</span> {
     <span class="comment">// Maps through and provides anon read, but allows us to check the validity</span>
     <span class="comment">// of the account still.</span>

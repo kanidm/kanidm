@@ -106,10 +106,10 @@
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::expect_used</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::panic</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unreachable</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::await_holding_lock</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unreachable</span>)]</span>
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">jemallocator</span>, <span class="ident">test</span>, <span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)))]</span>
 <span class="attribute">#[<span class="ident">global_allocator</span>]</span>
@@ -175,7 +175,7 @@
         <span class="ident">f_and</span>, <span class="ident">f_andnot</span>, <span class="ident">f_eq</span>, <span class="ident">f_id</span>, <span class="ident">f_inc</span>, <span class="ident">f_lt</span>, <span class="ident">f_or</span>, <span class="ident">f_pres</span>, <span class="ident">f_self</span>, <span class="ident">f_spn_name</span>, <span class="ident">f_sub</span>, <span class="ident">Filter</span>,
         <span class="ident">FilterInvalid</span>, <span class="ident">FC</span>,
     };
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">AccessScope</span>, <span class="ident">Identity</span>};
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">AccessScope</span>, <span class="ident">IdentType</span>, <span class="ident">Identity</span>};
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">m_pres</span>, <span class="ident">m_purge</span>, <span class="ident">m_remove</span>, <span class="ident">Modify</span>, <span class="ident">ModifyInvalid</span>, <span class="ident">ModifyList</span>};
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::server</span>::{
         <span class="ident">QueryServer</span>, <span class="ident">QueryServerReadTransaction</span>, <span class="ident">QueryServerTransaction</span>,

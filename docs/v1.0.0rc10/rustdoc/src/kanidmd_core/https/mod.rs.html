@@ -864,37 +864,12 @@
 <span id="864">864</span>
 <span id="865">865</span>
 <span id="866">866</span>
-<span id="867">867</span>
-<span id="868">868</span>
-<span id="869">869</span>
-<span id="870">870</span>
-<span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
-<span id="874">874</span>
-<span id="875">875</span>
-<span id="876">876</span>
-<span id="877">877</span>
-<span id="878">878</span>
-<span id="879">879</span>
-<span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
-<span id="883">883</span>
-<span id="884">884</span>
-<span id="885">885</span>
-<span id="886">886</span>
-<span id="887">887</span>
-<span id="888">888</span>
-<span id="889">889</span>
-<span id="890">890</span>
-<span id="891">891</span>
-<span id="892">892</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">routemaps</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
+<span class="kw">mod</span> <span class="ident">v1_scim</span>;
 
 <span class="kw">use</span> <span class="ident">std::fs::canonicalize</span>;
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
@@ -914,6 +889,7 @@
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::oauth2</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::routemaps</span>::{<span class="ident">RouteMap</span>, <span class="ident">RouteMaps</span>};
 <span class="kw">use</span> <span class="ident"><span class="self">self</span>::v1</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="self">self</span>::v1_scim</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::actors::v1_write::QueryServerWriteV1</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">ServerRole</span>, <span class="ident">TlsConfiguration</span>};
@@ -962,6 +938,8 @@
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RequestExtensions</span> {
     <span class="kw">fn</span> <span class="ident">get_current_uat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
 
+    <span class="kw">fn</span> <span class="ident">get_auth_bearer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>;
+
     <span class="kw">fn</span> <span class="ident">get_current_auth_session_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>;
 
     <span class="kw">fn</span> <span class="ident">get_url_param</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">tide::Error</span><span class="op">&gt;</span>;
@@ -972,6 +950,21 @@
 }
 
 <span class="kw">impl</span> <span class="ident">RequestExtensions</span> <span class="kw">for</span> <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_auth_bearer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+        <span class="comment">// Contact the QS to get it to validate wtf is up.</span>
+        <span class="comment">// let kref = &amp;self.state().bundy_handle;</span>
+        <span class="comment">// self.session().get::&lt;UserAuthToken&gt;(&quot;uat&quot;)</span>
+        <span class="self">self</span>.<span class="ident">header</span>(<span class="ident">tide::http::headers::AUTHORIZATION</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> {
+                <span class="comment">// Get the first header value.</span>
+                <span class="ident">hv</span>.<span class="ident">get</span>(<span class="number">0</span>)
+            })
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> {
+                <span class="comment">// Turn it to a &amp;str, and then check the prefix</span>
+                <span class="ident">h</span>.<span class="ident">as_str</span>().<span class="ident">strip_prefix</span>(<span class="string">&quot;Bearer &quot;</span>)
+            })
+    }
+
     <span class="kw">fn</span> <span class="ident">get_current_uat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="comment">// Contact the QS to get it to validate wtf is up.</span>
         <span class="comment">// let kref = &amp;self.state().bundy_handle;</span>
@@ -1366,55 +1359,12 @@ Disallow: /
     <span class="ident">appserver</span>
         .<span class="ident">at</span>(<span class="string">&quot;/status&quot;</span>)
         .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident"><span class="self">self</span>::status</span>);
+
     <span class="comment">// == oauth endpoints.</span>
+    <span class="ident">oauth2_route_setup</span>(<span class="kw-2">&amp;mut</span> <span class="ident">appserver</span>, <span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oauth2_process</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/oauth2&quot;</span>);
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">oauth2_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/authorise&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_post</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_get</span>);
-
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">oauth2_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/authorise/permit&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_permit_post</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_permit_get</span>);
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">oauth2_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/authorise/reject&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_reject_post</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_authorise_reject_get</span>);
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">oauth2_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/token&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_token_post</span>);
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">oauth2_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/token/introspect&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_token_introspect_post</span>);
-
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">openid_process</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/oauth2/openid&quot;</span>);
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">openid_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:client_id/.well-known/openid-configuration&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_openid_discovery_get</span>);
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">openid_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:client_id/userinfo&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_openid_userinfo_get</span>);
-    <span class="comment">// ⚠️  ⚠️   WARNING  ⚠️  ⚠️</span>
-    <span class="comment">// IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS</span>
-    <span class="ident">openid_process</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:client_id/public_key.jwk&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_openid_publickey_get</span>);
+    <span class="comment">// == scim endpoints.</span>
+    <span class="ident">scim_route_setup</span>(<span class="kw-2">&amp;mut</span> <span class="ident">appserver</span>, <span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">raw_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/raw&quot;</span>);
     <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/create&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">create</span>);
@@ -1632,8 +1582,6 @@ Disallow: /
     <span class="ident">service_account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>)
         .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_unix</span>);
-
-    <span class="comment">// TODO: Apis for token management</span>
 
     <span class="comment">// Shared account features only - mainly this is for unix-like</span>
     <span class="comment">// features.</span>

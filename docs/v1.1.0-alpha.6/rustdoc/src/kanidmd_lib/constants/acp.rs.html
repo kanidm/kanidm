@@ -1290,6 +1290,54 @@
 <span id="1290">1290</span>
 <span id="1291">1291</span>
 <span id="1292">1292</span>
+<span id="1293">1293</span>
+<span id="1294">1294</span>
+<span id="1295">1295</span>
+<span id="1296">1296</span>
+<span id="1297">1297</span>
+<span id="1298">1298</span>
+<span id="1299">1299</span>
+<span id="1300">1300</span>
+<span id="1301">1301</span>
+<span id="1302">1302</span>
+<span id="1303">1303</span>
+<span id="1304">1304</span>
+<span id="1305">1305</span>
+<span id="1306">1306</span>
+<span id="1307">1307</span>
+<span id="1308">1308</span>
+<span id="1309">1309</span>
+<span id="1310">1310</span>
+<span id="1311">1311</span>
+<span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
+<span id="1315">1315</span>
+<span id="1316">1316</span>
+<span id="1317">1317</span>
+<span id="1318">1318</span>
+<span id="1319">1319</span>
+<span id="1320">1320</span>
+<span id="1321">1321</span>
+<span id="1322">1322</span>
+<span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
+<span id="1326">1326</span>
+<span id="1327">1327</span>
+<span id="1328">1328</span>
+<span id="1329">1329</span>
+<span id="1330">1330</span>
+<span id="1331">1331</span>
+<span id="1332">1332</span>
+<span id="1333">1333</span>
+<span id="1334">1334</span>
+<span id="1335">1335</span>
+<span id="1336">1336</span>
+<span id="1337">1337</span>
+<span id="1338">1338</span>
+<span id="1339">1339</span>
+<span id="1340">1340</span>
 </pre><pre class="rust"><code><span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
@@ -2580,6 +2628,54 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;oauth2_rs_name&quot;,
             &quot;oauth2_rs_origin&quot;
         ]
+    }
+}&quot;#</span>;
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+    &quot;attrs&quot;: {
+        &quot;class&quot;: [
+            &quot;object&quot;,
+            &quot;access_control_profile&quot;,
+            &quot;access_control_search&quot;,
+            &quot;access_control_modify&quot;,
+            &quot;access_control_delete&quot;,
+            &quot;access_control_create&quot;
+        ],
+        &quot;name&quot;: [&quot;idm_acp_hp_sync_account_manage_priv&quot;],
+        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000044&quot;],
+        &quot;description&quot;: [&quot;Builtin IDM Control for managing IDM synchronisation accounts / connections&quot;],
+        &quot;acp_receiver&quot;: [
+            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000037\&quot;]}&quot;
+        ],
+        &quot;acp_targetscope&quot;: [
+            &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;sync_account\&quot;]},{\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
+        ],
+        &quot;acp_search_attr&quot;: [
+            &quot;class&quot;,
+            &quot;name&quot;,
+            &quot;description&quot;,
+            &quot;jws_es256_private_key&quot;,
+            &quot;sync_token_session&quot;,
+            &quot;sync_cookie&quot;
+        ],
+        &quot;acp_modify_removedattr&quot;: [
+            &quot;name&quot;,
+            &quot;description&quot;,
+            &quot;jws_es256_private_key&quot;,
+            &quot;sync_token_session&quot;,
+            &quot;sync_cookie&quot;
+        ],
+        &quot;acp_modify_presentattr&quot;: [
+            &quot;name&quot;,
+            &quot;description&quot;
+        ],
+        &quot;acp_modify_class&quot;: [],
+        &quot;acp_create_attr&quot;: [
+            &quot;class&quot;,
+            &quot;name&quot;,
+            &quot;description&quot;
+        ],
+        &quot;acp_create_class&quot;: [&quot;sync_account&quot;, &quot;object&quot;]
     }
 }&quot;#</span>;
 </code></pre></div>

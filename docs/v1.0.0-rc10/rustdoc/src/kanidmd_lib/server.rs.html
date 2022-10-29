@@ -4569,6 +4569,12 @@
 <span id="4569">4569</span>
 <span id="4570">4570</span>
 <span id="4571">4571</span>
+<span id="4572">4572</span>
+<span id="4573">4573</span>
+<span id="4574">4574</span>
+<span id="4575">4575</span>
+<span id="4576">4576</span>
+<span id="4577">4577</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -6683,6 +6689,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::mut_from_ref</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_dyngroup_cache</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">DynGroupCache</span> {
         <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="ident">mptr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">dyngroup_cache</span>.<span class="ident">as_ptr</span>();
@@ -7220,6 +7227,10 @@
             <span class="ident">JSON_SCHEMA_ATTR_API_TOKEN_SESSION</span>,
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP</span>,
             <span class="ident">JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_NSUNIQUEID</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_SYNC_COOKIE</span>,
             <span class="ident">JSON_SCHEMA_CLASS_PERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_ORGPERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_GROUP</span>,
@@ -7232,8 +7243,7 @@
             <span class="ident">JSON_SCHEMA_CLASS_SYSTEM_CONFIG</span>,
             <span class="ident">JSON_SCHEMA_CLASS_OAUTH2_RS</span>,
             <span class="ident">JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC</span>,
-            <span class="ident">JSON_SCHEMA_ATTR_NSUNIQUEID</span>,
-            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME</span>,
+            <span class="ident">JSON_SCHEMA_CLASS_SYNC_ACCOUNT</span>,
         ];
 
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">idm_schema</span>
@@ -7328,6 +7338,7 @@
             <span class="ident">JSON_DOMAIN_ADMINS</span>,
             <span class="ident">JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1</span>,
             <span class="ident">JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV</span>,
+            <span class="ident">JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV</span>,
             <span class="comment">// All members must exist before we write HP</span>
             <span class="ident">JSON_IDM_HIGH_PRIVILEGE_V1</span>,
             <span class="comment">// Built in access controls.</span>
@@ -7371,6 +7382,7 @@
             <span class="ident">JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1</span>,
             <span class="ident">JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1</span>,
             <span class="ident">JSON_IDM_ACP_OAUTH2_READ_PRIV_V1</span>,
+            <span class="ident">JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1</span>,
         ];
 
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">idm_entries</span>
