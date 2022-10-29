@@ -238,7 +238,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             account_id: service_account.uuid,
             token_id: session_id,
             label: gte.label.clone(),
-            expiry: gte.expiry.clone(),
+            expiry: gte.expiry,
             issued_at,
             purpose,
         });
@@ -344,8 +344,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                                             account_id,
                                             token_id: *u,
                                             label: s.label.clone(),
-                                            expiry: s.expiry.clone(),
-                                            issued_at: s.issued_at.clone(),
+                                            expiry: s.expiry,
+                                            issued_at: s.issued_at,
                                             purpose,
                                         })
                                         .map_err(|e| {

@@ -105,12 +105,9 @@ impl Group {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
         */
-        let spn =
-            value
-                .get_ava_single_proto_string("spn")
-                .ok_or(OperationError::InvalidAccountState(
-                    "Missing attribute: spn".to_string(),
-                ))?;
+        let spn = value.get_ava_single_proto_string("spn").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+        })?;
 
         let uuid = value.get_uuid();
 

@@ -53,6 +53,7 @@ use crate::idm::oauth2::{
     Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::radius::RadiusAccount;
+use crate::idm::scim::{ScimSyncToken, SyncAccount};
 use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
@@ -466,7 +467,7 @@ pub trait IdmServerTransaction<'a> {
                 .get_qs_txn()
                 .internal_search(filter!(f_eq(
                     "jws_es256_private_key",
-                    PartialValue::new_iutf8(&kid)
+                    PartialValue::new_iutf8(kid)
                 )))
                 .and_then(|mut vs| match vs.pop() {
                     Some(entry) if vs.is_empty() => Ok(entry),
@@ -691,7 +692,7 @@ pub trait IdmServerTransaction<'a> {
                 let entry = if uuid == &UUID_ANONYMOUS {
                     anon_entry.clone()
                 } else {
-                    self.get_qs_txn().internal_search_uuid(&uuid).map_err(|e| {
+                    self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
                         admin_error!("Failed to start auth ldap -> {:?}", e);
                         e
                     })?
@@ -717,7 +718,7 @@ pub trait IdmServerTransaction<'a> {
                     Err(OperationError::SessionExpired)
                 }
             }
-            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct),
+            LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct),
             LdapSession::ApiToken(apit) => {
                 let entry = self
                     .get_qs_txn()
@@ -727,9 +728,92 @@ pub trait IdmServerTransaction<'a> {
                         e
                     })?;
 
-                self.process_apit_to_identity(&apit, entry, ct)
+                self.process_apit_to_identity(apit, entry, ct)
             }
         }
+    }
+
+    #[instrument(level = "info", skip_all)]
+    fn validate_and_parse_sync_token_to_ident(
+        &self,
+        token: Option<&str>,
+        ct: Duration,
+    ) -> Result<Identity, OperationError> {
+        let jwsu = token
+            .ok_or_else(|| {
+                security_info!("No token provided");
+                OperationError::NotAuthenticated
+            })
+            .and_then(|s| {
+                JwsUnverified::from_str(s).map_err(|e| {
+                    security_info!(?e, "Unable to decode token");
+                    OperationError::NotAuthenticated
+                })
+            })?;
+
+        let kid = jwsu.get_jwk_kid().ok_or_else(|| {
+            security_info!("Token does not contain a valid kid");
+            OperationError::NotAuthenticated
+        })?;
+
+        let entry = self
+            .get_qs_txn()
+            .internal_search(filter!(f_eq(
+                "jws_es256_private_key",
+                PartialValue::new_iutf8(kid)
+            )))
+            .and_then(|mut vs| match vs.pop() {
+                Some(entry) if vs.is_empty() => Ok(entry),
+                _ => {
+                    admin_error!(
+                        ?kid,
+                        "entries was empty, or matched multiple results for kid"
+                    );
+                    Err(OperationError::NotAuthenticated)
+                }
+            })?;
+
+        let user_signer = entry
+            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .ok_or_else(|| {
+                admin_error!(
+                    ?kid,
+                    "A kid was present on entry {} but it does not contain a signing key",
+                    entry.get_uuid()
+                );
+                OperationError::NotAuthenticated
+            })?;
+
+        let user_validator = user_signer.get_validator().map_err(|e| {
+            security_info!(?e, "Unable to access token verifier");
+            OperationError::NotAuthenticated
+        })?;
+
+        let sync_token = jwsu
+            .validate(&user_validator)
+            .map_err(|e| {
+                security_info!(?e, "Unable to verify token");
+                OperationError::NotAuthenticated
+            })
+            .map(|t: Jws<ScimSyncToken>| t.into_inner())?;
+
+        let valid = SyncAccount::check_sync_token_valid(ct, &sync_token, &entry);
+
+        if !valid {
+            security_info!("Unable to proceed with invalid sync token");
+            return Err(OperationError::NotAuthenticated);
+        }
+
+        // If scope is not Synchronise, then fail.
+        let scope = (&sync_token.purpose).into();
+
+        let limits = Limits::unlimited();
+        Ok(Identity {
+            origin: IdentType::Synch(entry.get_uuid()),
+            session_id: sync_token.token_id,
+            scope,
+            limits,
+        })
     }
 }
 
@@ -1140,9 +1224,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }))
             }
             Token::ApiToken(apit, entry) => {
-                let spn = entry.get_ava_single_proto_string("spn").ok_or(
-                    OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
-                )?;
+                let spn = entry.get_ava_single_proto_string("spn").ok_or_else(|| {
+                    OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+                })?;
 
                 Ok(Some(LdapBoundToken {
                     session_id: apit.token_id,
@@ -1520,7 +1604,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
-        if (&*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
+        if (*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
             security_info!("Password found in badlist, rejecting");
             Err(OperationError::PasswordQuality(vec![
                 PasswordFeedback::BadListed,

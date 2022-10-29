@@ -9,10 +9,10 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
+#![allow(clippy::unreachable)]
 
 #[cfg(all(jemallocator, test, not(target_family = "windows")))]
 #[global_allocator]
@@ -78,7 +78,7 @@ pub mod prelude {
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
         FilterInvalid, FC,
     };
-    pub use crate::identity::{AccessScope, Identity};
+    pub use crate::identity::{AccessScope, IdentType, Identity};
     pub use crate::modify::{m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList};
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,

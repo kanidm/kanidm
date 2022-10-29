@@ -49,7 +49,9 @@ macro_rules! keygen_transform {
             }
         }
 
-        if $e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) {
+        if $e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
+           $e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)
+        {
             if !$e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()

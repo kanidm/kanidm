@@ -778,7 +778,7 @@ impl AuthSession {
                                     session_id,
                                     label: "Auth Session".to_string(),
                                     expiry: uat.expiry,
-                                    issued_at: uat.issued_at.clone(),
+                                    issued_at: uat.issued_at,
                                     issued_by: IdentityId::User(self.account.uuid),
                                     scope: (&uat.purpose).into(),
                                 }))

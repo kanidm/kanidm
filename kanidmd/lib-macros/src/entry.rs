@@ -8,7 +8,7 @@ fn token_stream_with_error(mut tokens: TokenStream, error: syn::Error) -> TokenS
     tokens
 }
 
-pub(crate) fn qs_test(_args: TokenStream, item: TokenStream, with_init: bool) -> TokenStream {
+pub(crate) fn qs_test(_args: &TokenStream, item: TokenStream, with_init: bool) -> TokenStream {
     let input: syn::ItemFn = match syn::parse(item.clone()) {
         Ok(it) => it,
         Err(e) => return token_stream_with_error(item, e),

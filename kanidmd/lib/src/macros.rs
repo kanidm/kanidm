@@ -120,8 +120,8 @@ where
         &crate::idm::server::IdmServerDelayed,
     ),
 {
-    let _ = sketching::test_init();
-    let _ = run_idm_test_inner!(test_fn);
+    sketching::test_init();
+    run_idm_test_inner!(test_fn);
 }
 
 // Test helpers for all plugins.

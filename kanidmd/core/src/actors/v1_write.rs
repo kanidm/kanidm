@@ -34,7 +34,7 @@ use kanidmd_lib::{
 use kanidmd_lib::prelude::*;
 
 pub struct QueryServerWriteV1 {
-    idms: Arc<IdmServer>,
+    pub(crate) idms: Arc<IdmServer>,
 }
 
 impl QueryServerWriteV1 {

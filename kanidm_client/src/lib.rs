@@ -39,6 +39,7 @@ use webauthn_rs_proto::{
 
 mod person;
 mod service_account;
+mod sync_account;
 mod system;
 
 pub const APPLICATION_JSON: &str = "application/json";

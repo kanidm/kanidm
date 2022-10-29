@@ -31,7 +31,7 @@ In these processes there may be a need to "reset" the synchronsied data. The dia
     ├───────────────────────┬─────────────────────┐   │                    │
     │  ┌─────────────┐      │   ┌─────────────┐   │   │   ┌─────────────┐  │
     │  │             │      │   │             │───┘   │   │             │  │
-    │  │   Initial   │      │   │   Partial   │       │   │    Final    │  │
+    │  │   Initial   │      │   │   Active    │       │   │    Final    │  │
     └─▶│ Synchronise │──────┴──▶│ Synchronise │───────┴──▶│ Synchronise │──┤
        │             │          │             │           │             │  │
        └─────────────┘          └─────────────┘           └─────────────┘  │
@@ -46,7 +46,7 @@ In these processes there may be a need to "reset" the synchronsied data. The dia
 Kanidm starts in a "detached" state from the extern IDM source.
 
 For Kanidm as a "read only" application source the Initial synchronisation is performed followed by periodic
-partial synchronisations. At anytime a full initial synchronisation can re-occur to reset the data of the
+active (partial) synchronisations. At anytime a full initial synchronisation can re-occur to reset the data of the
 provider. The provider can be reset and removed by a purge which reset's Kanidm to a detached state.
 
 For a gradual migration, this process is the same as the read only application. However when ready

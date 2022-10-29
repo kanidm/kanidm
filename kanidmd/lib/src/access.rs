@@ -456,12 +456,17 @@ pub trait AccessControlsTransaction<'a> {
                 // A possible solution is to change the filter resolve function
                 // such that it takes an entry, rather than an event, but that
                 // would create issues in search.
-                match (&acs.acp.receiver).resolve(ident, None, Some(acp_resolve_filter_cache)) {
+                match acs
+                    .acp
+                    .receiver
+                    .resolve(ident, None, Some(acp_resolve_filter_cache))
+                {
                     Ok(f_res) => {
                         if rec_entry.entry_match_no_index(&f_res) {
                             // Now, for each of the acp's that apply to our receiver, resolve their
                             // related target filters.
-                            (&acs.acp.targetscope)
+                            acs.acp
+                                .targetscope
                                 .resolve(ident, None, Some(acp_resolve_filter_cache))
                                 .map_err(|e| {
                                     admin_error!(
@@ -508,6 +513,10 @@ pub trait AccessControlsTransaction<'a> {
                 trace!("Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(entries);
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
             }
             IdentType::User(u) => &u.entry,
         };
@@ -611,6 +620,10 @@ pub trait AccessControlsTransaction<'a> {
                     // No need to check ACS
                     return Ok(Vec::new());
                 }
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
             }
             IdentType::User(u) => &u.entry,
         };
@@ -724,10 +737,10 @@ pub trait AccessControlsTransaction<'a> {
                 modify_state
                 .iter()
                 .filter_map(|acs| {
-                    match (&acs.acp.receiver).resolve(ident, None, Some(acp_resolve_filter_cache)) {
+                    match acs.acp.receiver.resolve(ident, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => {
                             if rec_entry.entry_match_no_index(&f_res) {
-                                (&acs.acp.targetscope)
+                                acs.acp.targetscope
                                     .resolve(ident, None, Some(acp_resolve_filter_cache))
                                     .map_err(|e| {
                                         admin_error!(
@@ -768,6 +781,10 @@ pub trait AccessControlsTransaction<'a> {
                 trace!("Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
             }
             IdentType::User(u) => &u.entry,
         };
@@ -940,6 +957,10 @@ pub trait AccessControlsTransaction<'a> {
                 // No need to check ACS
                 return Ok(true);
             }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
+            }
             IdentType::User(u) => &u.entry,
         };
         info!(event = %ce.ident, "Access check for create event");
@@ -1081,6 +1102,10 @@ pub trait AccessControlsTransaction<'a> {
                 // No need to check ACS
                 return Ok(true);
             }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
+            }
             IdentType::User(u) => &u.entry,
         };
         info!(event = %de.ident, "Access check for delete event");
@@ -1192,6 +1217,10 @@ pub trait AccessControlsTransaction<'a> {
                 // empty sets.
                 security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
                 // No need to check ACS
+                return Err(OperationError::InvalidState);
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
             IdentType::User(u) => &u.entry,

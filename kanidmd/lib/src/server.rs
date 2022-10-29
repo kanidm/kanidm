@@ -2112,6 +2112,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    #[allow(clippy::mut_from_ref)]
     pub(crate) fn get_dyngroup_cache(&self) -> &mut DynGroupCache {
         unsafe {
             let mptr = self.dyngroup_cache.as_ptr();
@@ -2649,6 +2650,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
             JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
             JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
+            JSON_SCHEMA_ATTR_NSUNIQUEID,
+            JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
+            JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
+            JSON_SCHEMA_ATTR_SYNC_COOKIE,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,
@@ -2661,8 +2666,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
             JSON_SCHEMA_CLASS_OAUTH2_RS,
             JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC,
-            JSON_SCHEMA_ATTR_NSUNIQUEID,
-            JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
+            JSON_SCHEMA_CLASS_SYNC_ACCOUNT,
         ];
 
         let r = idm_schema
@@ -2757,6 +2761,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_DOMAIN_ADMINS,
             JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1,
             JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
+            JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             // All members must exist before we write HP
             JSON_IDM_HIGH_PRIVILEGE_V1,
             // Built in access controls.
@@ -2800,6 +2805,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
             JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
             JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
+            JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
