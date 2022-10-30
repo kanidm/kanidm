@@ -112,13 +112,14 @@ async def test_ssl_wrong_hostname_verify_certificate() -> None:
 @pytest.mark.network
 @pytest.mark.asyncio
 async def test_ssl_revoked() -> None:
-    """tests with a revoked certificate, it'll pass but one day this should be a thing"""
+    """tests with a revoked certificate"""
 
-    client = KanidmClient(
-        uri="https://revoked.badssl.com/",
-    )
-    result = await client.call_get("/")
-    assert result.content
+    with pytest.raises(aiohttp.ClientConnectorCertificateError):
+        client = KanidmClient(
+            uri="https://revoked.badssl.com/",
+        )
+        result = await client.call_get("/")
+        assert result.content
 
 
 @pytest.mark.network
