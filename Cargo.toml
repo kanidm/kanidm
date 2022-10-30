@@ -84,7 +84,7 @@ last-git-commit = "0.2.0"
 # REMOVE this
 lazy_static = "^1.4.0"
 ldap3_proto = "^0.2.3"
-libc = "^0.2.135"
+libc = "^0.2.137"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
 lru = "^0.8.0"
