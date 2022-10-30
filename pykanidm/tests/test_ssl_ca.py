@@ -117,9 +117,17 @@ async def test_ssl_revoked() -> None:
     with pytest.raises(aiohttp.ClientConnectorCertificateError):
         client = KanidmClient(
             uri="https://revoked.badssl.com/",
+            verify_certificate=True,
         )
         result = await client.call_get("/")
         assert result.content
+
+    client = KanidmClient(
+        uri="https://revoked.badssl.com/",
+        verify_certificate=False,
+    )
+    result = await client.call_get("/")
+    assert result.content
 
 
 @pytest.mark.network
