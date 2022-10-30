@@ -7,7 +7,6 @@ use yew_router::prelude::Link;
 use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
-use crate::models;
 use crate::utils::{do_alert_error, do_page_header, init_request};
 use crate::views::AdminRoute;
 
@@ -64,7 +63,7 @@ pub struct AdminListOAuth2Props {
 
 /// Pulls all OAuth2 RPs from the backend and returns a HashMap
 /// with the "name" field being the keys, for easy human-facing sortability.
-pub async fn get_entities(token: &str) -> Result<AdminListOAuth2Msg, GetError> {
+pub async fn get_entities() -> Result<AdminListOAuth2Msg, GetError> {
     // TODO: the actual pulling and turning into a BTreeMap across the admin systems could *probably* be rolled up into one function? The result object differs but all the query bits are the same.
     let mut oauth2_objects = BTreeMap::new();
 
@@ -72,7 +71,7 @@ pub async fn get_entities(token: &str) -> Result<AdminListOAuth2Msg, GetError> {
     let endpoints = [("/v1/oauth2", EntityType::OAuth2RP)];
 
     for (endpoint, object_type) in endpoints {
-        let request = init_request(endpoint, token);
+        let request = init_request(endpoint);
         let response = match request.send().await {
             Ok(value) => value,
             Err(error) => {
@@ -113,14 +112,10 @@ impl Component for AdminListOAuth2 {
 
     fn create(ctx: &Context<Self>) -> Self {
         // TODO: work out the querystring thing so we can just show x number of elements
-        let token = match models::get_bearer_token() {
-            Some(value) => value,
-            None => String::from(""),
-        };
 
         // start pulling the data on startup
         ctx.link().send_future(async move {
-            match get_entities(token.clone().as_str()).await {
+            match get_entities().await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -299,15 +294,11 @@ impl Component for AdminViewOAuth2 {
     type Properties = AdminViewOAuth2Props;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let token = match models::get_bearer_token() {
-            Some(value) => value,
-            None => String::from(""),
-        };
         let rs_name = ctx.props().rs_name.clone();
 
         // start pulling the data on startup
         ctx.link().send_future(async move {
-            match get_oauth2_rp(token.clone().as_str(), &rs_name).await {
+            match get_oauth2_rp(&rs_name).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -405,8 +396,8 @@ impl Component for AdminViewOAuth2 {
     }
 }
 
-pub async fn get_oauth2_rp(token: &str, rs_name: &str) -> Result<AdminViewOAuth2Msg, GetError> {
-    let request = init_request(format!("/v1/oauth2/{}", rs_name).as_str(), token);
+pub async fn get_oauth2_rp(rs_name: &str) -> Result<AdminViewOAuth2Msg, GetError> {
+    let request = init_request(format!("/v1/oauth2/{}", rs_name).as_str());
     let response = match request.send().await {
         Ok(value) => value,
         Err(error) => {

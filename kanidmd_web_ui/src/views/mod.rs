@@ -1,11 +1,9 @@
-use std::str::FromStr;
-
-use compact_jwt::{Jws, JwsUnverified};
+use gloo::console;
 use kanidm_proto::v1::UserAuthToken;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
+use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -72,28 +70,24 @@ enum State {
     LoginRequired,
     LoggingOut,
     Verifying,
-    Authenticated(String),
+    Authenticated(UserAuthToken),
     Error { emsg: String, kopid: Option<String> },
 }
 
 #[derive(PartialEq, Eq, Properties)]
 pub struct ViewProps {
-    pub token: String,
-    // pub current_user_entry: Option<Entry>,
-    pub current_user_uat: Option<UserAuthToken>,
+    pub current_user_uat: UserAuthToken,
 }
 
 pub struct ViewsApp {
     state: State,
-    // pub current_user_entry: Option<Entry>,
-    pub current_user_uat: Option<UserAuthToken>,
 }
 
 pub enum ViewsMsg {
-    Verified(String),
+    Verified,
+    ProfileInfoRecieved { uat: UserAuthToken },
     Logout,
     LogoutComplete,
-    ProfileInfoRecieved { uat: UserAuthToken },
     Error { emsg: String, kopid: Option<String> },
 }
 
@@ -117,25 +111,18 @@ impl Component for ViewsApp {
         // Ensure the token is valid before we proceed. Could be
         // due to a session expiry or something else, but we want to make
         // sure we are really authenticated before we proceed.
-        let state = match models::get_bearer_token() {
-            Some(token) => {
-                // Send off the validation event.
-                ctx.link().send_future(async {
-                    match Self::check_token_valid(token).await {
-                        Ok(v) => v,
-                        Err(v) => v.into(),
-                    }
-                });
 
-                State::Verifying
+        // Send off the validation event.
+        ctx.link().send_future(async {
+            match Self::check_session_valid().await {
+                Ok(v) => v,
+                Err(v) => v.into(),
             }
-            None => State::LoginRequired,
-        };
+        });
 
-        ViewsApp {
-            state,
-            current_user_uat: None,
-        }
+        let state = State::Verifying;
+
+        ViewsApp { state }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -148,40 +135,32 @@ impl Component for ViewsApp {
         #[cfg(debug)]
         console::debug!("views::update");
         match msg {
-            ViewsMsg::Verified(token) => {
-                let tk = token.clone();
-                self.state = State::Authenticated(token);
-                // Populate the user profile
+            ViewsMsg::Verified => {
+                // Populate the user profile now we know their session is valid.
                 ctx.link().send_future(async {
-                    match Self::fetch_user_data(tk).await {
+                    match Self::fetch_user_data().await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
                 });
                 true
             }
+            ViewsMsg::ProfileInfoRecieved { uat } => {
+                self.state = State::Authenticated(uat);
+                true
+            }
             ViewsMsg::Logout => {
-                match models::get_bearer_token() {
-                    Some(tk) => {
-                        models::clear_bearer_token();
-                        ctx.link().send_future(async {
-                            match Self::fetch_logout(tk).await {
-                                Ok(v) => v,
-                                Err(v) => v.into(),
-                            }
-                        });
-                        self.state = State::LoggingOut;
+                ctx.link().send_future(async {
+                    match Self::fetch_logout().await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
                     }
-                    None => self.state = State::LoginRequired,
-                }
+                });
+                self.state = State::LoggingOut;
                 true
             }
             ViewsMsg::LogoutComplete => {
                 self.state = State::LoginRequired;
-                true
-            }
-            ViewsMsg::ProfileInfoRecieved { uat } => {
-                self.current_user_uat = Some(uat);
                 true
             }
             ViewsMsg::Error { emsg, kopid } => {
@@ -227,7 +206,7 @@ impl Component for ViewsApp {
                   </main>
                 }
             }
-            State::Authenticated(_) => self.view_authenticated(ctx),
+            State::Authenticated(uat) => self.view_authenticated(ctx, uat),
             State::Error { emsg, kopid } => {
                 html! {
                   <main class="form-signin">
@@ -254,8 +233,8 @@ impl Component for ViewsApp {
 
 impl ViewsApp {
     /// The base page for the user dashboard
-    fn view_authenticated(&self, ctx: &Context<Self>) -> Html {
-        let current_user_uat = self.current_user_uat.clone();
+    fn view_authenticated(&self, ctx: &Context<Self>, uat: &UserAuthToken) -> Html {
+        let current_user_uat = uat.clone();
 
         // WARN set dash-body against body here?
         html! {
@@ -337,17 +316,13 @@ impl ViewsApp {
         <main class="p-3 x-auto">
               <Switch<ViewRoute> render={ Switch::render(move |route: &ViewRoute| {
                     // safety - can't panic because to get to this location we MUST be authenticated!
-                    let token =
-                        models::get_bearer_token().expect_throw("Invalid state, bearer token must be present!");
-
                     match route {
-
                         ViewRoute::Admin => html!{
                             <Switch<AdminRoute> render={ Switch::render(admin_routes) } />
                         },
                         ViewRoute::Apps => html! { <AppsApp /> },
-                        ViewRoute::Profile => html! { <ProfileApp token={ token } current_user_uat={ current_user_uat.clone() } /> },
-                        ViewRoute::Security => html! { <SecurityApp token={ token } current_user_uat={ current_user_uat.clone() } /> },
+                        ViewRoute::Profile => html! { <ProfileApp current_user_uat={ current_user_uat.clone() } /> },
+                        ViewRoute::Security => html! { <SecurityApp current_user_uat={ current_user_uat.clone() } /> },
                         ViewRoute::NotFound => html! {
                             <Redirect<Route> to={Route::NotFound}/>
                         },
@@ -358,20 +333,17 @@ impl ViewsApp {
           }
     }
 
-    async fn check_token_valid(token: String) -> Result<ViewsMsg, FetchError> {
+    async fn check_session_valid() -> Result<ViewsMsg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
 
         request
             .headers()
             .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
             .expect_throw("failed to set header");
 
         let window = utils::window();
@@ -380,9 +352,8 @@ impl ViewsApp {
         let status = resp.status();
 
         if status == 200 {
-            Ok(ViewsMsg::Verified(token))
+            Ok(ViewsMsg::Verified)
         } else if status == 401 {
-            // Not valid, re-auth
             Ok(ViewsMsg::LogoutComplete)
         } else {
             let headers = resp.headers();
@@ -393,35 +364,54 @@ impl ViewsApp {
         }
     }
 
-    async fn fetch_user_data(token: String) -> Result<ViewsMsg, FetchError> {
-        let jwtu = JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
-
-        let uat: Jws<UserAuthToken> = jwtu
-            .unsafe_release_without_verification()
-            .expect_throw("Invalid UAT, unable to release");
-
-        // We could get rid of this since the token is all we need?
-        //
-        // How will we manage this on changes?
-        Ok(ViewsMsg::ProfileInfoRecieved {
-            uat: uat.into_inner(),
-        })
-    }
-
-    async fn fetch_logout(token: String) -> Result<ViewsMsg, FetchError> {
+    async fn fetch_user_data() -> Result<ViewsMsg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
+
+        let request = Request::new_with_str_and_init("/v1/self/_uat", &opts)?;
+
+        request
+            .headers()
+            .set("content-type", "application/json")
+            .expect_throw("failed to set header");
+
+        let window = utils::window();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+        let status = resp.status();
+
+        if status == 200 {
+            let jsval = JsFuture::from(resp.json()?).await?;
+            let uat: UserAuthToken = serde_wasm_bindgen::from_value(jsval)
+                .map_err(|e| {
+                    let e_msg = format!("serde error -> {:?}", e);
+                    console::error!(e_msg.as_str());
+                })
+                .expect_throw("Invalid response type");
+
+            Ok(ViewsMsg::ProfileInfoRecieved { uat })
+        } else {
+            let headers = resp.headers();
+            let kopid = headers.get("x-kanidm-opid").ok().flatten();
+            let text = JsFuture::from(resp.text()?).await?;
+            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            Ok(ViewsMsg::Error { emsg, kopid })
+        }
+    }
+
+    async fn fetch_logout() -> Result<ViewsMsg, FetchError> {
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         let request = Request::new_with_str_and_init("/v1/logout", &opts)?;
 
         request
             .headers()
             .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
             .expect_throw("failed to set header");
 
         let window = utils::window();

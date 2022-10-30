@@ -1473,7 +1473,7 @@ mod tests {
     use std::time::Duration;
 
     use async_std::task;
-    use kanidm_proto::v1::{AuthAllowed, AuthMech, CredentialDetailType};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, CredentialDetailType};
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
@@ -1714,7 +1714,7 @@ mod tests {
         match r2 {
             Ok(AuthResult {
                 sessionid: _,
-                state: AuthState::Success(token),
+                state: AuthState::Success(token, AuthIssueSession::Token),
                 delay: _,
             }) => {
                 // Process the auth session
@@ -1788,7 +1788,7 @@ mod tests {
         match r3 {
             Ok(AuthResult {
                 sessionid: _,
-                state: AuthState::Success(token),
+                state: AuthState::Success(token, AuthIssueSession::Token),
                 delay: _,
             }) => {
                 // Process the auth session
@@ -1857,7 +1857,7 @@ mod tests {
         match r3 {
             Ok(AuthResult {
                 sessionid: _,
-                state: AuthState::Success(token),
+                state: AuthState::Success(token, AuthIssueSession::Token),
                 delay: _,
             }) => {
                 // There now should be a backup code invalidation present
@@ -1934,7 +1934,7 @@ mod tests {
         match r3 {
             Ok(AuthResult {
                 sessionid: _,
-                state: AuthState::Success(token),
+                state: AuthState::Success(token, AuthIssueSession::Token),
                 delay: _,
             }) => {
                 // Process the webauthn update

@@ -213,7 +213,7 @@ impl Account {
             mail_primary: self.mail_primary.clone(),
             ui_hints: self.ui_hints.clone(),
             // application: None,
-            groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
         })
     }
 

@@ -1,12 +1,9 @@
-use std::str::FromStr;
-
-use compact_jwt::{Jws, JwsUnverified};
 #[cfg(debug)]
 use gloo::console;
-use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
+use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
+use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -74,19 +71,12 @@ impl Component for SecurityApp {
             Msg::RequestCredentialUpdate => {
                 // Submit a req to init the session.
                 // The uuid we want to submit against - hint, it's us.
-                let token = ctx.props().token.clone();
 
-                let jwtu =
-                    JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
-
-                let uat: Jws<UserAuthToken> = jwtu
-                    .unsafe_release_without_verification()
-                    .expect_throw("Unvalid UAT, unable to release ");
-
-                let id = uat.into_inner().uuid.to_string();
+                let uat = &ctx.props().current_user_uat;
+                let id = uat.uuid.to_string();
 
                 ctx.link().send_future(async {
-                    match Self::fetch_token_valid(id, token).await {
+                    match Self::fetch_token_valid(id).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -142,7 +132,7 @@ impl Component for SecurityApp {
             _ => html! { <></> },
         };
 
-        let current_user_uat = ctx.props().current_user_uat.clone();
+        let uat = ctx.props().current_user_uat.clone();
 
         html! {
             <>
@@ -166,25 +156,24 @@ impl Component for SecurityApp {
                 </p>
               </div>
               <hr/>
-              if let Some(uat) = current_user_uat {
                 if uat.ui_hints.contains(&UiHint::PosixAccount) {
                   <div>
                       <p>
-                        <ChangeUnixPassword token={ctx.props().token.clone()}></ChangeUnixPassword>
+                        <ChangeUnixPassword uat={ uat }/>
                       </p>
                   </div>
                 }
-              }
             </>
         }
     }
 }
 
 impl SecurityApp {
-    async fn fetch_token_valid(id: String, token: String) -> Result<Msg, FetchError> {
+    async fn fetch_token_valid(id: String) -> Result<Msg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         let uri = format!("/v1/person/{}/_credential/_update", id);
 
@@ -193,10 +182,6 @@ impl SecurityApp {
         request
             .headers()
             .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
             .expect_throw("failed to set header");
 
         let window = utils::window();

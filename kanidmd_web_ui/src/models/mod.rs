@@ -12,19 +12,6 @@ use yew_router::prelude::{AnyHistory, History};
 use crate::manager::Route;
 use crate::views::ViewRoute;
 
-pub fn get_bearer_token() -> Option<String> {
-    let prev_session: Result<String, _> = PersistentStorage::get("kanidm_bearer_token");
-    #[cfg(debug)]
-    console::debug!(format!("kanidm_bearer_token -> {:?}", prev_session).as_str());
-
-    prev_session.ok()
-}
-
-pub fn set_bearer_token(bearer_token: String) {
-    PersistentStorage::set("kanidm_bearer_token", bearer_token)
-        .expect_throw("failed to set header");
-}
-
 pub fn clear_bearer_token() {
     PersistentStorage::delete("kanidm_bearer_token");
 }

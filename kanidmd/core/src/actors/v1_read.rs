@@ -6,7 +6,7 @@ use std::sync::Arc;
 use kanidm_proto::v1::{
     ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
     Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, UatStatus,
-    UnixGroupToken, UnixUserToken, WhoamiResponse,
+    UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -318,6 +318,34 @@ impl QueryServerReadV1 {
             Some(_) => Err(OperationError::InvalidState), /* Somehow matched multiple entries... */
             _ => Err(OperationError::NoMatchingEntries),
         }
+    }
+
+    #[instrument(
+        level = "info",
+        name = "whoami_uat",
+        skip(self, uat, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_whoami_uat(
+        &self,
+        uat: Option<String>,
+        eventid: Uuid,
+    ) -> Result<UserAuthToken, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read().await;
+        // Make an event from the whoami request. This will process the event and
+        // generate a selfuuid search.
+        //
+        // This current handles the unauthenticated check, and will
+        // trigger the failure, but if we can manage to work out async
+        // then move this to core.rs, and don't allow Option<UAT> to get
+        // this far.
+        idms_prox_read
+            .validate_and_parse_token_to_uat(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(?e, "Invalid identity");
+                e
+            })
     }
 
     #[instrument(

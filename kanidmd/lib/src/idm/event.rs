@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::idm::AuthState;
 use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{AuthCredential, AuthMech, AuthRequest, AuthStep};
+use kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
 
 #[cfg(test)]
 use webauthn_rs::prelude::PublicKeyCredential;
@@ -294,8 +294,8 @@ impl LdapTokenAuthEvent {
 
 #[derive(Debug)]
 pub struct AuthEventStepInit {
-    pub name: String,
-    pub appid: Option<String>,
+    pub username: String,
+    pub issue: AuthIssueSession,
 }
 
 #[derive(Debug)]
@@ -320,9 +320,14 @@ pub enum AuthEventStep {
 impl AuthEventStep {
     fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
         match aus {
-            AuthStep::Init(name) => {
-                Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
+            AuthStep::Init(username) => Ok(AuthEventStep::Init(AuthEventStepInit {
+                username,
+                issue: AuthIssueSession::Token,
+            })),
+            AuthStep::Init2 { username, issue } => {
+                Ok(AuthEventStep::Init(AuthEventStepInit { username, issue }))
             }
+
             AuthStep::Begin(mech) => match sid {
                 Some(ssid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
                     sessionid: ssid,
@@ -347,16 +352,16 @@ impl AuthEventStep {
     #[cfg(test)]
     pub fn anonymous_init() -> Self {
         AuthEventStep::Init(AuthEventStepInit {
-            name: "anonymous".to_string(),
-            appid: None,
+            username: "anonymous".to_string(),
+            issue: AuthIssueSession::Token,
         })
     }
 
     #[cfg(test)]
     pub fn named_init(name: &str) -> Self {
         AuthEventStep::Init(AuthEventStepInit {
-            name: name.to_string(),
-            appid: None,
+            username: name.to_string(),
+            issue: AuthIssueSession::Token,
         })
     }
 

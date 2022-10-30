@@ -9,7 +9,6 @@ use crate::components::alpha_warning_banner;
 use crate::constants::{
     CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
 };
-use crate::models;
 use crate::utils::{do_alert_error, do_page_header, init_request};
 use crate::views::AdminRoute;
 
@@ -83,7 +82,7 @@ pub struct AdminListAccountsProps {
 
 /// Pulls all accounts (service or person-class) from the backend and returns a HashMap
 /// with the "name" field being the keys, for easy human-facing sortability.
-pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError> {
+pub async fn get_accounts() -> Result<AdminListAccountsMsg, GetError> {
     // TODO: the actual pulling and turning into a BTreeMap in this and get_groups could *probably* be rolled up into one function? The result object differs but all the widgets are the same.
     let mut all_accounts = BTreeMap::new();
 
@@ -94,7 +93,7 @@ pub async fn get_accounts(token: &str) -> Result<AdminListAccountsMsg, GetError>
     ];
 
     for (endpoint, object_type) in endpoints {
-        let request = init_request(endpoint, token);
+        let request = init_request(endpoint);
         let response = match request.send().await {
             Ok(value) => value,
             Err(error) => {
@@ -146,14 +145,10 @@ impl Component for AdminListAccounts {
     fn create(ctx: &Context<Self>) -> Self {
         // TODO: work out the querystring thing so we can just show x number of elements
         // console::log!("query: {:?}", location().query);
-        let token = match models::get_bearer_token() {
-            Some(value) => value,
-            None => String::from(""),
-        };
 
         // start pulling the account data on startup
         ctx.link().send_future(async move {
-            match get_accounts(token.clone().as_str()).await {
+            match get_accounts().await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -327,13 +322,9 @@ impl Component for AdminViewPerson {
     type Properties = AdminViewAccountProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let token = match models::get_bearer_token() {
-            Some(value) => value,
-            None => String::from(""),
-        };
         let uuid = ctx.props().uuid.clone();
         ctx.link().send_future(async move {
-            match get_person(token.clone().as_str(), &uuid).await {
+            match get_person(&uuid).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -480,13 +471,9 @@ impl Component for AdminViewServiceAccount {
     type Properties = AdminViewAccountProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let token = match models::get_bearer_token() {
-            Some(value) => value,
-            None => String::from(""),
-        };
         let uuid = ctx.props().uuid.clone();
         ctx.link().send_future(async move {
-            match get_service_account(token.clone().as_str(), &uuid).await {
+            match get_service_account(&uuid).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -553,8 +540,8 @@ impl Component for AdminViewServiceAccount {
 }
 
 /// pull the details for a single person by UUID
-pub async fn get_person(token: &str, uuid: &str) -> Result<AdminViewPersonMsg, GetError> {
-    let request = init_request(format!("/v1/person/{}", uuid).as_str(), token);
+pub async fn get_person(uuid: &str) -> Result<AdminViewPersonMsg, GetError> {
+    let request = init_request(format!("/v1/person/{}", uuid).as_str());
     let response = match request.send().await {
         Ok(value) => value,
         Err(error) => {
@@ -572,11 +559,8 @@ pub async fn get_person(token: &str, uuid: &str) -> Result<AdminViewPersonMsg, G
 }
 
 /// pull the details for a single service_account by UUID
-pub async fn get_service_account(
-    token: &str,
-    uuid: &str,
-) -> Result<AdminViewServiceAccountMsg, GetError> {
-    let request = init_request(format!("/v1/service_account/{}", uuid).as_str(), token);
+pub async fn get_service_account(uuid: &str) -> Result<AdminViewServiceAccountMsg, GetError> {
+    let request = init_request(format!("/v1/service_account/{}", uuid).as_str());
     let response = match request.send().await {
         Ok(value) => value,
         Err(error) => {

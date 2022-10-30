@@ -3,9 +3,10 @@ use std::time::Duration;
 
 use compact_jwt::Jws;
 use kanidm_proto::v1::{
-    AccountUnixExtend, ApiTokenGenerate, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
-    CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, Entry as ProtoEntry,
-    GroupUnixExtend, ModifyRequest, OperationError, SearchRequest, SingleStringRequest,
+    AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
+    AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken, CreateRequest,
+    DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, ModifyRequest, OperationError,
+    SearchRequest, SingleStringRequest,
 };
 use kanidmd_lib::filter::{Filter, FilterInvalid};
 use kanidmd_lib::idm::event::AuthResult;
@@ -64,10 +65,25 @@ pub async fn whoami(req: tide::Request<AppState>) -> tide::Result {
     to_tide_response(res, hvalue)
 }
 
-pub async fn logout(req: tide::Request<AppState>) -> tide::Result {
+pub async fn whoami_uat(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
+    let res = req.state().qe_r_ref.handle_whoami_uat(uat, eventid).await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn logout(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let (eventid, hvalue) = req.new_eventid();
+
+    // Now lets nuke any cookies for the session. We do this before the handle_logout
+    // so that if any errors occur, the cookies are still removed.
+    let msession = req.session_mut();
+    msession.remove("auth-session-id");
+    msession.remove("bearer");
+
     let res = req.state().qe_w_ref.handle_logout(uat, eventid).await;
+
     to_tide_response(res, hvalue)
 }
 
@@ -1125,17 +1141,21 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         })
                         .map(|_| ProtoAuthState::Continue(allowed))
                 }
-                AuthState::Success(token) => {
+                AuthState::Success(token, issue) => {
                     debug!("🧩 -> AuthState::Success");
                     // Remove the auth-session-id
                     let msession = req.session_mut();
                     msession.remove("auth-session-id");
                     // Create a session cookie?
                     msession.remove("bearer");
-                    msession
-                        .insert("bearer", token.clone())
-                        .map_err(|_| OperationError::InvalidSessionState)
-                        .map(|_| ProtoAuthState::Success(token))
+
+                    match issue {
+                        AuthIssueSession::Cookie => msession
+                            .insert("bearer", token)
+                            .map_err(|_| OperationError::InvalidSessionState)
+                            .map(|_| ProtoAuthState::SuccessCookie),
+                        AuthIssueSession::Token => Ok(ProtoAuthState::Success(token)),
+                    }
                 }
                 AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");

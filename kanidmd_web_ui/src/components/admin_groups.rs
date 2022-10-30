@@ -7,7 +7,6 @@ use yew_router::prelude::Link;
 use crate::components::adminmenu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
-use crate::models;
 use crate::utils::{do_alert_error, do_page_header, init_request};
 use crate::views::AdminRoute;
 
@@ -64,14 +63,14 @@ pub struct AdminListGroupsProps {
 
 /// Pulls all accounts (service or person-class) from the backend and returns a HashMap
 /// with the "name" field being the keys, for easy human-facing sortability.
-pub async fn get_groups(token: &str) -> Result<AdminListGroupsMsg, GetError> {
+pub async fn get_groups() -> Result<AdminListGroupsMsg, GetError> {
     let mut all_groups = BTreeMap::new();
 
     // we iterate over these endpoints
     let endpoints = [("/v1/group", EntityType::Group)];
 
     for (endpoint, object_type) in endpoints {
-        let request = init_request(endpoint, token);
+        let request = init_request(endpoint);
         let response = match request.send().await {
             Ok(value) => value,
             Err(error) => {
@@ -117,14 +116,10 @@ impl Component for AdminListGroups {
     fn create(ctx: &Context<Self>) -> Self {
         // TODO: work out the querystring thing so we can just show x number of elements
         // console::log!("query: {:?}", location().query);
-        let token = match models::get_bearer_token() {
-            Some(value) => value,
-            None => String::from(""),
-        };
 
         // start pulling the account data on startup
         ctx.link().send_future(async move {
-            match get_groups(token.clone().as_str()).await {
+            match get_groups().await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -286,14 +281,10 @@ impl Component for AdminViewGroup {
     type Properties = AdminViewGroupProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let token = match models::get_bearer_token() {
-            Some(value) => value,
-            None => String::from(""),
-        };
         let uuid = ctx.props().uuid.clone();
         // TODO: start pulling the group details then send the msg blep blep
         ctx.link().send_future(async move {
-            match get_group(token.clone().as_str(), &uuid).await {
+            match get_group(&uuid).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -368,8 +359,8 @@ impl Component for AdminViewGroup {
 }
 
 /// pull the details for a single group by UUID
-pub async fn get_group(token: &str, groupid: &str) -> Result<AdminViewGroupMsg, GetError> {
-    let request = init_request(format!("/v1/group/{}", groupid).as_str(), token);
+pub async fn get_group(groupid: &str) -> Result<AdminViewGroupMsg, GetError> {
+    let request = init_request(format!("/v1/group/{}", groupid).as_str());
     let response = match request.send().await {
         Ok(value) => value,
         Err(error) => {

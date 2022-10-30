@@ -378,11 +378,11 @@ pub fn create_https_server(
     tserver.with(sketching::middleware::TreeMiddleware::new(
         trust_x_forward_for,
     ));
-    // tserver.with(tide::log::LogMiddleware::new());
+
     // We do not force a session ttl, because we validate this elsewhere in usage.
     tserver.with(
         // We do not force a session ttl, because we validate this elsewhere in usage.
-        tide::sessions::SessionMiddleware::new(tide::sessions::MemoryStore::new(), cookie_key)
+        tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
             .with_cookie_name("kanidm-session")
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
@@ -566,6 +566,7 @@ pub fn create_https_server(
 
     let mut self_route = appserver.at("/v1/self");
     self_route.at("/").mapped_get(&mut routemap, whoami);
+    self_route.at("/_uat").mapped_get(&mut routemap, whoami_uat);
 
     self_route
         .at("/_attr/:attr")

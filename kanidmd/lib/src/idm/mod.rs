@@ -18,13 +18,13 @@ pub mod unix;
 
 use std::fmt;
 
-use kanidm_proto::v1::{AuthAllowed, AuthMech};
+use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
 
 pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
     Denied(String),
-    Success(String),
+    Success(String, AuthIssueSession),
 }
 
 impl fmt::Debug for AuthState {
@@ -33,7 +33,7 @@ impl fmt::Debug for AuthState {
             AuthState::Choose(mechs) => write!(f, "AuthState::Choose({:?})", mechs),
             AuthState::Continue(allow) => write!(f, "AuthState::Continue({:?})", allow),
             AuthState::Denied(reason) => write!(f, "AuthState::Denied({:?})", reason),
-            AuthState::Success(_token) => write!(f, "AuthState::Success"),
+            AuthState::Success(_token, issue) => write!(f, "AuthState::Success({:?})", issue),
         }
     }
 }

@@ -6,7 +6,7 @@ pub use kanidm_proto::oauth2::{
 };
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
+use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, RequestRedirect, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -15,14 +15,12 @@ use crate::manager::Route;
 use crate::{models, utils};
 
 enum State {
-    // We don't have a token, or something is invalid.
     LoginRequired,
     // We are in the process of check the auth token to be sure we can proceed.
-    TokenCheck(String),
+    TokenCheck,
     // Token check done, lets do it.
-    SubmitAuthReq(String),
+    SubmitAuthReq,
     Consent {
-        token: String,
         client_name: String,
         #[allow(dead_code)]
         scopes: Vec<String>,
@@ -39,6 +37,7 @@ pub struct Oauth2App {
 }
 
 pub enum Oauth2Msg {
+    LoginRequired,
     LoginProceed,
     ConsentGranted(String),
     TokenValid,
@@ -68,19 +67,16 @@ impl From<FetchError> for Oauth2Msg {
 }
 
 impl Oauth2App {
-    async fn fetch_token_valid(token: String) -> Result<Oauth2Msg, FetchError> {
+    async fn fetch_session_valid() -> Result<Oauth2Msg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
         let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
 
         request
             .headers()
             .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
             .expect_throw("failed to set header");
 
         let window = utils::window();
@@ -91,7 +87,7 @@ impl Oauth2App {
         if status == 200 {
             Ok(Oauth2Msg::TokenValid)
         } else if status == 401 {
-            Ok(Oauth2Msg::LoginProceed)
+            Ok(Oauth2Msg::LoginRequired)
         } else {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -102,10 +98,7 @@ impl Oauth2App {
         }
     }
 
-    async fn fetch_authreq(
-        token: String,
-        authreq: AuthorisationRequest,
-    ) -> Result<Oauth2Msg, FetchError> {
+    async fn fetch_authreq(authreq: AuthorisationRequest) -> Result<Oauth2Msg, FetchError> {
         let authreq_jsvalue = serde_json::to_string(&authreq)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
@@ -113,6 +106,7 @@ impl Oauth2App {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&authreq_jsvalue));
 
@@ -120,10 +114,6 @@ impl Oauth2App {
         request
             .headers()
             .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
             .expect_throw("failed to set header");
 
         let window = utils::window();
@@ -173,10 +163,7 @@ impl Oauth2App {
         }
     }
 
-    async fn fetch_consent_token(
-        token: String,
-        consent_token: String,
-    ) -> Result<Oauth2Msg, FetchError> {
+    async fn fetch_consent_token(consent_token: String) -> Result<Oauth2Msg, FetchError> {
         let consentreq_jsvalue = serde_json::to_string(&consent_token)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise consent_req");
@@ -185,6 +172,7 @@ impl Oauth2App {
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
         opts.redirect(RequestRedirect::Manual);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&consentreq_jsvalue));
 
@@ -192,10 +180,6 @@ impl Oauth2App {
         request
             .headers()
             .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
             .expect_throw("failed to set header");
 
         let window = utils::window();
@@ -274,25 +258,17 @@ impl Component for Oauth2App {
         // Push the request down. This covers if we move to LoginRequired.
         models::push_oauth2_authorisation_request(query);
 
-        match models::get_bearer_token() {
-            Some(token) => {
-                // Start the fetch req.
-                // Put the fetch handle into the consent type.
-                let token_c = token.clone();
-                ctx.link().send_future(async {
-                    match Self::fetch_token_valid(token_c).await {
-                        Ok(v) => v,
-                        Err(v) => v.into(),
-                    }
-                });
-
-                Oauth2App {
-                    state: State::TokenCheck(token),
-                }
+        // Start the fetch req.
+        // Put the fetch handle into the consent type.
+        ctx.link().send_future(async {
+            match Self::fetch_session_valid().await {
+                Ok(v) => v,
+                Err(v) => v.into(),
             }
-            None => Oauth2App {
-                state: State::LoginRequired,
-            },
+        });
+
+        Oauth2App {
+            state: State::TokenCheck,
         }
     }
 
@@ -307,6 +283,10 @@ impl Component for Oauth2App {
         console::debug!("oauth2::update");
 
         match msg {
+            Oauth2Msg::LoginRequired => {
+                self.state = State::LoginRequired;
+                true
+            }
             Oauth2Msg::LoginProceed => {
                 models::push_return_location(models::Location::Manager(Route::Oauth2));
 
@@ -322,15 +302,14 @@ impl Component for Oauth2App {
                 let ar = models::pop_oauth2_authorisation_request();
 
                 self.state = match (&self.state, ar) {
-                    (State::TokenCheck(token), Some(ar)) => {
-                        let token_c = token.clone();
+                    (State::TokenCheck, Some(ar)) => {
                         ctx.link().send_future(async {
-                            match Self::fetch_authreq(token_c, ar).await {
+                            match Self::fetch_authreq(ar).await {
                                 Ok(v) => v,
                                 Err(v) => v.into(),
                             }
                         });
-                        State::SubmitAuthReq(token.clone())
+                        State::SubmitAuthReq
                     }
                     _ => {
                         console::error!("Invalid state transition");
@@ -346,8 +325,7 @@ impl Component for Oauth2App {
                 consent_token,
             } => {
                 self.state = match &self.state {
-                    State::SubmitAuthReq(token) => State::Consent {
-                        token: token.clone(),
+                    State::SubmitAuthReq => State::Consent {
                         client_name,
                         scopes,
                         pii_scopes,
@@ -363,15 +341,13 @@ impl Component for Oauth2App {
             Oauth2Msg::ConsentGranted(_) => {
                 self.state = match &self.state {
                     State::Consent {
-                        token,
                         consent_token,
                         client_name,
                         ..
                     } => {
-                        let token_c = token.clone();
                         let cr_c = consent_token.clone();
                         ctx.link().send_future(async {
-                            match Self::fetch_consent_token(token_c, cr_c).await {
+                            match Self::fetch_consent_token(cr_c).await {
                                 Ok(v) => v,
                                 Err(v) => v.into(),
                             }
@@ -453,7 +429,6 @@ impl Component for Oauth2App {
                 }
             }
             State::Consent {
-                token: _,
                 client_name,
                 scopes: _,
                 pii_scopes,
@@ -509,7 +484,7 @@ impl Component for Oauth2App {
                     </div>
                 }
             }
-            State::SubmitAuthReq(_) | State::TokenCheck(_) => {
+            State::SubmitAuthReq | State::TokenCheck => {
                 html! {
                     <div class="alert alert-light" role="alert">
                         <h2 class="text-center">{ "Processing ... " }</h2>
