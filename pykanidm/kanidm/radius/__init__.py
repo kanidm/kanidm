@@ -1,4 +1,3 @@
-
 """ kanidm RADIUS module """
 import asyncio
 from functools import reduce
@@ -33,7 +32,6 @@ def instantiate(_: Any) -> Any:
     )
     logging.info("Starting up!")
 
-
     config_path = None
     for config_file_path in CONFIG_PATHS:
         config_path = Path(config_file_path).expanduser().resolve()
@@ -54,6 +52,7 @@ def instantiate(_: Any) -> Any:
     logging.info("Config file: %s", config_path.as_posix())
     return radiusd.RLM_MODULE_OK
 
+
 async def _get_radius_token(
     username: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
@@ -73,6 +72,7 @@ async def _get_radius_token(
     logging.debug("Success getting RADIUS token: %s", response.json())
     logging.debug(response.data)
     return response.data
+
 
 # pylint: disable=too-many-locals
 def authorize(
@@ -120,7 +120,9 @@ def authorize(
     except Exception as error_message:  # pylint: disable=broad-except
         logging.error("kanidm exception: %s, %s", type(error_message), error_message)
     if tok is None:
-        logging.info("kanidm RLM_MODULE_REJECT - unable to retrieve radius information token")
+        logging.info(
+            "kanidm RLM_MODULE_REJECT - unable to retrieve radius information token"
+        )
         return radiusd.RLM_MODULE_REJECT
 
     # Get values out of the token
@@ -162,8 +164,6 @@ def authorize(
 
     logging.info("OK! Returning details to radius for %s ...", name)
     return (radiusd.RLM_MODULE_OK, reply, config_object)
-
-
 
 
 def authenticate(
