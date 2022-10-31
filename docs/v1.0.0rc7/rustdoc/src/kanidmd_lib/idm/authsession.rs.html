@@ -2184,6 +2184,40 @@
 <span id="2184">2184</span>
 <span id="2185">2185</span>
 <span id="2186">2186</span>
+<span id="2187">2187</span>
+<span id="2188">2188</span>
+<span id="2189">2189</span>
+<span id="2190">2190</span>
+<span id="2191">2191</span>
+<span id="2192">2192</span>
+<span id="2193">2193</span>
+<span id="2194">2194</span>
+<span id="2195">2195</span>
+<span id="2196">2196</span>
+<span id="2197">2197</span>
+<span id="2198">2198</span>
+<span id="2199">2199</span>
+<span id="2200">2200</span>
+<span id="2201">2201</span>
+<span id="2202">2202</span>
+<span id="2203">2203</span>
+<span id="2204">2204</span>
+<span id="2205">2205</span>
+<span id="2206">2206</span>
+<span id="2207">2207</span>
+<span id="2208">2208</span>
+<span id="2209">2209</span>
+<span id="2210">2210</span>
+<span id="2211">2211</span>
+<span id="2212">2212</span>
+<span id="2213">2213</span>
+<span id="2214">2214</span>
+<span id="2215">2215</span>
+<span id="2216">2216</span>
+<span id="2217">2217</span>
+<span id="2218">2218</span>
+<span id="2219">2219</span>
+<span id="2220">2220</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.</span>
 <span class="doccomment">//! Generally this has to process an authentication attempt, and validate each</span>
 <span class="doccomment">//! factor to assert that the user is legitimate. This also contains some</span>
@@ -2196,7 +2230,9 @@
 <span class="comment">// use webauthn_rs::proto::Credential as WebauthnCredential;</span>
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>};
 <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthType</span>, <span class="ident">OperationError</span>};
+<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
+    <span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthType</span>, <span class="ident">OperationError</span>,
+};
 <span class="comment">// use crossbeam::channel::Sender;</span>
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc::UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
@@ -2755,13 +2791,21 @@
     <span class="comment">//</span>
     <span class="comment">// This handler will then handle the mfa and stepping up through to generate the auth states</span>
     <span class="ident">state</span>: <span class="ident">AuthSessionState</span>,
+
+    <span class="comment">// The type of session we will issue if successful</span>
+    <span class="ident">issue</span>: <span class="ident">AuthIssueSession</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">AuthSession</span> {
     <span class="doccomment">/// Create a new auth session, based on the available credential handlers of the account.</span>
     <span class="doccomment">/// the session is a whole encapsulated unit of what we need to proceed, so that subsequent</span>
     <span class="doccomment">/// or interleved write operations do not cause inconsistency in this process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">account</span>: <span class="ident">Account</span>, <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">AuthState</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">account</span>: <span class="ident">Account</span>,
+        <span class="ident">issue</span>: <span class="ident">AuthIssueSession</span>,
+        <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span>,
+        <span class="ident">ct</span>: <span class="ident">Duration</span>,
+    ) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">AuthState</span>) {
         <span class="comment">// During this setup, determine the credential handler that we&#39;ll be using</span>
         <span class="comment">// for this session. This is currently based on presentation of an application</span>
         <span class="comment">// id.</span>
@@ -2809,7 +2853,11 @@
             (<span class="prelude-val">None</span>, <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>.<span class="ident">to_string</span>()))
         } <span class="kw">else</span> {
             <span class="comment">// We can proceed</span>
-            <span class="kw">let</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">AuthSession</span> { <span class="ident">account</span>, <span class="ident">state</span> };
+            <span class="kw">let</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">AuthSession</span> {
+                <span class="ident">account</span>,
+                <span class="ident">state</span>,
+                <span class="ident">issue</span>,
+            };
             <span class="comment">// Get the set of mechanisms that can proceed. This is tied</span>
             <span class="comment">// to the session so that it can mutate state and have progression</span>
             <span class="comment">// of what&#39;s next, or ordering.</span>
@@ -2928,8 +2976,11 @@
                     <span class="ident">CredState::Success</span>(<span class="ident">auth_type</span>) =&gt; {
                         <span class="macro">security_info!</span>(<span class="string">&quot;Successful cred handling&quot;</span>);
                         <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+                        <span class="kw">let</span> <span class="ident">issue</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">issue</span>;
+
                         <span class="macro">security_info!</span>(
-                            <span class="string">&quot;Starting session {} for {} {}&quot;</span>,
+                            <span class="string">&quot;Issuing {:?} session {} for {} {}&quot;</span>,
+                            <span class="ident">issue</span>,
                             <span class="ident">session_id</span>,
                             <span class="self">self</span>.<span class="ident">account</span>.<span class="ident">spn</span>,
                             <span class="self">self</span>.<span class="ident">account</span>.<span class="ident">uuid</span>
@@ -2991,7 +3042,7 @@
 
                         (
                             <span class="prelude-val">Some</span>(<span class="ident">AuthSessionState::Success</span>),
-                            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="ident">token</span>)),
+                            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="ident">token</span>, <span class="ident">issue</span>)),
                         )
                     }
                     <span class="ident">CredState::Continue</span>(<span class="ident">allowed</span>) =&gt; {
@@ -3056,7 +3107,7 @@
 
     <span class="kw">use</span> <span class="ident">compact_jwt::JwsSigner</span>;
     <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
-    <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthMech</span>};
+    <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>};
     <span class="kw">use</span> <span class="ident">tokio::sync::mpsc::unbounded_channel</span> <span class="kw">as</span> <span class="ident">unbounded</span>;
     <span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::softpasskey::SoftPasskey</span>;
     <span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::WebauthnAuthenticator</span>;
@@ -3100,7 +3151,12 @@
 
         <span class="kw">let</span> <span class="ident">anon_account</span> <span class="op">=</span> <span class="macro">entry_str_to_account!</span>(<span class="ident">JSON_ANONYMOUS_V1</span>);
 
-        <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">AuthSession::new</span>(<span class="ident">anon_account</span>, <span class="kw-2">&amp;</span><span class="ident">webauthn</span>, <span class="ident">duration_from_epoch_now</span>());
+        <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">AuthSession::new</span>(
+            <span class="ident">anon_account</span>,
+            <span class="ident">AuthIssueSession::Token</span>,
+            <span class="kw-2">&amp;</span><span class="ident">webauthn</span>,
+            <span class="ident">duration_from_epoch_now</span>(),
+        );
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
             <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">x</span>, <span class="ident">AuthMech::Anonymous</span>)));
@@ -3128,8 +3184,12 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>:<span class="ident">expr</span>
         ) =&gt; {{
-            <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span>
-                <span class="ident">AuthSession::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>, <span class="ident">duration_from_epoch_now</span>());
+            <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">AuthSession::new</span>(
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(),
+                <span class="ident">AuthIssueSession::Token</span>,
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>,
+                <span class="ident">duration_from_epoch_now</span>(),
+            );
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">unwrap</span>();
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
@@ -3199,7 +3259,7 @@
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
             <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
         ) {
-            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
             <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
         };
 
@@ -3252,8 +3312,12 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>:<span class="ident">expr</span>
         ) =&gt; {{
-            <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span>
-                <span class="ident">AuthSession::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>, <span class="ident">duration_from_epoch_now</span>());
+            <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">AuthSession::new</span>(
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(),
+                <span class="ident">AuthIssueSession::Token</span>,
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>,
+                <span class="ident">duration_from_epoch_now</span>(),
+            );
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">expect</span>(<span class="string">&quot;Session was unable to be created.&quot;</span>);
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
@@ -3446,7 +3510,7 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
@@ -3533,8 +3597,12 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>:<span class="ident">expr</span>
         ) =&gt; {{
-            <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span>
-                <span class="ident">AuthSession::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>, <span class="ident">duration_from_epoch_now</span>());
+            <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">AuthSession::new</span>(
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(),
+                <span class="ident">AuthIssueSession::Token</span>,
+                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>,
+                <span class="ident">duration_from_epoch_now</span>(),
+            );
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">unwrap</span>();
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
@@ -3671,7 +3739,7 @@
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
@@ -3910,7 +3978,7 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
@@ -4117,7 +4185,7 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
@@ -4156,7 +4224,7 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
@@ -4313,7 +4381,7 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
@@ -4355,7 +4423,7 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">jws_signer</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>, <span class="ident">AuthIssueSession::Token</span>)) =&gt; {}
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }

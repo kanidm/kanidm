@@ -504,12 +504,17 @@
 <span id="504">504</span>
 <span id="505">505</span>
 <span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::AuthState</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthCredential</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthStep</span>};
+<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthCredential</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthStep</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident">webauthn_rs::prelude::PublicKeyCredential</span>;
@@ -800,8 +805,8 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthEventStepInit</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">appid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">username</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">issue</span>: <span class="ident">AuthIssueSession</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
@@ -826,9 +831,14 @@
 <span class="kw">impl</span> <span class="ident">AuthEventStep</span> {
     <span class="kw">fn</span> <span class="ident">from_authstep</span>(<span class="ident">aus</span>: <span class="ident">AuthStep</span>, <span class="ident">sid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">aus</span> {
-            <span class="ident">AuthStep::Init</span>(<span class="ident">name</span>) =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> { <span class="ident">name</span>, <span class="ident">appid</span>: <span class="prelude-val">None</span> }))
+            <span class="ident">AuthStep::Init</span>(<span class="ident">username</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> {
+                <span class="ident">username</span>,
+                <span class="ident">issue</span>: <span class="ident">AuthIssueSession::Token</span>,
+            })),
+            <span class="ident">AuthStep::Init2</span> { <span class="ident">username</span>, <span class="ident">issue</span> } =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> { <span class="ident">username</span>, <span class="ident">issue</span> }))
             }
+
             <span class="ident">AuthStep::Begin</span>(<span class="ident">mech</span>) =&gt; <span class="kw">match</span> <span class="ident">sid</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">ssid</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Begin</span>(<span class="ident">AuthEventStepMech</span> {
                     <span class="ident">sessionid</span>: <span class="ident">ssid</span>,
@@ -853,16 +863,16 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">anonymous_init</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> {
-            <span class="ident">name</span>: <span class="string">&quot;anonymous&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">appid</span>: <span class="prelude-val">None</span>,
+            <span class="ident">username</span>: <span class="string">&quot;anonymous&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">issue</span>: <span class="ident">AuthIssueSession::Token</span>,
         })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">named_init</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> {
-            <span class="ident">name</span>: <span class="ident">name</span>.<span class="ident">to_string</span>(),
-            <span class="ident">appid</span>: <span class="prelude-val">None</span>,
+            <span class="ident">username</span>: <span class="ident">name</span>.<span class="ident">to_string</span>(),
+            <span class="ident">issue</span>: <span class="ident">AuthIssueSession::Token</span>,
         })
     }
 

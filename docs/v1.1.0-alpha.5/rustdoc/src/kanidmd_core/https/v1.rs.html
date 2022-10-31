@@ -1182,14 +1182,35 @@
 <span id="1182">1182</span>
 <span id="1183">1183</span>
 <span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
 <span class="kw">use</span> <span class="ident">compact_jwt::Jws</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AccountUnixExtend</span>, <span class="ident">ApiTokenGenerate</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span> <span class="kw">as</span> <span class="ident">ProtoAuthState</span>,
-    <span class="ident">CUIntentToken</span>, <span class="ident">CURequest</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CreateRequest</span>, <span class="ident">DeleteRequest</span>, <span class="ident">Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>,
-    <span class="ident">GroupUnixExtend</span>, <span class="ident">ModifyRequest</span>, <span class="ident">OperationError</span>, <span class="ident">SearchRequest</span>, <span class="ident">SingleStringRequest</span>,
+    <span class="ident">AccountUnixExtend</span>, <span class="ident">ApiTokenGenerate</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>,
+    <span class="ident">AuthState</span> <span class="kw">as</span> <span class="ident">ProtoAuthState</span>, <span class="ident">CUIntentToken</span>, <span class="ident">CURequest</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CreateRequest</span>,
+    <span class="ident">DeleteRequest</span>, <span class="ident">Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>, <span class="ident">GroupUnixExtend</span>, <span class="ident">ModifyRequest</span>, <span class="ident">OperationError</span>,
+    <span class="ident">SearchRequest</span>, <span class="ident">SingleStringRequest</span>,
 };
 <span class="kw">use</span> <span class="ident">kanidmd_lib::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="ident">kanidmd_lib::idm::event::AuthResult</span>;
@@ -1248,10 +1269,25 @@
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">logout</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">whoami_uat</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
     <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">qe_r_ref</span>.<span class="ident">handle_whoami_uat</span>(<span class="ident">uat</span>, <span class="ident">eventid</span>).<span class="kw">await</span>;
+    <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">logout</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+
+    <span class="comment">// Now lets nuke any cookies for the session. We do this before the handle_logout</span>
+    <span class="comment">// so that if any errors occur, the cookies are still removed.</span>
+    <span class="kw">let</span> <span class="ident">msession</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">session_mut</span>();
+    <span class="ident">msession</span>.<span class="ident">remove</span>(<span class="string">&quot;auth-session-id&quot;</span>);
+    <span class="ident">msession</span>.<span class="ident">remove</span>(<span class="string">&quot;bearer&quot;</span>);
+
     <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">qe_w_ref</span>.<span class="ident">handle_logout</span>(<span class="ident">uat</span>, <span class="ident">eventid</span>).<span class="kw">await</span>;
+
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
 
@@ -2309,17 +2345,21 @@
                         })
                         .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtoAuthState::Continue</span>(<span class="ident">allowed</span>))
                 }
-                <span class="ident">AuthState::Success</span>(<span class="ident">token</span>) =&gt; {
+                <span class="ident">AuthState::Success</span>(<span class="ident">token</span>, <span class="ident">issue</span>) =&gt; {
                     <span class="macro">debug!</span>(<span class="string">&quot;🧩 -&gt; AuthState::Success&quot;</span>);
                     <span class="comment">// Remove the auth-session-id</span>
                     <span class="kw">let</span> <span class="ident">msession</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">session_mut</span>();
                     <span class="ident">msession</span>.<span class="ident">remove</span>(<span class="string">&quot;auth-session-id&quot;</span>);
                     <span class="comment">// Create a session cookie?</span>
                     <span class="ident">msession</span>.<span class="ident">remove</span>(<span class="string">&quot;bearer&quot;</span>);
-                    <span class="ident">msession</span>
-                        .<span class="ident">insert</span>(<span class="string">&quot;bearer&quot;</span>, <span class="ident">token</span>.<span class="ident">clone</span>())
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::InvalidSessionState</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtoAuthState::Success</span>(<span class="ident">token</span>))
+
+                    <span class="kw">match</span> <span class="ident">issue</span> {
+                        <span class="ident">AuthIssueSession::Cookie</span> =&gt; <span class="ident">msession</span>
+                            .<span class="ident">insert</span>(<span class="string">&quot;bearer&quot;</span>, <span class="ident">token</span>)
+                            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::InvalidSessionState</span>)
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ProtoAuthState::SuccessCookie</span>),
+                        <span class="ident">AuthIssueSession::Token</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProtoAuthState::Success</span>(<span class="ident">token</span>)),
+                    }
                 }
                 <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
                     <span class="macro">debug!</span>(<span class="string">&quot;🧩 -&gt; AuthState::Denied&quot;</span>);

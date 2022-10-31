@@ -864,6 +864,7 @@
 <span id="864">864</span>
 <span id="865">865</span>
 <span id="866">866</span>
+<span id="867">867</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
@@ -1244,11 +1245,11 @@ Disallow: /
     <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">sketching::middleware::TreeMiddleware::new</span>(
         <span class="ident">trust_x_forward_for</span>,
     ));
-    <span class="comment">// tserver.with(tide::log::LogMiddleware::new());</span>
+
     <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.</span>
     <span class="ident">tserver</span>.<span class="ident">with</span>(
         <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.</span>
-        <span class="ident">tide::sessions::SessionMiddleware::new</span>(<span class="ident">tide::sessions::MemoryStore::new</span>(), <span class="ident">cookie_key</span>)
+        <span class="ident">tide::sessions::SessionMiddleware::new</span>(<span class="ident">tide::sessions::CookieStore::new</span>(), <span class="ident">cookie_key</span>)
             .<span class="ident">with_cookie_name</span>(<span class="string">&quot;kanidm-session&quot;</span>)
             .<span class="ident">with_same_site_policy</span>(<span class="ident">tide::http::cookies::SameSite::Strict</span>),
     );
@@ -1432,6 +1433,7 @@ Disallow: /
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/self&quot;</span>);
     <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">whoami</span>);
+    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_uat&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">whoami_uat</span>);
 
     <span class="ident">self_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>)

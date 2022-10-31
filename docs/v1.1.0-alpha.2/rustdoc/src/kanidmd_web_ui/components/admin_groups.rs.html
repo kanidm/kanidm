@@ -376,15 +376,6 @@
 <span id="376">376</span>
 <span id="377">377</span>
 <span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
@@ -394,7 +385,6 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::components::adminmenu</span>::{<span class="ident">Entity</span>, <span class="ident">EntityType</span>, <span class="ident">GetError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::components::alpha_warning_banner</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">CSS_BREADCRUMB_ITEM</span>, <span class="ident">CSS_BREADCRUMB_ITEM_ACTIVE</span>, <span class="ident">CSS_CELL</span>, <span class="ident">CSS_TABLE</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::{<span class="ident">do_alert_error</span>, <span class="ident">do_page_header</span>, <span class="ident">init_request</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::views::AdminRoute</span>;
 
@@ -451,14 +441,14 @@
 
 <span class="doccomment">/// Pulls all accounts (service or person-class) from the backend and returns a HashMap</span>
 <span class="doccomment">/// with the &quot;name&quot; field being the keys, for easy human-facing sortability.</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_groups</span>(<span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AdminListGroupsMsg</span>, <span class="ident">GetError</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_groups</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AdminListGroupsMsg</span>, <span class="ident">GetError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all_groups</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
 
     <span class="comment">// we iterate over these endpoints</span>
     <span class="kw">let</span> <span class="ident">endpoints</span> <span class="op">=</span> [(<span class="string">&quot;/v1/group&quot;</span>, <span class="ident">EntityType::Group</span>)];
 
     <span class="kw">for</span> (<span class="ident">endpoint</span>, <span class="ident">object_type</span>) <span class="kw">in</span> <span class="ident">endpoints</span> {
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">init_request</span>(<span class="ident">endpoint</span>, <span class="ident">token</span>);
+        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">init_request</span>(<span class="ident">endpoint</span>);
         <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">request</span>.<span class="ident">send</span>().<span class="kw">await</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
             <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {
@@ -504,14 +494,10 @@
     <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="comment">// TODO: work out the querystring thing so we can just show x number of elements</span>
         <span class="comment">// console::log!(&quot;query: {:?}&quot;, location().query);</span>
-        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">models::get_bearer_token</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;&quot;</span>),
-        };
 
         <span class="comment">// start pulling the account data on startup</span>
         <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">match</span> <span class="ident">get_groups</span>(<span class="ident">token</span>.<span class="ident">clone</span>().<span class="ident">as_str</span>()).<span class="kw">await</span> {
+            <span class="kw">match</span> <span class="ident">get_groups</span>().<span class="kw">await</span> {
                 <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
                 <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
             }
@@ -673,14 +659,10 @@
     <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> <span class="ident">AdminViewGroupProps</span>;
 
     <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">models::get_bearer_token</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;&quot;</span>),
-        };
         <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">uuid</span>.<span class="ident">clone</span>();
         <span class="comment">// TODO: start pulling the group details then send the msg blep blep</span>
         <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">match</span> <span class="ident">get_group</span>(<span class="ident">token</span>.<span class="ident">clone</span>().<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">uuid</span>).<span class="kw">await</span> {
+            <span class="kw">match</span> <span class="ident">get_group</span>(<span class="kw-2">&amp;</span><span class="ident">uuid</span>).<span class="kw">await</span> {
                 <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
                 <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
             }
@@ -755,8 +737,8 @@
 }
 
 <span class="doccomment">/// pull the details for a single group by UUID</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_group</span>(<span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">groupid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AdminViewGroupMsg</span>, <span class="ident">GetError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">init_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}&quot;</span>, <span class="ident">groupid</span>).<span class="ident">as_str</span>(), <span class="ident">token</span>);
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_group</span>(<span class="ident">groupid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AdminViewGroupMsg</span>, <span class="ident">GetError</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">init_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}&quot;</span>, <span class="ident">groupid</span>).<span class="ident">as_str</span>());
     <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">request</span>.<span class="ident">send</span>().<span class="kw">await</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
         <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {

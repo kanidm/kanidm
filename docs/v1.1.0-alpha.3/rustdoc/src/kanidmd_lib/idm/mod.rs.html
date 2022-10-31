@@ -57,13 +57,13 @@
 
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthMech</span>};
+<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>};
 
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthState</span> {
     <span class="ident">Choose</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>),
     <span class="ident">Continue</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>),
     <span class="ident">Denied</span>(<span class="ident">String</span>),
-    <span class="ident">Success</span>(<span class="ident">String</span>),
+    <span class="ident">Success</span>(<span class="ident">String</span>, <span class="ident">AuthIssueSession</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">AuthState</span> {
@@ -72,7 +72,7 @@
             <span class="ident">AuthState::Choose</span>(<span class="ident">mechs</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Choose({:?})&quot;</span>, <span class="ident">mechs</span>),
             <span class="ident">AuthState::Continue</span>(<span class="ident">allow</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Continue({:?})&quot;</span>, <span class="ident">allow</span>),
             <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Denied({:?})&quot;</span>, <span class="ident">reason</span>),
-            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Success&quot;</span>),
+            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>, <span class="ident">issue</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;AuthState::Success({:?})&quot;</span>, <span class="ident">issue</span>),
         }
     }
 }

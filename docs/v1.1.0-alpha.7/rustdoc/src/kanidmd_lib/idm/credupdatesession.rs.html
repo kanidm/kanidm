@@ -3988,7 +3988,7 @@
     <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
     <span class="kw">use</span> <span class="ident">async_std::task</span>;
-    <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthMech</span>, <span class="ident">CredentialDetailType</span>};
+    <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>, <span class="ident">CredentialDetailType</span>};
     <span class="kw">use</span> <span class="ident">uuid::uuid</span>;
     <span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::softpasskey::SoftPasskey</span>;
     <span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::WebauthnAuthenticator</span>;
@@ -4229,7 +4229,7 @@
         <span class="kw">match</span> <span class="ident">r2</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">AuthResult</span> {
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
-                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
+                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>, <span class="ident">AuthIssueSession::Token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
             }) =&gt; {
                 <span class="comment">// Process the auth session</span>
@@ -4303,7 +4303,7 @@
         <span class="kw">match</span> <span class="ident">r3</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">AuthResult</span> {
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
-                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
+                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>, <span class="ident">AuthIssueSession::Token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
             }) =&gt; {
                 <span class="comment">// Process the auth session</span>
@@ -4372,7 +4372,7 @@
         <span class="kw">match</span> <span class="ident">r3</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">AuthResult</span> {
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
-                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
+                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>, <span class="ident">AuthIssueSession::Token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
             }) =&gt; {
                 <span class="comment">// There now should be a backup code invalidation present</span>
@@ -4449,7 +4449,7 @@
         <span class="kw">match</span> <span class="ident">r3</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">AuthResult</span> {
                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
-                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>),
+                <span class="ident">state</span>: <span class="ident">AuthState::Success</span>(<span class="ident">token</span>, <span class="ident">AuthIssueSession::Token</span>),
                 <span class="ident">delay</span>: <span class="kw">_</span>,
             }) =&gt; {
                 <span class="comment">// Process the webauthn update</span>

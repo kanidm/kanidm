@@ -204,30 +204,12 @@
 <span id="204">204</span>
 <span id="205">205</span>
 <span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-
-<span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsUnverified</span>};
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>, <span class="ident">UiHint</span>, <span class="ident">UserAuthToken</span>};
+<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>, <span class="ident">UiHint</span>};
 <span class="kw">use</span> <span class="ident">wasm_bindgen</span>::{<span class="ident">JsCast</span>, <span class="ident">UnwrapThrowExt</span>};
 <span class="kw">use</span> <span class="ident">wasm_bindgen_futures::JsFuture</span>;
-<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
+<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestCredentials</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
 
@@ -295,19 +277,12 @@
             <span class="ident">Msg::RequestCredentialUpdate</span> =&gt; {
                 <span class="comment">// Submit a req to init the session.</span>
                 <span class="comment">// The uuid we want to submit against - hint, it&#39;s us.</span>
-                <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">token</span>.<span class="ident">clone</span>();
 
-                <span class="kw">let</span> <span class="ident">jwtu</span> <span class="op">=</span>
-                    <span class="ident">JwsUnverified::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>).<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid UAT, unable to parse&quot;</span>);
-
-                <span class="kw">let</span> <span class="ident">uat</span>: <span class="ident">Jws</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">jwtu</span>
-                    .<span class="ident">unsafe_release_without_verification</span>()
-                    .<span class="ident">expect_throw</span>(<span class="string">&quot;Unvalid UAT, unable to release &quot;</span>);
-
-                <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">uat</span>.<span class="ident">into_inner</span>().<span class="ident">uuid</span>.<span class="ident">to_string</span>();
+                <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">current_user_uat</span>;
+                <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">uat</span>.<span class="ident">uuid</span>.<span class="ident">to_string</span>();
 
                 <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_token_valid</span>(<span class="ident">id</span>, <span class="ident">token</span>).<span class="kw">await</span> {
+                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_token_valid</span>(<span class="ident">id</span>).<span class="kw">await</span> {
                         <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
                         <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
                     }
@@ -363,7 +338,7 @@
             <span class="kw">_</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span> },
         };
 
-        <span class="kw">let</span> <span class="ident">current_user_uat</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">current_user_uat</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">current_user_uat</span>.<span class="ident">clone</span>();
 
         <span class="macro">html!</span> {
             <span class="op">&lt;</span><span class="op">&gt;</span>
@@ -387,25 +362,24 @@
                 <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
               <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
               <span class="op">&lt;</span><span class="ident">hr</span><span class="op">/</span><span class="op">&gt;</span>
-              <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">uat</span>) <span class="op">=</span> <span class="ident">current_user_uat</span> {
                 <span class="kw">if</span> <span class="ident">uat</span>.<span class="ident">ui_hints</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">UiHint::PosixAccount</span>) {
                   <span class="op">&lt;</span><span class="ident">div</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">ChangeUnixPassword</span> <span class="ident">token</span><span class="op">=</span>{<span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">token</span>.<span class="ident">clone</span>()}<span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">ChangeUnixPassword</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">ChangeUnixPassword</span> <span class="ident">uat</span><span class="op">=</span>{ <span class="ident">uat</span> }<span class="op">/</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
                   <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
                 }
-              }
             <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">SecurityApp</span> {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_token_valid</span>(<span class="ident">id</span>: <span class="ident">String</span>, <span class="ident">token</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Msg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_token_valid</span>(<span class="ident">id</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Msg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
         <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;GET&quot;</span>);
         <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
+        <span class="ident">opts</span>.<span class="ident">credentials</span>(<span class="ident">RequestCredentials::SameOrigin</span>);
 
         <span class="kw">let</span> <span class="ident">uri</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;/v1/person/{}/_credential/_update&quot;</span>, <span class="ident">id</span>);
 
@@ -414,10 +388,6 @@
         <span class="ident">request</span>
             .<span class="ident">headers</span>()
             .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>).<span class="ident">as_str</span>())
             .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
 
         <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();

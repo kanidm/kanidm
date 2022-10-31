@@ -1376,6 +1376,34 @@
 <span id="1376">1376</span>
 <span id="1377">1377</span>
 <span id="1378">1378</span>
+<span id="1379">1379</span>
+<span id="1380">1380</span>
+<span id="1381">1381</span>
+<span id="1382">1382</span>
+<span id="1383">1383</span>
+<span id="1384">1384</span>
+<span id="1385">1385</span>
+<span id="1386">1386</span>
+<span id="1387">1387</span>
+<span id="1388">1388</span>
+<span id="1389">1389</span>
+<span id="1390">1390</span>
+<span id="1391">1391</span>
+<span id="1392">1392</span>
+<span id="1393">1393</span>
+<span id="1394">1394</span>
+<span id="1395">1395</span>
+<span id="1396">1396</span>
+<span id="1397">1397</span>
+<span id="1398">1398</span>
+<span id="1399">1399</span>
+<span id="1400">1400</span>
+<span id="1401">1401</span>
+<span id="1402">1402</span>
+<span id="1403">1403</span>
+<span id="1404">1404</span>
+<span id="1405">1405</span>
+<span id="1406">1406</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::fs</span>;
 <span class="kw">use</span> <span class="ident">std::path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
@@ -1384,7 +1412,7 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
     <span class="ident">ApiToken</span>, <span class="ident">AuthRequest</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CURequest</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>, <span class="ident">CredentialStatus</span>,
     <span class="ident">Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>, <span class="ident">OperationError</span>, <span class="ident">RadiusAuthToken</span>, <span class="ident">SearchRequest</span>, <span class="ident">SearchResponse</span>, <span class="ident">UatStatus</span>,
-    <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>, <span class="ident">WhoamiResponse</span>,
+    <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>, <span class="ident">UserAuthToken</span>, <span class="ident">WhoamiResponse</span>,
 };
 <span class="kw">use</span> <span class="ident">ldap3_proto::simple</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
@@ -1696,6 +1724,34 @@
             <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>), <span class="comment">/* Somehow matched multiple entries... */</span>
             <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
         }
+    }
+
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;info&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;whoami_uat&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_whoami_uat</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
+        <span class="comment">// Make an event from the whoami request. This will process the event and</span>
+        <span class="comment">// generate a selfuuid search.</span>
+        <span class="comment">//</span>
+        <span class="comment">// This current handles the unauthenticated check, and will</span>
+        <span class="comment">// trigger the failure, but if we can manage to work out async</span>
+        <span class="comment">// then move this to core.rs, and don&#39;t allow Option&lt;UAT&gt; to get</span>
+        <span class="comment">// this far.</span>
+        <span class="ident">idms_prox_read</span>
+            .<span class="ident">validate_and_parse_token_to_uat</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Invalid identity&quot;</span>);
+                <span class="ident">e</span>
+            })
     }
 
     <span class="attribute">#[<span class="ident">instrument</span>(
