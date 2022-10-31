@@ -1,7 +1,5 @@
-use std::str::FromStr;
-
-use compact_jwt::{Jws, JwsUnverified};
 use kanidm_proto::v1::{SingleStringRequest, UserAuthToken};
+use uuid::Uuid;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{FormData, HtmlFormElement, Request, RequestInit, RequestMode, Response};
@@ -69,7 +67,7 @@ pub enum State {
 
 #[derive(PartialEq, Eq, Properties)]
 pub struct ChangeUnixPasswordProps {
-    pub token: String,
+    pub uat: UserAuthToken,
 }
 
 impl Component for ChangeUnixPassword {
@@ -98,9 +96,11 @@ impl Component for ChangeUnixPassword {
                         },
                     );
                 }
-                let tk = ctx.props().token.clone();
-                ctx.link().send_future(async {
-                    match Self::update_unix_password(tk, fd.password_input).await {
+
+                let id = ctx.props().uat.uuid;
+
+                ctx.link().send_future(async move {
+                    match Self::update_unix_password(id, fd.password_input).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -257,14 +257,7 @@ impl Component for ChangeUnixPassword {
 }
 
 impl ChangeUnixPassword {
-    async fn update_unix_password(token: String, new_password: String) -> Result<Msg, FetchError> {
-        let jwtu = JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
-
-        let uat: Jws<UserAuthToken> = jwtu
-            .unsafe_release_without_verification()
-            .expect_throw("Invalid UAT, unable to release ");
-
-        let id = uat.into_inner().uuid.to_string();
+    async fn update_unix_password(id: Uuid, new_password: String) -> Result<Msg, FetchError> {
         let changereq_jsvalue = serde_json::to_string(&SingleStringRequest {
             value: new_password,
         })
@@ -282,10 +275,6 @@ impl ChangeUnixPassword {
         request
             .headers()
             .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-        request
-            .headers()
-            .set("authorization", format!("Bearer {}", token).as_str())
             .expect_throw("failed to set header");
 
         let window = utils::window();

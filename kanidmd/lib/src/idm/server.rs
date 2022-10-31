@@ -410,6 +410,21 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
+    #[instrument(level = "info", skip_all)]
+    fn validate_and_parse_token_to_uat(
+        &self,
+        token: Option<&str>,
+        ct: Duration,
+    ) -> Result<UserAuthToken, OperationError> {
+        match self.validate_and_parse_token_to_token(token, ct)? {
+            Token::UserAuthToken(uat) => Ok(uat),
+            Token::ApiToken(_apit, _entry) => {
+                warn!("Unable to process non user auth token");
+                Err(OperationError::NotAuthenticated)
+            }
+        }
+    }
+
     fn validate_and_parse_token_to_token(
         &self,
         token: Option<&str>,
@@ -878,13 +893,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 //
                 // Check anything needed? Get the current auth-session-id from request
                 // because it associates to the nonce's etc which were all cached.
-                let euuid = self.qs_read.name_to_uuid(init.name.as_str())?;
+                let euuid = self.qs_read.name_to_uuid(init.username.as_str())?;
 
                 // Get the first / single entry we expect here ....
                 let entry = self.qs_read.internal_search_uuid(&euuid)?;
 
                 security_info!(
-                    name = %init.name,
+                    username = %init.username,
+                    issue = ?init.issue,
                     uuid = %euuid,
                     "Initiating Authentication Session",
                 );
@@ -956,7 +972,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 };
                 */
 
-                let (auth_session, state) = AuthSession::new(account, self.webauthn, ct);
+                let (auth_session, state) =
+                    AuthSession::new(account, init.issue, self.webauthn, ct);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -2225,7 +2242,7 @@ mod tests {
     use std::time::Duration;
 
     use async_std::task;
-    use kanidm_proto::v1::{AuthAllowed, AuthMech, AuthType, OperationError};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, AuthType, OperationError};
     use smartstring::alias::String as AttrString;
     use uuid::Uuid;
 
@@ -2366,7 +2383,7 @@ mod tests {
 
                             debug_assert!(delay.is_none());
                             match state {
-                                AuthState::Success(_uat) => {
+                                AuthState::Success(_uat, AuthIssueSession::Token) => {
                                     // Check the uat.
                                 }
                                 _ => {
@@ -2505,7 +2522,7 @@ mod tests {
                 debug_assert!(delay.is_none());
 
                 match state {
-                    AuthState::Success(token) => {
+                    AuthState::Success(token, AuthIssueSession::Token) => {
                         // Check the uat.
                         token
                     }
@@ -2574,7 +2591,7 @@ mod tests {
                         } = ar;
                         debug_assert!(delay.is_none());
                         match state {
-                            AuthState::Success(_uat) => {
+                            AuthState::Success(_uat, AuthIssueSession::Token) => {
                                 // Check the uat.
                             }
                             _ => {
@@ -3435,7 +3452,7 @@ mod tests {
                         } = ar;
                         debug_assert!(delay.is_none());
                         match state {
-                            AuthState::Success(_uat) => {
+                            AuthState::Success(_uat, AuthIssueSession::Token) => {
                                 // Check the uat.
                             }
                             _ => {

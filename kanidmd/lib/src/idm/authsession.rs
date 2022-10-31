@@ -10,7 +10,9 @@ use std::time::Duration;
 // use webauthn_rs::proto::Credential as WebauthnCredential;
 use compact_jwt::{Jws, JwsSigner};
 use hashbrown::HashSet;
-use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech, AuthType, OperationError};
+use kanidm_proto::v1::{
+    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthType, OperationError,
+};
 // use crossbeam::channel::Sender;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
@@ -569,13 +571,21 @@ pub(crate) struct AuthSession {
     //
     // This handler will then handle the mfa and stepping up through to generate the auth states
     state: AuthSessionState,
+
+    // The type of session we will issue if successful
+    issue: AuthIssueSession,
 }
 
 impl AuthSession {
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.
-    pub fn new(account: Account, webauthn: &Webauthn, ct: Duration) -> (Option<Self>, AuthState) {
+    pub fn new(
+        account: Account,
+        issue: AuthIssueSession,
+        webauthn: &Webauthn,
+        ct: Duration,
+    ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
@@ -623,7 +633,11 @@ impl AuthSession {
             (None, AuthState::Denied(reason.to_string()))
         } else {
             // We can proceed
-            let auth_session = AuthSession { account, state };
+            let auth_session = AuthSession {
+                account,
+                state,
+                issue,
+            };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
             // of what's next, or ordering.
@@ -742,8 +756,11 @@ impl AuthSession {
                     CredState::Success(auth_type) => {
                         security_info!("Successful cred handling");
                         let session_id = Uuid::new_v4();
+                        let issue = self.issue;
+
                         security_info!(
-                            "Starting session {} for {} {}",
+                            "Issuing {:?} session {} for {} {}",
+                            issue,
                             session_id,
                             self.account.spn,
                             self.account.uuid
@@ -805,7 +822,7 @@ impl AuthSession {
 
                         (
                             Some(AuthSessionState::Success),
-                            Ok(AuthState::Success(token)),
+                            Ok(AuthState::Success(token, issue)),
                         )
                     }
                     CredState::Continue(allowed) => {
@@ -870,7 +887,7 @@ mod tests {
 
     use compact_jwt::JwsSigner;
     use hashbrown::HashSet;
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
+    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
@@ -914,7 +931,12 @@ mod tests {
 
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
-        let (session, state) = AuthSession::new(anon_account, &webauthn, duration_from_epoch_now());
+        let (session, state) = AuthSession::new(
+            anon_account,
+            AuthIssueSession::Token,
+            &webauthn,
+            duration_from_epoch_now(),
+        );
 
         if let AuthState::Choose(auth_mechs) = state {
             assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Anonymous)));
@@ -942,8 +964,12 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) =
-                AuthSession::new($account.clone(), $webauthn, duration_from_epoch_now());
+            let (session, state) = AuthSession::new(
+                $account.clone(),
+                AuthIssueSession::Token,
+                $webauthn,
+                duration_from_epoch_now(),
+            );
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1013,7 +1039,7 @@ mod tests {
             Some(&pw_badlist_cache),
             &jws_signer,
         ) {
-            Ok(AuthState::Success(_)) => {}
+            Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
             _ => panic!(),
         };
 
@@ -1066,8 +1092,12 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) =
-                AuthSession::new($account.clone(), $webauthn, duration_from_epoch_now());
+            let (session, state) = AuthSession::new(
+                $account.clone(),
+                AuthIssueSession::Token,
+                $webauthn,
+                duration_from_epoch_now(),
+            );
             let mut session = session.expect("Session was unable to be created.");
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1260,7 +1290,7 @@ mod tests {
                 Some(&pw_badlist_cache),
                 &jws_signer,
             ) {
-                Ok(AuthState::Success(_)) => {}
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
             };
 
@@ -1347,8 +1377,12 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) =
-                AuthSession::new($account.clone(), $webauthn, duration_from_epoch_now());
+            let (session, state) = AuthSession::new(
+                $account.clone(),
+                AuthIssueSession::Token,
+                $webauthn,
+                duration_from_epoch_now(),
+            );
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1485,7 +1519,7 @@ mod tests {
                 None,
                 &jws_signer,
             ) {
-                Ok(AuthState::Success(_)) => {}
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
             };
 
@@ -1724,7 +1758,7 @@ mod tests {
                 Some(&pw_badlist_cache),
                 &jws_signer,
             ) {
-                Ok(AuthState::Success(_)) => {}
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
             };
 
@@ -1931,7 +1965,7 @@ mod tests {
                 Some(&pw_badlist_cache),
                 &jws_signer,
             ) {
-                Ok(AuthState::Success(_)) => {}
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
             };
 
@@ -1970,7 +2004,7 @@ mod tests {
                 Some(&pw_badlist_cache),
                 &jws_signer,
             ) {
-                Ok(AuthState::Success(_)) => {}
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
             };
 
@@ -2127,7 +2161,7 @@ mod tests {
                 Some(&pw_badlist_cache),
                 &jws_signer,
             ) {
-                Ok(AuthState::Success(_)) => {}
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
             };
         }
@@ -2169,7 +2203,7 @@ mod tests {
                 Some(&pw_badlist_cache),
                 &jws_signer,
             ) {
-                Ok(AuthState::Success(_)) => {}
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
                 _ => panic!(),
             };
         }

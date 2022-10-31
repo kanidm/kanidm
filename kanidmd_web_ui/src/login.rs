@@ -1,13 +1,16 @@
 // use anyhow::Error;
 use gloo::console;
 use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
+    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
+    AuthStep,
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
-use web_sys::{CredentialRequestOptions, Request, RequestInit, RequestMode, Response};
+use web_sys::{
+    CredentialRequestOptions, Request, RequestCredentials, RequestInit, RequestMode, Response,
+};
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_router::prelude::*;
@@ -78,7 +81,10 @@ impl From<FetchError> for LoginAppMsg {
 impl LoginApp {
     async fn auth_init(username: String) -> Result<LoginAppMsg, FetchError> {
         let authreq = AuthRequest {
-            step: AuthStep::Init(username),
+            step: AuthStep::Init2 {
+                username,
+                issue: AuthIssueSession::Cookie,
+            },
         };
         let authreq_jsvalue = serde_json::to_string(&authreq)
             .map(|s| JsValue::from(&s))
@@ -87,6 +93,7 @@ impl LoginApp {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&authreq_jsvalue));
 
@@ -141,6 +148,7 @@ impl LoginApp {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&authreq_jsvalue));
 
@@ -542,6 +550,7 @@ impl Component for LoginApp {
         #[cfg(debug)]
         console::debug!("create".to_string());
         // Assume we are here for a good reason.
+        // -- clear the bearer to prevent conflict
         models::clear_bearer_token();
         // Do we have a login hint?
         let inputvalue = models::pop_login_hint().unwrap_or_else(|| "".to_string());
@@ -835,9 +844,20 @@ impl Component for LoginApp {
                         self.state = LoginState::Denied(reason);
                         true
                     }
-                    AuthState::Success(bearer_token) => {
+                    AuthState::Success(_bearer_token) => {
                         // Store the bearer here!
+                        /*
                         models::set_bearer_token(bearer_token);
+                        self.state = LoginState::Authenticated;
+                        true
+                        */
+                        self.state = LoginState::Error {
+                            emsg: "Invalid Issued Session Type, expected cookie".to_string(),
+                            kopid: None,
+                        };
+                        true
+                    }
+                    AuthState::SuccessCookie => {
                         self.state = LoginState::Authenticated;
                         true
                     }

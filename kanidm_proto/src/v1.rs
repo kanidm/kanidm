@@ -393,7 +393,7 @@ pub struct UserAuthToken {
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
-    pub groups: Vec<Group>,
+    // pub groups: Vec<Group>,
     pub ui_hints: BTreeSet<UiHint>,
 }
 
@@ -414,9 +414,11 @@ impl fmt::Display for UserAuthToken {
                 writeln!(f, "purpose: read write (expiry: {})", expiry)?
             }
         }
+        /*
         for group in &self.groups {
             writeln!(f, "group: {:?}", group.spn)?;
         }
+        */
         Ok(())
     }
 }
@@ -866,11 +868,24 @@ impl fmt::Display for AuthMech {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum AuthIssueSession {
+    Token,
+    Cookie,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthStep {
     // name
     Init(String),
+    // A new way to issue sessions. Doing this as a new init type
+    // to prevent breaking existing clients.
+    Init2 {
+        username: String,
+        issue: AuthIssueSession,
+    },
     // We want to talk to you like this.
     Begin(AuthMech),
     // Step
@@ -959,9 +974,11 @@ pub enum AuthState {
     Continue(Vec<AuthAllowed>),
     // Something was bad, your session is terminated and no cookie.
     Denied(String),
-    // Everything is good, your bearer header has been issued and is within
+    // Everything is good, your bearer token has been issued and is within
     // the result.
     Success(String),
+    // Everything is good, your cookie has been issued.
+    SuccessCookie,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
