@@ -7,6 +7,7 @@ import os
 from .. import KanidmClient
 from ..types import RadiusTokenGroup
 
+
 def check_vlan(
     acc: int,
     group: RadiusTokenGroup,
@@ -25,7 +26,9 @@ def check_vlan(
 
     for radius_group in kanidm_client.config.radius_groups:
         logging.debug(
-            "Checking vlan group '%s' against user group %s", radius_group.spn, group.spn
+            "Checking vlan group '%s' against user group %s",
+            radius_group.spn,
+            group.spn,
         )
         if radius_group.spn == group.spn:
             logging.info("returning new vlan: %s", radius_group.vlan)
