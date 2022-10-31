@@ -1437,7 +1437,7 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         if let Err(res) = idms_prox_write
-            .process_delayedaction(da)
+            .process_delayedaction(da, ct)
             .and_then(|_| idms_prox_write.commit())
         {
             admin_info!(?res, "delayed action error");

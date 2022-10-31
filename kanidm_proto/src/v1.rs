@@ -414,10 +414,12 @@ impl fmt::Display for UserAuthToken {
         match &self.purpose {
             UatPurpose::IdentityOnly => writeln!(f, "purpose: identity only")?,
             UatPurpose::ReadOnly => writeln!(f, "purpose: read only")?,
-            UatPurpose::ReadWrite { expiry: Some(expiry) } => 
-                writeln!(f, "purpose: read write (expiry: {})", expiry)?,
-            UatPurpose::ReadWrite { expiry: None } => 
-                writeln!(f, "purpose: read write (expiry: none)")?,
+            UatPurpose::ReadWrite {
+                expiry: Some(expiry),
+            } => writeln!(f, "purpose: read write (expiry: {})", expiry)?,
+            UatPurpose::ReadWrite { expiry: None } => {
+                writeln!(f, "purpose: read write (expiry: none)")?
+            }
         }
         /*
         for group in &self.groups {
