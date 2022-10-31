@@ -628,7 +628,8 @@ pub trait IdmServerTransaction<'a> {
         let scope = match uat.purpose {
             UatPurpose::IdentityOnly => AccessScope::IdentityOnly,
             UatPurpose::ReadOnly => AccessScope::ReadOnly,
-            UatPurpose::ReadWrite { expiry } => {
+            UatPurpose::ReadWrite { expiry: None } => AccessScope::ReadWrite,
+            UatPurpose::ReadWrite { expiry: Some(expiry) } => {
                 let cot = time::OffsetDateTime::unix_epoch() + ct;
                 if cot < expiry {
                     AccessScope::ReadWrite
@@ -1978,6 +1979,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })
             .map(|_| cleartext)
+    }
+
+    pub fn cleanup_expired_authsessions(
+        &mut self,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        
     }
 
     // -- delayed action processing --
@@ -3774,7 +3782,7 @@ mod tests {
 
             // == anonymous
             let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Anonymous)
+                .to_userauthtoken(session_id, ct, AuthType::Anonymous, None)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
                 .process_uat_to_identity(&uat, ct)
@@ -3788,7 +3796,7 @@ mod tests {
 
             // == unixpassword
             let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::UnixPassword)
+                .to_userauthtoken(session_id, ct, AuthType::UnixPassword, None)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
                 .process_uat_to_identity(&uat, ct)
@@ -3802,7 +3810,7 @@ mod tests {
 
             // == password
             let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Password)
+                .to_userauthtoken(session_id, ct, AuthType::Password, None)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
                 .process_uat_to_identity(&uat, ct)
@@ -3816,7 +3824,7 @@ mod tests {
 
             // == generatedpassword
             let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::GeneratedPassword)
+                .to_userauthtoken(session_id, ct, AuthType::GeneratedPassword, None)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
                 .process_uat_to_identity(&uat, ct)
@@ -3830,7 +3838,7 @@ mod tests {
 
             // == webauthn
             let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Passkey)
+                .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
                 .process_uat_to_identity(&uat, ct)
@@ -3844,7 +3852,7 @@ mod tests {
 
             // == passwordmfa
             let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
+                .to_userauthtoken(session_id, ct, AuthType::PasswordMfa, None)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
                 .process_uat_to_identity(&uat, ct)

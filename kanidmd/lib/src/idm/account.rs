@@ -189,6 +189,7 @@ impl Account {
         session_id: Uuid,
         ct: Duration,
         auth_type: AuthType,
+        expiry_secs: Option<u64>,
     ) -> Option<UserAuthToken> {
         // This could consume self?
         // The cred handler provided is what authenticated this user, so we can use it to
@@ -196,15 +197,17 @@ impl Account {
         // Get the claims from the cred_h
 
         // TODO: Apply policy to this expiry time.
-        let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY);
+        let expiry = expiry_secs.map(|offset| {
+            OffsetDateTime::unix_epoch() + ct + Duration::from_secs(offset)
+        });
         let issued_at = OffsetDateTime::unix_epoch() + ct;
-        // TODO: Apply priv expiry.
-        let purpose = UatPurpose::ReadWrite { expiry: expiry };
+        // TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).
+        let purpose = UatPurpose::ReadWrite { expiry };
 
         Some(UserAuthToken {
             session_id,
             auth_type,
-            expiry: Some(expiry),
+            expiry,
             issued_at,
             purpose,
             uuid: self.uuid,

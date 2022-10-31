@@ -768,7 +768,8 @@ impl AuthSession {
 
                         let uat = self
                             .account
-                            .to_userauthtoken(session_id, *time, auth_type.clone())
+                            .to_userauthtoken(session_id, *time, auth_type.clone(),
+                            Some(AUTH_SESSION_EXPIRY))
                             .ok_or(OperationError::InvalidState)?;
 
                         // Queue the session info write.

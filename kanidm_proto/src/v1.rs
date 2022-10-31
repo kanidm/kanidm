@@ -366,8 +366,10 @@ pub enum UatPurpose {
     IdentityOnly,
     ReadOnly,
     ReadWrite {
-        #[serde(with = "time::serde::timestamp")]
-        expiry: time::OffsetDateTime,
+        /// If none, there is no expiry, and this is always rw. If there is
+        /// an expiry, check that the current time < expiry.
+        #[serde(with = "time::serde::timestamp::option")]
+        expiry: Option<time::OffsetDateTime>,
     },
 }
 
@@ -386,6 +388,8 @@ pub struct UserAuthToken {
     pub auth_type: AuthType,
     #[serde(with = "time::serde::timestamp")]
     pub issued_at: time::OffsetDateTime,
+    /// If none, there is no expiry, and this is always valid. If there is
+    /// an expiry, check that the current time < expiry.
     #[serde(with = "time::serde::timestamp::option")]
     pub expiry: Option<time::OffsetDateTime>,
     pub purpose: UatPurpose,
@@ -410,9 +414,10 @@ impl fmt::Display for UserAuthToken {
         match &self.purpose {
             UatPurpose::IdentityOnly => writeln!(f, "purpose: identity only")?,
             UatPurpose::ReadOnly => writeln!(f, "purpose: read only")?,
-            UatPurpose::ReadWrite { expiry } => {
-                writeln!(f, "purpose: read write (expiry: {})", expiry)?
-            }
+            UatPurpose::ReadWrite { expiry: Some(expiry) } => 
+                writeln!(f, "purpose: read write (expiry: {})", expiry)?,
+            UatPurpose::ReadWrite { expiry: None } => 
+                writeln!(f, "purpose: read write (expiry: none)")?,
         }
         /*
         for group in &self.groups {
