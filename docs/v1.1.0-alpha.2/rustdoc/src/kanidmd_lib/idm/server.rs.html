@@ -3955,6 +3955,134 @@
 <span id="3955">3955</span>
 <span id="3956">3956</span>
 <span id="3957">3957</span>
+<span id="3958">3958</span>
+<span id="3959">3959</span>
+<span id="3960">3960</span>
+<span id="3961">3961</span>
+<span id="3962">3962</span>
+<span id="3963">3963</span>
+<span id="3964">3964</span>
+<span id="3965">3965</span>
+<span id="3966">3966</span>
+<span id="3967">3967</span>
+<span id="3968">3968</span>
+<span id="3969">3969</span>
+<span id="3970">3970</span>
+<span id="3971">3971</span>
+<span id="3972">3972</span>
+<span id="3973">3973</span>
+<span id="3974">3974</span>
+<span id="3975">3975</span>
+<span id="3976">3976</span>
+<span id="3977">3977</span>
+<span id="3978">3978</span>
+<span id="3979">3979</span>
+<span id="3980">3980</span>
+<span id="3981">3981</span>
+<span id="3982">3982</span>
+<span id="3983">3983</span>
+<span id="3984">3984</span>
+<span id="3985">3985</span>
+<span id="3986">3986</span>
+<span id="3987">3987</span>
+<span id="3988">3988</span>
+<span id="3989">3989</span>
+<span id="3990">3990</span>
+<span id="3991">3991</span>
+<span id="3992">3992</span>
+<span id="3993">3993</span>
+<span id="3994">3994</span>
+<span id="3995">3995</span>
+<span id="3996">3996</span>
+<span id="3997">3997</span>
+<span id="3998">3998</span>
+<span id="3999">3999</span>
+<span id="4000">4000</span>
+<span id="4001">4001</span>
+<span id="4002">4002</span>
+<span id="4003">4003</span>
+<span id="4004">4004</span>
+<span id="4005">4005</span>
+<span id="4006">4006</span>
+<span id="4007">4007</span>
+<span id="4008">4008</span>
+<span id="4009">4009</span>
+<span id="4010">4010</span>
+<span id="4011">4011</span>
+<span id="4012">4012</span>
+<span id="4013">4013</span>
+<span id="4014">4014</span>
+<span id="4015">4015</span>
+<span id="4016">4016</span>
+<span id="4017">4017</span>
+<span id="4018">4018</span>
+<span id="4019">4019</span>
+<span id="4020">4020</span>
+<span id="4021">4021</span>
+<span id="4022">4022</span>
+<span id="4023">4023</span>
+<span id="4024">4024</span>
+<span id="4025">4025</span>
+<span id="4026">4026</span>
+<span id="4027">4027</span>
+<span id="4028">4028</span>
+<span id="4029">4029</span>
+<span id="4030">4030</span>
+<span id="4031">4031</span>
+<span id="4032">4032</span>
+<span id="4033">4033</span>
+<span id="4034">4034</span>
+<span id="4035">4035</span>
+<span id="4036">4036</span>
+<span id="4037">4037</span>
+<span id="4038">4038</span>
+<span id="4039">4039</span>
+<span id="4040">4040</span>
+<span id="4041">4041</span>
+<span id="4042">4042</span>
+<span id="4043">4043</span>
+<span id="4044">4044</span>
+<span id="4045">4045</span>
+<span id="4046">4046</span>
+<span id="4047">4047</span>
+<span id="4048">4048</span>
+<span id="4049">4049</span>
+<span id="4050">4050</span>
+<span id="4051">4051</span>
+<span id="4052">4052</span>
+<span id="4053">4053</span>
+<span id="4054">4054</span>
+<span id="4055">4055</span>
+<span id="4056">4056</span>
+<span id="4057">4057</span>
+<span id="4058">4058</span>
+<span id="4059">4059</span>
+<span id="4060">4060</span>
+<span id="4061">4061</span>
+<span id="4062">4062</span>
+<span id="4063">4063</span>
+<span id="4064">4064</span>
+<span id="4065">4065</span>
+<span id="4066">4066</span>
+<span id="4067">4067</span>
+<span id="4068">4068</span>
+<span id="4069">4069</span>
+<span id="4070">4070</span>
+<span id="4071">4071</span>
+<span id="4072">4072</span>
+<span id="4073">4073</span>
+<span id="4074">4074</span>
+<span id="4075">4075</span>
+<span id="4076">4076</span>
+<span id="4077">4077</span>
+<span id="4078">4078</span>
+<span id="4079">4079</span>
+<span id="4080">4080</span>
+<span id="4081">4081</span>
+<span id="4082">4082</span>
+<span id="4083">4083</span>
+<span id="4084">4084</span>
+<span id="4085">4085</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core::task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
@@ -3976,6 +4104,7 @@
     <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>, <span class="ident">UserAuthToken</span>,
 };
 <span class="kw">use</span> <span class="ident">rand::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>::{
     <span class="ident">unbounded_channel</span> <span class="kw">as</span> <span class="ident">unbounded</span>, <span class="ident">UnboundedReceiver</span> <span class="kw">as</span> <span class="ident">Receiver</span>, <span class="ident">UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>,
 };
@@ -4288,11 +4417,11 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delayed_action</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ts</span>: <span class="ident">Duration</span>,
+        <span class="ident">ct</span>: <span class="ident">Duration</span>,
         <span class="ident">da</span>: <span class="ident">DelayedAction</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pw</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy_write</span>(<span class="ident">ts</span>).<span class="kw">await</span>;
-        <span class="ident">pw</span>.<span class="ident">process_delayedaction</span>(<span class="ident">da</span>)
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pw</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>).<span class="kw">await</span>;
+        <span class="ident">pw</span>.<span class="ident">process_delayedaction</span>(<span class="ident">da</span>, <span class="ident">ct</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">pw</span>.<span class="ident">commit</span>())
             .<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> <span class="bool-val">true</span>)
     }
@@ -4585,7 +4714,10 @@
         <span class="kw">let</span> <span class="ident">scope</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">uat</span>.<span class="ident">purpose</span> {
             <span class="ident">UatPurpose::IdentityOnly</span> =&gt; <span class="ident">AccessScope::IdentityOnly</span>,
             <span class="ident">UatPurpose::ReadOnly</span> =&gt; <span class="ident">AccessScope::ReadOnly</span>,
-            <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span> } =&gt; {
+            <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span>: <span class="prelude-val">None</span> } =&gt; <span class="ident">AccessScope::ReadWrite</span>,
+            <span class="ident">UatPurpose::ReadWrite</span> {
+                <span class="ident">expiry</span>: <span class="prelude-val">Some</span>(<span class="ident">expiry</span>),
+            } =&gt; {
                 <span class="kw">let</span> <span class="ident">cot</span> <span class="op">=</span> <span class="ident">time::OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
                 <span class="kw">if</span> <span class="ident">cot</span> <span class="op">&lt;</span> <span class="ident">expiry</span> {
                     <span class="ident">AccessScope::ReadWrite</span>
@@ -6051,7 +6183,13 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_authsessionrecord</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">asr</span>: <span class="kw-2">&amp;</span><span class="ident">AuthSessionRecord</span>,
+        <span class="ident">ct</span>: <span class="ident">Duration</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="comment">// We have to get the entry so we can work out if we need to expire any of it&#39;s sessions.</span>
+
+        <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">asr</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">sessions</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">get_ava_as_session_map</span>(<span class="string">&quot;user_auth_token_session&quot;</span>);
+
         <span class="kw">let</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">Value::Session</span>(
             <span class="ident">asr</span>.<span class="ident">session_id</span>,
             <span class="ident">Session</span> {
@@ -6070,11 +6208,34 @@
 
         <span class="macro">info!</span>(<span class="ident">session_id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">asr</span>.<span class="ident">session_id</span>, <span class="string">&quot;Persisting auth session&quot;</span>);
 
+        <span class="kw">let</span> <span class="ident">offset_ct</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
+
+        <span class="kw">let</span> <span class="ident">mlist</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">sessions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">iter</span>())
+            .<span class="ident">flatten</span>()
+            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
+                <span class="comment">// We only check if an expiry is present</span>
+                <span class="ident">v</span>.<span class="ident">expiry</span>.<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">exp</span><span class="op">|</span> {
+                    <span class="kw">if</span> <span class="ident">exp</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">offset_ct</span> {
+                        <span class="macro">info!</span>(<span class="ident">session_id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">k</span>, <span class="string">&quot;Removing expired auth session&quot;</span>);
+                        <span class="prelude-val">Some</span>(<span class="ident">Modify::Removed</span>(
+                            <span class="ident">AttrString::from</span>(<span class="string">&quot;user_auth_token_session&quot;</span>),
+                            <span class="ident">PartialValue::Refer</span>(<span class="kw-2">*</span><span class="ident">k</span>),
+                        ))
+                    } <span class="kw">else</span> {
+                        <span class="prelude-val">None</span>
+                    }
+                })
+            })
+            .<span class="ident">chain</span>(<span class="ident">std::iter::once</span>(<span class="ident">Modify::Present</span>(
+                <span class="ident">AttrString::from</span>(<span class="string">&quot;user_auth_token_session&quot;</span>),
+                <span class="ident">session</span>,
+            )))
+            .<span class="ident">collect</span>();
+
         <span class="comment">// modify the account to put the session onto it.</span>
-        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-            <span class="ident">AttrString::from</span>(<span class="string">&quot;user_auth_token_session&quot;</span>),
-            <span class="ident">session</span>,
-        )]);
+        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_list</span>(<span class="ident">mlist</span>);
 
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">internal_modify</span>(
@@ -6109,14 +6270,18 @@
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_delayedaction</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">da</span>: <span class="ident">DelayedAction</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_delayedaction</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">da</span>: <span class="ident">DelayedAction</span>,
+        <span class="ident">ct</span>: <span class="ident">Duration</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">da</span> {
             <span class="ident">DelayedAction::PwUpgrade</span>(<span class="ident">pwu</span>) =&gt; <span class="self">self</span>.<span class="ident">process_pwupgrade</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>),
             <span class="ident">DelayedAction::UnixPwUpgrade</span>(<span class="ident">upwu</span>) =&gt; <span class="self">self</span>.<span class="ident">process_unixpwupgrade</span>(<span class="kw-2">&amp;</span><span class="ident">upwu</span>),
             <span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="ident">wci</span>) =&gt; <span class="self">self</span>.<span class="ident">process_webauthncounterinc</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>),
             <span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="ident">bcr</span>) =&gt; <span class="self">self</span>.<span class="ident">process_backupcoderemoval</span>(<span class="kw-2">&amp;</span><span class="ident">bcr</span>),
             <span class="ident">DelayedAction::Oauth2ConsentGrant</span>(<span class="ident">o2cg</span>) =&gt; <span class="self">self</span>.<span class="ident">process_oauth2consentgrant</span>(<span class="kw-2">&amp;</span><span class="ident">o2cg</span>),
-            <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="ident">asr</span>) =&gt; <span class="self">self</span>.<span class="ident">process_authsessionrecord</span>(<span class="kw-2">&amp;</span><span class="ident">asr</span>),
+            <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="ident">asr</span>) =&gt; <span class="self">self</span>.<span class="ident">process_authsessionrecord</span>(<span class="kw-2">&amp;</span><span class="ident">asr</span>, <span class="ident">ct</span>),
         }
     }
 
@@ -6201,13 +6366,14 @@
     <span class="kw">use</span> <span class="ident">async_std::task</span>;
     <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthType</span>, <span class="ident">OperationError</span>};
     <span class="kw">use</span> <span class="ident">smartstring::alias::String</span> <span class="kw">as</span> <span class="ident">AttrString</span>;
+    <span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
     <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential</span>::{<span class="ident">Credential</span>, <span class="ident">Password</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">CreateEvent</span>, <span class="ident">ModifyEvent</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::account::DestroySessionTokenEvent</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed::DelayedAction</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed</span>::{<span class="ident">AuthSessionRecord</span>, <span class="ident">DelayedAction</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event</span>::{<span class="ident">AuthEvent</span>, <span class="ident">AuthResult</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event</span>::{
         <span class="ident">PasswordChangeEvent</span>, <span class="ident">RadiusAuthTokenEvent</span>, <span class="ident">RegenerateRadiusSecretEvent</span>,
@@ -7612,9 +7778,10 @@
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to setup admin account&quot;</span>);
                 <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="ident">check_admin_password</span>(<span class="ident">idms</span>, <span class="ident">TEST_PASSWORD</span>);
 
-                <span class="comment">// Clear our the session record</span>
+                <span class="comment">// Clear out the queued session record</span>
                 <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
                 <span class="macro">assert!</span>(<span class="macro">matches!</span>(<span class="ident">da</span>, <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="kw">_</span>)));
+                <span class="comment">// Persist it.</span>
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">duration_from_epoch_now</span>(), <span class="ident">da</span>));
                 <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">==</span> <span class="ident">r</span>);
                 <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
@@ -7634,6 +7801,95 @@
                 }
             }
         )
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">test_idm_expired_auth_session_cleanup</span>() {
+        <span class="macro">run_idm_test!</span>(<span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>,
+                       <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
+                       <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
+            <span class="kw">let</span> <span class="ident">expiry</span> <span class="op">=</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">AUTH_SESSION_EXPIRY</span> <span class="op">+</span> <span class="number">1</span>);
+
+            <span class="kw">let</span> <span class="ident">session_a</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+            <span class="kw">let</span> <span class="ident">session_b</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+
+            <span class="comment">// Assert no sessions present</span>
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
+            <span class="kw">let</span> <span class="ident">admin</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                .<span class="ident">qs_read</span>
+                .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;failed&quot;</span>);
+            <span class="kw">let</span> <span class="ident">sessions</span> <span class="op">=</span> <span class="ident">admin</span>.<span class="ident">get_ava_as_session_map</span>(<span class="string">&quot;user_auth_token_session&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">sessions</span>.<span class="ident">is_none</span>());
+            <span class="ident">drop</span>(<span class="ident">idms_prox_read</span>);
+
+            <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="ident">AuthSessionRecord</span> {
+                <span class="ident">target_uuid</span>: <span class="ident">UUID_ADMIN</span>,
+                <span class="ident">session_id</span>: <span class="ident">session_a</span>,
+                <span class="ident">label</span>: <span class="string">&quot;Test Session A&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">expiry</span>: <span class="prelude-val">Some</span>(<span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">expiry</span>),
+                <span class="ident">issued_at</span>: <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>,
+                <span class="ident">issued_by</span>: <span class="ident">IdentityId::User</span>(<span class="ident">UUID_ADMIN</span>),
+                <span class="ident">scope</span>: <span class="ident">AccessScope::IdentityOnly</span>,
+            });
+            <span class="comment">// Persist it.</span>
+            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">ct</span>, <span class="ident">da</span>));
+            <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">==</span> <span class="ident">r</span>);
+
+            <span class="comment">// Check it was written, and check</span>
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
+            <span class="kw">let</span> <span class="ident">admin</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                .<span class="ident">qs_read</span>
+                .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;failed&quot;</span>);
+            <span class="kw">let</span> <span class="ident">sessions</span> <span class="op">=</span> <span class="ident">admin</span>
+                .<span class="ident">get_ava_as_session_map</span>(<span class="string">&quot;user_auth_token_session&quot;</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;Sessions must be present!&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">sessions</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
+            <span class="kw">let</span> <span class="ident">session_id_a</span> <span class="op">=</span> <span class="ident">sessions</span>
+                .<span class="ident">keys</span>()
+                .<span class="ident">copied</span>()
+                .<span class="ident">next</span>()
+                .<span class="ident">expect</span>(<span class="string">&quot;Could not access session id&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">session_id_a</span> <span class="op">==</span> <span class="ident">session_a</span>);
+
+            <span class="ident">drop</span>(<span class="ident">idms_prox_read</span>);
+
+            <span class="comment">// When we re-auth, this is what triggers the session cleanup via the delayed action.</span>
+
+            <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">DelayedAction::AuthSessionRecord</span>(<span class="ident">AuthSessionRecord</span> {
+                <span class="ident">target_uuid</span>: <span class="ident">UUID_ADMIN</span>,
+                <span class="ident">session_id</span>: <span class="ident">session_b</span>,
+                <span class="ident">label</span>: <span class="string">&quot;Test Session B&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">expiry</span>: <span class="prelude-val">Some</span>(<span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">expiry</span>),
+                <span class="ident">issued_at</span>: <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>,
+                <span class="ident">issued_by</span>: <span class="ident">IdentityId::User</span>(<span class="ident">UUID_ADMIN</span>),
+                <span class="ident">scope</span>: <span class="ident">AccessScope::IdentityOnly</span>,
+            });
+            <span class="comment">// Persist it.</span>
+            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">expiry</span>, <span class="ident">da</span>));
+            <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">==</span> <span class="ident">r</span>);
+
+            <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
+            <span class="kw">let</span> <span class="ident">admin</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                .<span class="ident">qs_read</span>
+                .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;failed&quot;</span>);
+            <span class="kw">let</span> <span class="ident">sessions</span> <span class="op">=</span> <span class="ident">admin</span>
+                .<span class="ident">get_ava_as_session_map</span>(<span class="string">&quot;user_auth_token_session&quot;</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;Sessions must be present!&quot;</span>);
+            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">sessions</span>);
+            <span class="macro">assert!</span>(<span class="ident">sessions</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
+            <span class="kw">let</span> <span class="ident">session_id_b</span> <span class="op">=</span> <span class="ident">sessions</span>
+                .<span class="ident">keys</span>()
+                .<span class="ident">copied</span>()
+                .<span class="ident">next</span>()
+                .<span class="ident">expect</span>(<span class="string">&quot;Could not access session id&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">session_id_b</span> <span class="op">==</span> <span class="ident">session_b</span>);
+
+            <span class="macro">assert!</span>(<span class="ident">session_id_a</span> <span class="op">!</span><span class="op">=</span> <span class="ident">session_id_b</span>);
+        })
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -7731,7 +7987,7 @@
 
             <span class="comment">// == anonymous</span>
             <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">account</span>
-                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Anonymous</span>)
+                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Anonymous</span>, <span class="prelude-val">None</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                 .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
@@ -7745,7 +8001,7 @@
 
             <span class="comment">// == unixpassword</span>
             <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">account</span>
-                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::UnixPassword</span>)
+                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::UnixPassword</span>, <span class="prelude-val">None</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                 .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
@@ -7759,7 +8015,7 @@
 
             <span class="comment">// == password</span>
             <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">account</span>
-                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Password</span>)
+                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Password</span>, <span class="prelude-val">None</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                 .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
@@ -7773,7 +8029,7 @@
 
             <span class="comment">// == generatedpassword</span>
             <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">account</span>
-                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::GeneratedPassword</span>)
+                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::GeneratedPassword</span>, <span class="prelude-val">None</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                 .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
@@ -7787,7 +8043,7 @@
 
             <span class="comment">// == webauthn</span>
             <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">account</span>
-                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Passkey</span>)
+                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::Passkey</span>, <span class="prelude-val">None</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                 .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
@@ -7801,7 +8057,7 @@
 
             <span class="comment">// == passwordmfa</span>
             <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">account</span>
-                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::PasswordMfa</span>)
+                .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="ident">ct</span>, <span class="ident">AuthType::PasswordMfa</span>, <span class="prelude-val">None</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
                 .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)

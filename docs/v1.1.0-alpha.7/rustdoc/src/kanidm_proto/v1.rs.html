@@ -1194,6 +1194,13 @@
 <span id="1194">1194</span>
 <span id="1195">1195</span>
 <span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
@@ -1562,8 +1569,10 @@ pub struct Application {
     <span class="ident">IdentityOnly</span>,
     <span class="ident">ReadOnly</span>,
     <span class="ident">ReadWrite</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
-        <span class="ident">expiry</span>: <span class="ident">time::OffsetDateTime</span>,
+        <span class="doccomment">/// If none, there is no expiry, and this is always rw. If there is</span>
+        <span class="doccomment">/// an expiry, check that the current time &lt; expiry.</span>
+        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
+        <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
     },
 }
 
@@ -1582,6 +1591,8 @@ pub struct Application {
     <span class="kw">pub</span> <span class="ident">auth_type</span>: <span class="ident">AuthType</span>,
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">time::OffsetDateTime</span>,
+    <span class="doccomment">/// If none, there is no expiry, and this is always valid. If there is</span>
+    <span class="doccomment">/// an expiry, check that the current time &lt; expiry.</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">purpose</span>: <span class="ident">UatPurpose</span>,
@@ -1606,8 +1617,11 @@ pub struct Application {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">purpose</span> {
             <span class="ident">UatPurpose::IdentityOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: identity only&quot;</span>)<span class="question-mark">?</span>,
             <span class="ident">UatPurpose::ReadOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read only&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span> } =&gt; {
-                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read write (expiry: {})&quot;</span>, <span class="ident">expiry</span>)<span class="question-mark">?</span>
+            <span class="ident">UatPurpose::ReadWrite</span> {
+                <span class="ident">expiry</span>: <span class="prelude-val">Some</span>(<span class="ident">expiry</span>),
+            } =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read write (expiry: {})&quot;</span>, <span class="ident">expiry</span>)<span class="question-mark">?</span>,
+            <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span>: <span class="prelude-val">None</span> } =&gt; {
+                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read write (expiry: none)&quot;</span>)<span class="question-mark">?</span>
             }
         }
         <span class="comment">/*

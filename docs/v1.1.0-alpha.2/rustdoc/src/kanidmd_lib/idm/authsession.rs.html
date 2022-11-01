@@ -2218,6 +2218,11 @@
 <span id="2218">2218</span>
 <span id="2219">2219</span>
 <span id="2220">2220</span>
+<span id="2221">2221</span>
+<span id="2222">2222</span>
+<span id="2223">2223</span>
+<span id="2224">2224</span>
+<span id="2225">2225</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.</span>
 <span class="doccomment">//! Generally this has to process an authentication attempt, and validate each</span>
 <span class="doccomment">//! factor to assert that the user is legitimate. This also contains some</span>
@@ -2988,7 +2993,12 @@
 
                         <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="self">self</span>
                             .<span class="ident">account</span>
-                            .<span class="ident">to_userauthtoken</span>(<span class="ident">session_id</span>, <span class="kw-2">*</span><span class="ident">time</span>, <span class="ident">auth_type</span>.<span class="ident">clone</span>())
+                            .<span class="ident">to_userauthtoken</span>(
+                                <span class="ident">session_id</span>,
+                                <span class="kw-2">*</span><span class="ident">time</span>,
+                                <span class="ident">auth_type</span>.<span class="ident">clone</span>(),
+                                <span class="prelude-val">Some</span>(<span class="ident">AUTH_SESSION_EXPIRY</span>),
+                            )
                             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)<span class="question-mark">?</span>;
 
                         <span class="comment">// Queue the session info write.</span>

@@ -691,6 +691,8 @@
 <span id="691">691</span>
 <span id="692">692</span>
 <span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
@@ -882,6 +884,7 @@
         <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
         <span class="ident">auth_type</span>: <span class="ident">AuthType</span>,
+        <span class="ident">expiry_secs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span><span class="op">&gt;</span> {
         <span class="comment">// This could consume self?</span>
         <span class="comment">// The cred handler provided is what authenticated this user, so we can use it to</span>
@@ -889,15 +892,16 @@
         <span class="comment">// Get the claims from the cred_h</span>
 
         <span class="comment">// TODO: Apply policy to this expiry time.</span>
-        <span class="kw">let</span> <span class="ident">expiry</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">AUTH_SESSION_EXPIRY</span>);
+        <span class="kw">let</span> <span class="ident">expiry</span> <span class="op">=</span> <span class="ident">expiry_secs</span>
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">offset</span><span class="op">|</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">offset</span>));
         <span class="kw">let</span> <span class="ident">issued_at</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
-        <span class="comment">// TODO: Apply priv expiry.</span>
-        <span class="kw">let</span> <span class="ident">purpose</span> <span class="op">=</span> <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span>: <span class="ident">expiry</span> };
+        <span class="comment">// TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).</span>
+        <span class="kw">let</span> <span class="ident">purpose</span> <span class="op">=</span> <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span> };
 
         <span class="prelude-val">Some</span>(<span class="ident">UserAuthToken</span> {
             <span class="ident">session_id</span>,
             <span class="ident">auth_type</span>,
-            <span class="ident">expiry</span>: <span class="prelude-val">Some</span>(<span class="ident">expiry</span>),
+            <span class="ident">expiry</span>,
             <span class="ident">issued_at</span>,
             <span class="ident">purpose</span>,
             <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>,
