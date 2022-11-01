@@ -19,3 +19,13 @@ pub async fn setup_test() -> QueryServer {
     // Init is called via the proc macro
     qs
 }
+
+pub async fn setup_idm_test() -> (IdmServer, IdmServerDelayed) {
+    let qs = setup_test().await;
+
+    qs.initialise_helper(duration_from_epoch_now())
+        .await
+        .expect("init failed!");
+
+    IdmServer::new(qs, "https://idm.example.com").expect("Failed to setup idms")
+}

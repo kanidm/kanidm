@@ -52,8 +52,7 @@ mod repl;
 pub mod schema;
 pub mod server;
 pub mod status;
-#[cfg(test)]
-mod testkit;
+pub mod testkit;
 
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
@@ -79,6 +78,7 @@ pub mod prelude {
         FilterInvalid, FC,
     };
     pub use crate::identity::{AccessScope, IdentType, Identity, IdentityId};
+    pub use crate::idm::server::{IdmServer, IdmServerDelayed};
     pub use crate::modify::{m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList};
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
