@@ -16,6 +16,42 @@ can help. If you find a bug or issue, we'd love you to report it to our
 
 # Release Notes
 
+## 2022-11-01 - Kanidm 1.1.0-alpha10
+
+This is the tenth alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+The project is shaping up very nicely, and a beta will be coming soon!
+
+### Upgrade Note!
+
+This version will *require* TLS on all servers, even if behind a load balancer or
+TLS terminating proxy. You should be ready for this change when you upgrade to the
+latest version.
+
+### Release Highlights
+
+* Management and tracking of authenticated sessions
+* Make upgrade migrations more robust when upgrading over multiple versions
+* Add support for service account tokens via ldap for extended read permissions
+* Unix password management in web ui for posix accounts
+* Support internal dynamic group entries
+* Allow selection of name/spn in oidc claims
+* Admin UI wireframes and basic elements
+* TLS enforced as a requirement for all servers
+* Support API service account tokens
+* Make name rules stricter due to issues found in production
+* Improve Oauth2 PKCE testing
+* Add support for new password import hashes
+* Allow configuration of trusting x forward for headers
+* Components for account permission elevation modes
+* Make pam\_unix more robust in high latency environments
+* Add proc macros for test cases
+* Improve authentication requests with cookie/token seperation
+* Cleanup of expired authentication sessions
+* Improved administration of password badlists
+
 ## 2022-08-02 - Kanidm 1.1.0-alpha9
 
 This is the ninth alpha series release of the Kanidm Identity Management

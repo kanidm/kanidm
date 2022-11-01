@@ -28,7 +28,7 @@ exclude = [
 ]
 
 [workspace.package]
-version = "1.1.0-alpha.9"
+version = "1.1.0-alpha.10"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",

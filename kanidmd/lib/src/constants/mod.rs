@@ -17,7 +17,7 @@ pub use crate::constants::values::*;
 use std::time::Duration;
 
 // Increment this as we add new schema types and values!!!
-pub const SYSTEM_INDEX_VERSION: i64 = 26;
+pub const SYSTEM_INDEX_VERSION: i64 = 27;
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub const PURGE_FREQUENCY: u64 = 60;
