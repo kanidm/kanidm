@@ -3,7 +3,6 @@
 
     cargo install cargo-audit
     cargo install cargo-outdated
-    cargo install cargo-release
 
 ## Check List
 
@@ -11,26 +10,27 @@
 
 * [ ] git checkout -b YYYYMMDD-release
 
-### Code Changes
-
-* [ ] upgrade crypto policy values if requires
-* [ ] bump index version in constants
-* [ ] check for breaking db entry changes.
-* [ ] cargo test
-
 ### Cargo Tasks
 
 * [ ] cargo outdated -R
 * [ ] cargo audit
 * [ ] cargo test
-* [ ] build wasm components with release
+
+### Code Changes
+
+* [ ] upgrade crypto policy values if requires
+* [ ] bump index version in constants
+* [ ] check for breaking db entry changes.
 
 ### Administration
 
-* [ ] cargo release --no-dev-version --no-push --no-publish --no-tag  1.1.0-alpha.X
-* [ ] git rebase -i HEAD~X
+* [ ] update version in ./kanidmd\_web\_ui/Cargo.toml
+* [ ] update version in ./Cargo.toml
+* [ ] cargo test
+* [ ] build wasm components with release profile
 * [ ] Update `RELEASE_NOTES.md`
 * [ ] git commit
+* [ ] git rebase -i HEAD~X
 * [ ] git push origin YYYYMMDD-release
 * [ ] Merge PR
 
@@ -62,4 +62,13 @@
 ### Distro
 
 * [ ] vendor and release to build.opensuse.org
+
+### Follow up
+
+* [ ] git checkout master
+* [ ] git pull
+* [ ] git branch YYYYMMDD-dev-version
+* [ ] update version in ./kanidmd\_web\_ui/Cargo.toml
+* [ ] update version in ./Cargo.toml
+* [ ] build wasm components with debug profile
 

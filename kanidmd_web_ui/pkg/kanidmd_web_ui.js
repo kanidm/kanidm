@@ -421,7 +421,7 @@ function getImports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbg_modalhidebyid_3090e1f0ff737387 = function(arg0, arg1) {
+    imports.wbg.__wbg_modalhidebyid_4a1a18ce4b8f3393 = function(arg0, arg1) {
         modal_hide_by_id(getStringFromWasm0(arg0, arg1));
     };
     imports.wbg.__wbindgen_number_new = function(arg0) {
