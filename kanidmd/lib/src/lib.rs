@@ -78,7 +78,7 @@ pub mod prelude {
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
         FilterInvalid, FC,
     };
-    pub use crate::identity::{AccessScope, IdentType, Identity};
+    pub use crate::identity::{AccessScope, IdentType, Identity, IdentityId};
     pub use crate::modify::{m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList};
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
