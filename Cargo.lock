@@ -596,9 +596,9 @@ checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "bytemuck"
-version = "1.12.1"
+version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f5715e491b5a1598fc2bef5a606847b5dc1d48ea625bd3c02c00de8285591da"
+checksum = "5aec14f5d4e6e3f927cd0c81f72e5710d95ee9019fbeb4b3021193867491bfd8"
 
 [[package]]
 name = "byteorder"
@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2036,9 +2036,9 @@ checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
 name = "hyper"
-version = "0.14.20"
+version = "0.14.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02c929dc5c39e335a03c405292728118860721b10190d98c2a0f0efd5baafbac"
+checksum = "abfba89e19b959ca163c7752ba59d737c1ceea53a5d31a149c805446fc958064"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2247,7 +2247,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "kanidm_proto",
  "reqwest",
@@ -2264,7 +2264,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_proto"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "base32",
  "base64urlsafedata",
@@ -2280,7 +2280,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2307,7 +2307,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "bytes",
  "clap",
@@ -2338,7 +2338,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_core"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2370,7 +2370,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "async-std",
  "async-trait",
@@ -2438,7 +2438,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "compact_jwt",
  "futures",
@@ -2460,7 +2460,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "compact_jwt",
  "gloo 0.8.0",
@@ -2811,7 +2811,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
@@ -3028,7 +3028,7 @@ dependencies = [
 
 [[package]]
 name = "orca"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "clap",
  "crossbeam",
@@ -3068,7 +3068,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pam_kanidm"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "kanidm_unix_int",
  "libc",
@@ -3310,7 +3310,7 @@ dependencies = [
 
 [[package]]
 name = "profiles"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "base64 0.13.1",
  "serde",
@@ -3747,9 +3747,9 @@ dependencies = [
 
 [[package]]
 name = "scoped-tls"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
+checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
 
 [[package]]
 name = "scoped-tls-hkt"
@@ -4040,7 +4040,7 @@ dependencies = [
 
 [[package]]
 name = "sketching"
-version = "1.1.0-alpha.10"
+version = "1.1.0-alpha.11-dev"
 dependencies = [
  "async-trait",
  "num_enum",
