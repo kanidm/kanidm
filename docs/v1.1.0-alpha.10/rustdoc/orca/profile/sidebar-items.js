@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["DsConfig",""],["KaniHttpConfig",""],["KaniLdapConfig",""],["Profile",""],["SearchBasicConfig",""]]};

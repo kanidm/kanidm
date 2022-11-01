@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["DelayedAction",""]],"struct":[["AuthSessionRecord",""],["BackupCodeRemoval",""],["Oauth2ConsentGrant",""],["PasswordUpgrade",""],["UnixPasswordUpgrade",""],["WebauthnCounterIncrement",""]]};
