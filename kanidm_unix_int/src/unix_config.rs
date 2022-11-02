@@ -9,7 +9,7 @@ use serde::Deserialize;
 use crate::constants::{
     DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
     DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH,
-    DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
+    DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP, DEFAULT_USE_ETC_SKEL,
 };
 
 #[derive(Debug, Deserialize)]
@@ -24,6 +24,7 @@ struct ConfigInt {
     home_prefix: Option<String>,
     home_attr: Option<String>,
     home_alias: Option<String>,
+    use_etc_skel: Option<bool>,
     uid_attr_map: Option<String>,
     gid_attr_map: Option<String>,
 }
@@ -81,6 +82,7 @@ pub struct KanidmUnixdConfig {
     pub home_prefix: String,
     pub home_attr: HomeAttr,
     pub home_alias: Option<HomeAttr>,
+    pub use_etc_skel: bool,
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
 }
@@ -135,6 +137,7 @@ impl KanidmUnixdConfig {
             home_prefix: DEFAULT_HOME_PREFIX.to_string(),
             home_attr: DEFAULT_HOME_ATTR,
             home_alias: DEFAULT_HOME_ALIAS,
+            use_etc_skel: DEFAULT_USE_ETC_SKEL,
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
         }
@@ -220,6 +223,7 @@ impl KanidmUnixdConfig {
                     }
                 })
                 .unwrap_or(self.home_alias),
+            use_etc_skel: config.use_etc_skel.unwrap_or(self.use_etc_skel),
             uid_attr_map: config
                 .uid_attr_map
                 .and_then(|v| match v.as_str() {

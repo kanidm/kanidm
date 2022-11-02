@@ -45,6 +45,7 @@ You can also configure some unixd-specific options with the file /etc/kanidm/uni
     home_prefix = "/home/"
     home_attr = "uuid"
     home_alias = "spn"
+    use_etc_skel = false
     uid_attr_map = "spn"
     gid_attr_map = "spn"
 
@@ -72,6 +73,9 @@ Valid choices are `none`, `uuid`, `name`, `spn`. Defaults to `spn`.
 > in your system. We recommend that you have a stable ID (like the UUID), and symlinks
 > from the name to the UUID folder. Automatic support is provided for this via the unixd
 > tasks daemon, as documented here.
+
+`use_etc_skel` controls if home directories should be prepopulated with the contents of `/etc/skel` 
+when first created. Defaults to false.
 
 `uid_attr_map` chooses which attribute is used for domain local users in presentation. Defaults
 to `spn`. Users from a trust will always use spn.

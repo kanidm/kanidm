@@ -81,7 +81,7 @@ fn chown(path: &Path, gid: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<(), String> {
+fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str, use_etc_skel: bool) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
     let name = info
         .name
@@ -124,7 +124,7 @@ fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<
 
         // Copy in structure from /etc/skel/ if present
         let skel_dir = Path::new("/etc/skel/");
-        if skel_dir.exists() {
+        if use_etc_skel && skel_dir.exists() {
             info!("preparing homedir using /etc/skel");
             for entry in WalkDir::new(skel_dir).into_iter().filter_map(|e| e.ok()) {
                 let dest = &hd_path.join(
@@ -191,7 +191,7 @@ fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<
     Ok(())
 }
 
-async fn handle_tasks(stream: UnixStream, home_prefix: &str) {
+async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
     let mut reqs = Framed::new(stream, TaskCodec::new());
 
     loop {
@@ -199,7 +199,7 @@ async fn handle_tasks(stream: UnixStream, home_prefix: &str) {
             Some(Ok(TaskRequest::HomeDirectory(info))) => {
                 debug!("Received task -> HomeDirectory({:?})", info);
 
-                let resp = match create_home_directory(&info, home_prefix) {
+                let resp = match create_home_directory(&info, &cfg.home_prefix, cfg.use_etc_skel) {
                     Ok(()) => TaskResponse::Success,
                     Err(msg) => TaskResponse::Error(msg),
                 };
@@ -274,7 +274,7 @@ async fn main() {
                             info!("Found kanidm_unixd, waiting for tasks ...");
                             // Yep! Now let the main handler do it's job.
                             // If it returns (dc, etc, then we loop and try again).
-                            handle_tasks(stream, &cfg.home_prefix).await;
+                            handle_tasks(stream, &cfg).await;
                         }
                         Err(e) => {
                             error!("Unable to find kanidm_unixd, sleeping ...");
