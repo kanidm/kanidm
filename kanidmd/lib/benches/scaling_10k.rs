@@ -1,15 +1,11 @@
 use std::time::{Duration, Instant};
 
-use async_std::task;
 use criterion::{
     criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode, Throughput,
 };
 use kanidmd_lib;
 use kanidmd_lib::entry::{Entry, EntryInit, EntryNew};
 use kanidmd_lib::entry_init;
-use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
-use kanidmd_lib::macros::run_idm_test_no_logging;
-use kanidmd_lib::server::QueryServer;
 use kanidmd_lib::utils::duration_from_epoch_now;
 use kanidmd_lib::value::Value;
 
@@ -28,14 +24,19 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                 println!("iters, size -> {:?}, {:?}", iters, size);
 
                 for _i in 0..iters {
-                    run_idm_test_no_logging(
-                        |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                            let ct = duration_from_epoch_now();
+                    let mut rt = tokio::runtime::Builder::new_current_thread();
+                    elapsed = rt
+                        .enable_all()
+                        .build()
+                        .expect("Failed building the Runtime")
+                        .block_on(async {
+                            let (idms, _idms_delayed) =
+                                kanidmd_lib::testkit::setup_idm_test().await;
 
+                            let ct = duration_from_epoch_now();
                             let start = Instant::now();
                             for counter in 0..size {
-                                let idms_prox_write = task::block_on(idms.proxy_write_async(ct));
-
+                                let mut idms_prox_write = idms.proxy_write(ct).await;
                                 let name = format!("testperson_{}", counter);
                                 let e1 = entry_init!(
                                     ("class", Value::new_class("object")),
@@ -51,9 +52,8 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
 
                                 idms_prox_write.commit().expect("Must not fail");
                             }
-                            elapsed = elapsed.checked_add(start.elapsed()).unwrap();
-                        },
-                    );
+                            elapsed.checked_add(start.elapsed()).unwrap()
+                        });
                 }
                 elapsed
             });
@@ -92,20 +92,25 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                     .collect();
 
                 for _i in 0..iters {
-                    kanidmd_lib::macros::run_idm_test_no_logging(
-                        |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                            let ct = duration_from_epoch_now();
+                    let mut rt = tokio::runtime::Builder::new_current_thread();
+                    elapsed = rt
+                        .enable_all()
+                        .build()
+                        .expect("Failed building the Runtime")
+                        .block_on(async {
+                            let (idms, _idms_delayed) =
+                                kanidmd_lib::testkit::setup_idm_test().await;
 
+                            let ct = duration_from_epoch_now();
                             let start = Instant::now();
 
-                            let idms_prox_write = task::block_on(idms.proxy_write_async(ct));
+                            let mut idms_prox_write = idms.proxy_write(ct).await;
                             let cr = idms_prox_write.qs_write.internal_create(data.clone());
                             assert!(cr.is_ok());
 
                             idms_prox_write.commit().expect("Must not fail");
-                            elapsed = elapsed.checked_add(start.elapsed()).unwrap();
-                        },
-                    );
+                            elapsed.checked_add(start.elapsed()).unwrap()
+                        });
                 }
                 elapsed
             });

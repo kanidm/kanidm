@@ -375,98 +375,93 @@ mod tests {
     use kanidm_proto::v1::ApiToken;
 
     use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
-    // use crate::prelude::*;
     use crate::event::CreateEvent;
     use crate::idm::server::IdmServerTransaction;
-
-    use async_std::task;
+    use crate::prelude::*;
 
     const TEST_CURRENT_TIME: u64 = 6000;
 
-    #[test]
-    fn test_idm_service_account_api_token() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let past_grc = Duration::from_secs(TEST_CURRENT_TIME + 1) + GRACE_WINDOW;
-            let exp = Duration::from_secs(TEST_CURRENT_TIME + 6000);
-            let post_exp = Duration::from_secs(TEST_CURRENT_TIME + 6010);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+    #[idm_test]
+    async fn test_idm_service_account_api_token(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let past_grc = Duration::from_secs(TEST_CURRENT_TIME + 1) + GRACE_WINDOW;
+        let exp = Duration::from_secs(TEST_CURRENT_TIME + 6000);
+        let post_exp = Duration::from_secs(TEST_CURRENT_TIME + 6010);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let testaccount_uuid = Uuid::new_v4();
+        let testaccount_uuid = Uuid::new_v4();
 
-            let e1 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("account")),
-                ("class", Value::new_class("service_account")),
-                ("name", Value::new_iname("test_account_only")),
-                ("uuid", Value::new_uuid(testaccount_uuid)),
-                ("description", Value::new_utf8s("testaccount")),
-                ("displayname", Value::new_utf8s("testaccount"))
-            );
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("service_account")),
+            ("name", Value::new_iname("test_account_only")),
+            ("uuid", Value::new_uuid(testaccount_uuid)),
+            ("description", Value::new_utf8s("testaccount")),
+            ("displayname", Value::new_utf8s("testaccount"))
+        );
 
-            let ce = CreateEvent::new_internal(vec![e1]);
-            let cr = idms_prox_write.qs_write.create(&ce);
-            assert!(cr.is_ok());
+        let ce = CreateEvent::new_internal(vec![e1]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
 
-            let gte = GenerateApiTokenEvent::new_internal(testaccount_uuid, "TestToken", Some(exp));
+        let gte = GenerateApiTokenEvent::new_internal(testaccount_uuid, "TestToken", Some(exp));
 
-            let api_token = idms_prox_write
-                .service_account_generate_api_token(&gte, ct)
-                .expect("failed to generate new api token");
+        let api_token = idms_prox_write
+            .service_account_generate_api_token(&gte, ct)
+            .expect("failed to generate new api token");
 
-            trace!(?api_token);
+        trace!(?api_token);
 
-            // Deserialise it.
-            let apitoken_unverified =
-                JwsUnverified::from_str(&api_token).expect("Failed to parse apitoken");
-            let apitoken_inner: Jws<ApiToken> = apitoken_unverified
-                .validate_embeded()
-                .expect("Embedded jwk not found");
-            let apitoken_inner = apitoken_inner.into_inner();
+        // Deserialise it.
+        let apitoken_unverified =
+            JwsUnverified::from_str(&api_token).expect("Failed to parse apitoken");
+        let apitoken_inner: Jws<ApiToken> = apitoken_unverified
+            .validate_embeded()
+            .expect("Embedded jwk not found");
+        let apitoken_inner = apitoken_inner.into_inner();
 
-            let ident = idms_prox_write
-                .validate_and_parse_token_to_ident(Some(&api_token), ct)
-                .expect("Unable to verify api token.");
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(Some(&api_token), ct)
+            .expect("Unable to verify api token.");
 
-            assert!(ident.get_uuid() == Some(testaccount_uuid));
+        assert!(ident.get_uuid() == Some(testaccount_uuid));
 
-            // Woohoo! Okay lets test the other edge cases.
+        // Woohoo! Okay lets test the other edge cases.
 
-            // Check the expiry
-            assert!(
-                idms_prox_write
-                    .validate_and_parse_token_to_ident(Some(&api_token), post_exp)
-                    .expect_err("Should not succeed")
-                    == OperationError::SessionExpired
-            );
+        // Check the expiry
+        assert!(
+            idms_prox_write
+                .validate_and_parse_token_to_ident(Some(&api_token), post_exp)
+                .expect_err("Should not succeed")
+                == OperationError::SessionExpired
+        );
 
-            // Delete session
-            let dte = DestroyApiTokenEvent::new_internal(
-                apitoken_inner.account_id,
-                apitoken_inner.token_id,
-            );
-            assert!(idms_prox_write
-                .service_account_destroy_api_token(&dte)
-                .is_ok());
+        // Delete session
+        let dte =
+            DestroyApiTokenEvent::new_internal(apitoken_inner.account_id, apitoken_inner.token_id);
+        assert!(idms_prox_write
+            .service_account_destroy_api_token(&dte)
+            .is_ok());
 
-            // Within gracewindow?
-            // This is okay, because we are within the gracewindow.
-            let ident = idms_prox_write
-                .validate_and_parse_token_to_ident(Some(&api_token), ct)
-                .expect("Unable to verify api token.");
-            assert!(ident.get_uuid() == Some(testaccount_uuid));
+        // Within gracewindow?
+        // This is okay, because we are within the gracewindow.
+        let ident = idms_prox_write
+            .validate_and_parse_token_to_ident(Some(&api_token), ct)
+            .expect("Unable to verify api token.");
+        assert!(ident.get_uuid() == Some(testaccount_uuid));
 
-            // Past gracewindow?
-            assert!(
-                idms_prox_write
-                    .validate_and_parse_token_to_ident(Some(&api_token), past_grc)
-                    .expect_err("Should not succeed")
-                    == OperationError::SessionExpired
-            );
+        // Past gracewindow?
+        assert!(
+            idms_prox_write
+                .validate_and_parse_token_to_ident(Some(&api_token), past_grc)
+                .expect_err("Should not succeed")
+                == OperationError::SessionExpired
+        );
 
-            assert!(idms_prox_write.commit().is_ok());
-        });
+        assert!(idms_prox_write.commit().is_ok());
     }
 }

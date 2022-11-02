@@ -820,7 +820,7 @@ impl<'a> QueryServerReadTransaction<'a> {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
-    fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
+    pub(crate) fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
         // If we fail after backend, we need to return NOW because we can't
         // assert any other faith in the DB states.
         //  * backend

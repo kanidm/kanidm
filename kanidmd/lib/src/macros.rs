@@ -1,3 +1,4 @@
+#[cfg(test)]
 macro_rules! setup_test {
     () => {{
         let _ = sketching::test_init();
@@ -71,6 +72,7 @@ macro_rules! entry_str_to_account {
     }};
 }
 
+#[cfg(test)]
 macro_rules! run_idm_test_inner {
     ($test_fn:expr) => {{
         #[allow(unused_imports)]
@@ -110,18 +112,6 @@ macro_rules! run_idm_test {
         let _ = sketching::test_init();
         run_idm_test_inner!($test_fn);
     }};
-}
-
-pub fn run_idm_test_no_logging<F>(mut test_fn: F)
-where
-    F: FnMut(
-        &crate::server::QueryServer,
-        &crate::idm::server::IdmServer,
-        &crate::idm::server::IdmServerDelayed,
-    ),
-{
-    sketching::test_init();
-    run_idm_test_inner!(test_fn);
 }
 
 // Test helpers for all plugins.

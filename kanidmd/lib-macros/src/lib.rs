@@ -26,3 +26,8 @@ pub fn qs_test(args: TokenStream, item: TokenStream) -> TokenStream {
 pub fn qs_test_no_init(args: TokenStream, item: TokenStream) -> TokenStream {
     entry::qs_test(&args, item, false)
 }
+
+#[proc_macro_attribute]
+pub fn idm_test(args: TokenStream, item: TokenStream) -> TokenStream {
+    entry::idm_test(&args, item)
+}

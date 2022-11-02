@@ -1,4 +1,3 @@
-use core::task::{Context, Poll};
 use std::convert::TryFrom;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -11,8 +10,6 @@ use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
 use concread::hashmap::HashMap;
 use concread::CowCell;
 use fernet::Fernet;
-// #[cfg(any(test,bench))]
-use futures::task as futures_task;
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
     ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UatPurpose,
@@ -343,8 +340,12 @@ impl IdmServer {
 }
 
 impl IdmServerDelayed {
-    // #[cfg(any(test,bench))]
+    // I think we can just make this async in the future?
+    #[cfg(test)]
     pub(crate) fn check_is_empty_or_panic(&mut self) {
+        use core::task::{Context, Poll};
+        use futures::task as futures_task;
+
         let waker = futures_task::noop_waker();
         let mut cx = Context::from_waker(&waker);
         match self.async_rx.poll_recv(&mut cx) {
@@ -365,6 +366,9 @@ impl IdmServerDelayed {
 
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
+        use core::task::{Context, Poll};
+        use futures::task as futures_task;
+
         let waker = futures_task::noop_waker();
         let mut cx = Context::from_waker(&waker);
         match self.async_rx.poll_recv(&mut cx) {
