@@ -5397,7 +5397,7 @@
     <span class="comment">// Verify the data content of the server is as expected. This will probably</span>
     <span class="comment">// call various functions for validation, including possibly plugin</span>
     <span class="comment">// verifications.</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// If we fail after backend, we need to return NOW because we can&#39;t</span>
         <span class="comment">// assert any other faith in the DB states.</span>
         <span class="comment">//  * backend</span>

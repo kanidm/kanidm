@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"attr":[["qs_test",""],["qs_test_no_init",""]]};
+window.SIDEBAR_ITEMS = {"attr":[["idm_test",""],["qs_test",""],["qs_test_no_init",""]]};

@@ -149,8 +149,7 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">schema</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">server</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">status</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">testkit</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testkit</span>;
 
 <span class="doccomment">/// A prelude of imports that should be imported by all other Kanidm modules to</span>
 <span class="doccomment">/// help make imports cleaner.</span>
@@ -176,6 +175,7 @@
         <span class="ident">FilterInvalid</span>, <span class="ident">FC</span>,
     };
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">AccessScope</span>, <span class="ident">IdentType</span>, <span class="ident">Identity</span>, <span class="ident">IdentityId</span>};
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerDelayed</span>};
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">m_pres</span>, <span class="ident">m_purge</span>, <span class="ident">m_remove</span>, <span class="ident">Modify</span>, <span class="ident">ModifyInvalid</span>, <span class="ident">ModifyList</span>};
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::server</span>::{
         <span class="ident">QueryServer</span>, <span class="ident">QueryServerReadTransaction</span>, <span class="ident">QueryServerTransaction</span>,

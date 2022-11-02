@@ -2492,6 +2492,7 @@
 <span id="2492">2492</span>
 <span id="2493">2493</span>
 <span id="2494">2494</span>
+<span id="2495">2495</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a</span>
 <span class="doccomment">//! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be</span>
 <span class="doccomment">//! considered valid for commit to the database. This allows us to provide</span>
@@ -4097,6 +4098,7 @@
         }
     }
 
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">write_blocking</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SchemaWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">write</span>()
     }
