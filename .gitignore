@@ -19,6 +19,11 @@ orca/example_profiles/small/orca-edited.toml
 kanidm_unix_int/pam_tester/Cargo.lock
 .vscode/
 
+# kanidm simple packaging
+deployment-config/
+kanidm_simple_pkg/
+kanidm-client-tools.tar.gz
+
 # python things
 **/__pycache__/**
 **/.venv/**

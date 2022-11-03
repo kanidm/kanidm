@@ -1,0 +1,19 @@
+Name: Kanidm Authentication
+Default: yes
+Priority: 300
+
+Auth-Type: Primary
+Auth:
+  [success=end new_authtok_reqd=done default=ignore]    pam_kanidm.so ignore_unknown_user
+
+Account-Type: Primary
+Account:
+  [success=end new_authtok_reqd=done default=ignore]    pam_kanidm.so ignore_unknown_user
+
+Session-Type: Additional
+Session:
+  optional      pam_kanidm.so
+
+Password-Type: Additional
+Password:
+  optional      pam_kanidm.so

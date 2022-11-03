@@ -30,6 +30,7 @@
 - [PAM and nsswitch](integrations/pam_and_nsswitch.md)
 - [RADIUS](integrations/radius.md)
 - [LDAP](integrations/ldap.md)
+- [Traefik](integrations/traefik.md)
 
 # Integration Examples
 
