@@ -2246,6 +2246,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm-ipa-sync"
+version = "1.1.0-alpha.11-dev"
+dependencies = [
+ "clap",
+ "clap_complete",
+ "kanidm_client",
+ "kanidm_proto",
+ "ldap3_client",
+ "scim_proto",
+ "tokio",
+]
+
+[[package]]
 name = "kanidm_client"
 version = "1.1.0-alpha.11-dev"
 dependencies = [
@@ -2519,15 +2532,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "ldap3_client"
+version = "0.3.0"
+dependencies = [
+ "base64 0.13.1",
+ "futures-util",
+ "ldap3_proto",
+ "openssl",
+ "serde",
+ "tokio",
+ "tokio-openssl",
+ "tokio-util",
+ "tracing",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "ldap3_proto"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62d7f04b6dc4d5401b817596e424ecb4a0931db1418f3987a27e0ab69320665e"
+version = "0.3.0"
 dependencies = [
  "bytes",
  "lber",
+ "nom 7.1.1",
  "tokio-util",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -3745,6 +3775,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "977a7519bff143a44f842fd07e80ad1329295bd71686457f18e496736f4bf9bf"
 dependencies = [
  "parking_lot",
+]
+
+[[package]]
+name = "scim_proto"
+version = "0.1.0"
+dependencies = [
+ "base64urlsafedata",
+ "serde",
+ "serde_json",
+ "time 0.2.27",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
 ]
 
 [[package]]

@@ -97,11 +97,11 @@ impl DirectoryServer {
                 attributes: vec![
                     LdapAttribute {
                         atype: "objectClass".to_string(),
-                        vals: vec!["top".to_string(), "organizationalUnit".to_string()],
+                        vals: vec!["top".as_bytes().into(), "organizationalUnit".as_bytes().into()],
                     },
                     LdapAttribute {
                         atype: "ou".to_string(),
-                        vals: vec!["people".to_string()],
+                        vals: vec!["people".as_bytes().into()],
                     },
                 ],
             };
@@ -121,11 +121,11 @@ impl DirectoryServer {
                 attributes: vec![
                     LdapAttribute {
                         atype: "objectClass".to_string(),
-                        vals: vec!["top".to_string(), "organizationalUnit".to_string()],
+                        vals: vec!["top".as_bytes().into(), "organizationalUnit".as_bytes().into()],
                     },
                     LdapAttribute {
                         atype: "ou".to_string(),
-                        vals: vec!["groups".to_string()],
+                        vals: vec!["groups".as_bytes().into()],
                     },
                 ],
             };
@@ -155,40 +155,40 @@ impl DirectoryServer {
                             LdapAttribute {
                                 atype: "objectClass".to_string(),
                                 vals: vec![
-                                    "top".to_string(),
-                                    "nsPerson".to_string(),
-                                    "nsAccount".to_string(),
-                                    "nsOrgPerson".to_string(),
-                                    "posixAccount".to_string(),
+                                    "top"          .as_bytes().into(),
+                                    "nsPerson"     .as_bytes().into(),
+                                    "nsAccount"    .as_bytes().into(),
+                                    "nsOrgPerson"  .as_bytes().into(),
+                                    "posixAccount" .as_bytes().into(),
                                 ],
                             },
                             LdapAttribute {
                                 atype: "cn".to_string(),
-                                vals: vec![a.uuid.to_string()],
+                                vals: vec![a.uuid.as_bytes().to_vec()],
                             },
                             LdapAttribute {
                                 atype: "uid".to_string(),
-                                vals: vec![a.name.clone()],
+                                vals: vec![a.name.as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: "displayName".to_string(),
-                                vals: vec![a.display_name.clone()],
+                                vals: vec![a.display_name.as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: "userPassword".to_string(),
-                                vals: vec![a.password.clone()],
+                                vals: vec![a.password.as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: "homeDirectory".to_string(),
-                                vals: vec![format!("/home/{}", a.uuid)],
+                                vals: vec![format!("/home/{}", a.uuid).as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: "uidNumber".to_string(),
-                                vals: vec!["1000".to_string()],
+                                vals: vec!["1000".as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: "gidNumber".to_string(),
-                                vals: vec!["1000".to_string()],
+                                vals: vec!["1000".as_bytes().into()],
                             },
                         ],
                     };
@@ -200,11 +200,11 @@ impl DirectoryServer {
                         attributes: vec![
                             LdapAttribute {
                                 atype: "objectClass".to_string(),
-                                vals: vec!["top".to_string(), "groupOfNames".to_string()],
+                                vals: vec!["top".as_bytes().into(), "groupOfNames".as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: "cn".to_string(),
-                                vals: vec![g.uuid.to_string(), g.name.clone()],
+                                vals: vec![g.uuid.as_bytes().to_vec(), g.name.as_bytes().into()],
                             },
                         ],
                     };
@@ -222,7 +222,7 @@ impl DirectoryServer {
             }
         }) {
             // List of dns
-            let vals: Vec<_> = g
+            let vals: Vec<Vec<u8>> = g
                 .members
                 .iter()
                 .map(|id| {
@@ -230,6 +230,7 @@ impl DirectoryServer {
                         .get(id)
                         .unwrap()
                         .get_ds_ldap_dn(&self.ldap.basedn)
+                        .as_bytes().into()
                 })
                 .collect();
 
@@ -270,11 +271,11 @@ impl DirectoryServer {
                 attributes: vec![
                     LdapAttribute {
                         atype: "objectClass".to_string(),
-                        vals: vec!["top".to_string(), "groupOfNames".to_string()],
+                        vals: vec!["top".as_bytes().into(), "groupOfNames".as_bytes().into()],
                     },
                     LdapAttribute {
                         atype: "cn".to_string(),
-                        vals: vec!["priv_account_manage".to_string()],
+                        vals: vec!["priv_account_manage".as_bytes().into()],
                     },
                 ],
             };
@@ -297,11 +298,11 @@ impl DirectoryServer {
                 attributes: vec![
                     LdapAttribute {
                         atype: "objectClass".to_string(),
-                        vals: vec!["top".to_string(), "groupOfNames".to_string()],
+                        vals: vec!["top".as_bytes().into(), "groupOfNames".as_bytes().into()],
                     },
                     LdapAttribute {
                         atype: "cn".to_string(),
-                        vals: vec!["priv_group_manage".to_string()],
+                        vals: vec!["priv_group_manage".as_bytes().into()],
                     },
                 ],
             };
@@ -317,14 +318,14 @@ impl DirectoryServer {
                         modification: LdapPartialAttribute {
                             atype: "aci".to_string(),
                             vals: vec![
-                                r#"(targetattr="dc || description || objectClass")(targetfilter="(objectClass=domain)")(version 3.0; acl "Enable anyone domain read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.to_string(),
+                                r#"(targetattr="dc || description || objectClass")(targetfilter="(objectClass=domain)")(version 3.0; acl "Enable anyone domain read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.as_bytes().into(),
 
-                                r#"(targetattr="ou || objectClass")(targetfilter="(objectClass=organizationalUnit)")(version 3.0; acl "Enable anyone ou read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.to_string(),
-                                r#"(targetattr="cn || member || gidNumber || nsUniqueId || description || objectClass")(targetfilter="(objectClass=groupOfNames)")(version 3.0; acl "Enable anyone group read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.to_string(),
-                                format!(r#"(targetattr="cn || member || gidNumber || description || objectClass")(targetfilter="(objectClass=groupOfNames)")(version 3.0; acl "Enable group_admin to manage groups"; allow (write,add, delete)(groupdn="ldap:///cn=priv_group_manage,{}");)"#, self.ldap.basedn),
-                                r#"(targetattr="objectClass || description || nsUniqueId || uid || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || nsSshPublicKey || nsAccountLock || userCertificate")(targetfilter="(objectClass=posixaccount)")(version 3.0; acl "Enable anyone user read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.to_string(),
-                                r#"(targetattr="displayName || legalName || userPassword || nsSshPublicKey")(version 3.0; acl "Enable self partial modify"; allow (write)(userdn="ldap:///self");)"#.to_string(),
-                                format!(r#"(targetattr="uid || description || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || legalName || telephoneNumber || mobile")(targetfilter="(&(objectClass=nsPerson)(objectClass=nsAccount))")(version 3.0; acl "Enable user admin create"; allow (write, add, delete, read)(groupdn="ldap:///cn=priv_account_manage,{}");)"#, self.ldap.basedn),
+                                r#"(targetattr="ou || objectClass")(targetfilter="(objectClass=organizationalUnit)")(version 3.0; acl "Enable anyone ou read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.as_bytes().into(),
+                                r#"(targetattr="cn || member || gidNumber || nsUniqueId || description || objectClass")(targetfilter="(objectClass=groupOfNames)")(version 3.0; acl "Enable anyone group read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.as_bytes().into(),
+                                format!(r#"(targetattr="cn || member || gidNumber || description || objectClass")(targetfilter="(objectClass=groupOfNames)")(version 3.0; acl "Enable group_admin to manage groups"; allow (write,add, delete)(groupdn="ldap:///cn=priv_group_manage,{}");)"#, self.ldap.basedn).as_bytes().into(),
+                                r#"(targetattr="objectClass || description || nsUniqueId || uid || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || nsSshPublicKey || nsAccountLock || userCertificate")(targetfilter="(objectClass=posixaccount)")(version 3.0; acl "Enable anyone user read"; allow (read, search, compare)(userdn="ldap:///anyone");)"#.as_bytes().into(),
+                                r#"(targetattr="displayName || legalName || userPassword || nsSshPublicKey")(version 3.0; acl "Enable self partial modify"; allow (write)(userdn="ldap:///self");)"#.as_bytes().into(),
+                                format!(r#"(targetattr="uid || description || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || legalName || telephoneNumber || mobile")(targetfilter="(&(objectClass=nsPerson)(objectClass=nsAccount))")(version 3.0; acl "Enable user admin create"; allow (write, add, delete, read)(groupdn="ldap:///cn=priv_account_manage,{}");)"#, self.ldap.basedn).as_bytes().into(),
                             ]
                         }
                     }
@@ -352,10 +353,10 @@ impl DirectoryServer {
                 == 0;
 
             if need_account {
-                priv_account.push(account.get_ds_ldap_dn(&self.ldap.basedn))
+                priv_account.push(account.get_ds_ldap_dn(&self.ldap.basedn).as_bytes().to_vec())
             }
             if need_group {
-                priv_group.push(account.get_ds_ldap_dn(&self.ldap.basedn))
+                priv_group.push(account.get_ds_ldap_dn(&self.ldap.basedn).as_bytes().to_vec())
             }
         }
 

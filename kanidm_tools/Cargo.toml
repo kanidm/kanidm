@@ -2,7 +2,7 @@
 name = "kanidm_tools"
 default-run = "kanidm"
 description = "Kanidm Client Tools"
-documentation = "https://docs.rs/kanidm_tools/latest/kanidm_tools/"
+documentation = "https://kanidm.github.io/kanidm/stable/"
 
 version.workspace = true
 authors.workspace = true
