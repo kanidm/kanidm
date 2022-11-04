@@ -38,6 +38,7 @@ use webauthn_rs_proto::{
 };
 
 mod person;
+mod scim;
 mod service_account;
 mod sync_account;
 mod system;

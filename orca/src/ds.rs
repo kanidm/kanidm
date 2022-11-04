@@ -97,7 +97,10 @@ impl DirectoryServer {
                 attributes: vec![
                     LdapAttribute {
                         atype: "objectClass".to_string(),
-                        vals: vec!["top".as_bytes().into(), "organizationalUnit".as_bytes().into()],
+                        vals: vec![
+                            "top".as_bytes().into(),
+                            "organizationalUnit".as_bytes().into(),
+                        ],
                     },
                     LdapAttribute {
                         atype: "ou".to_string(),
@@ -121,7 +124,10 @@ impl DirectoryServer {
                 attributes: vec![
                     LdapAttribute {
                         atype: "objectClass".to_string(),
-                        vals: vec!["top".as_bytes().into(), "organizationalUnit".as_bytes().into()],
+                        vals: vec![
+                            "top".as_bytes().into(),
+                            "organizationalUnit".as_bytes().into(),
+                        ],
                     },
                     LdapAttribute {
                         atype: "ou".to_string(),
@@ -155,11 +161,11 @@ impl DirectoryServer {
                             LdapAttribute {
                                 atype: "objectClass".to_string(),
                                 vals: vec![
-                                    "top"          .as_bytes().into(),
-                                    "nsPerson"     .as_bytes().into(),
-                                    "nsAccount"    .as_bytes().into(),
-                                    "nsOrgPerson"  .as_bytes().into(),
-                                    "posixAccount" .as_bytes().into(),
+                                    "top".as_bytes().into(),
+                                    "nsPerson".as_bytes().into(),
+                                    "nsAccount".as_bytes().into(),
+                                    "nsOrgPerson".as_bytes().into(),
+                                    "posixAccount".as_bytes().into(),
                                 ],
                             },
                             LdapAttribute {
@@ -200,7 +206,10 @@ impl DirectoryServer {
                         attributes: vec![
                             LdapAttribute {
                                 atype: "objectClass".to_string(),
-                                vals: vec!["top".as_bytes().into(), "groupOfNames".as_bytes().into()],
+                                vals: vec![
+                                    "top".as_bytes().into(),
+                                    "groupOfNames".as_bytes().into(),
+                                ],
                             },
                             LdapAttribute {
                                 atype: "cn".to_string(),
@@ -230,7 +239,8 @@ impl DirectoryServer {
                         .get(id)
                         .unwrap()
                         .get_ds_ldap_dn(&self.ldap.basedn)
-                        .as_bytes().into()
+                        .as_bytes()
+                        .into()
                 })
                 .collect();
 
@@ -353,10 +363,20 @@ impl DirectoryServer {
                 == 0;
 
             if need_account {
-                priv_account.push(account.get_ds_ldap_dn(&self.ldap.basedn).as_bytes().to_vec())
+                priv_account.push(
+                    account
+                        .get_ds_ldap_dn(&self.ldap.basedn)
+                        .as_bytes()
+                        .to_vec(),
+                )
             }
             if need_group {
-                priv_group.push(account.get_ds_ldap_dn(&self.ldap.basedn).as_bytes().to_vec())
+                priv_group.push(
+                    account
+                        .get_ds_ldap_dn(&self.ldap.basedn)
+                        .as_bytes()
+                        .to_vec(),
+                )
             }
         }
 

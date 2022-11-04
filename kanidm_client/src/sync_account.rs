@@ -31,4 +31,21 @@ impl KanidmClient {
         self.perform_post_request("/v1/sync_account", new_acct)
             .await
     }
+
+    pub async fn idm_sync_account_generate_token(
+        &self,
+        id: &str,
+        label: &str,
+    ) -> Result<String, ClientError> {
+        self.perform_post_request(
+            format!("/v1/sync_account/{}/_sync_token", id).as_str(),
+            label,
+        )
+        .await
+    }
+
+    pub async fn idm_sync_account_destroy_token(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/sync_account/{}/_sync_token", id,).as_str())
+            .await
+    }
 }

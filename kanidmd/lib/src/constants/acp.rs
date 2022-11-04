@@ -1327,7 +1327,8 @@ pub const JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         ],
         "acp_modify_presentattr": [
             "name",
-            "description"
+            "description",
+            "sync_token_session"
         ],
         "acp_modify_class": [],
         "acp_create_attr": [

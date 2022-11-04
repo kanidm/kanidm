@@ -16,9 +16,18 @@ clap = { workspace = true, features = ["derive", "env"] }
 kanidm_client.workspace = true
 kanidm_proto.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+
+users.workspace = true
 
 ldap3_client.workspace = true
 scim_proto.workspace = true
+serde = { workspace = true, features = ["derive"] }
+toml.workspace = true
+
+# For file metadata, should this me moved out?
+kanidmd_lib.workspace = true
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }

@@ -2253,9 +2253,15 @@ dependencies = [
  "clap_complete",
  "kanidm_client",
  "kanidm_proto",
+ "kanidmd_lib",
  "ldap3_client",
  "scim_proto",
+ "serde",
  "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "users",
 ]
 
 [[package]]

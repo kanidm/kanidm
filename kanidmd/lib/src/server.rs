@@ -700,12 +700,11 @@ pub trait QueryServerTransaction<'a> {
                 .collect();
             v
         } else if let Some(k_set) = value.as_sshkey_map() {
-            let v: Vec<_> = k_set.values().cloned()
-                .map(|s| s.into_bytes())
-                .collect();
+            let v: Vec<_> = k_set.values().cloned().map(|s| s.into_bytes()).collect();
             Ok(v)
         } else {
-            let v: Vec<_> = value.to_proto_string_clone_iter()
+            let v: Vec<_> = value
+                .to_proto_string_clone_iter()
                 .map(|s| s.into_bytes())
                 .collect();
             Ok(v)
