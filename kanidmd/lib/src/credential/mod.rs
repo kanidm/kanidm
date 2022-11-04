@@ -387,12 +387,18 @@ impl Password {
                     .collect();
 
                 let dgst = MessageDigest::from_nid(Nid::MD4).ok_or_else(|| {
-                    error!("Unable to access MD4 - fips mode enabled?");
+                    error!("Unable to access MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
+                    error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
                     OperationError::CryptographyError
                 })?;
 
                 hash::hash(dgst, &clear_utf16le)
-                    .map_err(|_| OperationError::CryptographyError)
+                    .map_err(|e| {
+                        debug!(?e);
+                        error!("Unable to digest MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
+                        error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
+                        OperationError::CryptographyError
+                    })
                     .map(|chal_key| chal_key.as_ref() == key)
             }
         }
@@ -1196,23 +1202,65 @@ mod tests {
     }
     */
 
+    /*
+     * wbrown - 20221104 - I tried to programatically enable the legacy provider, but
+     * it consistently "did nothing at all", meaning we have to rely on users to enable
+     * this for this test.
+     */
+
+    /*
+    #[cfg(openssl3)]
+    fn setup_openssl_legacy_provider() -> openssl::lib_ctx::LibCtx {
+        let ctx = openssl::lib_ctx::LibCtx::new()
+            .expect("Failed to create new library context");
+
+        openssl::provider::Provider::load(Some(&ctx), "legacy")
+            .expect("Failed to setup provider.");
+
+        eprintln!("setup legacy provider maybe??");
+
+        ctx
+    }
+    */
+
     #[test]
     fn test_password_from_ipa_nt_hash() {
+        let _ = sketching::test_init();
         // Base64 no pad
         let im_pw = "ipaNTHash: iEb36u6PsRetBr3YMLdYbA";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
         assert!(r.requires_upgrade());
-        assert!(r.verify(password).unwrap_or(false));
+
+        match r.verify(password) {
+            Ok(r) => assert!(r),
+            Err(_) => {
+                if cfg!(openssl3) {
+                    warn!("To run this test, enable the legacy provider.");
+                } else {
+                    assert!(false);
+                }
+            }
+        }
     }
 
     #[test]
     fn test_password_from_samba_nt_hash() {
+        let _ = sketching::test_init();
         // Base64 no pad
         let im_pw = "sambaNTPassword: 8846F7EAEE8FB117AD06BDD830B7586C";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
         assert!(r.requires_upgrade());
-        assert!(r.verify(password).unwrap_or(false));
+        match r.verify(password) {
+            Ok(r) => assert!(r),
+            Err(_) => {
+                if cfg!(openssl3) {
+                    warn!("To run this test, enable the legacy provider.");
+                } else {
+                    assert!(false);
+                }
+            }
+        }
     }
 }

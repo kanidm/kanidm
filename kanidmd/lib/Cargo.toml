@@ -41,6 +41,9 @@ ldap3_proto.workspace = true
 libc.workspace = true
 libsqlite3-sys.workspace = true
 num_enum.workspace = true
+# We need to explicitly ask for openssl-sys so that we get the version propogated
+# into the build.rs for legacy feature checks.
+openssl-sys.workspace = true
 openssl.workspace = true
 r2d2.workspace = true
 r2d2_sqlite.workspace = true
