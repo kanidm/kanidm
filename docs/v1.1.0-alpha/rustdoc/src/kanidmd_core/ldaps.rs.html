@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/ldaps.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ldaps.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_core/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/ldaps.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ldaps.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_core/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -195,104 +195,104 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::marker::Unpin</span>;
-<span class="kw">use</span> <span class="ident">std::net</span>;
-<span class="kw">use</span> <span class="ident">std::pin::Pin</span>;
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::marker::Unpin;
+<span class="kw">use </span>std::net;
+<span class="kw">use </span>std::pin::Pin;
+<span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1</span>;
-<span class="kw">use</span> <span class="ident">futures_util::sink::SinkExt</span>;
-<span class="kw">use</span> <span class="ident">futures_util::stream::StreamExt</span>;
-<span class="kw">use</span> <span class="ident">kanidmd_lib::ldap</span>::{<span class="ident">LdapBoundToken</span>, <span class="ident">LdapResponseState</span>};
-<span class="kw">use</span> <span class="ident">kanidmd_lib::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">ldap3_proto::proto::LdapMsg</span>;
-<span class="kw">use</span> <span class="ident">ldap3_proto::LdapCodec</span>;
-<span class="kw">use</span> <span class="ident">openssl::ssl</span>::{<span class="ident">Ssl</span>, <span class="ident">SslAcceptor</span>, <span class="ident">SslAcceptorBuilder</span>};
-<span class="kw">use</span> <span class="ident">tokio::io</span>::{<span class="ident">AsyncRead</span>, <span class="ident">AsyncWrite</span>};
-<span class="kw">use</span> <span class="ident">tokio::net::TcpListener</span>;
-<span class="kw">use</span> <span class="ident">tokio_openssl::SslStream</span>;
-<span class="kw">use</span> <span class="ident">tokio_util::codec</span>::{<span class="ident">FramedRead</span>, <span class="ident">FramedWrite</span>};
+<span class="kw">use </span><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1;
+<span class="kw">use </span>futures_util::sink::SinkExt;
+<span class="kw">use </span>futures_util::stream::StreamExt;
+<span class="kw">use </span>kanidmd_lib::ldap::{LdapBoundToken, LdapResponseState};
+<span class="kw">use </span>kanidmd_lib::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>ldap3_proto::proto::LdapMsg;
+<span class="kw">use </span>ldap3_proto::LdapCodec;
+<span class="kw">use </span>openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
+<span class="kw">use </span>tokio::io::{AsyncRead, AsyncWrite};
+<span class="kw">use </span>tokio::net::TcpListener;
+<span class="kw">use </span>tokio_openssl::SslStream;
+<span class="kw">use </span>tokio_util::codec::{FramedRead, FramedWrite};
 
-<span class="kw">struct</span> <span class="ident">LdapSession</span> {
-    <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>,
+<span class="kw">struct </span>LdapSession {
+    uat: <span class="prelude-ty">Option</span>&lt;LdapBoundToken&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">LdapSession</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">LdapSession</span> {
-            <span class="comment">// We start un-authenticated</span>
-            <span class="ident">uat</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>LdapSession {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        LdapSession {
+            <span class="comment">// We start un-authenticated
+            </span>uat: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ldap-request&quot;</span>, <span class="ident">skip</span>(<span class="ident">client_address</span>, <span class="ident">qe_r_ref</span>))]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">client_process_msg</span>(
-    <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>,
-    <span class="ident">client_address</span>: <span class="ident">net::SocketAddr</span>,
-    <span class="ident">protomsg</span>: <span class="ident">LdapMsg</span>,
-    <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
-) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapResponseState</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">eventid</span> <span class="op">=</span> <span class="ident">sketching::tracing_forest::id</span>();
+<span class="attribute">#[instrument(name = <span class="string">&quot;ldap-request&quot;</span>, skip(client_address, qe_r_ref))]
+</span><span class="kw">async fn </span>client_process_msg(
+    uat: <span class="prelude-ty">Option</span>&lt;LdapBoundToken&gt;,
+    client_address: net::SocketAddr,
+    protomsg: LdapMsg,
+    qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
+) -&gt; <span class="prelude-ty">Option</span>&lt;LdapResponseState&gt; {
+    <span class="kw">let </span>eventid = sketching::tracing_forest::id();
     <span class="macro">security_info!</span>(
-        <span class="ident">client_ip</span> <span class="op">=</span> <span class="op">%</span><span class="ident">client_address</span>.<span class="ident">ip</span>(),
-        <span class="ident">client_port</span> <span class="op">=</span> <span class="op">%</span><span class="ident">client_address</span>.<span class="ident">port</span>(),
-        <span class="string">&quot;LDAP client&quot;</span>
-    );
-    <span class="ident">qe_r_ref</span>.<span class="ident">handle_ldaprequest</span>(<span class="ident">eventid</span>, <span class="ident">protomsg</span>, <span class="ident">uat</span>).<span class="kw">await</span>
-}
+        client_ip = %client_address.ip(),
+        client_port = %client_address.port(),
+        <span class="string">&quot;LDAP client&quot;
+    </span>);
+    qe_r_ref.handle_ldaprequest(eventid, protomsg, uat).<span class="kw">await
+</span>}
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">client_process</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">AsyncWrite</span> <span class="op">+</span> <span class="ident">Unpin</span>, <span class="ident">R</span>: <span class="ident">AsyncRead</span> <span class="op">+</span> <span class="ident">Unpin</span><span class="op">&gt;</span>(
-    <span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">FramedRead</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">LdapCodec</span><span class="op">&gt;</span>,
-    <span class="kw-2">mut</span> <span class="ident">w</span>: <span class="ident">FramedWrite</span><span class="op">&lt;</span><span class="ident">W</span>, <span class="ident">LdapCodec</span><span class="op">&gt;</span>,
-    <span class="ident">client_address</span>: <span class="ident">net::SocketAddr</span>,
-    <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
+<span class="kw">async fn </span>client_process&lt;W: AsyncWrite + Unpin, R: AsyncRead + Unpin&gt;(
+    <span class="kw-2">mut </span>r: FramedRead&lt;R, LdapCodec&gt;,
+    <span class="kw-2">mut </span>w: FramedWrite&lt;W, LdapCodec&gt;,
+    client_address: net::SocketAddr,
+    qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
 ) {
-    <span class="comment">// This is a connected client session. we need to associate some state to the session</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">LdapSession::new</span>();
-    <span class="comment">// Now that we have the session we begin an event loop to process input OR we return.</span>
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">protomsg</span>)) <span class="op">=</span> <span class="ident">r</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-        <span class="comment">// Start the event</span>
-        <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">uat</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">caddr</span> <span class="op">=</span> <span class="ident">client_address</span>.<span class="ident">clone</span>();
+    <span class="comment">// This is a connected client session. we need to associate some state to the session
+    </span><span class="kw">let </span><span class="kw-2">mut </span>session = LdapSession::new();
+    <span class="comment">// Now that we have the session we begin an event loop to process input OR we return.
+    </span><span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(protomsg)) = r.next().<span class="kw">await </span>{
+        <span class="comment">// Start the event
+        </span><span class="kw">let </span>uat = session.uat.clone();
+        <span class="kw">let </span>caddr = client_address.clone();
 
-        <span class="kw">match</span> <span class="ident">client_process_msg</span>(<span class="ident">uat</span>, <span class="ident">caddr</span>, <span class="ident">protomsg</span>, <span class="ident">qe_r_ref</span>).<span class="kw">await</span> {
-            <span class="comment">// I&#39;d really have liked to have put this near the [LdapResponseState::Bind] but due</span>
-            <span class="comment">// to the handing of `audit` it isn&#39;t possible due to borrows, etc.</span>
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Unbind</span>) =&gt; <span class="kw">return</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Disconnect</span>(<span class="ident">rmsg</span>)) =&gt; {
-                <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
+        <span class="kw">match </span>client_process_msg(uat, caddr, protomsg, qe_r_ref).<span class="kw">await </span>{
+            <span class="comment">// I&#39;d really have liked to have put this near the [LdapResponseState::Bind] but due
+            // to the handing of `audit` it isn&#39;t possible due to borrows, etc.
+            </span><span class="prelude-val">Some</span>(LdapResponseState::Unbind) =&gt; <span class="kw">return</span>,
+            <span class="prelude-val">Some</span>(LdapResponseState::Disconnect(rmsg)) =&gt; {
+                <span class="kw">if </span>w.send(rmsg).<span class="kw">await</span>.is_err() {
                     <span class="kw">break</span>;
                 }
                 <span class="kw">break</span>;
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Bind</span>(<span class="ident">uat</span>, <span class="ident">rmsg</span>)) =&gt; {
-                <span class="ident">session</span>.<span class="ident">uat</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">uat</span>);
-                <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
+            <span class="prelude-val">Some</span>(LdapResponseState::Bind(uat, rmsg)) =&gt; {
+                session.uat = <span class="prelude-val">Some</span>(uat);
+                <span class="kw">if </span>w.send(rmsg).<span class="kw">await</span>.is_err() {
                     <span class="kw">break</span>;
                 }
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">rmsg</span>)) =&gt; {
-                <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
+            <span class="prelude-val">Some</span>(LdapResponseState::Respond(rmsg)) =&gt; {
+                <span class="kw">if </span>w.send(rmsg).<span class="kw">await</span>.is_err() {
                     <span class="kw">break</span>;
                 }
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::MultiPartResponse</span>(<span class="ident">v</span>)) =&gt; {
-                <span class="kw">for</span> <span class="ident">rmsg</span> <span class="kw">in</span> <span class="ident">v</span>.<span class="ident">into_iter</span>() {
-                    <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
+            <span class="prelude-val">Some</span>(LdapResponseState::MultiPartResponse(v)) =&gt; {
+                <span class="kw">for </span>rmsg <span class="kw">in </span>v.into_iter() {
+                    <span class="kw">if </span>w.send(rmsg).<span class="kw">await</span>.is_err() {
                         <span class="kw">break</span>;
                     }
                 }
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::BindMultiPartResponse</span>(<span class="ident">uat</span>, <span class="ident">v</span>)) =&gt; {
-                <span class="ident">session</span>.<span class="ident">uat</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">uat</span>);
-                <span class="kw">for</span> <span class="ident">rmsg</span> <span class="kw">in</span> <span class="ident">v</span>.<span class="ident">into_iter</span>() {
-                    <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
+            <span class="prelude-val">Some</span>(LdapResponseState::BindMultiPartResponse(uat, v)) =&gt; {
+                session.uat = <span class="prelude-val">Some</span>(uat);
+                <span class="kw">for </span>rmsg <span class="kw">in </span>v.into_iter() {
+                    <span class="kw">if </span>w.send(rmsg).<span class="kw">await</span>.is_err() {
                         <span class="kw">break</span>;
                     }
                 }
             }
-            <span class="prelude-val">None</span> =&gt; {
+            <span class="prelude-val">None </span>=&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Internal server error&quot;</span>);
                 <span class="kw">break</span>;
             }
@@ -300,92 +300,92 @@
     }
 }
 
-<span class="doccomment">/// TLS LDAP Listener, hands off to [client_process]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">tls_acceptor</span>(
-    <span class="ident">listener</span>: <span class="ident">TcpListener</span>,
-    <span class="ident">tls_parms</span>: <span class="ident">SslAcceptor</span>,
-    <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
+<span class="doccomment">/// TLS LDAP Listener, hands off to [client_process]
+</span><span class="kw">async fn </span>tls_acceptor(
+    listener: TcpListener,
+    tls_parms: SslAcceptor,
+    qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
 ) {
-    <span class="kw">loop</span> {
-        <span class="kw">match</span> <span class="ident">listener</span>.<span class="ident">accept</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>((<span class="ident">tcpstream</span>, <span class="ident">client_socket_addr</span>)) =&gt; {
-                <span class="comment">// Start the event</span>
-                <span class="comment">// From the parms we need to create an SslContext.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tlsstream</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Ssl::new</span>(<span class="ident">tls_parms</span>.<span class="ident">context</span>())
-                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">tls_obj</span><span class="op">|</span> <span class="ident">SslStream::new</span>(<span class="ident">tls_obj</span>, <span class="ident">tcpstream</span>))
+    <span class="kw">loop </span>{
+        <span class="kw">match </span>listener.accept().<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>((tcpstream, client_socket_addr)) =&gt; {
+                <span class="comment">// Start the event
+                // From the parms we need to create an SslContext.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>tlsstream = <span class="kw">match </span>Ssl::new(tls_parms.context())
+                    .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
                 {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ta</span>) =&gt; <span class="ident">ta</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS setup error, continuing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="prelude-val">Ok</span>(ta) =&gt; ta,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS setup error, continuing -&gt; {:?}&quot;</span>, e);
                         <span class="kw">continue</span>;
                     }
                 };
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">SslStream::accept</span>(<span class="ident">Pin::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">tlsstream</span>)).<span class="kw">await</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS accept error, continuing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = SslStream::accept(Pin::new(<span class="kw-2">&amp;mut </span>tlsstream)).<span class="kw">await </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS accept error, continuing -&gt; {:?}&quot;</span>, e);
                     <span class="kw">continue</span>;
                 };
-                <span class="kw">let</span> (<span class="ident">r</span>, <span class="ident">w</span>) <span class="op">=</span> <span class="ident">tokio::io::split</span>(<span class="ident">tlsstream</span>);
-                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">FramedRead::new</span>(<span class="ident">r</span>, <span class="ident">LdapCodec</span>);
-                <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="ident">FramedWrite::new</span>(<span class="ident">w</span>, <span class="ident">LdapCodec</span>);
-                <span class="ident">tokio::spawn</span>(<span class="ident">client_process</span>(<span class="ident">r</span>, <span class="ident">w</span>, <span class="ident">client_socket_addr</span>, <span class="ident">qe_r_ref</span>));
+                <span class="kw">let </span>(r, w) = tokio::io::split(tlsstream);
+                <span class="kw">let </span>r = FramedRead::new(r, LdapCodec);
+                <span class="kw">let </span>w = FramedWrite::new(w, LdapCodec);
+                tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;</span>, e);
             }
         }
     }
 }
 
-<span class="doccomment">/// Plain TCP LDAP Listener, hands off to [client_process]</span>
-<span class="comment">// async fn acceptor(listener: TcpListener, qe_r_ref: &amp;&#39;static QueryServerReadV1) {</span>
-<span class="comment">//     loop {</span>
-<span class="comment">//         match listener.accept().await {</span>
-<span class="comment">//             Ok((tcpstream, client_socket_addr)) =&gt; {</span>
-<span class="comment">//                 // Start the event</span>
-<span class="comment">//                 let (r, w) = tokio::io::split(tcpstream);</span>
-<span class="comment">//                 let r = FramedRead::new(r, LdapCodec);</span>
-<span class="comment">//                 let w = FramedWrite::new(w, LdapCodec);</span>
-<span class="comment">//                 // Let it rip.</span>
-<span class="comment">//                 tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));</span>
-<span class="comment">//             }</span>
-<span class="comment">//             Err(e) =&gt; {</span>
-<span class="comment">//                 error!(&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;, e);</span>
-<span class="comment">//             }</span>
-<span class="comment">//         }</span>
-<span class="comment">//     }</span>
-<span class="comment">// }</span>
+<span class="doccomment">/// Plain TCP LDAP Listener, hands off to [client_process]
+</span><span class="comment">// async fn acceptor(listener: TcpListener, qe_r_ref: &amp;&#39;static QueryServerReadV1) {
+//     loop {
+//         match listener.accept().await {
+//             Ok((tcpstream, client_socket_addr)) =&gt; {
+//                 // Start the event
+//                 let (r, w) = tokio::io::split(tcpstream);
+//                 let r = FramedRead::new(r, LdapCodec);
+//                 let w = FramedWrite::new(w, LdapCodec);
+//                 // Let it rip.
+//                 tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
+//             }
+//             Err(e) =&gt; {
+//                 error!(&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;, e);
+//             }
+//         }
+//     }
+// }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_ldap_server</span>(
-    <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    <span class="ident">opt_tls_params</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SslAcceptorBuilder</span><span class="op">&gt;</span>,
-    <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">address</span>.<span class="ident">starts_with</span>(<span class="string">&quot;:::&quot;</span>) {
-        <span class="comment">// takes :::xxxx to xxxx</span>
-        <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">replacen</span>(<span class="string">&quot;:::&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="number">1</span>);
-        <span class="macro">error!</span>(<span class="string">&quot;Address &#39;{}&#39; looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = &#39;[::]:{}&#39;&quot;</span>, <span class="ident">address</span>, <span class="ident">port</span>, <span class="ident">port</span>);
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>create_ldap_server(
+    address: <span class="kw-2">&amp;</span>str,
+    opt_tls_params: <span class="prelude-ty">Option</span>&lt;SslAcceptorBuilder&gt;,
+    qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    <span class="kw">if </span>address.starts_with(<span class="string">&quot;:::&quot;</span>) {
+        <span class="comment">// takes :::xxxx to xxxx
+        </span><span class="kw">let </span>port = address.replacen(<span class="string">&quot;:::&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="number">1</span>);
+        <span class="macro">error!</span>(<span class="string">&quot;Address &#39;{}&#39; looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = &#39;[::]:{}&#39;&quot;</span>, address, port, port);
     };
 
-    <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">net::SocketAddr::from_str</span>(<span class="ident">address</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;Could not parse LDAP server address {} -&gt; {:?}&quot;</span>, <span class="ident">address</span>, <span class="ident">e</span>);
+    <span class="kw">let </span>addr = net::SocketAddr::from_str(address).map_err(|e| {
+        <span class="macro">error!</span>(<span class="string">&quot;Could not parse LDAP server address {} -&gt; {:?}&quot;</span>, address, e);
     })<span class="question-mark">?</span>;
 
-    <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="ident">TcpListener::bind</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+    <span class="kw">let </span>listener = TcpListener::bind(<span class="kw-2">&amp;</span>addr).<span class="kw">await</span>.map_err(|e| {
         <span class="macro">error!</span>(
             <span class="string">&quot;Could not bind to LDAP server address {} -&gt; {:?}&quot;</span>,
-            <span class="ident">address</span>, <span class="ident">e</span>
+            address, e
         );
     })<span class="question-mark">?</span>;
 
-    <span class="kw">match</span> <span class="ident">opt_tls_params</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">tls_params</span>) =&gt; {
-            <span class="macro">info!</span>(<span class="string">&quot;Starting LDAPS interface ldaps://{} ...&quot;</span>, <span class="ident">address</span>);
-            <span class="kw">let</span> <span class="ident">tls_parms</span> <span class="op">=</span> <span class="ident">tls_params</span>.<span class="ident">build</span>();
-            <span class="ident">tokio::spawn</span>(<span class="ident">tls_acceptor</span>(<span class="ident">listener</span>, <span class="ident">tls_parms</span>, <span class="ident">qe_r_ref</span>));
+    <span class="kw">match </span>opt_tls_params {
+        <span class="prelude-val">Some</span>(tls_params) =&gt; {
+            <span class="macro">info!</span>(<span class="string">&quot;Starting LDAPS interface ldaps://{} ...&quot;</span>, address);
+            <span class="kw">let </span>tls_parms = tls_params.build();
+            tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref));
         }
-        <span class="prelude-val">None</span> =&gt; {
+        <span class="prelude-val">None </span>=&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;The server won&#39;t run without TLS!&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(());
         }
     }
 
@@ -393,4 +393,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

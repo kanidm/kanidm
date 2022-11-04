@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/event.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>event.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/event.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>event.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -509,263 +509,263 @@
 <span id="509">509</span>
 <span id="510">510</span>
 <span id="511">511</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::AuthState</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthCredential</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthStep</span>};
+<span class="kw">use </span><span class="kw">crate</span>::idm::AuthState;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>kanidm_proto::v1::OperationError;
+<span class="kw">use </span>kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::PublicKeyCredential</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">use </span>webauthn_rs::prelude::PublicKeyCredential;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PasswordChangeEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">cleartext</span>: <span class="ident">String</span>,
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PasswordChangeEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
+    <span class="kw">pub </span>cleartext: String,
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">impl</span> <span class="ident">PasswordChangeEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">PasswordChangeEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">target</span>: <span class="kw-2">*</span><span class="ident">target</span>,
-            <span class="ident">cleartext</span>: <span class="ident">cleartext</span>.<span class="ident">to_string</span>(),
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">impl </span>PasswordChangeEvent {
+    <span class="kw">pub fn </span>new_internal(target: <span class="kw-2">&amp;</span>Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        PasswordChangeEvent {
+            ident: Identity::from_internal(),
+            target: <span class="kw-2">*</span>target,
+            cleartext: cleartext.to_string(),
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixPasswordChangeEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">cleartext</span>: <span class="ident">String</span>,
+<span class="kw">pub struct </span>UnixPasswordChangeEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
+    <span class="kw">pub </span>cleartext: String,
 }
 
-<span class="kw">impl</span> <span class="ident">UnixPasswordChangeEvent</span> {
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">UnixPasswordChangeEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">target</span>: <span class="kw-2">*</span><span class="ident">target</span>,
-            <span class="ident">cleartext</span>: <span class="ident">cleartext</span>.<span class="ident">to_string</span>(),
+<span class="kw">impl </span>UnixPasswordChangeEvent {
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: <span class="kw-2">&amp;</span>Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        UnixPasswordChangeEvent {
+            ident: Identity::from_internal(),
+            target: <span class="kw-2">*</span>target,
+            cleartext: cleartext.to_string(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-        <span class="ident">cleartext</span>: <span class="ident">String</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixPasswordChangeEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">target</span>,
-            <span class="ident">cleartext</span>,
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerWriteTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+        cleartext: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(UnixPasswordChangeEvent {
+            ident,
+            target,
+            cleartext,
         })
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GeneratePasswordEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>GeneratePasswordEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">GeneratePasswordEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">GeneratePasswordEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
+<span class="kw">impl </span>GeneratePasswordEvent {
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerWriteTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(GeneratePasswordEvent { ident, target })
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RegenerateRadiusSecretEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>RegenerateRadiusSecretEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">RegenerateRadiusSecretEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">RegenerateRadiusSecretEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
+<span class="kw">impl </span>RegenerateRadiusSecretEvent {
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerWriteTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(RegenerateRadiusSecretEvent { ident, target })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ident = Identity::from_internal();
 
-        <span class="ident">RegenerateRadiusSecretEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RadiusAuthTokenEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">RadiusAuthTokenEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">RadiusAuthTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
-    }
-
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
-
-        <span class="ident">RadiusAuthTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
+        RegenerateRadiusSecretEvent { ident, target }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixUserTokenEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>RadiusAuthTokenEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">UnixUserTokenEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixUserTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
+<span class="kw">impl </span>RadiusAuthTokenEvent {
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerReadTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(RadiusAuthTokenEvent { ident, target })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ident = Identity::from_internal();
 
-        <span class="ident">UnixUserTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixGroupTokenEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">UnixGroupTokenEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixGroupTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
-    }
-
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
-
-        <span class="ident">UnixGroupTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
+        RadiusAuthTokenEvent { ident, target }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixUserAuthEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">cleartext</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>UnixUserTokenEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">UnixUserAuthEvent</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;UnixUserAuthEvent&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;ident&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ident</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;target&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target</span>)
-            .<span class="ident">finish</span>()
+<span class="kw">impl </span>UnixUserTokenEvent {
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerReadTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(UnixUserTokenEvent { ident, target })
+    }
+
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ident = Identity::from_internal();
+
+        UnixUserTokenEvent { ident, target }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">UnixUserAuthEvent</span> {
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">UnixUserAuthEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">target</span>: <span class="kw-2">*</span><span class="ident">target</span>,
-            <span class="ident">cleartext</span>: <span class="ident">cleartext</span>.<span class="ident">to_string</span>(),
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>UnixGroupTokenEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
+}
+
+<span class="kw">impl </span>UnixGroupTokenEvent {
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerReadTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(UnixGroupTokenEvent { ident, target })
+    }
+
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ident = Identity::from_internal();
+
+        UnixGroupTokenEvent { ident, target }
+    }
+}
+
+<span class="kw">pub struct </span>UnixUserAuthEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
+    <span class="kw">pub </span>cleartext: String,
+}
+
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>UnixUserAuthEvent {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">&quot;UnixUserAuthEvent&quot;</span>)
+            .field(<span class="string">&quot;ident&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.ident)
+            .field(<span class="string">&quot;target&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.target)
+            .finish()
+    }
+}
+
+<span class="kw">impl </span>UnixUserAuthEvent {
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: <span class="kw-2">&amp;</span>Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        UnixUserAuthEvent {
+            ident: Identity::from_internal(),
+            target: <span class="kw-2">*</span>target,
+            cleartext: cleartext.to_string(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-        <span class="ident">cleartext</span>: <span class="ident">String</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixUserAuthEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">target</span>,
-            <span class="ident">cleartext</span>,
+    <span class="kw">pub fn </span>from_parts(
+        ident: Identity,
+        target: Uuid,
+        cleartext: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(UnixUserAuthEvent {
+            ident,
+            target,
+            cleartext,
         })
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CredentialStatusEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>CredentialStatusEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">CredentialStatusEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">CredentialStatusEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
+<span class="kw">impl </span>CredentialStatusEvent {
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerReadTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(CredentialStatusEvent { ident, target })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ident = Identity::from_internal();
 
-        <span class="ident">CredentialStatusEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadBackupCodeEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">ReadBackupCodeEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">ReadBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
-    }
-
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
-
-        <span class="ident">ReadBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
+        CredentialStatusEvent { ident, target }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LdapAuthEvent</span> {
-    <span class="comment">// pub ident: Identity,</span>
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">cleartext</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ReadBackupCodeEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>target: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">LdapAuthEvent</span> {
+<span class="kw">impl </span>ReadBackupCodeEvent {
+    <span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;QueryServerReadTransaction,
+        </span>ident: Identity,
+        target: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(ReadBackupCodeEvent { ident, target })
+    }
+
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ident = Identity::from_internal();
+
+        ReadBackupCodeEvent { ident, target }
+    }
+}
+
+<span class="kw">pub struct </span>LdapAuthEvent {
+    <span class="comment">// pub ident: Identity,
+    </span><span class="kw">pub </span>target: Uuid,
+    <span class="kw">pub </span>cleartext: String,
+}
+
+<span class="kw">impl </span>LdapAuthEvent {
     <span class="comment">/*
     #[cfg(test)]
     pub fn new_internal(target: &amp;Uuid, cleartext: &amp;str) -&gt; Self {
@@ -775,239 +775,239 @@
             cleartext: cleartext.to_string(),
         }
     }
-    */</span>
+    */
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="comment">// qs: &amp;mut QueryServerReadTransaction,</span>
-        <span class="comment">// uat: Option&lt;UserAuthToken&gt;,</span>
-        <span class="ident">target</span>: <span class="ident">Uuid</span>,
-        <span class="ident">cleartext</span>: <span class="ident">String</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// let e = Event::from_ro_uat(audit, qs, uat)?;</span>
+    </span><span class="kw">pub fn </span>from_parts(
+        <span class="comment">// qs: &amp;mut QueryServerReadTransaction,
+        // uat: Option&lt;UserAuthToken&gt;,
+        </span>target: Uuid,
+        cleartext: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="comment">// let e = Event::from_ro_uat(audit, qs, uat)?;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">LdapAuthEvent</span> {
-            <span class="comment">// event: e,</span>
-            <span class="ident">target</span>,
-            <span class="ident">cleartext</span>,
+        </span><span class="prelude-val">Ok</span>(LdapAuthEvent {
+            <span class="comment">// event: e,
+            </span>target,
+            cleartext,
         })
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LdapTokenAuthEvent</span> {
-    <span class="kw">pub</span> <span class="ident">token</span>: <span class="ident">String</span>,
+<span class="kw">pub struct </span>LdapTokenAuthEvent {
+    <span class="kw">pub </span>token: String,
 }
 
-<span class="kw">impl</span> <span class="ident">LdapTokenAuthEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(<span class="ident">token</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">LdapTokenAuthEvent</span> { <span class="ident">token</span> })
+<span class="kw">impl </span>LdapTokenAuthEvent {
+    <span class="kw">pub fn </span>from_parts(token: String) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(LdapTokenAuthEvent { token })
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthEventStepInit</span> {
-    <span class="kw">pub</span> <span class="ident">username</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">issue</span>: <span class="ident">AuthIssueSession</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>AuthEventStepInit {
+    <span class="kw">pub </span>username: String,
+    <span class="kw">pub </span>issue: AuthIssueSession,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthEventStepCred</span> {
-    <span class="kw">pub</span> <span class="ident">sessionid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">cred</span>: <span class="ident">AuthCredential</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>AuthEventStepCred {
+    <span class="kw">pub </span>sessionid: Uuid,
+    <span class="kw">pub </span>cred: AuthCredential,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthEventStepMech</span> {
-    <span class="kw">pub</span> <span class="ident">sessionid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">mech</span>: <span class="ident">AuthMech</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>AuthEventStepMech {
+    <span class="kw">pub </span>sessionid: Uuid,
+    <span class="kw">pub </span>mech: AuthMech,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthEventStep</span> {
-    <span class="ident">Init</span>(<span class="ident">AuthEventStepInit</span>),
-    <span class="ident">Begin</span>(<span class="ident">AuthEventStepMech</span>),
-    <span class="ident">Cred</span>(<span class="ident">AuthEventStepCred</span>),
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>AuthEventStep {
+    Init(AuthEventStepInit),
+    Begin(AuthEventStepMech),
+    Cred(AuthEventStepCred),
 }
 
-<span class="kw">impl</span> <span class="ident">AuthEventStep</span> {
-    <span class="kw">fn</span> <span class="ident">from_authstep</span>(<span class="ident">aus</span>: <span class="ident">AuthStep</span>, <span class="ident">sid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">aus</span> {
-            <span class="ident">AuthStep::Init</span>(<span class="ident">username</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> {
-                <span class="ident">username</span>,
-                <span class="ident">issue</span>: <span class="ident">AuthIssueSession::Token</span>,
+<span class="kw">impl </span>AuthEventStep {
+    <span class="kw">fn </span>from_authstep(aus: AuthStep, sid: <span class="prelude-ty">Option</span>&lt;Uuid&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">match </span>aus {
+            AuthStep::Init(username) =&gt; <span class="prelude-val">Ok</span>(AuthEventStep::Init(AuthEventStepInit {
+                username,
+                issue: AuthIssueSession::Token,
             })),
-            <span class="ident">AuthStep::Init2</span> { <span class="ident">username</span>, <span class="ident">issue</span> } =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> { <span class="ident">username</span>, <span class="ident">issue</span> }))
+            AuthStep::Init2 { username, issue } =&gt; {
+                <span class="prelude-val">Ok</span>(AuthEventStep::Init(AuthEventStepInit { username, issue }))
             }
 
-            <span class="ident">AuthStep::Begin</span>(<span class="ident">mech</span>) =&gt; <span class="kw">match</span> <span class="ident">sid</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">ssid</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Begin</span>(<span class="ident">AuthEventStepMech</span> {
-                    <span class="ident">sessionid</span>: <span class="ident">ssid</span>,
-                    <span class="ident">mech</span>,
+            AuthStep::Begin(mech) =&gt; <span class="kw">match </span>sid {
+                <span class="prelude-val">Some</span>(ssid) =&gt; <span class="prelude-val">Ok</span>(AuthEventStep::Begin(AuthEventStepMech {
+                    sessionid: ssid,
+                    mech,
                 })),
-                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAuthState</span>(
-                    <span class="string">&quot;session id not present in cred presented to &#39;begin&#39; step&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAuthState(
+                    <span class="string">&quot;session id not present in cred presented to &#39;begin&#39; step&quot;</span>.to_string(),
                 )),
             },
-            <span class="ident">AuthStep::Cred</span>(<span class="ident">cred</span>) =&gt; <span class="kw">match</span> <span class="ident">sid</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">ssid</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Cred</span>(<span class="ident">AuthEventStepCred</span> {
-                    <span class="ident">sessionid</span>: <span class="ident">ssid</span>,
-                    <span class="ident">cred</span>,
+            AuthStep::Cred(cred) =&gt; <span class="kw">match </span>sid {
+                <span class="prelude-val">Some</span>(ssid) =&gt; <span class="prelude-val">Ok</span>(AuthEventStep::Cred(AuthEventStepCred {
+                    sessionid: ssid,
+                    cred,
                 })),
-                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAuthState</span>(
-                    <span class="string">&quot;session id not present in cred to &#39;cred&#39; step&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAuthState(
+                    <span class="string">&quot;session id not present in cred to &#39;cred&#39; step&quot;</span>.to_string(),
                 )),
             },
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">anonymous_init</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> {
-            <span class="ident">username</span>: <span class="string">&quot;anonymous&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">issue</span>: <span class="ident">AuthIssueSession::Token</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>anonymous_init() -&gt; <span class="self">Self </span>{
+        AuthEventStep::Init(AuthEventStepInit {
+            username: <span class="string">&quot;anonymous&quot;</span>.to_string(),
+            issue: AuthIssueSession::Token,
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">named_init</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> {
-            <span class="ident">username</span>: <span class="ident">name</span>.<span class="ident">to_string</span>(),
-            <span class="ident">issue</span>: <span class="ident">AuthIssueSession::Token</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>named_init(name: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        AuthEventStep::Init(AuthEventStepInit {
+            username: name.to_string(),
+            issue: AuthIssueSession::Token,
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">begin_mech</span>(<span class="ident">sessionid</span>: <span class="ident">Uuid</span>, <span class="ident">mech</span>: <span class="ident">AuthMech</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Begin</span>(<span class="ident">AuthEventStepMech</span> { <span class="ident">sessionid</span>, <span class="ident">mech</span> })
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>begin_mech(sessionid: Uuid, mech: AuthMech) -&gt; <span class="self">Self </span>{
+        AuthEventStep::Begin(AuthEventStepMech { sessionid, mech })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_anonymous</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Cred</span>(<span class="ident">AuthEventStepCred</span> {
-            <span class="ident">sessionid</span>: <span class="ident">sid</span>,
-            <span class="ident">cred</span>: <span class="ident">AuthCredential::Anonymous</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_anonymous(sid: Uuid) -&gt; <span class="self">Self </span>{
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::Anonymous,
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_password</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Cred</span>(<span class="ident">AuthEventStepCred</span> {
-            <span class="ident">sessionid</span>: <span class="ident">sid</span>,
-            <span class="ident">cred</span>: <span class="ident">AuthCredential::Password</span>(<span class="ident">pw</span>.<span class="ident">to_string</span>()),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_password(sid: Uuid, pw: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::Password(pw.to_string()),
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_totp</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">totp</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Cred</span>(<span class="ident">AuthEventStepCred</span> {
-            <span class="ident">sessionid</span>: <span class="ident">sid</span>,
-            <span class="ident">cred</span>: <span class="ident">AuthCredential::Totp</span>(<span class="ident">totp</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_totp(sid: Uuid, totp: u32) -&gt; <span class="self">Self </span>{
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::Totp(totp),
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_backup_code</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Cred</span>(<span class="ident">AuthEventStepCred</span> {
-            <span class="ident">sessionid</span>: <span class="ident">sid</span>,
-            <span class="ident">cred</span>: <span class="ident">AuthCredential::BackupCode</span>(<span class="ident">code</span>.<span class="ident">to_string</span>()),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_backup_code(sid: Uuid, code: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::BackupCode(code.to_string()),
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_passkey</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">passkey_response</span>: <span class="ident">PublicKeyCredential</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEventStep::Cred</span>(<span class="ident">AuthEventStepCred</span> {
-            <span class="ident">sessionid</span>: <span class="ident">sid</span>,
-            <span class="ident">cred</span>: <span class="ident">AuthCredential::Passkey</span>(<span class="ident">passkey_response</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_passkey(sid: Uuid, passkey_response: PublicKeyCredential) -&gt; <span class="self">Self </span>{
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::Passkey(passkey_response),
         })
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Identity</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">step</span>: <span class="ident">AuthEventStep</span>,
-    <span class="comment">// pub sessionid: Option&lt;Uuid&gt;,</span>
-}
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>AuthEvent {
+    <span class="kw">pub </span>ident: <span class="prelude-ty">Option</span>&lt;Identity&gt;,
+    <span class="kw">pub </span>step: AuthEventStep,
+    <span class="comment">// pub sessionid: Option&lt;Uuid&gt;,
+</span>}
 
-<span class="kw">impl</span> <span class="ident">AuthEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(<span class="ident">sessionid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">req</span>: <span class="ident">AuthRequest</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::from_authstep</span>(<span class="ident">req</span>.<span class="ident">step</span>, <span class="ident">sessionid</span>)<span class="question-mark">?</span>,
+<span class="kw">impl </span>AuthEvent {
+    <span class="kw">pub fn </span>from_message(sessionid: <span class="prelude-ty">Option</span>&lt;Uuid&gt;, req: AuthRequest) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::from_authstep(req.step, sessionid)<span class="question-mark">?</span>,
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">anonymous_init</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::anonymous_init</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>anonymous_init() -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::anonymous_init(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">named_init</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::named_init</span>(<span class="ident">name</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>named_init(name: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::named_init(name),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">begin_mech</span>(<span class="ident">sessionid</span>: <span class="ident">Uuid</span>, <span class="ident">mech</span>: <span class="ident">AuthMech</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::begin_mech</span>(<span class="ident">sessionid</span>, <span class="ident">mech</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>begin_mech(sessionid: Uuid, mech: AuthMech) -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::begin_mech(sessionid, mech),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_anonymous</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::cred_step_anonymous</span>(<span class="ident">sid</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_anonymous(sid: Uuid) -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::cred_step_anonymous(sid),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_password</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::cred_step_password</span>(<span class="ident">sid</span>, <span class="ident">pw</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_password(sid: Uuid, pw: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::cred_step_password(sid, pw),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_totp</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">totp</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::cred_step_totp</span>(<span class="ident">sid</span>, <span class="ident">totp</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_totp(sid: Uuid, totp: u32) -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::cred_step_totp(sid, totp),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_backup_code</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::cred_step_backup_code</span>(<span class="ident">sid</span>, <span class="ident">code</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_backup_code(sid: Uuid, code: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::cred_step_backup_code(sid, code),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cred_step_passkey</span>(<span class="ident">sid</span>: <span class="ident">Uuid</span>, <span class="ident">passkey_response</span>: <span class="ident">PublicKeyCredential</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AuthEvent</span> {
-            <span class="ident">ident</span>: <span class="prelude-val">None</span>,
-            <span class="ident">step</span>: <span class="ident">AuthEventStep::cred_step_passkey</span>(<span class="ident">sid</span>, <span class="ident">passkey_response</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>cred_step_passkey(sid: Uuid, passkey_response: PublicKeyCredential) -&gt; <span class="self">Self </span>{
+        AuthEvent {
+            ident: <span class="prelude-val">None</span>,
+            step: AuthEventStep::cred_step_passkey(sid, passkey_response),
         }
     }
 }
 
-<span class="comment">// Probably should be a struct with the session id present.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthResult</span> {
-    <span class="kw">pub</span> <span class="ident">sessionid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">AuthState</span>,
-    <span class="kw">pub</span> <span class="ident">delay</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>,
+<span class="comment">// Probably should be a struct with the session id present.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>AuthResult {
+    <span class="kw">pub </span>sessionid: Uuid,
+    <span class="kw">pub </span>state: AuthState,
+    <span class="kw">pub </span>delay: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
 }
 
 <span class="comment">/*
@@ -1019,6 +1019,6 @@ impl AuthResult {
         }
     }
 }
-*/</span>
-</code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+*/
+</span></code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/config.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>config.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_core/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/config.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>config.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_core/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -241,248 +241,248 @@
 <span id="241">241</span>
 <span id="242">242</span>
 <span id="243">243</span>
-</pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of</span>
-<span class="doccomment">//! variables that determine how our backends, query server, and frontends are configured.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! These components should be &quot;per server&quot;. Any &quot;per domain&quot; config should be in the system</span>
-<span class="doccomment">//! or domain entries that are able to be replicated.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of
+//! variables that determine how our backends, query server, and frontends are configured.
+//!
+//! These components should be &quot;per server&quot;. Any &quot;per domain&quot; config should be in the system
+//! or domain entries that are able to be replicated.
 
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+</span><span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::messages::ConsoleOutputMode</span>;
-<span class="kw">use</span> <span class="ident">rand::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use </span>kanidm_proto::messages::ConsoleOutputMode;
+<span class="kw">use </span>rand::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IntegrationTestConfig</span> {
-    <span class="kw">pub</span> <span class="ident">admin_user</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">admin_password</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>IntegrationTestConfig {
+    <span class="kw">pub </span>admin_user: String,
+    <span class="kw">pub </span>admin_password: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OnlineBackup</span> {
-    <span class="kw">pub</span> <span class="ident">path</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;default_online_backup_schedule&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">schedule</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;default_online_backup_versions&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">versions</span>: <span class="ident">usize</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>OnlineBackup {
+    <span class="kw">pub </span>path: String,
+    <span class="attribute">#[serde(default = <span class="string">&quot;default_online_backup_schedule&quot;</span>)]
+    </span><span class="kw">pub </span>schedule: String,
+    <span class="attribute">#[serde(default = <span class="string">&quot;default_online_backup_versions&quot;</span>)]
+    </span><span class="kw">pub </span>versions: usize,
 }
 
-<span class="kw">fn</span> <span class="ident">default_online_backup_schedule</span>() -&gt; <span class="ident">String</span> {
-    <span class="string">&quot;00 22 * * *&quot;</span>.<span class="ident">to_string</span>()
+<span class="kw">fn </span>default_online_backup_schedule() -&gt; String {
+    <span class="string">&quot;00 22 * * *&quot;</span>.to_string()
 }
 
-<span class="kw">fn</span> <span class="ident">default_online_backup_versions</span>() -&gt; <span class="ident">usize</span> {
-    <span class="number">7</span>
+<span class="kw">fn </span>default_online_backup_versions() -&gt; usize {
+    <span class="number">7
+</span>}
+
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>TlsConfiguration {
+    <span class="kw">pub </span>chain: String,
+    <span class="kw">pub </span>key: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TlsConfiguration</span> {
-    <span class="kw">pub</span> <span class="ident">chain</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">key</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+</span><span class="kw">pub enum </span>ServerRole {
+    WriteReplica,
+    WriteReplicaNoUI,
+    ReadOnlyReplica,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ServerRole</span> {
-    <span class="ident">WriteReplica</span>,
-    <span class="ident">WriteReplicaNoUI</span>,
-    <span class="ident">ReadOnlyReplica</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ServerRole</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">ServerRole::WriteReplica</span>
+<span class="kw">impl </span>Default <span class="kw">for </span>ServerRole {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        ServerRole::WriteReplica
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ToString</span> <span class="kw">for</span> <span class="ident">ServerRole</span> {
-    <span class="kw">fn</span> <span class="ident">to_string</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ServerRole::WriteReplica</span> =&gt; <span class="string">&quot;write replica&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">ServerRole::WriteReplicaNoUI</span> =&gt; <span class="string">&quot;write replica (no ui)&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">ServerRole::ReadOnlyReplica</span> =&gt; <span class="string">&quot;read only replica&quot;</span>.<span class="ident">to_string</span>(),
+<span class="kw">impl </span>ToString <span class="kw">for </span>ServerRole {
+    <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">match </span><span class="self">self </span>{
+            ServerRole::WriteReplica =&gt; <span class="string">&quot;write replica&quot;</span>.to_string(),
+            ServerRole::WriteReplicaNoUI =&gt; <span class="string">&quot;write replica (no ui)&quot;</span>.to_string(),
+            ServerRole::ReadOnlyReplica =&gt; <span class="string">&quot;read only replica&quot;</span>.to_string(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">ServerRole</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
+<span class="kw">impl </span>FromStr <span class="kw">for </span>ServerRole {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">s</span> {
-            <span class="string">&quot;write_replica&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ServerRole::WriteReplica</span>),
-            <span class="string">&quot;write_replica_no_ui&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ServerRole::WriteReplicaNoUI</span>),
-            <span class="string">&quot;read_only_replica&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ServerRole::ReadOnlyReplica</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Must be one of write_replica, write_replica_no_ui, read_only_replica&quot;</span>),
+    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">match </span>s {
+            <span class="string">&quot;write_replica&quot; </span>=&gt; <span class="prelude-val">Ok</span>(ServerRole::WriteReplica),
+            <span class="string">&quot;write_replica_no_ui&quot; </span>=&gt; <span class="prelude-val">Ok</span>(ServerRole::WriteReplicaNoUI),
+            <span class="string">&quot;read_only_replica&quot; </span>=&gt; <span class="prelude-val">Ok</span>(ServerRole::ReadOnlyReplica),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Must be one of write_replica, write_replica_no_ui, read_only_replica&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Configuration</span> {
-    <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">ldapaddress</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">threads</span>: <span class="ident">usize</span>,
-    <span class="comment">// db type later</span>
-    <span class="kw">pub</span> <span class="ident">db_path</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">db_fs_type</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">db_arc_size</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">maximum_request</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">secure_cookies</span>: <span class="ident">bool</span>,
-    <span class="kw">pub</span> <span class="ident">trust_x_forward_for</span>: <span class="ident">bool</span>,
-    <span class="kw">pub</span> <span class="ident">tls_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">TlsConfiguration</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">cookie_key</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
-    <span class="kw">pub</span> <span class="ident">integration_test_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">IntegrationTestConfig</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">online_backup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OnlineBackup</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">domain</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">origin</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">role</span>: <span class="ident">ServerRole</span>,
-    <span class="kw">pub</span> <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, Default)]
+</span><span class="kw">pub struct </span>Configuration {
+    <span class="kw">pub </span>address: String,
+    <span class="kw">pub </span>ldapaddress: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>threads: usize,
+    <span class="comment">// db type later
+    </span><span class="kw">pub </span>db_path: String,
+    <span class="kw">pub </span>db_fs_type: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>db_arc_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    <span class="kw">pub </span>maximum_request: usize,
+    <span class="kw">pub </span>secure_cookies: bool,
+    <span class="kw">pub </span>trust_x_forward_for: bool,
+    <span class="kw">pub </span>tls_config: <span class="prelude-ty">Option</span>&lt;TlsConfiguration&gt;,
+    <span class="kw">pub </span>cookie_key: [u8; <span class="number">32</span>],
+    <span class="kw">pub </span>integration_test_config: <span class="prelude-ty">Option</span>&lt;Box&lt;IntegrationTestConfig&gt;&gt;,
+    <span class="kw">pub </span>online_backup: <span class="prelude-ty">Option</span>&lt;OnlineBackup&gt;,
+    <span class="kw">pub </span>domain: String,
+    <span class="kw">pub </span>origin: String,
+    <span class="kw">pub </span>role: ServerRole,
+    <span class="kw">pub </span>output_mode: ConsoleOutputMode,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Configuration</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;address: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">address</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;domain: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">domain</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldapaddress</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">la</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ldap address: {}, &quot;</span>, <span class="ident">la</span>),
-                <span class="prelude-val">None</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ldap address: disabled, &quot;</span>),
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Configuration {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;address: {}, &quot;</span>, <span class="self">self</span>.address)
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;domain: {}, &quot;</span>, <span class="self">self</span>.domain))
+            .and_then(|<span class="kw">_</span>| <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.ldapaddress {
+                <span class="prelude-val">Some</span>(la) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ldap address: {}, &quot;</span>, la),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ldap address: disabled, &quot;</span>),
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;thread count: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">threads</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;dbpath: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">db_path</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">db_arc_size</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;arcsize: {}, &quot;</span>, <span class="ident">v</span>),
-                <span class="prelude-val">None</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;arcsize: AUTO, &quot;</span>),
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;thread count: {}, &quot;</span>, <span class="self">self</span>.threads))
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;dbpath: {}, &quot;</span>, <span class="self">self</span>.db_path))
+            .and_then(|<span class="kw">_</span>| <span class="kw">match </span><span class="self">self</span>.db_arc_size {
+                <span class="prelude-val">Some</span>(v) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;arcsize: {}, &quot;</span>, v),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;arcsize: AUTO, &quot;</span>),
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;max request size: {}b, &quot;</span>, <span class="self">self</span>.<span class="ident">maximum_request</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;secure cookies: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">secure_cookies</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;trust X-Forwarded-For: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">trust_x_forward_for</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;with TLS: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">tls_config</span>.<span class="ident">is_some</span>()))
-            <span class="comment">// TODO: include the backup timings</span>
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">online_backup</span> {
-                <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;online_backup: enabled, &quot;</span>),
-                <span class="prelude-val">None</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;online_backup: disabled, &quot;</span>),
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;max request size: {}b, &quot;</span>, <span class="self">self</span>.maximum_request))
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;secure cookies: {}, &quot;</span>, <span class="self">self</span>.secure_cookies))
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;trust X-Forwarded-For: {}, &quot;</span>, <span class="self">self</span>.trust_x_forward_for))
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;with TLS: {}, &quot;</span>, <span class="self">self</span>.tls_config.is_some()))
+            <span class="comment">// TODO: include the backup timings
+            </span>.and_then(|<span class="kw">_</span>| <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.online_backup {
+                <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;online_backup: enabled, &quot;</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;online_backup: disabled, &quot;</span>),
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;role: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">role</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;role: {}, &quot;</span>, <span class="self">self</span>.role.to_string()))
+            .and_then(|<span class="kw">_</span>| {
                 <span class="macro">write!</span>(
-                    <span class="ident">f</span>,
+                    f,
                     <span class="string">&quot;integration mode: {}, &quot;</span>,
-                    <span class="self">self</span>.<span class="ident">integration_test_config</span>.<span class="ident">is_some</span>()
+                    <span class="self">self</span>.integration_test_config.is_some()
                 )
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;console output format: {:?} &quot;</span>, <span class="self">self</span>.<span class="ident">output_mode</span>))
+            .and_then(|<span class="kw">_</span>| <span class="macro">write!</span>(f, <span class="string">&quot;console output format: {:?} &quot;</span>, <span class="self">self</span>.output_mode))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Configuration</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">Configuration</span> {
-            <span class="ident">address</span>: <span class="ident">String::from</span>(<span class="string">&quot;127.0.0.1:8080&quot;</span>),
-            <span class="ident">ldapaddress</span>: <span class="prelude-val">None</span>,
-            <span class="ident">threads</span>: <span class="ident">std::thread::available_parallelism</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">get</span>())
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">_e</span><span class="op">|</span> {
+<span class="kw">impl </span>Configuration {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>c = Configuration {
+            address: String::from(<span class="string">&quot;127.0.0.1:8080&quot;</span>),
+            ldapaddress: <span class="prelude-val">None</span>,
+            threads: std::thread::available_parallelism()
+                .map(|t| t.get())
+                .unwrap_or_else(|_e| {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;WARNING: Unable to read number of available CPUs, defaulting to 1&quot;</span>);
-                    <span class="number">1</span>
-                }),
-            <span class="ident">db_path</span>: <span class="ident">String::from</span>(<span class="string">&quot;&quot;</span>),
-            <span class="ident">db_fs_type</span>: <span class="prelude-val">None</span>,
-            <span class="ident">db_arc_size</span>: <span class="prelude-val">None</span>,
-            <span class="ident">maximum_request</span>: <span class="number">256</span> <span class="op">*</span> <span class="number">1024</span>, <span class="comment">// 256k</span>
-            <span class="comment">// log path?</span>
-            <span class="comment">// default true in prd</span>
-            <span class="ident">secure_cookies</span>: <span class="op">!</span><span class="macro">cfg!</span>(<span class="ident">test</span>),
-            <span class="ident">trust_x_forward_for</span>: <span class="bool-val">false</span>,
-            <span class="ident">tls_config</span>: <span class="prelude-val">None</span>,
-            <span class="ident">cookie_key</span>: [<span class="number">0</span>; <span class="number">32</span>],
-            <span class="ident">integration_test_config</span>: <span class="prelude-val">None</span>,
-            <span class="ident">online_backup</span>: <span class="prelude-val">None</span>,
-            <span class="ident">domain</span>: <span class="string">&quot;idm.example.com&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">origin</span>: <span class="string">&quot;https://idm.example.com&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">role</span>: <span class="ident">ServerRole::WriteReplica</span>,
-            <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode::default</span>(),
+                    <span class="number">1
+                </span>}),
+            db_path: String::from(<span class="string">&quot;&quot;</span>),
+            db_fs_type: <span class="prelude-val">None</span>,
+            db_arc_size: <span class="prelude-val">None</span>,
+            maximum_request: <span class="number">256 </span>* <span class="number">1024</span>, <span class="comment">// 256k
+            // log path?
+            // default true in prd
+            </span>secure_cookies: !<span class="macro">cfg!</span>(test),
+            trust_x_forward_for: <span class="bool-val">false</span>,
+            tls_config: <span class="prelude-val">None</span>,
+            cookie_key: [<span class="number">0</span>; <span class="number">32</span>],
+            integration_test_config: <span class="prelude-val">None</span>,
+            online_backup: <span class="prelude-val">None</span>,
+            domain: <span class="string">&quot;idm.example.com&quot;</span>.to_string(),
+            origin: <span class="string">&quot;https://idm.example.com&quot;</span>.to_string(),
+            role: ServerRole::WriteReplica,
+            output_mode: ConsoleOutputMode::default(),
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">StdRng::from_entropy</span>();
-        <span class="ident">rng</span>.<span class="ident">fill</span>(<span class="kw-2">&amp;mut</span> <span class="ident">c</span>.<span class="ident">cookie_key</span>);
-        <span class="ident">c</span>
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_entropy();
+        rng.fill(<span class="kw-2">&amp;mut </span>c.cookie_key);
+        c
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_online_backup</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OnlineBackup</span><span class="op">&gt;</span>) {
-        <span class="kw">match</span> <span class="ident">cfg</span> {
-            <span class="prelude-val">None</span> =&gt; {}
-            <span class="prelude-val">Some</span>(<span class="ident">cfg</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">path</span>.<span class="ident">to_string</span>();
-                <span class="kw">let</span> <span class="ident">schedule</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">schedule</span>.<span class="ident">to_string</span>();
-                <span class="kw">let</span> <span class="ident">versions</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">versions</span>;
-                <span class="self">self</span>.<span class="ident">online_backup</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">OnlineBackup</span> {
-                    <span class="ident">path</span>,
-                    <span class="ident">schedule</span>,
-                    <span class="ident">versions</span>,
+    <span class="kw">pub fn </span>update_online_backup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cfg: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;OnlineBackup&gt;) {
+        <span class="kw">match </span>cfg {
+            <span class="prelude-val">None </span>=&gt; {}
+            <span class="prelude-val">Some</span>(cfg) =&gt; {
+                <span class="kw">let </span>path = cfg.path.to_string();
+                <span class="kw">let </span>schedule = cfg.schedule.to_string();
+                <span class="kw">let </span>versions = cfg.versions;
+                <span class="self">self</span>.online_backup = <span class="prelude-val">Some</span>(OnlineBackup {
+                    path,
+                    schedule,
+                    versions,
                 })
             }
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_trust_x_forward_for</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">t</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">trust_x_forward_for</span> <span class="op">=</span> <span class="ident">t</span>.<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
+    <span class="kw">pub fn </span>update_trust_x_forward_for(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: <span class="prelude-ty">Option</span>&lt;bool&gt;) {
+        <span class="self">self</span>.trust_x_forward_for = t.unwrap_or(<span class="bool-val">false</span>);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_db_path</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">p</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="self">self</span>.<span class="ident">db_path</span> <span class="op">=</span> <span class="ident">p</span>.<span class="ident">to_string</span>();
+    <span class="kw">pub fn </span>update_db_path(<span class="kw-2">&amp;mut </span><span class="self">self</span>, p: <span class="kw-2">&amp;</span>str) {
+        <span class="self">self</span>.db_path = p.to_string();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_db_arc_size</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">v</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">db_arc_size</span> <span class="op">=</span> <span class="ident">v</span>
+    <span class="kw">pub fn </span>update_db_arc_size(<span class="kw-2">&amp;mut </span><span class="self">self</span>, v: <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+        <span class="self">self</span>.db_arc_size = v
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_db_fs_type</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">p</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">db_fs_type</span> <span class="op">=</span> <span class="ident">p</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_lowercase</span>());
+    <span class="kw">pub fn </span>update_db_fs_type(<span class="kw-2">&amp;mut </span><span class="self">self</span>, p: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;) {
+        <span class="self">self</span>.db_fs_type = p.as_ref().map(|v| v.to_lowercase());
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_bind</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">address</span> <span class="op">=</span> <span class="ident">b</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">cloned</span>()
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">String::from</span>(<span class="string">&quot;127.0.0.1:8080&quot;</span>));
+    <span class="kw">pub fn </span>update_bind(<span class="kw-2">&amp;mut </span><span class="self">self</span>, b: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;) {
+        <span class="self">self</span>.address = b
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| String::from(<span class="string">&quot;127.0.0.1:8080&quot;</span>));
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_ldapbind</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">l</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">ldapaddress</span> <span class="op">=</span> <span class="ident">l</span>.<span class="ident">clone</span>();
+    <span class="kw">pub fn </span>update_ldapbind(<span class="kw-2">&amp;mut </span><span class="self">self</span>, l: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;) {
+        <span class="self">self</span>.ldapaddress = l.clone();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_origin</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">o</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="self">self</span>.<span class="ident">origin</span> <span class="op">=</span> <span class="ident">o</span>.<span class="ident">to_string</span>();
+    <span class="kw">pub fn </span>update_origin(<span class="kw-2">&amp;mut </span><span class="self">self</span>, o: <span class="kw-2">&amp;</span>str) {
+        <span class="self">self</span>.origin = o.to_string();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_domain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">d</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="self">self</span>.<span class="ident">domain</span> <span class="op">=</span> <span class="ident">d</span>.<span class="ident">to_string</span>();
+    <span class="kw">pub fn </span>update_domain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, d: <span class="kw-2">&amp;</span>str) {
+        <span class="self">self</span>.domain = d.to_string();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_role</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">r</span>: <span class="ident">ServerRole</span>) {
-        <span class="self">self</span>.<span class="ident">role</span> <span class="op">=</span> <span class="ident">r</span>;
+    <span class="kw">pub fn </span>update_role(<span class="kw-2">&amp;mut </span><span class="self">self</span>, r: ServerRole) {
+        <span class="self">self</span>.role = r;
     }
 
-    <span class="doccomment">/// Sets the output mode for writing to the console</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_output_mode</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">om</span>: <span class="ident">ConsoleOutputMode</span>) {
-        <span class="self">self</span>.<span class="ident">output_mode</span> <span class="op">=</span> <span class="ident">om</span>;
+    <span class="doccomment">/// Sets the output mode for writing to the console
+    </span><span class="kw">pub fn </span>update_output_mode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, om: ConsoleOutputMode) {
+        <span class="self">self</span>.output_mode = om;
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_tls</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">chain</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
-        <span class="kw">match</span> (<span class="ident">chain</span>, <span class="ident">key</span>) {
+    <span class="kw">pub fn </span>update_tls(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chain: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;, key: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;) {
+        <span class="kw">match </span>(chain, key) {
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; {}
-            (<span class="prelude-val">Some</span>(<span class="ident">chainp</span>), <span class="prelude-val">Some</span>(<span class="ident">keyp</span>)) =&gt; {
-                <span class="kw">let</span> <span class="ident">chain</span> <span class="op">=</span> <span class="ident">chainp</span>.<span class="ident">to_string</span>();
-                <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">keyp</span>.<span class="ident">to_string</span>();
-                <span class="self">self</span>.<span class="ident">tls_config</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">TlsConfiguration</span> { <span class="ident">chain</span>, <span class="ident">key</span> })
+            (<span class="prelude-val">Some</span>(chainp), <span class="prelude-val">Some</span>(keyp)) =&gt; {
+                <span class="kw">let </span>chain = chainp.to_string();
+                <span class="kw">let </span>key = keyp.to_string();
+                <span class="self">self</span>.tls_config = <span class="prelude-val">Some</span>(TlsConfiguration { chain, key })
             }
-            <span class="kw">_</span> =&gt; {
+            <span class="kw">_ </span>=&gt; {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;ERROR: Invalid TLS configuration - must provide chain and key!&quot;</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                std::process::exit(<span class="number">1</span>);
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

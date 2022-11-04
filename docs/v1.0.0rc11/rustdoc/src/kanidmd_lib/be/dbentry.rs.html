@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/be/dbentry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>dbentry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/be/dbentry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>dbentry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -510,517 +510,517 @@
 <span id="510">510</span>
 <span id="511">511</span>
 <span id="512">512</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">smartstring::alias::String</span> <span class="kw">as</span> <span class="ident">AttrString</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>smartstring::alias::String <span class="kw">as </span>AttrString;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue</span>::{<span class="ident">DbValueEmailAddressV1</span>, <span class="ident">DbValuePhoneNumberV1</span>, <span class="ident">DbValueSetV2</span>, <span class="ident">DbValueV1</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude::OperationError</span>;
+<span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::OperationError;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbEntryV1</span> {
-    <span class="kw">pub</span> <span class="ident">attrs</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbEntryV1 {
+    <span class="kw">pub </span>attrs: BTreeMap&lt;AttrString, Vec&lt;DbValueV1&gt;&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbEntryV2</span> {
-    <span class="kw">pub</span> <span class="ident">attrs</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">DbValueSetV2</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbEntryV2 {
+    <span class="kw">pub </span>attrs: BTreeMap&lt;AttrString, DbValueSetV2&gt;,
 }
 
-<span class="comment">// REMEMBER: If you add a new version here, you MUST</span>
-<span class="comment">// update entry.rs to_dbentry to export to the latest</span>
-<span class="comment">// type always!!</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbEntryVers</span> {
-    <span class="ident">V1</span>(<span class="ident">DbEntryV1</span>),
-    <span class="ident">V2</span>(<span class="ident">DbEntryV2</span>),
+<span class="comment">// REMEMBER: If you add a new version here, you MUST
+// update entry.rs to_dbentry to export to the latest
+// type always!!
+</span><span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbEntryVers {
+    V1(DbEntryV1),
+    V2(DbEntryV2),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="comment">// This doesn&#39;t need a version since uuid2spn is reindexed - remember if you change this</span>
-<span class="comment">// though, to change the index version!</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbIdentSpn</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SP&quot;</span>)]</span>
-    <span class="ident">Spn</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;N8&quot;</span>)]</span>
-    <span class="ident">Iname</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UU&quot;</span>)]</span>
-    <span class="ident">Uuid</span>(<span class="ident">Uuid</span>),
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="comment">// This doesn&#39;t need a version since uuid2spn is reindexed - remember if you change this
+// though, to change the index version!
+</span><span class="kw">pub enum </span>DbIdentSpn {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;SP&quot;</span>)]
+    </span>Spn(String, String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;N8&quot;</span>)]
+    </span>Iname(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;UU&quot;</span>)]
+    </span>Uuid(Uuid),
 }
 
-<span class="comment">// This is actually what we store into the DB.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbEntry</span> {
-    <span class="kw">pub</span> <span class="ident">ent</span>: <span class="ident">DbEntryVers</span>,
+<span class="comment">// This is actually what we store into the DB.
+</span><span class="attribute">#[derive(Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>DbEntry {
+    <span class="kw">pub </span>ent: DbEntryVers,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">untagged</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbBackup</span> {
-    <span class="ident">V1</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbEntry</span><span class="op">&gt;</span>),
-    <span class="ident">V2</span> {
-        <span class="ident">db_s_uuid</span>: <span class="ident">Uuid</span>,
-        <span class="ident">db_d_uuid</span>: <span class="ident">Uuid</span>,
-        <span class="ident">db_ts_max</span>: <span class="ident">Duration</span>,
-        <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbEntry</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+</span><span class="kw">pub enum </span>DbBackup {
+    V1(Vec&lt;DbEntry&gt;),
+    V2 {
+        db_s_uuid: Uuid,
+        db_d_uuid: Uuid,
+        db_ts_max: Duration,
+        entries: Vec&lt;DbEntry&gt;,
     },
 }
 
-<span class="kw">fn</span> <span class="ident">from_vec_dbval1</span>(<span class="ident">attr_val</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueV1</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DbValueSetV2</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="comment">// ========================</span>
-    <span class="comment">//</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">viter</span> <span class="op">=</span> <span class="ident">attr_val</span>.<span class="ident">into_iter</span>().<span class="ident">peekable</span>();
+<span class="kw">fn </span>from_vec_dbval1(attr_val: Vec&lt;DbValueV1&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;DbValueSetV2, OperationError&gt; {
+    <span class="comment">// ========================
+    //
+    </span><span class="kw">let </span><span class="kw-2">mut </span>viter = attr_val.into_iter().peekable();
 
-    <span class="kw">match</span> <span class="ident">viter</span>.<span class="ident">peek</span>() {
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Utf8</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Utf8</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+    <span class="kw">match </span>viter.peek() {
+        <span class="prelude-val">Some</span>(DbValueV1::Utf8(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Utf8(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Utf8</span>)
+                .collect();
+            vs.map(DbValueSetV2::Utf8)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Iutf8</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Iutf8</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Iutf8(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Iutf8(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Iutf8</span>)
+                .collect();
+            vs.map(DbValueSetV2::Iutf8)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Iname</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Iname</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Iname(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Iname(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Iname</span>)
+                .collect();
+            vs.map(DbValueSetV2::Iname)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Uuid</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Uuid</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Uuid(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Uuid(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Uuid</span>)
+                .collect();
+            vs.map(DbValueSetV2::Uuid)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Bool</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Bool</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Bool(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Bool(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Bool</span>)
+                .collect();
+            vs.map(DbValueSetV2::Bool)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::SyntaxType</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::SyntaxType</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::SyntaxType(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::SyntaxType(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::SyntaxType</span>)
+                .collect();
+            vs.map(DbValueSetV2::SyntaxType)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::IndexType</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::IndexType</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::IndexType(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::IndexType(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::IndexType</span>)
+                .collect();
+            vs.map(DbValueSetV2::IndexType)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Reference</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Reference</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Reference(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Reference(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Reference</span>)
+                .collect();
+            vs.map(DbValueSetV2::Reference)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::JsonFilter</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::JsonFilter</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::JsonFilter(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::JsonFilter(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::JsonFilter</span>)
+                .collect();
+            vs.map(DbValueSetV2::JsonFilter)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Credential</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Credential</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Credential(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Credential(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Credential</span>)
+                .collect();
+            vs.map(DbValueSetV2::Credential)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::SecretValue</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::SecretValue</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::SecretValue(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::SecretValue(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::SecretValue</span>)
+                .collect();
+            vs.map(DbValueSetV2::SecretValue)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::SshKey</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::SshKey</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::SshKey(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::SshKey(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::SshKey</span>)
+                .collect();
+            vs.map(DbValueSetV2::SshKey)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Spn</span>(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Spn</span>(<span class="ident">n</span>, <span class="ident">d</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>((<span class="ident">n</span>, <span class="ident">d</span>))
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Spn(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Spn(n, d) = dbv {
+                        <span class="prelude-val">Ok</span>((n, d))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Spn</span>)
+                .collect();
+            vs.map(DbValueSetV2::Spn)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Uint32</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Uint32</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Uint32(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Uint32(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Uint32</span>)
+                .collect();
+            vs.map(DbValueSetV2::Uint32)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Cid</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Cid</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Cid(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Cid(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Cid</span>)
+                .collect();
+            vs.map(DbValueSetV2::Cid)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::NsUniqueId</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::NsUniqueId</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::NsUniqueId(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::NsUniqueId(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::NsUniqueId</span>)
+                .collect();
+            vs.map(DbValueSetV2::NsUniqueId)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::DateTime</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::DateTime</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::DateTime(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::DateTime(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::DateTime</span>)
+                .collect();
+            vs.map(DbValueSetV2::DateTime)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::EmailAddress</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">primary</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::EmailAddress</span>(<span class="ident">DbValueEmailAddressV1</span> { <span class="ident">d</span>, <span class="ident">p</span> }) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="kw">if</span> <span class="ident">p</span> {
-                            <span class="ident">primary</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">d</span>.<span class="ident">clone</span>());
+        <span class="prelude-val">Some</span>(DbValueV1::EmailAddress(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>primary = <span class="prelude-val">None</span>;
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::EmailAddress(DbValueEmailAddressV1 { d, p }) = dbv {
+                        <span class="kw">if </span>p {
+                            primary = <span class="prelude-val">Some</span>(d.clone());
                         }
-                        <span class="prelude-val">Ok</span>(<span class="ident">d</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+                        <span class="prelude-val">Ok</span>(d)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="ident">primary</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidValueState</span>)<span class="question-mark">?</span>;
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">DbValueSetV2::EmailAddress</span>(<span class="ident">primary</span>, <span class="ident">vs</span>))
+                .collect();
+            <span class="kw">let </span>primary = primary.ok_or(OperationError::InvalidValueState)<span class="question-mark">?</span>;
+            vs.map(|vs| DbValueSetV2::EmailAddress(primary, vs))
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::PhoneNumber</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">primary</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::PhoneNumber</span>(<span class="ident">DbValuePhoneNumberV1</span> { <span class="ident">d</span>, <span class="ident">p</span> }) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="kw">if</span> <span class="ident">p</span> {
-                            <span class="ident">primary</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">d</span>.<span class="ident">clone</span>());
+        <span class="prelude-val">Some</span>(DbValueV1::PhoneNumber(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>primary = <span class="prelude-val">None</span>;
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::PhoneNumber(DbValuePhoneNumberV1 { d, p }) = dbv {
+                        <span class="kw">if </span>p {
+                            primary = <span class="prelude-val">Some</span>(d.clone());
                         }
-                        <span class="prelude-val">Ok</span>(<span class="ident">d</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+                        <span class="prelude-val">Ok</span>(d)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="ident">primary</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidValueState</span>)<span class="question-mark">?</span>;
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">DbValueSetV2::PhoneNumber</span>(<span class="ident">primary</span>, <span class="ident">vs</span>))
+                .collect();
+            <span class="kw">let </span>primary = primary.ok_or(OperationError::InvalidValueState)<span class="question-mark">?</span>;
+            vs.map(|vs| DbValueSetV2::PhoneNumber(primary, vs))
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Address</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Address</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Address(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Address(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Address</span>)
+                .collect();
+            vs.map(DbValueSetV2::Address)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Url</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::Url</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::Url(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::Url(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::Url</span>)
+                .collect();
+            vs.map(DbValueSetV2::Url)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::OauthScope</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::OauthScope</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::OauthScope(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::OauthScope(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::OauthScope</span>)
+                .collect();
+            vs.map(DbValueSetV2::OauthScope)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::OauthScopeMap</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::OauthScopeMap</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::OauthScopeMap(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::OauthScopeMap(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::OauthScopeMap</span>)
+                .collect();
+            vs.map(DbValueSetV2::OauthScopeMap)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::PrivateBinary</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::PrivateBinary</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::PrivateBinary(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::PrivateBinary(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::PrivateBinary</span>)
+                .collect();
+            vs.map(DbValueSetV2::PrivateBinary)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::PublicBinary</span>(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::PublicBinary</span>(<span class="ident">t</span>, <span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>((<span class="ident">t</span>, <span class="ident">s</span>))
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::PublicBinary(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::PublicBinary(t, s) = dbv {
+                        <span class="prelude-val">Ok</span>((t, s))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::PublicBinary</span>)
+                .collect();
+            vs.map(DbValueSetV2::PublicBinary)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::RestrictedString</span>(<span class="kw">_</span>)) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::RestrictedString</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">s</span>)
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::RestrictedString(<span class="kw">_</span>)) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::RestrictedString(s) = dbv {
+                        <span class="prelude-val">Ok</span>(s)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::RestrictedString</span>)
+                .collect();
+            vs.map(DbValueSetV2::RestrictedString)
         }
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::IntentToken</span> { <span class="ident">u</span>: <span class="kw">_</span>, <span class="ident">s</span>: <span class="kw">_</span> }) =&gt; {
-            <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::IntentToken</span> { <span class="ident">u</span>, <span class="ident">s</span> } <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>((<span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(), <span class="ident">s</span>))
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="prelude-val">Some</span>(DbValueV1::IntentToken { u: <span class="kw">_</span>, s: <span class="kw">_ </span>}) =&gt; {
+            <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
+                .map(|dbv| {
+                    <span class="kw">if let </span>DbValueV1::IntentToken { u, s } = dbv {
+                        <span class="prelude-val">Ok</span>((u.as_hyphenated().to_string(), s))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }
                 })
-                .<span class="ident">collect</span>();
-            <span class="ident">vs</span>.<span class="ident">map</span>(<span class="ident">DbValueSetV2::IntentToken</span>)
+                .collect();
+            vs.map(DbValueSetV2::IntentToken)
         }
-        <span class="comment">// Neither of these should exist yet.</span>
-        <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::TrustedDeviceEnrollment</span> { <span class="ident">u</span>: <span class="kw">_</span> })
-        <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">DbValueV1::Session</span> { <span class="ident">u</span>: <span class="kw">_</span> })
-        <span class="op">|</span> <span class="prelude-val">None</span> =&gt; {
-            <span class="comment">// Shiiiiii</span>
-            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
+        <span class="comment">// Neither of these should exist yet.
+        </span><span class="prelude-val">Some</span>(DbValueV1::TrustedDeviceEnrollment { u: <span class="kw">_ </span>})
+        | <span class="prelude-val">Some</span>(DbValueV1::Session { u: <span class="kw">_ </span>})
+        | <span class="prelude-val">None </span>=&gt; {
+            <span class="comment">// Shiiiiii
+            </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+            <span class="prelude-val">Err</span>(OperationError::InvalidState)
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DbEntry</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">convert_to_v2</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbEntryVers::V1</span>(<span class="ident">dbe</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">ent</span> {
-            <span class="ident">dbe</span>.<span class="ident">attrs</span>
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">_attr_name</span>, <span class="ident">attr_val</span>)<span class="op">|</span> {
-                    <span class="comment">// Skip anything that is empty, because our from impl</span>
-                    <span class="comment">// can&#39;t handle it, neither can our dbvaluesetv2</span>
-                    <span class="op">!</span><span class="ident">attr_val</span>.<span class="ident">is_empty</span>()
+<span class="kw">impl </span>DbEntry {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>convert_to_v2(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">if let </span>DbEntryVers::V1(dbe) = <span class="self">self</span>.ent {
+            dbe.attrs
+                .into_iter()
+                .filter(|(_attr_name, attr_val)| {
+                    <span class="comment">// Skip anything that is empty, because our from impl
+                    // can&#39;t handle it, neither can our dbvaluesetv2
+                    </span>!attr_val.is_empty()
                 })
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">attr_name</span>, <span class="ident">attr_val</span>)<span class="op">|</span> {
-                    <span class="ident">from_vec_dbval1</span>(<span class="ident">attr_val</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">attr_val_2</span><span class="op">|</span> (<span class="ident">attr_name</span>, <span class="ident">attr_val_2</span>))
+                .map(|(attr_name, attr_val)| {
+                    from_vec_dbval1(attr_val).map(|attr_val_2| (attr_name, attr_val_2))
                 })
-                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">attrs</span><span class="op">|</span> <span class="ident">DbEntry</span> {
-                    <span class="ident">ent</span>: <span class="ident">DbEntryVers::V2</span>(<span class="ident">DbEntryV2</span> { <span class="ident">attrs</span> }),
+                .collect::&lt;<span class="prelude-ty">Result</span>&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()
+                .map(|attrs| DbEntry {
+                    ent: DbEntryVers::V2(DbEntryV2 { attrs }),
                 })
-        } <span class="kw">else</span> {
+        } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(<span class="self">self</span>)
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">DbEntry</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ent</span> {
-            <span class="ident">DbEntryVers::V1</span>(<span class="ident">dbe_v1</span>) =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;v1 - {{ &quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">for</span> (<span class="ident">k</span>, <span class="ident">vs</span>) <span class="kw">in</span> <span class="ident">dbe_v1</span>.<span class="ident">attrs</span>.<span class="ident">iter</span>() {
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{} - [&quot;</span>, <span class="ident">k</span>)<span class="question-mark">?</span>;
-                    <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="ident">vs</span> {
-                        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">v</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>DbEntry {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.ent {
+            DbEntryVers::V1(dbe_v1) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;v1 - {{ &quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">for </span>(k, vs) <span class="kw">in </span>dbe_v1.attrs.iter() {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{} - [&quot;</span>, k)<span class="question-mark">?</span>;
+                    <span class="kw">for </span>v <span class="kw">in </span>vs {
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, v)<span class="question-mark">?</span>;
                     }
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;], &quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;], &quot;</span>)<span class="question-mark">?</span>;
                 }
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;}}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
             }
-            <span class="ident">DbEntryVers::V2</span>(<span class="ident">dbe_v2</span>) =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;v2 - {{ &quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">for</span> (<span class="ident">k</span>, <span class="ident">vs</span>) <span class="kw">in</span> <span class="ident">dbe_v2</span>.<span class="ident">attrs</span>.<span class="ident">iter</span>() {
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{} - [&quot;</span>, <span class="ident">k</span>)<span class="question-mark">?</span>;
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">vs</span>)<span class="question-mark">?</span>;
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;], &quot;</span>)<span class="question-mark">?</span>;
+            DbEntryVers::V2(dbe_v2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;v2 - {{ &quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">for </span>(k, vs) <span class="kw">in </span>dbe_v2.attrs.iter() {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{} - [&quot;</span>, k)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, vs)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;], &quot;</span>)<span class="question-mark">?</span>;
                 }
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;}}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
             }
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">DbEntry</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ent</span> {
-            <span class="ident">DbEntryVers::V1</span>(<span class="ident">dbe_v1</span>) =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;v1 - {{ &quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">match</span> <span class="ident">dbe_v1</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">uuids</span>) =&gt; {
-                        <span class="kw">for</span> <span class="ident">uuid</span> <span class="kw">in</span> <span class="ident">uuids</span> {
-                            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">uuid</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>DbEntry {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.ent {
+            DbEntryVers::V1(dbe_v1) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;v1 - {{ &quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">match </span>dbe_v1.attrs.get(<span class="string">&quot;uuid&quot;</span>) {
+                    <span class="prelude-val">Some</span>(uuids) =&gt; {
+                        <span class="kw">for </span>uuid <span class="kw">in </span>uuids {
+                            <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, uuid)<span class="question-mark">?</span>;
                         }
                     }
-                    <span class="prelude-val">None</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Uuid(INVALID), &quot;</span>)<span class="question-mark">?</span>,
+                    <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Uuid(INVALID), &quot;</span>)<span class="question-mark">?</span>,
                 };
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">names</span>) <span class="op">=</span> <span class="ident">dbe_v1</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;name&quot;</span>) {
-                    <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="ident">names</span> {
-                        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">name</span>)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v1.attrs.get(<span class="string">&quot;name&quot;</span>) {
+                    <span class="kw">for </span>name <span class="kw">in </span>names {
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, name)<span class="question-mark">?</span>;
                     }
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">names</span>) <span class="op">=</span> <span class="ident">dbe_v1</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;attributename&quot;</span>) {
-                    <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="ident">names</span> {
-                        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">name</span>)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v1.attrs.get(<span class="string">&quot;attributename&quot;</span>) {
+                    <span class="kw">for </span>name <span class="kw">in </span>names {
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, name)<span class="question-mark">?</span>;
                     }
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">names</span>) <span class="op">=</span> <span class="ident">dbe_v1</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;classname&quot;</span>) {
-                    <span class="kw">for</span> <span class="ident">name</span> <span class="kw">in</span> <span class="ident">names</span> {
-                        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">name</span>)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v1.attrs.get(<span class="string">&quot;classname&quot;</span>) {
+                    <span class="kw">for </span>name <span class="kw">in </span>names {
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, name)<span class="question-mark">?</span>;
                     }
                 }
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;}}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
             }
-            <span class="ident">DbEntryVers::V2</span>(<span class="ident">dbe_v2</span>) =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;v2 - {{ &quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">match</span> <span class="ident">dbe_v2</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">uuids</span>) =&gt; {
-                        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">uuids</span>)<span class="question-mark">?</span>;
+            DbEntryVers::V2(dbe_v2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;v2 - {{ &quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">match </span>dbe_v2.attrs.get(<span class="string">&quot;uuid&quot;</span>) {
+                    <span class="prelude-val">Some</span>(uuids) =&gt; {
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, uuids)<span class="question-mark">?</span>;
                     }
-                    <span class="prelude-val">None</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Uuid(INVALID), &quot;</span>)<span class="question-mark">?</span>,
+                    <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Uuid(INVALID), &quot;</span>)<span class="question-mark">?</span>,
                 };
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">names</span>) <span class="op">=</span> <span class="ident">dbe_v2</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;name&quot;</span>) {
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">names</span>)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v2.attrs.get(<span class="string">&quot;name&quot;</span>) {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, names)<span class="question-mark">?</span>;
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">names</span>) <span class="op">=</span> <span class="ident">dbe_v2</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;attributename&quot;</span>) {
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">names</span>)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v2.attrs.get(<span class="string">&quot;attributename&quot;</span>) {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, names)<span class="question-mark">?</span>;
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">names</span>) <span class="op">=</span> <span class="ident">dbe_v2</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;classname&quot;</span>) {
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">names</span>)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v2.attrs.get(<span class="string">&quot;classname&quot;</span>) {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, names)<span class="question-mark">?</span>;
                 }
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;}}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/cache_clear.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cache_clear.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cache_clear/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cache_clear/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cache_clear/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/cache_clear.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cache_clear.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cache_clear/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cache_clear/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cache_clear/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -60,67 +60,67 @@
 <span id="60">60</span>
 <span id="61">61</span>
 <span id="62">62</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unimplemented</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::expect_used</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::panic</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unreachable</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::await_holding_lock</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
+#[macro_use]
+</span><span class="kw">extern crate </span>tracing;
 
-<span class="kw">use</span> <span class="ident">clap::Parser</span>;
-<span class="kw">use</span> <span class="ident">futures::executor::block_on</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::client::call_daemon</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>};
+<span class="kw">use </span>clap::Parser;
+<span class="kw">use </span>futures::executor::block_on;
+<span class="kw">use </span>kanidm_unix_common::client::call_daemon;
+<span class="kw">use </span>kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+<span class="kw">use </span>kanidm_unix_common::unix_config::KanidmUnixdConfig;
+<span class="kw">use </span>kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 <span class="macro">include!</span>(<span class="string">&quot;./opt/cache_clear.rs&quot;</span>);
 
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">CacheClearOpt::parse</span>();
-    <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">debug</span> {
-        <span class="ident">::std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
+<span class="attribute">#[tokio::main]
+</span><span class="kw">async fn </span>main() {
+    <span class="kw">let </span>opt = CacheClearOpt::parse();
+    <span class="kw">if </span>opt.debug {
+        ::std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
     }
-    <span class="ident">sketching::tracing_subscriber::fmt::init</span>();
+    sketching::tracing_subscriber::fmt::init();
 
     <span class="macro">debug!</span>(<span class="string">&quot;Starting cache invalidate tool ...&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>)
+    <span class="kw">let </span>cfg = <span class="kw">match </span>KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
     {
-        <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">_e</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, <span class="ident">DEFAULT_CONFIG_PATH</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        <span class="prelude-val">Ok</span>(c) =&gt; c,
+        <span class="prelude-val">Err</span>(_e) =&gt; {
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, DEFAULT_CONFIG_PATH);
+            std::process::exit(<span class="number">1</span>);
         }
     };
 
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">opt</span>.<span class="ident">really</span> {
+    <span class="kw">if </span>!opt.really {
         <span class="macro">error!</span>(<span class="string">&quot;Are you sure you want to proceed? If so use --really&quot;</span>);
         <span class="kw">return</span>;
     }
 
-    <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::ClearCache</span>;
+    <span class="kw">let </span>req = ClientRequest::ClearCache;
 
-    <span class="kw">match</span> <span class="ident">block_on</span>(<span class="ident">call_daemon</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="ident">req</span>)) {
-        <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="kw">match</span> <span class="ident">r</span> {
-            <span class="ident">ClientResponse::Ok</span> =&gt; <span class="macro">info!</span>(<span class="string">&quot;success&quot;</span>),
-            <span class="kw">_</span> =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;Error: unexpected response -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
+    <span class="kw">match </span>block_on(call_daemon(cfg.sock_path.as_str(), req)) {
+        <span class="prelude-val">Ok</span>(r) =&gt; <span class="kw">match </span>r {
+            ClientResponse::Ok =&gt; <span class="macro">info!</span>(<span class="string">&quot;success&quot;</span>),
+            <span class="kw">_ </span>=&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;Error: unexpected response -&gt; {:?}&quot;</span>, r);
             }
         },
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cache_clear" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cache_clear" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

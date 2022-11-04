@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/event.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>event.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/event.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>event.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -820,827 +820,827 @@
 <span id="820">820</span>
 <span id="821">821</span>
 <span id="822">822</span>
-</pre><pre class="rust"><code><span class="doccomment">//! An `event` is a self contained module of data, that contains all of the</span>
-<span class="doccomment">//! required information for any operation to proceed. While there are many</span>
-<span class="doccomment">//! types of potential events, they all eventually lower to one of:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * AuthEvent</span>
-<span class="doccomment">//! * SearchEvent</span>
-<span class="doccomment">//! * ExistsEvent</span>
-<span class="doccomment">//! * ModifyEvent</span>
-<span class="doccomment">//! * CreateEvent</span>
-<span class="doccomment">//! * DeleteEvent</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! An &quot;event&quot; is generally then passed to the `QueryServer` for processing.</span>
-<span class="doccomment">//! By making these fully self contained units, it means that we can assert</span>
-<span class="doccomment">//! at event creation time we have all the correct data requried to proceed</span>
-<span class="doccomment">//! with the operation, and a clear path to know how to transform events between</span>
-<span class="doccomment">//! various types.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! An `event` is a self contained module of data, that contains all of the
+//! required information for any operation to proceed. While there are many
+//! types of potential events, they all eventually lower to one of:
+//!
+//! * AuthEvent
+//! * SearchEvent
+//! * ExistsEvent
+//! * ModifyEvent
+//! * CreateEvent
+//! * DeleteEvent
+//!
+//! An &quot;event&quot; is generally then passed to the `QueryServer` for processing.
+//! By making these fully self contained units, it means that we can assert
+//! at event creation time we have all the correct data requried to proceed
+//! with the operation, and a clear path to know how to transform events between
+//! various types.
 
-<span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+</span><span class="kw">use </span>std::collections::BTreeSet;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">CreateRequest</span>, <span class="ident">DeleteRequest</span>, <span class="ident">Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>, <span class="ident">ModifyList</span> <span class="kw">as</span> <span class="ident">ProtoModifyList</span>,
-    <span class="ident">ModifyRequest</span>, <span class="ident">OperationError</span>, <span class="ident">SearchRequest</span>, <span class="ident">SearchResponse</span>, <span class="ident">WhoamiResponse</span>,
+<span class="kw">use </span>kanidm_proto::v1::{
+    CreateRequest, DeleteRequest, Entry <span class="kw">as </span>ProtoEntry, ModifyList <span class="kw">as </span>ProtoModifyList,
+    ModifyRequest, OperationError, SearchRequest, SearchResponse, WhoamiResponse,
 };
-<span class="kw">use</span> <span class="ident">ldap3_proto::simple::LdapFilter</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>ldap3_proto::simple::LdapFilter;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntryInit</span>, <span class="ident">EntryNew</span>, <span class="ident">EntryReduced</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>, <span class="ident">FilterValid</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity::Limits</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">ModifyInvalid</span>, <span class="ident">ModifyList</span>, <span class="ident">ModifyValid</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaTransaction</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::PartialValue</span>;
+<span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
+<span class="kw">use </span><span class="kw">crate</span>::filter::{Filter, FilterInvalid, FilterValid};
+<span class="kw">use </span><span class="kw">crate</span>::identity::Limits;
+<span class="kw">use </span><span class="kw">crate</span>::modify::{ModifyInvalid, ModifyList, ModifyValid};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
+<span class="kw">use </span><span class="kw">crate</span>::value::PartialValue;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchResult</span> {
-    <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>SearchResult {
+    entries: Vec&lt;ProtoEntry&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">SearchResult</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-        <span class="ident">entries</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">entries</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">entries</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="comment">// All the needed transforms for this result are done</span>
-                <span class="comment">// in search_ext. This is just an entry -&gt; protoentry</span>
-                <span class="comment">// step.</span>
-                <span class="ident">e</span>.<span class="ident">to_pe</span>(<span class="ident">qs</span>)
+<span class="kw">impl </span>SearchResult {
+    <span class="kw">pub fn </span>new(
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        entries: <span class="kw-2">&amp;</span>[Entry&lt;EntryReduced, EntryCommitted&gt;],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>entries: <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = entries
+            .iter()
+            .map(|e| {
+                <span class="comment">// All the needed transforms for this result are done
+                // in search_ext. This is just an entry -&gt; protoentry
+                // step.
+                </span>e.to_pe(qs)
             })
-            .<span class="ident">collect</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">SearchResult</span> { <span class="ident">entries</span>: <span class="ident">entries</span><span class="question-mark">?</span> })
+            .collect();
+        <span class="prelude-val">Ok</span>(SearchResult { entries: entries<span class="question-mark">? </span>})
     }
 
-    <span class="comment">// Consume self into a search response</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">response</span>(<span class="self">self</span>) -&gt; <span class="ident">SearchResponse</span> {
-        <span class="ident">SearchResponse</span> {
-            <span class="ident">entries</span>: <span class="self">self</span>.<span class="ident">entries</span>,
+    <span class="comment">// Consume self into a search response
+    </span><span class="kw">pub fn </span>response(<span class="self">self</span>) -&gt; SearchResponse {
+        SearchResponse {
+            entries: <span class="self">self</span>.entries,
         }
     }
 
-    <span class="comment">// Consume into the array of entries, used in the json proto</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_proto_array</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">entries</span>
+    <span class="comment">// Consume into the array of entries, used in the json proto
+    </span><span class="kw">pub fn </span>into_proto_array(<span class="self">self</span>) -&gt; Vec&lt;ProtoEntry&gt; {
+        <span class="self">self</span>.entries
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// This is the filter as we apply and process it.</span>
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    <span class="comment">// This is the original filter, for the purpose of ACI checking.</span>
-    <span class="kw">pub</span> <span class="ident">filter_orig</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">AttrString</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>SearchEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="comment">// This is the filter as we apply and process it.
+    </span><span class="kw">pub </span>filter: Filter&lt;FilterValid&gt;,
+    <span class="comment">// This is the original filter, for the purpose of ACI checking.
+    </span><span class="kw">pub </span>filter_orig: Filter&lt;FilterValid&gt;,
+    <span class="kw">pub </span>attrs: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;AttrString&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">SearchEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">SearchRequest</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ro</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="comment">// We do need to do this twice to account for the ignore_hidden</span>
-        <span class="comment">// changes.</span>
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="comment">// We can&#39;t get this from the SearchMessage because it&#39;s annoying with the</span>
-            <span class="comment">// current macro design.</span>
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>SearchEvent {
+    <span class="kw">pub fn </span>from_message(
+        ident: Identity,
+        req: <span class="kw-2">&amp;</span>SearchRequest,
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>f = Filter::from_ro(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>req.filter, qs)<span class="question-mark">?</span>;
+        <span class="comment">// We do need to do this twice to account for the ignore_hidden
+        // changes.
+        </span><span class="kw">let </span>filter_orig = f
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="prelude-val">Ok</span>(SearchEvent {
+            ident,
+            filter,
+            filter_orig,
+            <span class="comment">// We can&#39;t get this from the SearchMessage because it&#39;s annoying with the
+            // current macro design.
+            </span>attrs: <span class="prelude-val">None</span>,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_internal_message</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">String</span>]<span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">r_attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">AttrString</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> {
-            <span class="ident">vs</span>.<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>().<span class="ident">normalise_attr_if_exists</span>(<span class="ident">a</span>.<span class="ident">as_str</span>()))
-                .<span class="ident">collect</span>()
+    <span class="kw">pub fn </span>from_internal_message(
+        ident: Identity,
+        filter: <span class="kw-2">&amp;</span>Filter&lt;FilterInvalid&gt;,
+        attrs: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[String]&gt;,
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>r_attrs: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;AttrString&gt;&gt; = attrs.map(|vs| {
+            vs.iter()
+                .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
+                .collect()
         });
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">r_attrs</span> {
-            <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(s) = <span class="kw-2">&amp;</span>r_attrs {
+            <span class="kw">if </span>s.is_empty() {
                 <span class="macro">request_error!</span>(<span class="string">&quot;EmptyRequest for attributes&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::EmptyRequest);
             }
         }
 
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">request_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;filter schema violation&quot;</span>);
-            <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
+        <span class="kw">let </span>filter_orig = filter.validate(qs.get_schema()).map_err(|e| {
+            <span class="macro">request_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;filter schema violation&quot;</span>);
+            OperationError::SchemaViolation(e)
         })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">attrs</span>: <span class="ident">r_attrs</span>,
+        <span class="prelude-val">Ok</span>(SearchEvent {
+            ident,
+            filter,
+            filter_orig,
+            attrs: r_attrs,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_internal_recycle_message</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">String</span>]<span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">r_attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">AttrString</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> {
-            <span class="ident">vs</span>.<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>().<span class="ident">normalise_attr_if_exists</span>(<span class="ident">a</span>.<span class="ident">as_str</span>()))
-                .<span class="ident">collect</span>()
+    <span class="kw">pub fn </span>from_internal_recycle_message(
+        ident: Identity,
+        filter: <span class="kw-2">&amp;</span>Filter&lt;FilterInvalid&gt;,
+        attrs: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[String]&gt;,
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>r_attrs: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;AttrString&gt;&gt; = attrs.map(|vs| {
+            vs.iter()
+                .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
+                .collect()
         });
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">r_attrs</span> {
-            <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">is_empty</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(s) = <span class="kw-2">&amp;</span>r_attrs {
+            <span class="kw">if </span>s.is_empty() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::EmptyRequest);
             }
         }
 
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">filter</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">into_recycled</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>();
+        <span class="kw">let </span>filter_orig = filter
+            .validate(qs.get_schema())
+            .map(|f| f.into_recycled())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">attrs</span>: <span class="ident">r_attrs</span>,
+        <span class="prelude-val">Ok</span>(SearchEvent {
+            ident,
+            filter,
+            filter_orig,
+            attrs: r_attrs,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_whoami_request</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_self</span>())
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
+    <span class="kw">pub fn </span>from_whoami_request(
+        ident: Identity,
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>filter_orig = <span class="macro">filter_all!</span>(f_self())
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+        <span class="prelude-val">Ok</span>(SearchEvent {
+            ident,
+            filter,
+            filter_orig,
+            attrs: <span class="prelude-val">None</span>,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_target_uuid_request</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">target_uuid</span>)))
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="kw">pub fn </span>from_target_uuid_request(
+        ident: Identity,
+        target_uuid: Uuid,
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>filter_orig = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)))
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="prelude-val">Ok</span>(SearchEvent {
+            ident,
+            filter,
+            filter_orig,
+            attrs: <span class="prelude-val">None</span>,
         })
     }
 
-    <span class="comment">// Just impersonate the account with no filter changes.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry_ser</span>(<span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ei</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">e</span>);
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readonly</span>(<span class="ident">Arc::new</span>(<span class="ident">ei</span>.<span class="ident">into_sealed_committed</span>())),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="comment">// Just impersonate the account with no filter changes.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry_ser(e: <span class="kw-2">&amp;</span>str, filter: Filter&lt;FilterInvalid&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ei: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(e);
+        SearchEvent {
+            ident: Identity::from_impersonate_entry_readonly(Arc::new(ei.into_sealed_committed())),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry</span>(
-        <span class="ident">e</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readonly</span>(<span class="ident">e</span>),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry(
+        e: Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
+        filter: Filter&lt;FilterInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        SearchEvent {
+            ident: Identity::from_impersonate_entry_readonly(e),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_identity</span>(<span class="ident">ident</span>: <span class="ident">Identity</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_identity(ident: Identity, filter: Filter&lt;FilterInvalid&gt;) -&gt; <span class="self">Self </span>{
+        SearchEvent {
+            ident,
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_impersonate</span>(
-        <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-        <span class="ident">filter_orig</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate</span>(<span class="ident">ident</span>),
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="kw">pub fn </span>new_impersonate(
+        ident: <span class="kw-2">&amp;</span>Identity,
+        filter: Filter&lt;FilterValid&gt;,
+        filter_orig: Filter&lt;FilterValid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        SearchEvent {
+            ident: Identity::from_impersonate(ident),
+            filter,
+            filter_orig,
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="comment">/* Impersonate a request for recycled objects */</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_rec_impersonate_entry</span>(
-        <span class="ident">e</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">into_valid</span>();
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_recycled</span>();
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readonly</span>(<span class="ident">e</span>),
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="comment">/* Impersonate a request for recycled objects */
+    </span><span class="kw">pub unsafe fn </span>new_rec_impersonate_entry(
+        e: Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
+        filter: Filter&lt;FilterInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>filter_orig = filter.into_valid();
+        <span class="kw">let </span>filter = filter_orig.clone().into_recycled();
+        SearchEvent {
+            ident: Identity::from_impersonate_entry_readonly(e),
+            filter,
+            filter_orig,
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="comment">/* Impersonate an external request AKA filter ts + recycle */</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_ext_impersonate_entry</span>(
-        <span class="ident">e</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readonly</span>(<span class="ident">e</span>),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>().<span class="ident">into_ignore_hidden</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="comment">/* Impersonate an external request AKA filter ts + recycle */
+    </span><span class="kw">pub unsafe fn </span>new_ext_impersonate_entry(
+        e: Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
+        filter: Filter&lt;FilterInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        SearchEvent {
+            ident: Identity::from_impersonate_entry_readonly(e),
+            filter: filter.clone().into_valid().into_ignore_hidden(),
+            filter_orig: filter.into_valid(),
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_ext_impersonate_uuid</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">lf</span>: <span class="kw-2">&amp;</span><span class="ident">LdapFilter</span>,
-        <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">AttrString</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Kanidm Filter from LdapFilter</span>
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ldap_ro</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="ident">lf</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">attrs</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_ext_impersonate_uuid(
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        ident: Identity,
+        lf: <span class="kw-2">&amp;</span>LdapFilter,
+        attrs: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;AttrString&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="comment">// Kanidm Filter from LdapFilter
+        </span><span class="kw">let </span>f = Filter::from_ldap_ro(<span class="kw-2">&amp;</span>ident, lf, qs)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter_orig = f
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="prelude-val">Ok</span>(SearchEvent {
+            ident,
+            filter,
+            filter_orig,
+            attrs,
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_internal_invalid</span>(<span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_internal_invalid(filter: Filter&lt;FilterInvalid&gt;) -&gt; <span class="self">Self </span>{
+        SearchEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>,
-            <span class="ident">attrs</span>: <span class="prelude-val">None</span>,
+    <span class="kw">pub fn </span>new_internal(filter: Filter&lt;FilterValid&gt;) -&gt; <span class="self">Self </span>{
+        SearchEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone(),
+            filter_orig: filter,
+            attrs: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_limits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Limits</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ident</span>.<span class="ident">limits</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_limits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Limits {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ident.limits
     }
 }
 
-<span class="comment">// Represents the decoded entries from the protocol -&gt; internal entry representation</span>
-<span class="comment">// including information about the identity performing the request, and if the</span>
-<span class="comment">// request is internal or not.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CreateEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// This may still actually change to handle the *raw* nature of the</span>
-    <span class="comment">// input that we plan to parse.</span>
-    <span class="kw">pub</span> <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// Is the CreateEvent from an internal or external source?</span>
-    <span class="comment">// This may affect which plugins are run ...</span>
-}
+<span class="comment">// Represents the decoded entries from the protocol -&gt; internal entry representation
+// including information about the identity performing the request, and if the
+// request is internal or not.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>CreateEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="comment">// This may still actually change to handle the *raw* nature of the
+    // input that we plan to parse.
+    </span><span class="kw">pub </span>entries: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt;,
+    <span class="comment">// Is the CreateEvent from an internal or external source?
+    // This may affect which plugins are run ...
+</span>}
 
-<span class="kw">impl</span> <span class="ident">CreateEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">CreateRequest</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">rentries</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">req</span>
-            .<span class="ident">entries</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Entry::from_proto_entry</span>(<span class="ident">e</span>, <span class="ident">qs</span>))
-            .<span class="ident">collect</span>();
-        <span class="comment">// From ProtoEntry -&gt; Entry</span>
-        <span class="comment">// What is the correct consuming iterator here? Can we</span>
-        <span class="comment">// even do that?</span>
-        <span class="kw">match</span> <span class="ident">rentries</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">entries</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CreateEvent</span> { <span class="ident">ident</span>, <span class="ident">entries</span> }),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+<span class="kw">impl </span>CreateEvent {
+    <span class="kw">pub fn </span>from_message(
+        ident: Identity,
+        req: <span class="kw-2">&amp;</span>CreateRequest,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>rentries: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = req
+            .entries
+            .iter()
+            .map(|e| Entry::from_proto_entry(e, qs))
+            .collect();
+        <span class="comment">// From ProtoEntry -&gt; Entry
+        // What is the correct consuming iterator here? Can we
+        // even do that?
+        </span><span class="kw">match </span>rentries {
+            <span class="prelude-val">Ok</span>(entries) =&gt; <span class="prelude-val">Ok</span>(CreateEvent { ident, entries }),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry_ser</span>(
-        <span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ei</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">e</span>);
-        <span class="ident">CreateEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">Arc::new</span>(<span class="ident">ei</span>.<span class="ident">into_sealed_committed</span>())),
-            <span class="ident">entries</span>,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry_ser(
+        e: <span class="kw-2">&amp;</span>str,
+        entries: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ei: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(e);
+        CreateEvent {
+            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
+            entries,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_impersonate_identity</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">CreateEvent</span> { <span class="ident">ident</span>, <span class="ident">entries</span> }
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_impersonate_identity(
+        ident: Identity,
+        entries: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        CreateEvent { ident, entries }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CreateEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">entries</span>,
+    <span class="kw">pub fn </span>new_internal(entries: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt;) -&gt; <span class="self">Self </span>{
+        CreateEvent {
+            ident: Identity::from_internal(),
+            entries,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExistsEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// This is the filter, as it will be processed.</span>
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    <span class="comment">// This is the original filter, for the purpose of ACI checking.</span>
-    <span class="kw">pub</span> <span class="ident">filter_orig</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ExistsEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="comment">// This is the filter, as it will be processed.
+    </span><span class="kw">pub </span>filter: Filter&lt;FilterValid&gt;,
+    <span class="comment">// This is the original filter, for the purpose of ACI checking.
+    </span><span class="kw">pub </span>filter_orig: Filter&lt;FilterValid&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ExistsEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ExistsEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>,
+<span class="kw">impl </span>ExistsEvent {
+    <span class="kw">pub fn </span>new_internal(filter: Filter&lt;FilterValid&gt;) -&gt; <span class="self">Self </span>{
+        ExistsEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone(),
+            filter_orig: filter,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_internal_invalid</span>(<span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ExistsEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    #[allow(dead_code)]
+    </span><span class="kw">pub unsafe fn </span>new_internal_invalid(filter: Filter&lt;FilterInvalid&gt;) -&gt; <span class="self">Self </span>{
+        ExistsEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_limits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Limits</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ident</span>.<span class="ident">limits</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_limits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Limits {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ident.limits
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DeleteEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// This is the filter, as it will be processed.</span>
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    <span class="comment">// This is the original filter, for the purpose of ACI checking.</span>
-    <span class="kw">pub</span> <span class="ident">filter_orig</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>DeleteEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="comment">// This is the filter, as it will be processed.
+    </span><span class="kw">pub </span>filter: Filter&lt;FilterValid&gt;,
+    <span class="comment">// This is the original filter, for the purpose of ACI checking.
+    </span><span class="kw">pub </span>filter_orig: Filter&lt;FilterValid&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">DeleteEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteRequest</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_rw</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">DeleteEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
+<span class="kw">impl </span>DeleteEvent {
+    <span class="kw">pub fn </span>from_message(
+        ident: Identity,
+        req: <span class="kw-2">&amp;</span>DeleteRequest,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>f = Filter::from_rw(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>req.filter, qs)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter_orig = f
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="prelude-val">Ok</span>(DeleteEvent {
+            ident,
+            filter,
+            filter_orig,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">DeleteEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
+    <span class="kw">pub fn </span>from_parts(
+        ident: Identity,
+        f: <span class="kw-2">&amp;</span>Filter&lt;FilterInvalid&gt;,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>filter_orig = f
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="prelude-val">Ok</span>(DeleteEvent {
+            ident,
+            filter,
+            filter_orig,
         })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry</span>(
-        <span class="ident">e</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">DeleteEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">e</span>),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry(
+        e: Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
+        filter: Filter&lt;FilterInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        DeleteEvent {
+            ident: Identity::from_impersonate_entry_readwrite(e),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_impersonate_identity</span>(<span class="ident">ident</span>: <span class="ident">Identity</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">unsafe</span> {
-            <span class="ident">DeleteEvent</span> {
-                <span class="ident">ident</span>,
-                <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-                <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_impersonate_identity(ident: Identity, filter: Filter&lt;FilterInvalid&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">unsafe </span>{
+            DeleteEvent {
+                ident,
+                filter: filter.clone().into_valid(),
+                filter_orig: filter.into_valid(),
             }
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry_ser</span>(<span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ei</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">e</span>);
-        <span class="ident">DeleteEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">Arc::new</span>(<span class="ident">ei</span>.<span class="ident">into_sealed_committed</span>())),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry_ser(e: <span class="kw-2">&amp;</span>str, filter: Filter&lt;FilterInvalid&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ei: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(e);
+        DeleteEvent {
+            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_internal_invalid</span>(<span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">DeleteEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_internal_invalid(filter: Filter&lt;FilterInvalid&gt;) -&gt; <span class="self">Self </span>{
+        DeleteEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">DeleteEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>,
+    <span class="kw">pub fn </span>new_internal(filter: Filter&lt;FilterValid&gt;) -&gt; <span class="self">Self </span>{
+        DeleteEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone(),
+            filter_orig: filter,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// This is the filter, as it will be processed.</span>
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    <span class="comment">// This is the original filter, for the purpose of ACI checking.</span>
-    <span class="kw">pub</span> <span class="ident">filter_orig</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">modlist</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ModifyEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="comment">// This is the filter, as it will be processed.
+    </span><span class="kw">pub </span>filter: Filter&lt;FilterValid&gt;,
+    <span class="comment">// This is the original filter, for the purpose of ACI checking.
+    </span><span class="kw">pub </span>filter_orig: Filter&lt;FilterValid&gt;,
+    <span class="kw">pub </span>modlist: ModifyList&lt;ModifyValid&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ModifyEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyRequest</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_rw</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">modlist</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">m</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">modlist</span>,
+<span class="kw">impl </span>ModifyEvent {
+    <span class="kw">pub fn </span>from_message(
+        ident: Identity,
+        req: <span class="kw-2">&amp;</span>ModifyRequest,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>f = Filter::from_rw(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>req.filter, qs)<span class="question-mark">?</span>;
+        <span class="kw">let </span>m = ModifyList::from(<span class="kw-2">&amp;</span>req.modlist, qs)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter_orig = f
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="kw">let </span>modlist = m
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(ModifyEvent {
+            ident,
+            filter,
+            filter_orig,
+            modlist,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-        <span class="ident">proto_ml</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoModifyList</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f_uuid</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">target_uuid</span>)));
-        <span class="comment">// Add any supplemental conditions we have.</span>
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::join_parts_and</span>(<span class="ident">f_uuid</span>, <span class="ident">filter</span>);
+    <span class="kw">pub fn </span>from_parts(
+        ident: Identity,
+        target_uuid: Uuid,
+        proto_ml: <span class="kw-2">&amp;</span>ProtoModifyList,
+        filter: Filter&lt;FilterInvalid&gt;,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="comment">// Add any supplemental conditions we have.
+        </span><span class="kw">let </span>f = Filter::join_parts_and(f_uuid, filter);
 
-        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="ident">proto_ml</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">m</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>m = ModifyList::from(proto_ml, qs)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter_orig = f
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="kw">let </span>modlist = m
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">modlist</span>,
+        <span class="prelude-val">Ok</span>(ModifyEvent {
+            ident,
+            filter,
+            filter_orig,
+            modlist,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_internal_parts</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">ml</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">filter</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ml</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>from_internal_parts(
+        ident: Identity,
+        ml: <span class="kw-2">&amp;</span>ModifyList&lt;ModifyInvalid&gt;,
+        filter: <span class="kw-2">&amp;</span>Filter&lt;FilterInvalid&gt;,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>filter_orig = filter
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="kw">let </span>modlist = ml
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">modlist</span>,
+        <span class="prelude-val">Ok</span>(ModifyEvent {
+            ident,
+            filter,
+            filter_orig,
+            modlist,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_target_uuid_attr_purge</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-        <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ml</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge</span>(<span class="ident">attr</span>);
-        <span class="kw">let</span> <span class="ident">f_uuid</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">target_uuid</span>)));
-        <span class="comment">// Add any supplemental conditions we have.</span>
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::join_parts_and</span>(<span class="ident">f_uuid</span>, <span class="ident">filter</span>);
+    <span class="kw">pub fn </span>from_target_uuid_attr_purge(
+        ident: Identity,
+        target_uuid: Uuid,
+        attr: <span class="kw-2">&amp;</span>str,
+        filter: Filter&lt;FilterInvalid&gt;,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>ml = ModifyList::new_purge(attr);
+        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="comment">// Add any supplemental conditions we have.
+        </span><span class="kw">let </span>f = Filter::join_parts_and(f_uuid, filter);
 
-        <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
-        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ml</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">modlist</span>,
+        <span class="kw">let </span>filter_orig = f
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
+        <span class="kw">let </span>modlist = ml
+            .validate(qs.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(ModifyEvent {
+            ident,
+            filter,
+            filter_orig,
+            modlist,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>, <span class="ident">modlist</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>,
-            <span class="ident">modlist</span>,
+    <span class="kw">pub fn </span>new_internal(filter: Filter&lt;FilterValid&gt;, modlist: ModifyList&lt;ModifyValid&gt;) -&gt; <span class="self">Self </span>{
+        ModifyEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone(),
+            filter_orig: filter,
+            modlist,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_internal_invalid</span>(
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">modlist</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">modlist</span>: <span class="ident">modlist</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_internal_invalid(
+        filter: Filter&lt;FilterInvalid&gt;,
+        modlist: ModifyList&lt;ModifyInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        ModifyEvent {
+            ident: Identity::from_internal(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry_ser</span>(
-        <span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">modlist</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">ei</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">e</span>);
-        <span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">Arc::new</span>(<span class="ident">ei</span>.<span class="ident">into_sealed_committed</span>())),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">modlist</span>: <span class="ident">modlist</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry_ser(
+        e: <span class="kw-2">&amp;</span>str,
+        filter: Filter&lt;FilterInvalid&gt;,
+        modlist: ModifyList&lt;ModifyInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>ei: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(e);
+        ModifyEvent {
+            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_identity</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">modlist</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>,
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">modlist</span>: <span class="ident">modlist</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_identity(
+        ident: Identity,
+        filter: Filter&lt;FilterInvalid&gt;,
+        modlist: ModifyList&lt;ModifyInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        ModifyEvent {
+            ident,
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry</span>(
-        <span class="ident">e</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">modlist</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">e</span>),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">clone</span>().<span class="ident">into_valid</span>(),
-            <span class="ident">filter_orig</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
-            <span class="ident">modlist</span>: <span class="ident">modlist</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry(
+        e: Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
+        filter: Filter&lt;FilterInvalid&gt;,
+        modlist: ModifyList&lt;ModifyInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        ModifyEvent {
+            ident: Identity::from_impersonate_entry_readwrite(e),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_impersonate</span>(
-        <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-        <span class="ident">filter_orig</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-        <span class="ident">modlist</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">ModifyEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate</span>(<span class="ident">ident</span>),
-            <span class="ident">filter</span>,
-            <span class="ident">filter_orig</span>,
-            <span class="ident">modlist</span>,
+    <span class="kw">pub fn </span>new_impersonate(
+        ident: <span class="kw-2">&amp;</span>Identity,
+        filter: Filter&lt;FilterValid&gt;,
+        filter_orig: Filter&lt;FilterValid&gt;,
+        modlist: ModifyList&lt;ModifyValid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        ModifyEvent {
+            ident: Identity::from_impersonate(ident),
+            filter,
+            filter_orig,
+            modlist,
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WhoamiResult</span> {
-    <span class="ident">youare</span>: <span class="ident">ProtoEntry</span>,
+<span class="kw">pub struct </span>WhoamiResult {
+    youare: ProtoEntry,
 }
 
-<span class="kw">impl</span> <span class="ident">WhoamiResult</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-        <span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">WhoamiResult</span> {
-            <span class="ident">youare</span>: <span class="ident">e</span>.<span class="ident">to_pe</span>(<span class="ident">qs</span>)<span class="question-mark">?</span>,
+<span class="kw">impl </span>WhoamiResult {
+    <span class="kw">pub fn </span>new(
+        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        e: <span class="kw-2">&amp;</span>Entry&lt;EntryReduced, EntryCommitted&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(WhoamiResult {
+            youare: e.to_pe(qs)<span class="question-mark">?</span>,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">response</span>(<span class="self">self</span>) -&gt; <span class="ident">WhoamiResponse</span> {
-        <span class="ident">WhoamiResponse</span> {
-            <span class="ident">youare</span>: <span class="self">self</span>.<span class="ident">youare</span>,
+    <span class="kw">pub fn </span>response(<span class="self">self</span>) -&gt; WhoamiResponse {
+        WhoamiResponse {
+            youare: <span class="self">self</span>.youare,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PurgeTombstoneEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>PurgeTombstoneEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>eventid: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">PurgeTombstoneEvent</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>PurgeTombstoneEvent {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PurgeTombstoneEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">PurgeTombstoneEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">eventid</span>: <span class="ident">Uuid::new_v4</span>(),
+<span class="kw">impl </span>PurgeTombstoneEvent {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        PurgeTombstoneEvent {
+            ident: Identity::from_internal(),
+            eventid: Uuid::new_v4(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PurgeRecycledEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>PurgeRecycledEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>eventid: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">PurgeRecycledEvent</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>PurgeRecycledEvent {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PurgeRecycledEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">PurgeRecycledEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">eventid</span>: <span class="ident">Uuid::new_v4</span>(),
+<span class="kw">impl </span>PurgeRecycledEvent {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        PurgeRecycledEvent {
+            ident: Identity::from_internal(),
+            eventid: Uuid::new_v4(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OnlineBackupEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="kw">pub</span> <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>OnlineBackupEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="kw">pub </span>eventid: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">OnlineBackupEvent</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>OnlineBackupEvent {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">OnlineBackupEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">OnlineBackupEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">eventid</span>: <span class="ident">Uuid::new_v4</span>(),
+<span class="kw">impl </span>OnlineBackupEvent {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        OnlineBackupEvent {
+            ident: Identity::from_internal(),
+            eventid: Uuid::new_v4(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReviveRecycledEvent</span> {
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// This is the filter, as it will be processed.</span>
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
-    <span class="comment">// Unlike the others, because of how this works, we don&#39;t need the orig filter</span>
-    <span class="comment">// to be retained, because the filter is the orig filter for this check.</span>
-    <span class="comment">//</span>
-    <span class="comment">// It will be duplicated into the modify ident as it exists.</span>
-}
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ReviveRecycledEvent {
+    <span class="kw">pub </span>ident: Identity,
+    <span class="comment">// This is the filter, as it will be processed.
+    </span><span class="kw">pub </span>filter: Filter&lt;FilterValid&gt;,
+    <span class="comment">// Unlike the others, because of how this works, we don&#39;t need the orig filter
+    // to be retained, because the filter is the orig filter for this check.
+    //
+    // It will be duplicated into the modify ident as it exists.
+</span>}
 
-<span class="kw">impl</span> <span class="ident">ReviveRecycledEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">ident</span>: <span class="ident">Identity</span>,
-        <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter</span>
-            .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">into_recycled</span>())
-            .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">ReviveRecycledEvent</span> { <span class="ident">ident</span>, <span class="ident">filter</span> })
+<span class="kw">impl </span>ReviveRecycledEvent {
+    <span class="kw">pub fn </span>from_parts(
+        ident: Identity,
+        filter: <span class="kw-2">&amp;</span>Filter&lt;FilterInvalid&gt;,
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>filter = filter
+            .validate(qs.get_schema())
+            .map(|f| f.into_recycled())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(ReviveRecycledEvent { ident, filter })
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new_impersonate_entry</span>(
-        <span class="ident">e</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">ReviveRecycledEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_impersonate_entry_readwrite</span>(<span class="ident">e</span>),
-            <span class="ident">filter</span>: <span class="ident">filter</span>.<span class="ident">into_valid</span>(),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub unsafe fn </span>new_impersonate_entry(
+        e: Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
+        filter: Filter&lt;FilterInvalid&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        ReviveRecycledEvent {
+            ident: Identity::from_impersonate_entry_readwrite(e),
+            filter: filter.into_valid(),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

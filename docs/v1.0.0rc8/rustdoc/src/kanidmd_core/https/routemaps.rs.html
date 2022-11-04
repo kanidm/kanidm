@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/https/routemaps.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>routemaps.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_core/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/https/routemaps.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>routemaps.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_core/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -100,107 +100,107 @@
 <span id="100">100</span>
 <span id="101">101</span>
 <span id="102">102</span>
-</pre><pre class="rust"><code><span class="doccomment">///! Route-mapping magic for tide</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Instead of adding routes with (for example) the .post method you add them with .mapped_post, pasing an instance of [RouteMap] and it&#39;ll do the rest...</span>
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">tide</span>::{<span class="ident">Endpoint</span>, <span class="ident">Route</span>};
+</pre><pre class="rust"><code><span class="doccomment">///! Route-mapping magic for tide
+///
+/// Instead of adding routes with (for example) the .post method you add them with .mapped_post, pasing an instance of [RouteMap] and it&#39;ll do the rest...
+</span><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>tide::{Endpoint, Route};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::https::AppState</span>;
+<span class="kw">use </span><span class="kw">crate</span>::https::AppState;
 
-<span class="comment">// Extends the tide::Route for RouteMaps, this would really be nice if it was generic :(</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RouteMaps</span> {
-    <span class="kw">fn</span> <span class="ident">mapped_method</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>,
-        <span class="ident">method</span>: <span class="ident">http_types::Method</span>,
-        <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">mapped_update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span>;
+<span class="comment">// Extends the tide::Route for RouteMaps, this would really be nice if it was generic :(
+</span><span class="kw">pub trait </span>RouteMaps {
+    <span class="kw">fn </span>mapped_method(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        routemap: <span class="kw-2">&amp;mut </span>RouteMap,
+        method: http_types::Method,
+        ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;,
+    ) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>;
+    <span class="kw">fn </span>mapped_delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>;
+    <span class="kw">fn </span>mapped_get(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>;
+    <span class="kw">fn </span>mapped_patch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>;
+    <span class="kw">fn </span>mapped_post(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>;
+    <span class="kw">fn </span>mapped_put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>;
+    <span class="kw">fn </span>mapped_update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>;
 }
 
-<span class="kw">impl</span> <span class="ident">RouteMaps</span> <span class="kw">for</span> <span class="ident">Route</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">AppState</span><span class="op">&gt;</span> {
-    <span class="comment">// add a mapped method to the list</span>
-    <span class="kw">fn</span> <span class="ident">mapped_method</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>,
-        <span class="ident">method</span>: <span class="ident">http_types::Method</span>,
-        <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span> {
-        <span class="comment">// TODO: truly weird things involving ASTs and sacrifices to eldritch gods to figure out how to represent the Endpoint</span>
+<span class="kw">impl </span>RouteMaps <span class="kw">for </span>Route&lt;<span class="lifetime">&#39;_</span>, AppState&gt; {
+    <span class="comment">// add a mapped method to the list
+    </span><span class="kw">fn </span>mapped_method(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        routemap: <span class="kw-2">&amp;mut </span>RouteMap,
+        method: http_types::Method,
+        ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;,
+    ) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+        <span class="comment">// TODO: truly weird things involving ASTs and sacrifices to eldritch gods to figure out how to represent the Endpoint
 
-        <span class="comment">// if the path is empty then it&#39;s the root path...</span>
-        <span class="kw">let</span> <span class="ident">path_str</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">path</span>().<span class="ident">to_string</span>();
-        <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">path_str</span>.<span class="ident">is_empty</span>() {
-            <span class="bool-val">true</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;/&quot;</span>),
-            <span class="bool-val">false</span> =&gt; <span class="ident">path_str</span>,
+        // if the path is empty then it&#39;s the root path...
+        </span><span class="kw">let </span>path_str = <span class="self">self</span>.path().to_string();
+        <span class="kw">let </span>path = <span class="kw">match </span>path_str.is_empty() {
+            <span class="bool-val">true </span>=&gt; String::from(<span class="string">&quot;/&quot;</span>),
+            <span class="bool-val">false </span>=&gt; path_str,
         };
 
-        <span class="comment">// debug!(&quot;Mapping route: {:?}&quot;, path);</span>
-        <span class="ident">routemap</span>.<span class="ident">routelist</span>.<span class="ident">push</span>(<span class="ident">RouteInfo</span> { <span class="ident">path</span>, <span class="ident">method</span> });
-        <span class="self">self</span>.<span class="ident">method</span>(<span class="ident">method</span>, <span class="ident">ep</span>)
+        <span class="comment">// debug!(&quot;Mapping route: {:?}&quot;, path);
+        </span>routemap.routelist.push(RouteInfo { path, method });
+        <span class="self">self</span>.method(method, ep)
     }
 
-    <span class="kw">fn</span> <span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">mapped_method</span>(<span class="ident">routemap</span>, <span class="ident">http_types::Method::Delete</span>, <span class="ident">ep</span>)
+    <span class="kw">fn </span>mapped_delete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+        <span class="self">self</span>.mapped_method(routemap, http_types::Method::Delete, ep)
     }
 
-    <span class="kw">fn</span> <span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">mapped_method</span>(<span class="ident">routemap</span>, <span class="ident">http_types::Method::Get</span>, <span class="ident">ep</span>)
+    <span class="kw">fn </span>mapped_get(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+        <span class="self">self</span>.mapped_method(routemap, http_types::Method::Get, ep)
     }
 
-    <span class="kw">fn</span> <span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">mapped_method</span>(<span class="ident">routemap</span>, <span class="ident">http_types::Method::Patch</span>, <span class="ident">ep</span>)
+    <span class="kw">fn </span>mapped_patch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+        <span class="self">self</span>.mapped_method(routemap, http_types::Method::Patch, ep)
     }
 
-    <span class="kw">fn</span> <span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">mapped_method</span>(<span class="ident">routemap</span>, <span class="ident">http_types::Method::Post</span>, <span class="ident">ep</span>)
+    <span class="kw">fn </span>mapped_post(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+        <span class="self">self</span>.mapped_method(routemap, http_types::Method::Post, ep)
     }
 
-    <span class="kw">fn</span> <span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">mapped_method</span>(<span class="ident">routemap</span>, <span class="ident">http_types::Method::Put</span>, <span class="ident">ep</span>)
+    <span class="kw">fn </span>mapped_put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+        <span class="self">self</span>.mapped_method(routemap, http_types::Method::Put, ep)
     }
 
-    <span class="kw">fn</span> <span class="ident">mapped_update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">routemap</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RouteMap</span>, <span class="ident">ep</span>: <span class="kw">impl</span> <span class="ident">Endpoint</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">mapped_method</span>(<span class="ident">routemap</span>, <span class="ident">http_types::Method::Update</span>, <span class="ident">ep</span>)
+    <span class="kw">fn </span>mapped_update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, routemap: <span class="kw-2">&amp;mut </span>RouteMap, ep: <span class="kw">impl </span>Endpoint&lt;AppState&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self </span>{
+        <span class="self">self</span>.mapped_method(routemap, http_types::Method::Update, ep)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
-<span class="doccomment">/// Information about a given route</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RouteInfo</span> {
-    <span class="kw">pub</span> <span class="ident">path</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">method</span>: <span class="ident">http_types::Method</span>,
+<span class="attribute">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="doccomment">/// Information about a given route
+</span><span class="kw">pub struct </span>RouteInfo {
+    <span class="kw">pub </span>path: String,
+    <span class="kw">pub </span>method: http_types::Method,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RouteMap</span> {
-    <span class="kw">pub</span> <span class="ident">routelist</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RouteInfo</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>RouteMap {
+    <span class="kw">pub </span>routelist: Vec&lt;RouteInfo&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">RouteMap</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">RouteMap</span> {
-            <span class="ident">routelist</span>: <span class="ident">Vec::new</span>(),
+<span class="kw">impl </span>Default <span class="kw">for </span>RouteMap {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        RouteMap {
+            routelist: Vec::new(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">RouteMap</span> {
-    <span class="comment">// Serializes the object out to a pretty JSON blob</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">do_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="ident">serde_json::to_string_pretty</span>(<span class="self">self</span>).<span class="ident">unwrap</span>()
+<span class="kw">impl </span>RouteMap {
+    <span class="comment">// Serializes the object out to a pretty JSON blob
+    </span><span class="kw">pub fn </span>do_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        serde_json::to_string_pretty(<span class="self">self</span>).unwrap()
     }
 
-    <span class="comment">// Inject the route for the routemap endpoint</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_self</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">path</span>: <span class="ident">String</span>, <span class="ident">method</span>: <span class="ident">http_types::Method</span>) {
-        <span class="self">self</span>.<span class="ident">routelist</span>.<span class="ident">push</span>(<span class="ident">RouteInfo</span> { <span class="ident">path</span>, <span class="ident">method</span> });
+    <span class="comment">// Inject the route for the routemap endpoint
+    </span><span class="kw">pub fn </span>push_self(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: String, method: http_types::Method) {
+        <span class="self">self</span>.routelist.push(RouteInfo { path, method });
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

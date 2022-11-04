@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/views/profile.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>profile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/views/profile.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>profile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -318,325 +318,325 @@
 <span id="318">318</span>
 <span id="319">319</span>
 <span id="320">320</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">gloo::console</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">Entry</span>, <span class="ident">WhoamiResponse</span>};
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">wasm_bindgen</span>::{<span class="ident">JsCast</span>, <span class="ident">UnwrapThrowExt</span>};
-<span class="kw">use</span> <span class="ident">wasm_bindgen_futures::JsFuture</span>;
-<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestCredentials</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
-<span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">yew::virtual_dom::VNode</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>gloo::console;
+<span class="kw">use </span>kanidm_proto::v1::{Entry, WhoamiResponse};
+<span class="kw">use </span>uuid::Uuid;
+<span class="kw">use </span>wasm_bindgen::{JsCast, UnwrapThrowExt};
+<span class="kw">use </span>wasm_bindgen_futures::JsFuture;
+<span class="kw">use </span>web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+<span class="kw">use </span>yew::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>yew::virtual_dom::VNode;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::CSS_PAGE_HEADER</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::FetchError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::views::ViewProps</span>;
+<span class="kw">use </span><span class="kw">crate</span>::constants::CSS_PAGE_HEADER;
+<span class="kw">use </span><span class="kw">crate</span>::error::FetchError;
+<span class="kw">use </span><span class="kw">crate</span>::utils;
+<span class="kw">use </span><span class="kw">crate</span>::views::ViewProps;
 
-<span class="kw">struct</span> <span class="ident">Profile</span> {
-    <span class="ident">mail_primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+<span class="kw">struct </span>Profile {
+    mail_primary: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    spn: String,
+    displayname: String,
+    groups: Vec&lt;String&gt;,
+    uuid: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Profile</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">String</span>;
+<span class="kw">impl </span>TryFrom&lt;Entry&gt; <span class="kw">for </span>Profile {
+    <span class="kw">type </span>Error = String;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">entry</span>: <span class="ident">Entry</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="macro">console::error!</span>(<span class="string">&quot;Entry Dump&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">entry</span>).<span class="ident">to_string</span>());
+    <span class="kw">fn </span>try_from(entry: Entry) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="macro">console::error!</span>(<span class="string">&quot;Entry Dump&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, entry).to_string());
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">entry</span>
-            .<span class="ident">attrs</span>
-            .<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">list</span><span class="op">|</span> <span class="ident">list</span>.<span class="ident">get</span>(<span class="number">0</span>))
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;Missing UUID&quot;</span>.<span class="ident">to_string</span>())
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uuid_str</span><span class="op">|</span> {
-                <span class="ident">Uuid::parse_str</span>(<span class="ident">uuid_str</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;Invalid UUID&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>uuid = entry
+            .attrs
+            .get(<span class="string">&quot;uuid&quot;</span>)
+            .and_then(|list| list.get(<span class="number">0</span>))
+            .ok_or_else(|| <span class="string">&quot;Missing UUID&quot;</span>.to_string())
+            .and_then(|uuid_str| {
+                Uuid::parse_str(uuid_str).map_err(|<span class="kw">_</span>| <span class="string">&quot;Invalid UUID&quot;</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">entry</span>
-            .<span class="ident">attrs</span>
-            .<span class="ident">get</span>(<span class="string">&quot;spn&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">list</span><span class="op">|</span> <span class="ident">list</span>.<span class="ident">get</span>(<span class="number">0</span>))
-            .<span class="ident">cloned</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;Missing SPN&quot;</span>.<span class="ident">to_string</span>())<span class="question-mark">?</span>;
+        <span class="kw">let </span>spn = entry
+            .attrs
+            .get(<span class="string">&quot;spn&quot;</span>)
+            .and_then(|list| list.get(<span class="number">0</span>))
+            .cloned()
+            .ok_or_else(|| <span class="string">&quot;Missing SPN&quot;</span>.to_string())<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">displayname</span> <span class="op">=</span> <span class="ident">entry</span>
-            .<span class="ident">attrs</span>
-            .<span class="ident">get</span>(<span class="string">&quot;displayname&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">list</span><span class="op">|</span> <span class="ident">list</span>.<span class="ident">get</span>(<span class="number">0</span>))
-            .<span class="ident">cloned</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;Missing displayname&quot;</span>.<span class="ident">to_string</span>())<span class="question-mark">?</span>;
+        <span class="kw">let </span>displayname = entry
+            .attrs
+            .get(<span class="string">&quot;displayname&quot;</span>)
+            .and_then(|list| list.get(<span class="number">0</span>))
+            .cloned()
+            .ok_or_else(|| <span class="string">&quot;Missing displayname&quot;</span>.to_string())<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;memberof&quot;</span>).<span class="ident">cloned</span>().<span class="ident">unwrap_or_default</span>();
+        <span class="kw">let </span>groups = entry.attrs.get(<span class="string">&quot;memberof&quot;</span>).cloned().unwrap_or_default();
 
-        <span class="kw">let</span> <span class="ident">mail_primary</span> <span class="op">=</span> <span class="ident">entry</span>
-            .<span class="ident">attrs</span>
-            .<span class="ident">get</span>(<span class="string">&quot;mail_primary&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">list</span><span class="op">|</span> <span class="ident">list</span>.<span class="ident">get</span>(<span class="number">0</span>))
-            .<span class="ident">cloned</span>();
+        <span class="kw">let </span>mail_primary = entry
+            .attrs
+            .get(<span class="string">&quot;mail_primary&quot;</span>)
+            .and_then(|list| list.get(<span class="number">0</span>))
+            .cloned();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Profile</span> {
-            <span class="ident">mail_primary</span>,
-            <span class="ident">spn</span>,
-            <span class="ident">displayname</span>,
-            <span class="ident">groups</span>,
-            <span class="ident">uuid</span>,
+        <span class="prelude-val">Ok</span>(Profile {
+            mail_primary,
+            spn,
+            displayname,
+            groups,
+            uuid,
         })
     }
 }
 
-<span class="kw">enum</span> <span class="ident">State</span> {
-    <span class="ident">Loading</span>,
-    <span class="ident">Ready</span>(<span class="ident">Profile</span>),
-    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+<span class="kw">enum </span>State {
+    Loading,
+    Ready(Profile),
+    Error { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
 }
 
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Msg</span> {
-    <span class="ident">Profile</span> { <span class="ident">entry</span>: <span class="ident">Entry</span> },
-    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+<span class="kw">pub enum </span>Msg {
+    Profile { entry: Entry },
+    Error { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">FetchError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Msg</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">fe</span>: <span class="ident">FetchError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Msg::Error</span> {
-            <span class="ident">emsg</span>: <span class="ident">fe</span>.<span class="ident">as_string</span>(),
-            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>From&lt;FetchError&gt; <span class="kw">for </span>Msg {
+    <span class="kw">fn </span>from(fe: FetchError) -&gt; <span class="self">Self </span>{
+        Msg::Error {
+            emsg: fe.as_string(),
+            kopid: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="comment">// User Profile UI</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProfileApp</span> {
-    <span class="ident">state</span>: <span class="ident">State</span>,
+<span class="comment">// User Profile UI
+</span><span class="kw">pub struct </span>ProfileApp {
+    state: State,
 }
 
-<span class="kw">impl</span> <span class="ident">Component</span> <span class="kw">for</span> <span class="ident">ProfileApp</span> {
-    <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">Msg</span>;
-    <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> <span class="ident">ViewProps</span>;
+<span class="kw">impl </span>Component <span class="kw">for </span>ProfileApp {
+    <span class="kw">type </span>Message = Msg;
+    <span class="kw">type </span>Properties = ViewProps;
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::create&quot;</span>);
+    <span class="kw">fn </span>create(ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::create&quot;</span>);
 
-        <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-            <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_profile_data</span>().<span class="kw">await</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+        ctx.link().send_future(<span class="kw">async </span>{
+            <span class="kw">match </span><span class="self">Self</span>::fetch_profile_data().<span class="kw">await </span>{
+                <span class="prelude-val">Ok</span>(v) =&gt; v,
+                <span class="prelude-val">Err</span>(v) =&gt; v.into(),
             }
         });
 
-        <span class="ident">ProfileApp</span> {
-            <span class="ident">state</span>: <span class="ident">State::Loading</span>,
+        ProfileApp {
+            state: State::Loading,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">changed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">true</span>
-    }
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;profile::update&quot;</span>);
-        <span class="kw">match</span> <span class="ident">msg</span> {
-            <span class="ident">Msg::Profile</span> { <span class="ident">entry</span> } =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Profile::try_from</span>(<span class="ident">entry</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">profile</span>) =&gt; <span class="ident">State::Ready</span>(<span class="ident">profile</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">emsg</span>) =&gt; <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span>: <span class="prelude-val">None</span> },
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, msg: <span class="self">Self</span>::Message) -&gt; bool {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;profile::update&quot;</span>);
+        <span class="kw">match </span>msg {
+            Msg::Profile { entry } =&gt; {
+                <span class="self">self</span>.state = <span class="kw">match </span>Profile::try_from(entry) {
+                    <span class="prelude-val">Ok</span>(profile) =&gt; State::Ready(profile),
+                    <span class="prelude-val">Err</span>(emsg) =&gt; State::Error { emsg, kopid: <span class="prelude-val">None </span>},
                 };
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">Msg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> };
-                <span class="bool-val">true</span>
-            }
+                <span class="bool-val">true
+            </span>}
+            Msg::Error { emsg, kopid } =&gt; {
+                <span class="self">self</span>.state = State::Error { emsg, kopid };
+                <span class="bool-val">true
+            </span>}
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::rendered&quot;</span>);
+    <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::profile::rendered&quot;</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">State::Loading</span> =&gt; {
-                <span class="macro">html!</span> {
-                  <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center form-signin h-100&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;vert-center&quot;</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;spinner-border text-dark&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;status&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;visually-hidden&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Loading...&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
+    <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+            State::Loading =&gt; {
+                <span class="macro">html! </span>{
+                  &lt;main class=<span class="string">&quot;text-center form-signin h-100&quot;</span>&gt;
+                    &lt;div class=<span class="string">&quot;vert-center&quot;</span>&gt;
+                      &lt;div class=<span class="string">&quot;spinner-border text-dark&quot; </span>role=<span class="string">&quot;status&quot;</span>&gt;
+                        &lt;span class=<span class="string">&quot;visually-hidden&quot;</span>&gt;{ <span class="string">&quot;Loading...&quot; </span>}&lt;/span&gt;
+                      &lt;/div&gt;
+                    &lt;/div&gt;
+                  &lt;/main&gt;
                 }
             }
-            <span class="ident">State::Ready</span>(<span class="ident">profile</span>) =&gt; <span class="self">self</span>.<span class="ident">view_profile</span>(<span class="ident">ctx</span>, <span class="kw-2">&amp;</span><span class="ident">profile</span>),
-            <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; <span class="self">self</span>.<span class="ident">do_alert_error</span>(
+            State::Ready(profile) =&gt; <span class="self">self</span>.view_profile(ctx, <span class="kw-2">&amp;</span>profile),
+            State::Error { emsg, kopid } =&gt; <span class="self">self</span>.do_alert_error(
                 <span class="string">&quot;An error has occured 😔 &quot;</span>,
                 <span class="prelude-val">Some</span>(
                     <span class="macro">format!</span>(
                         <span class="string">&quot;{}\n\n{}&quot;</span>,
-                        <span class="ident">emsg</span>.<span class="ident">as_str</span>(),
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opid</span>) <span class="op">=</span> <span class="ident">kopid</span>.<span class="ident">as_ref</span>() {
-                            <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, <span class="ident">opid</span>.<span class="ident">clone</span>())
-                        } <span class="kw">else</span> {
-                            <span class="string">&quot;Error occurred client-side.&quot;</span>.<span class="ident">to_string</span>()
+                        emsg.as_str(),
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(opid) = kopid.as_ref() {
+                            <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, opid.clone())
+                        } <span class="kw">else </span>{
+                            <span class="string">&quot;Error occurred client-side.&quot;</span>.to_string()
                         }
                     )
-                    .<span class="ident">as_str</span>(),
+                    .as_str(),
                 ),
-                <span class="ident">ctx</span>,
+                ctx,
             ),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ProfileApp</span> {
-    <span class="kw">fn</span> <span class="ident">do_alert_error</span>(
+<span class="kw">impl </span>ProfileApp {
+    <span class="kw">fn </span>do_alert_error(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">alert_title</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">alert_message</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
-        <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">VNode</span> {
-        <span class="macro">html!</span> {
-        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;row justify-content-md-center&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="ident">strong</span><span class="op">&gt;</span>{ <span class="ident">alert_title</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">strong</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">alert_message</span> {
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="ident">value</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+        alert_title: <span class="kw-2">&amp;</span>str,
+        alert_message: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+        _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;,
+    ) -&gt; VNode {
+        <span class="macro">html! </span>{
+        &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+            &lt;div class=<span class="string">&quot;row justify-content-md-center&quot;</span>&gt;
+                &lt;div class=<span class="string">&quot;alert alert-danger&quot; </span>role=<span class="string">&quot;alert&quot;</span>&gt;
+                    &lt;p&gt;&lt;strong&gt;{ alert_title }&lt;/strong&gt;&lt;/p&gt;
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = alert_message {
+                        &lt;p&gt;{ value }&lt;/p&gt;
                     }
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
         }
     }
 
-    <span class="doccomment">/// UI view for the user profile</span>
-    <span class="kw">fn</span> <span class="ident">view_profile</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">profile</span>: <span class="kw-2">&amp;</span><span class="ident">Profile</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">let</span> <span class="ident">mail_primary</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">profile</span>.<span class="ident">mail_primary</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">email_address</span>) =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="ident">a</span> <span class="ident">href</span><span class="op">=</span>{ <span class="macro">format!</span>(<span class="string">&quot;mailto:{}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">email_address</span>)}<span class="op">&gt;</span>
-                    {<span class="ident">email_address</span>}
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">a</span><span class="op">&gt;</span>
+    <span class="doccomment">/// UI view for the user profile
+    </span><span class="kw">fn </span>view_profile(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, profile: <span class="kw-2">&amp;</span>Profile) -&gt; Html {
+        <span class="kw">let </span>mail_primary = <span class="kw">match </span>profile.mail_primary.as_ref() {
+            <span class="prelude-val">Some</span>(email_address) =&gt; {
+                <span class="macro">html! </span>{
+                    &lt;a href={ <span class="macro">format!</span>(<span class="string">&quot;mailto:{}&quot;</span>, <span class="kw-2">&amp;</span>email_address)}&gt;
+                    {email_address}
+                    &lt;/a&gt;
                 }
             }
-            <span class="prelude-val">None</span> =&gt; <span class="macro">html!</span> { {<span class="string">&quot;&lt;primary email is unset&gt;&quot;</span>}},
+            <span class="prelude-val">None </span>=&gt; <span class="macro">html! </span>{ {<span class="string">&quot;&lt;primary email is unset&gt;&quot;</span>}},
         };
 
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">profile</span>.<span class="ident">spn</span>.<span class="ident">to_owned</span>();
-        <span class="kw">let</span> <span class="ident">spn_split</span> <span class="op">=</span> <span class="ident">spn</span>.<span class="ident">split</span>(<span class="string">&#39;@&#39;</span>);
-        <span class="kw">let</span> <span class="ident">username</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">spn_split</span>.<span class="ident">clone</span>().<span class="ident">next</span>().<span class="ident">unwrap_throw</span>();
-        <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">spn_split</span>.<span class="ident">clone</span>().<span class="ident">last</span>().<span class="ident">unwrap_throw</span>();
-        <span class="kw">let</span> <span class="ident">display_name</span> <span class="op">=</span> <span class="ident">profile</span>.<span class="ident">displayname</span>.<span class="ident">to_owned</span>();
-        <span class="kw">let</span> <span class="ident">user_groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">profile</span>
-            .<span class="ident">groups</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">group_spn</span><span class="op">|</span> {
-                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
-                <span class="ident">group_spn</span>.<span class="ident">split</span>(<span class="string">&#39;@&#39;</span>).<span class="ident">next</span>().<span class="ident">unwrap</span>().<span class="ident">to_string</span>()
+        <span class="kw">let </span>spn = <span class="kw-2">&amp;</span>profile.spn.to_owned();
+        <span class="kw">let </span>spn_split = spn.split(<span class="string">&#39;@&#39;</span>);
+        <span class="kw">let </span>username = <span class="kw-2">&amp;</span>spn_split.clone().next().unwrap_throw();
+        <span class="kw">let </span>domain = <span class="kw-2">&amp;</span>spn_split.clone().last().unwrap_throw();
+        <span class="kw">let </span>display_name = profile.displayname.to_owned();
+        <span class="kw">let </span>user_groups: Vec&lt;String&gt; = profile
+            .groups
+            .iter()
+            .map(|group_spn| {
+                <span class="attribute">#[allow(clippy::unwrap_used)]
+                </span>group_spn.split(<span class="string">&#39;@&#39;</span>).next().unwrap().to_string()
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">let</span> <span class="ident">pagecontent</span> <span class="op">=</span> <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="ident">dl</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;row&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">dt</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-6&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Display Name&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">dt</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">dd</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="ident">display_name</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">dd</span><span class="op">&gt;</span>
+        <span class="kw">let </span>pagecontent = <span class="macro">html! </span>{
+            &lt;dl class=<span class="string">&quot;row&quot;</span>&gt;
+                &lt;dt class=<span class="string">&quot;col-6&quot;</span>&gt;{ <span class="string">&quot;Display Name&quot; </span>}&lt;/dt&gt;
+                &lt;dd class=<span class="string">&quot;col&quot;</span>&gt;{ display_name }&lt;/dd&gt;
 
-                <span class="op">&lt;</span><span class="ident">dt</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-6&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Primary Email&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">dt</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">dd</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{<span class="ident">mail_primary</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">dd</span><span class="op">&gt;</span>
+                &lt;dt class=<span class="string">&quot;col-6&quot;</span>&gt;{ <span class="string">&quot;Primary Email&quot; </span>}&lt;/dt&gt;
+                &lt;dd class=<span class="string">&quot;col&quot;</span>&gt;{mail_primary}&lt;/dd&gt;
 
-                <span class="op">&lt;</span><span class="ident">dt</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-6&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Group Memberships&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">dt</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">dd</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">ul</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;list-group&quot;</span><span class="op">&gt;</span>
+                &lt;dt class=<span class="string">&quot;col-6&quot;</span>&gt;{ <span class="string">&quot;Group Memberships&quot; </span>}&lt;/dt&gt;
+                &lt;dd class=<span class="string">&quot;col&quot;</span>&gt;
+                    &lt;ul class=<span class="string">&quot;list-group&quot;</span>&gt;
                     {
-                        <span class="kw">if</span> <span class="ident">user_groups</span>.<span class="ident">is_empty</span>() {
+                        <span class="kw">if </span>user_groups.is_empty() {
                             <span class="macro">html!</span>{
-                                <span class="op">&lt;</span><span class="ident">li</span><span class="op">&gt;</span>{<span class="string">&quot;Not a member of any groups&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+                                &lt;li&gt;{<span class="string">&quot;Not a member of any groups&quot;</span>}&lt;/li&gt;
                             }
-                        } <span class="kw">else</span> {
+                        } <span class="kw">else </span>{
                             <span class="macro">html!</span>{
                                 {
-                                    <span class="kw">for</span> <span class="ident">user_groups</span>.<span class="ident">iter</span>()
-                                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">group</span><span class="op">|</span>
-                                            <span class="macro">html!</span>{ <span class="op">&lt;</span><span class="ident">li</span><span class="op">&gt;</span>{ <span class="ident">group</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span> }
+                                    <span class="kw">for </span>user_groups.iter()
+                                        .map(|group|
+                                            <span class="macro">html!</span>{ &lt;li&gt;{ group }&lt;/li&gt; }
                                         )
                                 }
                             }
                         }
                     }
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">ul</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">dd</span><span class="op">&gt;</span>
+                    &lt;/ul&gt;
+                &lt;/dd&gt;
 
 
-            <span class="op">&lt;</span><span class="ident">dt</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-6&quot;</span><span class="op">&gt;</span>
-            { <span class="string">&quot;User&#39;s SPN&quot;</span> }
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">dt</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">dd</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>
-              { <span class="ident">username</span>.<span class="ident">to_string</span>() }{<span class="string">&quot;@&quot;</span>}{ <span class="ident">domain</span> }
-              <span class="op">&lt;</span><span class="op">/</span><span class="ident">dd</span><span class="op">&gt;</span>
+            &lt;dt class=<span class="string">&quot;col-6&quot;</span>&gt;
+            { <span class="string">&quot;User&#39;s SPN&quot; </span>}
+            &lt;/dt&gt;
+              &lt;dd class=<span class="string">&quot;col&quot;</span>&gt;
+              { username.to_string() }{<span class="string">&quot;@&quot;</span>}{ domain }
+              &lt;/dd&gt;
 
-            <span class="op">&lt;</span><span class="ident">dt</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-6&quot;</span><span class="op">&gt;</span>
-            { <span class="string">&quot;User&#39;s UUID&quot;</span> }
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">dt</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">dd</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>
-              { <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">profile</span>.<span class="ident">uuid</span> ) }
-              <span class="op">&lt;</span><span class="op">/</span><span class="ident">dd</span><span class="op">&gt;</span>
+            &lt;dt class=<span class="string">&quot;col-6&quot;</span>&gt;
+            { <span class="string">&quot;User&#39;s UUID&quot; </span>}
+            &lt;/dt&gt;
+              &lt;dd class=<span class="string">&quot;col&quot;</span>&gt;
+              { <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="kw-2">&amp;</span>profile.uuid ) }
+              &lt;/dd&gt;
 
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">dl</span><span class="op">&gt;</span>
+        &lt;/dl&gt;
         };
-        <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CSS_PAGE_HEADER</span>}<span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;Profile&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+        <span class="macro">html! </span>{
+            &lt;&gt;
+            &lt;div class={CSS_PAGE_HEADER}&gt;
+                &lt;h2&gt;{ <span class="string">&quot;Profile&quot; </span>}&lt;/h2&gt;
+            &lt;/div&gt;
 
-            { <span class="ident">pagecontent</span> }
-            <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+            { pagecontent }
+            &lt;/&gt;
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_profile_data</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Msg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
-        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;GET&quot;</span>);
-        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
-        <span class="ident">opts</span>.<span class="ident">credentials</span>(<span class="ident">RequestCredentials::SameOrigin</span>);
+    <span class="kw">async fn </span>fetch_profile_data() -&gt; <span class="prelude-ty">Result</span>&lt;Msg, FetchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>opts = RequestInit::new();
+        opts.method(<span class="string">&quot;GET&quot;</span>);
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/self&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>request = Request::new_with_str_and_init(<span class="string">&quot;/v1/self&quot;</span>, <span class="kw-2">&amp;</span>opts)<span class="question-mark">?</span>;
 
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        request
+            .headers()
+            .set(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .expect_throw(<span class="string">&quot;failed to set header&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
-        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
-        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+        <span class="kw">let </span>window = utils::window();
+        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>resp: Response = resp_value.dyn_into().expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
+        <span class="kw">let </span>status = resp.status();
 
-        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
-            <span class="kw">let</span> <span class="ident">jsval</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">json</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">WhoamiResponse</span> <span class="op">=</span> <span class="ident">serde_wasm_bindgen::from_value</span>(<span class="ident">jsval</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">e_msg</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;serde error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="macro">console::error!</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
+        <span class="kw">if </span>status == <span class="number">200 </span>{
+            <span class="kw">let </span>jsval = JsFuture::from(resp.json()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>state: WhoamiResponse = serde_wasm_bindgen::from_value(jsval)
+                .map_err(|e| {
+                    <span class="kw">let </span>e_msg = <span class="macro">format!</span>(<span class="string">&quot;serde error -&gt; {:?}&quot;</span>, e);
+                    <span class="macro">console::error!</span>(e_msg.as_str());
                 })
-                .<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
+                .expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
 
-            <span class="prelude-val">Ok</span>(<span class="ident">Msg::Profile</span> {
-                <span class="ident">entry</span>: <span class="ident">state</span>.<span class="ident">youare</span>,
+            <span class="prelude-val">Ok</span>(Msg::Profile {
+                entry: state.youare,
             })
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
-            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
-            <span class="prelude-val">Ok</span>(<span class="ident">Msg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>headers = resp.headers();
+            <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
+            <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="prelude-val">Ok</span>(Msg::Error { emsg, kopid })
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

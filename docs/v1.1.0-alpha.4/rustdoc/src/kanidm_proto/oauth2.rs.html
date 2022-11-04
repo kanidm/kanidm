@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_proto/src/oauth2.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>oauth2.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_proto/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_proto/src/oauth2.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>oauth2.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_proto/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -355,362 +355,362 @@
 <span id="355">355</span>
 <span id="356">356</span>
 <span id="357">357</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
-<span class="kw">use</span> <span class="ident">base64urlsafedata::Base64UrlSafeData</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">url::Url</span>;
+<span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>url::Url;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CodeChallengeMethod</span> {
-    <span class="comment">// default to plain if not requested as S256. Reject the auth?</span>
-    <span class="comment">// plain</span>
-    <span class="comment">// BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))</span>
-    <span class="ident">S256</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+</span><span class="kw">pub enum </span>CodeChallengeMethod {
+    <span class="comment">// default to plain if not requested as S256. Reject the auth?
+    // plain
+    // BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))
+    </span>S256,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PkceRequest</span> {
-    <span class="kw">pub</span> <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>,
-    <span class="kw">pub</span> <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, Clone)]
+</span><span class="kw">pub struct </span>PkceRequest {
+    <span class="kw">pub </span>code_challenge: Base64UrlSafeData,
+    <span class="kw">pub </span>code_challenge_method: CodeChallengeMethod,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthorisationRequest</span> {
-    <span class="comment">// Must be &quot;code&quot;. (or token, see 4.2.1)</span>
-    <span class="kw">pub</span> <span class="ident">response_type</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">client_id</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">flatten</span>, <span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">pkce_request</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PkceRequest</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">redirect_uri</span>: <span class="ident">Url</span>,
-    <span class="kw">pub</span> <span class="ident">scope</span>: <span class="ident">String</span>,
-    <span class="comment">// OIDC adds a nonce parameter that is optional.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">nonce</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="comment">// OIDC also allows other optional params</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">flatten</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">oidc_ext</span>: <span class="ident">AuthorisationRequestOidc</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">flatten</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">unknown_keys</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">serde_json::value::Value</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, Clone)]
+</span><span class="kw">pub struct </span>AuthorisationRequest {
+    <span class="comment">// Must be &quot;code&quot;. (or token, see 4.2.1)
+    </span><span class="kw">pub </span>response_type: String,
+    <span class="kw">pub </span>client_id: String,
+    <span class="kw">pub </span>state: String,
+    <span class="attribute">#[serde(flatten, skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>pkce_request: <span class="prelude-ty">Option</span>&lt;PkceRequest&gt;,
+    <span class="kw">pub </span>redirect_uri: Url,
+    <span class="kw">pub </span>scope: String,
+    <span class="comment">// OIDC adds a nonce parameter that is optional.
+    </span><span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>nonce: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="comment">// OIDC also allows other optional params
+    </span><span class="attribute">#[serde(flatten)]
+    </span><span class="kw">pub </span>oidc_ext: AuthorisationRequestOidc,
+    <span class="attribute">#[serde(flatten)]
+    </span><span class="kw">pub </span>unknown_keys: BTreeMap&lt;String, serde_json::value::Value&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthorisationRequestOidc</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">display</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">prompt</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">max_age</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">ui_locales</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">claims_locales</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">id_token_hint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">login_hint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">acr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+</span><span class="kw">pub struct </span>AuthorisationRequestOidc {
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>display: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>prompt: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>max_age: <span class="prelude-ty">Option</span>&lt;i64&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>ui_locales: <span class="prelude-ty">Option</span>&lt;()&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>claims_locales: <span class="prelude-ty">Option</span>&lt;()&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>id_token_hint: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>login_hint: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>acr: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="doccomment">/// When we request to authorise, it can either prompt us for consent,</span>
-<span class="doccomment">/// or it can immediately be granted due the past grant.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthorisationResponse</span> {
-    <span class="ident">ConsentRequested</span> {
-        <span class="comment">// A pretty-name of the client</span>
-        <span class="ident">client_name</span>: <span class="ident">String</span>,
-        <span class="comment">// A list of scopes requested / to be issued.</span>
-        <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="comment">// Extra PII that may be requested</span>
-        <span class="ident">pii_scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="comment">// The users displayname (?)</span>
-        <span class="comment">// pub display_name: String,</span>
-        <span class="comment">// The token we need to be given back to allow this to proceed</span>
-        <span class="ident">consent_token</span>: <span class="ident">String</span>,
+<span class="doccomment">/// When we request to authorise, it can either prompt us for consent,
+/// or it can immediately be granted due the past grant.
+</span><span class="attribute">#[derive(Serialize, Deserialize, Debug, Clone)]
+</span><span class="kw">pub enum </span>AuthorisationResponse {
+    ConsentRequested {
+        <span class="comment">// A pretty-name of the client
+        </span>client_name: String,
+        <span class="comment">// A list of scopes requested / to be issued.
+        </span>scopes: Vec&lt;String&gt;,
+        <span class="comment">// Extra PII that may be requested
+        </span>pii_scopes: Vec&lt;String&gt;,
+        <span class="comment">// The users displayname (?)
+        // pub display_name: String,
+        // The token we need to be given back to allow this to proceed
+        </span>consent_token: String,
     },
-    <span class="ident">Permitted</span>,
+    Permitted,
 }
 
-<span class="comment">// The resource server then contacts the token endpoint with</span>
-<span class="comment">//</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccessTokenRequest</span> {
-    <span class="comment">// must be authorization_code</span>
-    <span class="kw">pub</span> <span class="ident">grant_type</span>: <span class="ident">String</span>,
-    <span class="comment">// As sent by the authorisationCode</span>
-    <span class="kw">pub</span> <span class="ident">code</span>: <span class="ident">String</span>,
-    <span class="comment">// Must be the same as the original redirect uri.</span>
-    <span class="kw">pub</span> <span class="ident">redirect_uri</span>: <span class="ident">Url</span>,
-    <span class="comment">// REQUIRED, if the client is not authenticating with the</span>
-    <span class="comment">//  authorization server as described in Section 3.2.1.</span>
-    <span class="kw">pub</span> <span class="ident">client_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">client_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">code_verifier</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="comment">// The resource server then contacts the token endpoint with
+//
+</span><span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>AccessTokenRequest {
+    <span class="comment">// must be authorization_code
+    </span><span class="kw">pub </span>grant_type: String,
+    <span class="comment">// As sent by the authorisationCode
+    </span><span class="kw">pub </span>code: String,
+    <span class="comment">// Must be the same as the original redirect uri.
+    </span><span class="kw">pub </span>redirect_uri: Url,
+    <span class="comment">// REQUIRED, if the client is not authenticating with the
+    //  authorization server as described in Section 3.2.1.
+    </span><span class="kw">pub </span>client_id: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>client_secret: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>code_verifier: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="comment">// We now check code_verifier is the same via the formula.</span>
+<span class="comment">// We now check code_verifier is the same via the formula.
 
-<span class="comment">// If and only if it checks out, we proceed.</span>
+// If and only if it checks out, we proceed.
 
-<span class="comment">// Returned as a json body</span>
+// Returned as a json body
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccessTokenResponse</span> {
-    <span class="comment">// Could be  Base64UrlSafeData</span>
-    <span class="kw">pub</span> <span class="ident">access_token</span>: <span class="ident">String</span>,
-    <span class="comment">// Enum?</span>
-    <span class="kw">pub</span> <span class="ident">token_type</span>: <span class="ident">String</span>,
-    <span class="comment">// seconds.</span>
-    <span class="kw">pub</span> <span class="ident">expires_in</span>: <span class="ident">u32</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">refresh_token</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="doccomment">/// Space seperated list of scopes that were approved, if this differs from the</span>
-    <span class="doccomment">/// original request.</span>
-    <span class="kw">pub</span> <span class="ident">scope</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="doccomment">/// Oidc puts the token here.</span>
-    <span class="kw">pub</span> <span class="ident">id_token</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+</span><span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>AccessTokenResponse {
+    <span class="comment">// Could be  Base64UrlSafeData
+    </span><span class="kw">pub </span>access_token: String,
+    <span class="comment">// Enum?
+    </span><span class="kw">pub </span>token_type: String,
+    <span class="comment">// seconds.
+    </span><span class="kw">pub </span>expires_in: u32,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>refresh_token: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="doccomment">/// Space seperated list of scopes that were approved, if this differs from the
+    /// original request.
+    </span><span class="kw">pub </span>scope: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="doccomment">/// Oidc puts the token here.
+    </span><span class="kw">pub </span>id_token: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccessTokenIntrospectRequest</span> {
-    <span class="kw">pub</span> <span class="ident">token</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// Generally not needed. See:</span>
-    <span class="doccomment">/// &lt;https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2&gt;</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">token_type_hint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>AccessTokenIntrospectRequest {
+    <span class="kw">pub </span>token: String,
+    <span class="doccomment">/// Generally not needed. See:
+    /// &lt;https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2&gt;
+    </span><span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>token_type_hint: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccessTokenIntrospectResponse</span> {
-    <span class="kw">pub</span> <span class="ident">active</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">scope</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">client_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">username</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">token_type</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">exp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">iat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">nbf</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">sub</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">aud</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">iss</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">jti</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>AccessTokenIntrospectResponse {
+    <span class="kw">pub </span>active: bool,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>scope: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>client_id: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>username: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>token_type: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>exp: <span class="prelude-ty">Option</span>&lt;i64&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>iat: <span class="prelude-ty">Option</span>&lt;i64&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>nbf: <span class="prelude-ty">Option</span>&lt;i64&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>sub: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>aud: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>iss: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>jti: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">AccessTokenIntrospectResponse</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inactive</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">AccessTokenIntrospectResponse</span> {
-            <span class="ident">active</span>: <span class="bool-val">false</span>,
-            <span class="ident">scope</span>: <span class="prelude-val">None</span>,
-            <span class="ident">client_id</span>: <span class="prelude-val">None</span>,
-            <span class="ident">username</span>: <span class="prelude-val">None</span>,
-            <span class="ident">token_type</span>: <span class="prelude-val">None</span>,
-            <span class="ident">exp</span>: <span class="prelude-val">None</span>,
-            <span class="ident">iat</span>: <span class="prelude-val">None</span>,
-            <span class="ident">nbf</span>: <span class="prelude-val">None</span>,
-            <span class="ident">sub</span>: <span class="prelude-val">None</span>,
-            <span class="ident">aud</span>: <span class="prelude-val">None</span>,
-            <span class="ident">iss</span>: <span class="prelude-val">None</span>,
-            <span class="ident">jti</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>AccessTokenIntrospectResponse {
+    <span class="kw">pub fn </span>inactive() -&gt; <span class="self">Self </span>{
+        AccessTokenIntrospectResponse {
+            active: <span class="bool-val">false</span>,
+            scope: <span class="prelude-val">None</span>,
+            client_id: <span class="prelude-val">None</span>,
+            username: <span class="prelude-val">None</span>,
+            token_type: <span class="prelude-val">None</span>,
+            exp: <span class="prelude-val">None</span>,
+            iat: <span class="prelude-val">None</span>,
+            nbf: <span class="prelude-val">None</span>,
+            sub: <span class="prelude-val">None</span>,
+            aud: <span class="prelude-val">None</span>,
+            iss: <span class="prelude-val">None</span>,
+            jti: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ResponseType</span> {
-    <span class="ident">Code</span>,
-    <span class="ident">Token</span>,
-    <span class="ident">IdToken</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>ResponseType {
+    Code,
+    Token,
+    IdToken,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ResponseMode</span> {
-    <span class="ident">Query</span>,
-    <span class="ident">Fragment</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>ResponseMode {
+    Query,
+    Fragment,
 }
 
-<span class="kw">fn</span> <span class="ident">response_modes_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseMode</span><span class="op">&gt;</span> {
-    <span class="macro">vec!</span>[<span class="ident">ResponseMode::Query</span>, <span class="ident">ResponseMode::Fragment</span>]
+<span class="kw">fn </span>response_modes_supported_default() -&gt; Vec&lt;ResponseMode&gt; {
+    <span class="macro">vec!</span>[ResponseMode::Query, ResponseMode::Fragment]
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GrantType</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;authorization_code&quot;</span>)]</span>
-    <span class="ident">AuthorisationCode</span>,
-    <span class="ident">Implicit</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>GrantType {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;authorization_code&quot;</span>)]
+    </span>AuthorisationCode,
+    Implicit,
 }
 
-<span class="kw">fn</span> <span class="ident">grant_types_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GrantType</span><span class="op">&gt;</span> {
-    <span class="macro">vec!</span>[<span class="ident">GrantType::AuthorisationCode</span>, <span class="ident">GrantType::Implicit</span>]
+<span class="kw">fn </span>grant_types_supported_default() -&gt; Vec&lt;GrantType&gt; {
+    <span class="macro">vec!</span>[GrantType::AuthorisationCode, GrantType::Implicit]
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SubjectType</span> {
-    <span class="ident">Pairwise</span>,
-    <span class="ident">Public</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>SubjectType {
+    Pairwise,
+    Public,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;UPPERCASE&quot;</span>)]</span>
-<span class="comment">// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WONT HAPPEN.</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">IdTokenSignAlg</span> {
-    <span class="ident">ES256</span>,
-    <span class="ident">RS256</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;UPPERCASE&quot;</span>)]
+</span><span class="comment">// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WONT HAPPEN.
+</span><span class="kw">pub enum </span>IdTokenSignAlg {
+    ES256,
+    RS256,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TokenEndpointAuthMethod</span> {
-    <span class="ident">ClientSecretPost</span>,
-    <span class="ident">ClientSecretBasic</span>,
-    <span class="ident">ClientSecretJwt</span>,
-    <span class="ident">PrivateKeyJwt</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>TokenEndpointAuthMethod {
+    ClientSecretPost,
+    ClientSecretBasic,
+    ClientSecretJwt,
+    PrivateKeyJwt,
 }
 
-<span class="kw">fn</span> <span class="ident">token_endpoint_auth_methods_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TokenEndpointAuthMethod</span><span class="op">&gt;</span> {
-    <span class="macro">vec!</span>[<span class="ident">TokenEndpointAuthMethod::ClientSecretBasic</span>]
+<span class="kw">fn </span>token_endpoint_auth_methods_supported_default() -&gt; Vec&lt;TokenEndpointAuthMethod&gt; {
+    <span class="macro">vec!</span>[TokenEndpointAuthMethod::ClientSecretBasic]
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DisplayValue</span> {
-    <span class="ident">Page</span>,
-    <span class="ident">Popup</span>,
-    <span class="ident">Touch</span>,
-    <span class="ident">Wap</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="kw">pub enum </span>DisplayValue {
+    Page,
+    Popup,
+    Touch,
+    Wap,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#ClaimTypes</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ClaimType</span> {
-    <span class="ident">Normal</span>,
-    <span class="ident">Aggregated</span>,
-    <span class="ident">Distributed</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
+</span><span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#ClaimTypes
+</span><span class="kw">pub enum </span>ClaimType {
+    Normal,
+    Aggregated,
+    Distributed,
 }
 
-<span class="kw">fn</span> <span class="ident">claim_types_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ClaimType</span><span class="op">&gt;</span> {
-    <span class="macro">vec!</span>[<span class="ident">ClaimType::Normal</span>]
+<span class="kw">fn </span>claim_types_supported_default() -&gt; Vec&lt;ClaimType&gt; {
+    <span class="macro">vec!</span>[ClaimType::Normal]
 }
 
-<span class="kw">fn</span> <span class="ident">claims_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
-    <span class="bool-val">false</span>
+<span class="kw">fn </span>claims_parameter_supported_default() -&gt; bool {
+    <span class="bool-val">false
+</span>}
+
+<span class="kw">fn </span>request_parameter_supported_default() -&gt; bool {
+    <span class="bool-val">false
+</span>}
+
+<span class="kw">fn </span>request_uri_parameter_supported_default() -&gt; bool {
+    <span class="bool-val">true
+</span>}
+
+<span class="kw">fn </span>require_request_uri_parameter_supported_default() -&gt; bool {
+    <span class="bool-val">false
+</span>}
+
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="comment">// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+</span><span class="kw">pub struct </span>OidcDiscoveryResponse {
+    <span class="kw">pub </span>issuer: Url,
+    <span class="kw">pub </span>authorization_endpoint: Url,
+    <span class="kw">pub </span>token_endpoint: Url,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>userinfo_endpoint: <span class="prelude-ty">Option</span>&lt;Url&gt;,
+    <span class="kw">pub </span>jwks_uri: Url,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>registration_endpoint: <span class="prelude-ty">Option</span>&lt;Url&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>scopes_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="comment">// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
+    </span><span class="kw">pub </span>response_types_supported: Vec&lt;ResponseType&gt;,
+    <span class="comment">// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;response_modes_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>response_modes_supported: Vec&lt;ResponseMode&gt;,
+    <span class="comment">// Need to fill in as authorization_code only else a default is assumed.
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;grant_types_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>grant_types_supported: Vec&lt;GrantType&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>acr_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#PairwiseAlg
+    </span><span class="kw">pub </span>subject_types_supported: Vec&lt;SubjectType&gt;,
+    <span class="kw">pub </span>id_token_signing_alg_values_supported: Vec&lt;IdTokenSignAlg&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>id_token_encryption_alg_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>id_token_encryption_enc_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>userinfo_signing_alg_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>userinfo_encryption_alg_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>userinfo_encryption_enc_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>request_object_signing_alg_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>request_object_encryption_alg_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>request_object_encryption_enc_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="comment">// Defaults to client_secret_basic
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;token_endpoint_auth_methods_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>token_endpoint_auth_methods_supported: Vec&lt;TokenEndpointAuthMethod&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>token_endpoint_auth_signing_alg_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+    </span><span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>display_values_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;DisplayValue&gt;&gt;,
+    <span class="comment">// Default to normal.
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;claim_types_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>claim_types_supported: Vec&lt;ClaimType&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>claims_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>service_documentation: <span class="prelude-ty">Option</span>&lt;Url&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>claims_locales_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>ui_locales_supported: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="comment">// Default false.
+    </span><span class="attribute">#[serde(default = <span class="string">&quot;claims_parameter_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>claims_parameter_supported: bool,
+    <span class="attribute">#[serde(default = <span class="string">&quot;request_parameter_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>request_parameter_supported: bool,
+    <span class="attribute">#[serde(default = <span class="string">&quot;request_uri_parameter_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>request_uri_parameter_supported: bool,
+    <span class="attribute">#[serde(default = <span class="string">&quot;require_request_uri_parameter_supported_default&quot;</span>)]
+    </span><span class="kw">pub </span>require_request_uri_registration: bool,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>op_policy_uri: <span class="prelude-ty">Option</span>&lt;Url&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>op_tos_uri: <span class="prelude-ty">Option</span>&lt;Url&gt;,
 }
 
-<span class="kw">fn</span> <span class="ident">request_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
-    <span class="bool-val">false</span>
-}
-
-<span class="kw">fn</span> <span class="ident">request_uri_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
-    <span class="bool-val">true</span>
-}
-
-<span class="kw">fn</span> <span class="ident">require_request_uri_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
-    <span class="bool-val">false</span>
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="comment">// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OidcDiscoveryResponse</span> {
-    <span class="kw">pub</span> <span class="ident">issuer</span>: <span class="ident">Url</span>,
-    <span class="kw">pub</span> <span class="ident">authorization_endpoint</span>: <span class="ident">Url</span>,
-    <span class="kw">pub</span> <span class="ident">token_endpoint</span>: <span class="ident">Url</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">userinfo_endpoint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">jwks_uri</span>: <span class="ident">Url</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">registration_endpoint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">scopes_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1</span>
-    <span class="kw">pub</span> <span class="ident">response_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseType</span><span class="op">&gt;</span>,
-    <span class="comment">// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;response_modes_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">response_modes_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseMode</span><span class="op">&gt;</span>,
-    <span class="comment">// Need to fill in as authorization_code only else a default is assumed.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;grant_types_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">grant_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GrantType</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">acr_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#PairwiseAlg</span>
-    <span class="kw">pub</span> <span class="ident">subject_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SubjectType</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">id_token_signing_alg_values_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdTokenSignAlg</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">id_token_encryption_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">id_token_encryption_enc_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">userinfo_signing_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">userinfo_encryption_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">userinfo_encryption_enc_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">request_object_signing_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">request_object_encryption_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">request_object_encryption_enc_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// Defaults to client_secret_basic</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;token_endpoint_auth_methods_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">token_endpoint_auth_methods_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TokenEndpointAuthMethod</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">token_endpoint_auth_signing_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">display_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DisplayValue</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// Default to normal.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;claim_types_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">claim_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ClaimType</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">claims_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">service_documentation</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">claims_locales_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">ui_locales_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// Default false.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;claims_parameter_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">claims_parameter_supported</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;request_parameter_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">request_parameter_supported</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;request_uri_parameter_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">request_uri_parameter_supported</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;require_request_uri_parameter_supported_default&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">require_request_uri_registration</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">op_policy_uri</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">op_tos_uri</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ErrorResponse</span> {
-    <span class="kw">pub</span> <span class="ident">error</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">error_description</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">error_uri</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>ErrorResponse {
+    <span class="kw">pub </span>error: String,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>error_description: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>error_uri: <span class="prelude-ty">Option</span>&lt;Url&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_proto" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_proto" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

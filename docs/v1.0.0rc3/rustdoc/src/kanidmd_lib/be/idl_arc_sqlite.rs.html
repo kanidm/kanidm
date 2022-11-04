@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/be/idl_arc_sqlite.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>idl_arc_sqlite.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/be/idl_arc_sqlite.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>idl_arc_sqlite.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1193,716 +1193,716 @@
 <span id="1193">1193</span>
 <span id="1194">1194</span>
 <span id="1195">1195</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
-<span class="kw">use</span> <span class="ident">std::ops::DerefMut</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::convert::TryInto;
+<span class="kw">use </span>std::ops::DerefMut;
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">concread::arcache</span>::{<span class="ident">ARCache</span>, <span class="ident">ARCacheBuilder</span>, <span class="ident">ARCacheReadTxn</span>, <span class="ident">ARCacheWriteTxn</span>};
-<span class="kw">use</span> <span class="ident">concread::cowcell</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">hashbrown::HashMap</span>;
-<span class="kw">use</span> <span class="ident">idlset::v2::IDLBitRange</span>;
-<span class="kw">use</span> <span class="ident">idlset::AndNot</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ConsistencyError</span>, <span class="ident">OperationError</span>};
-<span class="kw">use</span> <span class="ident">tracing::trace</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
+<span class="kw">use </span>concread::cowcell::<span class="kw-2">*</span>;
+<span class="kw">use </span>hashbrown::HashMap;
+<span class="kw">use </span>idlset::v2::IDLBitRange;
+<span class="kw">use </span>idlset::AndNot;
+<span class="kw">use </span>kanidm_proto::v1::{ConsistencyError, OperationError};
+<span class="kw">use </span>tracing::trace;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::idl_sqlite</span>::{
-    <span class="ident">IdlSqlite</span>, <span class="ident">IdlSqliteReadTransaction</span>, <span class="ident">IdlSqliteTransaction</span>, <span class="ident">IdlSqliteWriteTransaction</span>,
+<span class="kw">use </span><span class="kw">crate</span>::be::idl_sqlite::{
+    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::idxkey</span>::{
-    <span class="ident">IdlCacheKey</span>, <span class="ident">IdlCacheKeyRef</span>, <span class="ident">IdlCacheKeyToRef</span>, <span class="ident">IdxKey</span>, <span class="ident">IdxKeyRef</span>, <span class="ident">IdxKeyToRef</span>, <span class="ident">IdxSlope</span>,
+<span class="kw">use </span><span class="kw">crate</span>::be::idxkey::{
+    IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef, IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">BackendConfig</span>, <span class="ident">IdList</span>, <span class="ident">IdRawEntry</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntrySealed</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value</span>::{<span class="ident">IndexType</span>, <span class="ident">Value</span>};
+<span class="kw">use </span><span class="kw">crate</span>::be::{BackendConfig, IdList, IdRawEntry};
+<span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryCommitted, EntrySealed};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::value::{IndexType, Value};
 
-<span class="comment">// use std::borrow::Borrow;</span>
+<span class="comment">// use std::borrow::Borrow;
 
-<span class="comment">// Appears to take about ~500MB on some stress tests</span>
-<span class="kw">const</span> <span class="ident">DEFAULT_CACHE_TARGET</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2048</span>;
-<span class="kw">const</span> <span class="ident">DEFAULT_IDL_CACHE_RATIO</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
-<span class="kw">const</span> <span class="ident">DEFAULT_NAME_CACHE_RATIO</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span>;
-<span class="kw">const</span> <span class="ident">DEFAULT_CACHE_RMISS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="kw">const</span> <span class="ident">DEFAULT_CACHE_WMISS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+// Appears to take about ~500MB on some stress tests
+</span><span class="kw">const </span>DEFAULT_CACHE_TARGET: usize = <span class="number">2048</span>;
+<span class="kw">const </span>DEFAULT_IDL_CACHE_RATIO: usize = <span class="number">32</span>;
+<span class="kw">const </span>DEFAULT_NAME_CACHE_RATIO: usize = <span class="number">8</span>;
+<span class="kw">const </span>DEFAULT_CACHE_RMISS: usize = <span class="number">0</span>;
+<span class="kw">const </span>DEFAULT_CACHE_WMISS: usize = <span class="number">4</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>)]</span>
-<span class="kw">enum</span> <span class="ident">NameCacheKey</span> {
-    <span class="ident">Name2Uuid</span>(<span class="ident">String</span>),
-    <span class="ident">Uuid2Rdn</span>(<span class="ident">Uuid</span>),
-    <span class="ident">Uuid2Spn</span>(<span class="ident">Uuid</span>),
+<span class="attribute">#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+</span><span class="kw">enum </span>NameCacheKey {
+    Name2Uuid(String),
+    Uuid2Rdn(Uuid),
+    Uuid2Spn(Uuid),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">NameCacheValue</span> {
-    <span class="ident">U</span>(<span class="ident">Uuid</span>),
-    <span class="ident">R</span>(<span class="ident">String</span>),
-    <span class="ident">S</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>),
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">enum </span>NameCacheValue {
+    U(Uuid),
+    R(String),
+    S(Box&lt;Value&gt;),
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdlArcSqlite</span> {
-    <span class="ident">db</span>: <span class="ident">IdlSqlite</span>,
-    <span class="ident">entry_cache</span>: <span class="ident">ARCache</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">idl_cache</span>: <span class="ident">ARCache</span><span class="op">&lt;</span><span class="ident">IdlCacheKey</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">name_cache</span>: <span class="ident">ARCache</span><span class="op">&lt;</span><span class="ident">NameCacheKey</span>, <span class="ident">NameCacheValue</span><span class="op">&gt;</span>,
-    <span class="ident">op_ts_max</span>: <span class="ident">CowCell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">allids</span>: <span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>,
-    <span class="ident">maxid</span>: <span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>IdlArcSqlite {
+    db: IdlSqlite,
+    entry_cache: ARCache&lt;u64, Arc&lt;EntrySealedCommitted&gt;&gt;,
+    idl_cache: ARCache&lt;IdlCacheKey, Box&lt;IDLBitRange&gt;&gt;,
+    name_cache: ARCache&lt;NameCacheKey, NameCacheValue&gt;,
+    op_ts_max: CowCell&lt;<span class="prelude-ty">Option</span>&lt;Duration&gt;&gt;,
+    allids: CowCell&lt;IDLBitRange&gt;,
+    maxid: CowCell&lt;u64&gt;,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdlArcSqliteReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">db</span>: <span class="ident">IdlSqliteReadTransaction</span>,
-    <span class="ident">entry_cache</span>: <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u64</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span>,
-    <span class="ident">idl_cache</span>: <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">IdlCacheKey</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span>,
-    <span class="ident">name_cache</span>: <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">NameCacheKey</span>, <span class="ident">NameCacheValue</span>, ()<span class="op">&gt;</span>,
-    <span class="ident">allids</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>IdlArcSqliteReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    db: IdlSqliteReadTransaction,
+    entry_cache: ARCacheReadTxn&lt;<span class="lifetime">&#39;a</span>, u64, Arc&lt;EntrySealedCommitted&gt;, ()&gt;,
+    idl_cache: ARCacheReadTxn&lt;<span class="lifetime">&#39;a</span>, IdlCacheKey, Box&lt;IDLBitRange&gt;, ()&gt;,
+    name_cache: ARCacheReadTxn&lt;<span class="lifetime">&#39;a</span>, NameCacheKey, NameCacheValue, ()&gt;,
+    allids: CowCellReadTxn&lt;IDLBitRange&gt;,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">db</span>: <span class="ident">IdlSqliteWriteTransaction</span>,
-    <span class="ident">entry_cache</span>: <span class="ident">ARCacheWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u64</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span>,
-    <span class="ident">idl_cache</span>: <span class="ident">ARCacheWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">IdlCacheKey</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span>,
-    <span class="ident">name_cache</span>: <span class="ident">ARCacheWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">NameCacheKey</span>, <span class="ident">NameCacheValue</span>, ()<span class="op">&gt;</span>,
-    <span class="ident">op_ts_max</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">allids</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span>,
-    <span class="ident">maxid</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u64</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    db: IdlSqliteWriteTransaction,
+    entry_cache: ARCacheWriteTxn&lt;<span class="lifetime">&#39;a</span>, u64, Arc&lt;EntrySealedCommitted&gt;, ()&gt;,
+    idl_cache: ARCacheWriteTxn&lt;<span class="lifetime">&#39;a</span>, IdlCacheKey, Box&lt;IDLBitRange&gt;, ()&gt;,
+    name_cache: ARCacheWriteTxn&lt;<span class="lifetime">&#39;a</span>, NameCacheKey, NameCacheValue, ()&gt;,
+    op_ts_max: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, <span class="prelude-ty">Option</span>&lt;Duration&gt;&gt;,
+    allids: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, IDLBitRange&gt;,
+    maxid: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, u64&gt;,
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">get_identry</span> {
+<span class="macro">macro_rules! </span>get_identry {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idl</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">is_read_op</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$idl</span>:expr,
+        <span class="macro-nonterminal">$is_read_op</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idl</span> {
-            <span class="ident">IdList::Partial</span>(<span class="ident">idli</span>) <span class="op">|</span> <span class="ident">IdList::PartialThreshold</span>(<span class="ident">idli</span>) <span class="op">|</span> <span class="ident">IdList::Indexed</span>(<span class="ident">idli</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nidl</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>result: Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt; = Vec::new();
+        <span class="kw">match </span><span class="macro-nonterminal">$idl </span>{
+            IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>nidl = IDLBitRange::new();
 
-                <span class="ident">idli</span>.<span class="ident">into_iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                    <span class="comment">// For all the id&#39;s in idl.</span>
-                    <span class="comment">// is it in the cache?</span>
-                    <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">entry_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">i</span>) {
-                        <span class="prelude-val">Some</span>(<span class="ident">eref</span>) =&gt; <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">eref</span>.<span class="ident">clone</span>()),
-                        <span class="prelude-val">None</span> =&gt; <span class="kw">unsafe</span> { <span class="ident">nidl</span>.<span class="ident">push_id</span>(<span class="ident">i</span>) },
+                idli.into_iter().for_each(|i| {
+                    <span class="comment">// For all the id&#39;s in idl.
+                    // is it in the cache?
+                    </span><span class="kw">match </span><span class="macro-nonterminal">$self</span>.entry_cache.get(<span class="kw-2">&amp;</span>i) {
+                        <span class="prelude-val">Some</span>(eref) =&gt; result.push(eref.clone()),
+                        <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{ nidl.push_id(i) },
                     }
                 });
 
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">nidl</span>.<span class="ident">is_empty</span>() {
-                    <span class="comment">// Now, get anything from nidl that is needed.</span>
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db_result</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">get_identry</span>(<span class="kw-2">&amp;</span><span class="ident">IdList::Partial</span>(<span class="ident">nidl</span>))<span class="question-mark">?</span>;
-                    <span class="comment">// Clone everything from db_result into the cache.</span>
-                    <span class="kw">if</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">is_read_op</span> {
-                        <span class="ident">db_result</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">entry_cache</span>.<span class="ident">insert</span>(<span class="ident">e</span>.<span class="ident">get_id</span>(), <span class="ident">e</span>.<span class="ident">clone</span>());
+                <span class="kw">if </span>!nidl.is_empty() {
+                    <span class="comment">// Now, get anything from nidl that is needed.
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>db_result = <span class="macro-nonterminal">$self</span>.db.get_identry(<span class="kw-2">&amp;</span>IdList::Partial(nidl))<span class="question-mark">?</span>;
+                    <span class="comment">// Clone everything from db_result into the cache.
+                    </span><span class="kw">if </span><span class="macro-nonterminal">$is_read_op </span>{
+                        db_result.iter().for_each(|e| {
+                            <span class="macro-nonterminal">$self</span>.entry_cache.insert(e.get_id(), e.clone());
                         });
                     }
-                    <span class="comment">// Merge the two vecs</span>
-                    <span class="ident">result</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">db_result</span>);
+                    <span class="comment">// Merge the two vecs
+                    </span>result.append(<span class="kw-2">&amp;mut </span>db_result);
                 }
             }
-            <span class="ident">IdList::AllIds</span> =&gt; {
-                <span class="comment">// VERY similar to above, but we skip adding the entries to the cache</span>
-                <span class="comment">// on miss to prevent scan/invalidation attacks.</span>
-                <span class="kw">let</span> <span class="ident">idli</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">allids</span>).<span class="ident">clone</span>();
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nidl</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
+            IdList::AllIds =&gt; {
+                <span class="comment">// VERY similar to above, but we skip adding the entries to the cache
+                // on miss to prevent scan/invalidation attacks.
+                </span><span class="kw">let </span>idli = (<span class="kw-2">*</span><span class="macro-nonterminal">$self</span>.allids).clone();
+                <span class="kw">let </span><span class="kw-2">mut </span>nidl = IDLBitRange::new();
 
-                (<span class="kw-2">&amp;</span><span class="ident">idli</span>)
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">entry_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">i</span>) {
-                        <span class="prelude-val">Some</span>(<span class="ident">eref</span>) =&gt; <span class="ident">result</span>.<span class="ident">push</span>(<span class="ident">eref</span>.<span class="ident">clone</span>()),
-                        <span class="prelude-val">None</span> =&gt; <span class="kw">unsafe</span> { <span class="ident">nidl</span>.<span class="ident">push_id</span>(<span class="ident">i</span>) },
+                (<span class="kw-2">&amp;</span>idli)
+                    .into_iter()
+                    .for_each(|i| <span class="kw">match </span><span class="macro-nonterminal">$self</span>.entry_cache.get(<span class="kw-2">&amp;</span>i) {
+                        <span class="prelude-val">Some</span>(eref) =&gt; result.push(eref.clone()),
+                        <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{ nidl.push_id(i) },
                     });
 
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">nidl</span>.<span class="ident">is_empty</span>() {
-                    <span class="comment">// Now, get anything from nidl that is needed.</span>
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db_result</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">get_identry</span>(<span class="kw-2">&amp;</span><span class="ident">IdList::Partial</span>(<span class="ident">nidl</span>))<span class="question-mark">?</span>;
-                    <span class="comment">// Merge the two vecs</span>
-                    <span class="ident">result</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">db_result</span>);
+                <span class="kw">if </span>!nidl.is_empty() {
+                    <span class="comment">// Now, get anything from nidl that is needed.
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>db_result = <span class="macro-nonterminal">$self</span>.db.get_identry(<span class="kw-2">&amp;</span>IdList::Partial(nidl))<span class="question-mark">?</span>;
+                    <span class="comment">// Merge the two vecs
+                    </span>result.append(<span class="kw-2">&amp;mut </span>db_result);
                 }
             }
         };
-        <span class="comment">// Return</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">result</span>)
+        <span class="comment">// Return
+        </span><span class="prelude-val">Ok</span>(result)
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">get_identry_raw</span> {
+<span class="macro">macro_rules! </span>get_identry_raw {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idl</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$idl</span>:expr
     ) =&gt; {{
-        <span class="comment">// As a cache we have no concept of this, so we just bypass to the db.</span>
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">get_identry_raw</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">idl</span>)
+        <span class="comment">// As a cache we have no concept of this, so we just bypass to the db.
+        </span><span class="macro-nonterminal">$self</span>.db.get_identry_raw(<span class="macro-nonterminal">$idl</span>)
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">exists_idx</span> {
+<span class="macro">macro_rules! </span>exists_idx {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$attr</span>:expr,
+        <span class="macro-nonterminal">$itype</span>:expr
     ) =&gt; {{
-        <span class="comment">// As a cache we have no concept of this, so we just bypass to the db.</span>
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">exists_idx</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>)
+        <span class="comment">// As a cache we have no concept of this, so we just bypass to the db.
+        </span><span class="macro-nonterminal">$self</span>.db.exists_idx(<span class="macro-nonterminal">$attr</span>, <span class="macro-nonterminal">$itype</span>)
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">get_idl</span> {
+<span class="macro">macro_rules! </span>get_idl {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$attr</span>:expr,
+        <span class="macro-nonterminal">$itype</span>:expr,
+        <span class="macro-nonterminal">$idx_key</span>:expr
     ) =&gt; {{
-        <span class="comment">// SEE ALSO #259: Find a way to implement borrow for this properly.</span>
-        <span class="comment">// I don&#39;t think this is possible. When we make this dyn, the arc</span>
-        <span class="comment">// needs the dyn trait to be sized so that it *could* claim a clone</span>
-        <span class="comment">// for hit tracking reasons. That also means that we need From and</span>
-        <span class="comment">// some other traits that just seem incompatible. And in the end,</span>
-        <span class="comment">// we clone a few times in arc, and if we miss we need to insert anyway</span>
-        <span class="comment">//</span>
-        <span class="comment">// So the best path could be to replace IdlCacheKey with a compressed</span>
-        <span class="comment">// or smaller type. Perhaps even a small cache of the IdlCacheKeys that</span>
-        <span class="comment">// are allocated to reduce some allocs? Probably over thinking it at</span>
-        <span class="comment">// this point.</span>
-        <span class="comment">//</span>
-        <span class="comment">// First attempt to get from this cache.</span>
-        <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKeyRef</span> {
-            <span class="ident">a</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>,
-            <span class="ident">i</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>,
-            <span class="ident">k</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>,
+        <span class="comment">// SEE ALSO #259: Find a way to implement borrow for this properly.
+        // I don&#39;t think this is possible. When we make this dyn, the arc
+        // needs the dyn trait to be sized so that it *could* claim a clone
+        // for hit tracking reasons. That also means that we need From and
+        // some other traits that just seem incompatible. And in the end,
+        // we clone a few times in arc, and if we miss we need to insert anyway
+        //
+        // So the best path could be to replace IdlCacheKey with a compressed
+        // or smaller type. Perhaps even a small cache of the IdlCacheKeys that
+        // are allocated to reduce some allocs? Probably over thinking it at
+        // this point.
+        //
+        // First attempt to get from this cache.
+        </span><span class="kw">let </span>cache_key = IdlCacheKeyRef {
+            a: <span class="macro-nonterminal">$attr</span>,
+            i: <span class="macro-nonterminal">$itype</span>,
+            k: <span class="macro-nonterminal">$idx_key</span>,
         };
-        <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">idl_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">IdlCacheKeyToRef</span>);
-        <span class="comment">// If hit, continue.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">cache_r</span> {
+        <span class="kw">let </span>cache_r = <span class="macro-nonterminal">$self</span>.idl_cache.get(<span class="kw-2">&amp;</span>cache_key <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>IdlCacheKeyToRef);
+        <span class="comment">// If hit, continue.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>data) = cache_r {
             <span class="macro">trace!</span>(
-                <span class="ident">cached_index</span> <span class="op">=</span> <span class="question-mark">?</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>,
-                <span class="ident">attr</span> <span class="op">=</span> <span class="question-mark">?</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>,
-                <span class="ident">idl</span> <span class="op">=</span> <span class="op">%</span><span class="ident">data</span>,
+                cached_index = <span class="question-mark">?</span><span class="macro-nonterminal">$itype</span>,
+                attr = <span class="question-mark">?</span><span class="macro-nonterminal">$attr</span>,
+                idl = %data,
             );
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">data</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()));
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(data.as_ref().clone()));
         }
-        <span class="comment">// If miss, get from db *and* insert to the cache.</span>
-        <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">get_idl</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">idl</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-            <span class="kw">let</span> <span class="ident">ncache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKey</span> {
-                <span class="ident">a</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>.<span class="ident">into</span>(),
-                <span class="ident">i</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>.<span class="ident">clone</span>(),
-                <span class="ident">k</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>.<span class="ident">into</span>(),
+        <span class="comment">// If miss, get from db *and* insert to the cache.
+        </span><span class="kw">let </span>db_r = <span class="macro-nonterminal">$self</span>.db.get_idl(<span class="macro-nonterminal">$attr</span>, <span class="macro-nonterminal">$itype</span>, <span class="macro-nonterminal">$idx_key</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>idl) = db_r {
+            <span class="kw">let </span>ncache_key = IdlCacheKey {
+                a: <span class="macro-nonterminal">$attr</span>.into(),
+                i: <span class="macro-nonterminal">$itype</span>.clone(),
+                k: <span class="macro-nonterminal">$idx_key</span>.into(),
             };
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">idl_cache</span>.<span class="ident">insert</span>(<span class="ident">ncache_key</span>, <span class="ident">Box::new</span>(<span class="ident">idl</span>.<span class="ident">clone</span>()))
+            <span class="macro-nonterminal">$self</span>.idl_cache.insert(ncache_key, Box::new(idl.clone()))
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+        <span class="prelude-val">Ok</span>(db_r)
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">name2uuid</span> {
+<span class="macro">macro_rules! </span>name2uuid {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$name</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>.<span class="ident">to_string</span>());
-        <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">uuid</span>, <span class="string">&quot;Got cached name2uuid&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">uuid</span>.<span class="ident">clone</span>()));
-        } <span class="kw">else</span> {
+        <span class="kw">let </span>cache_key = NameCacheKey::Name2Uuid(<span class="macro-nonterminal">$name</span>.to_string());
+        <span class="kw">let </span>cache_r = <span class="macro-nonterminal">$self</span>.name_cache.get(<span class="kw-2">&amp;</span>cache_key);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(NameCacheValue::U(uuid)) = cache_r {
+            <span class="macro">trace!</span>(<span class="question-mark">?</span>uuid, <span class="string">&quot;Got cached name2uuid&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(uuid.clone()));
+        } <span class="kw">else </span>{
             <span class="macro">trace!</span>(<span class="string">&quot;Cache miss uuid for name2uuid&quot;</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">name2uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">uuid</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>
-                .<span class="ident">name_cache</span>
-                .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>.<span class="ident">clone</span>()))
+        <span class="kw">let </span>db_r = <span class="macro-nonterminal">$self</span>.db.name2uuid(<span class="macro-nonterminal">$name</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(uuid) = db_r {
+            <span class="macro-nonterminal">$self
+                </span>.name_cache
+                .insert(cache_key, NameCacheValue::U(uuid.clone()))
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+        <span class="prelude-val">Ok</span>(db_r)
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">uuid2spn</span> {
+<span class="macro">macro_rules! </span>uuid2spn {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$uuid</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
-        <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::S</span>(<span class="kw-2">ref</span> <span class="ident">spn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">spn</span>, <span class="string">&quot;Got cached uuid2spn&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">spn</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()));
-        } <span class="kw">else</span> {
+        <span class="kw">let </span>cache_key = NameCacheKey::Uuid2Spn(<span class="macro-nonterminal">$uuid</span>);
+        <span class="kw">let </span>cache_r = <span class="macro-nonterminal">$self</span>.name_cache.get(<span class="kw-2">&amp;</span>cache_key);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(NameCacheValue::S(<span class="kw-2">ref </span>spn)) = cache_r {
+            <span class="macro">trace!</span>(<span class="question-mark">?</span>spn, <span class="string">&quot;Got cached uuid2spn&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(spn.as_ref().clone()));
+        } <span class="kw">else </span>{
             <span class="macro">trace!</span>(<span class="string">&quot;Cache miss spn for uuid2spn&quot;</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">uuid2spn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>
-                .<span class="ident">name_cache</span>
-                .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::S</span>(<span class="ident">Box::new</span>(<span class="ident">data</span>.<span class="ident">clone</span>())))
+        <span class="kw">let </span>db_r = <span class="macro-nonterminal">$self</span>.db.uuid2spn(<span class="macro-nonterminal">$uuid</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>data) = db_r {
+            <span class="macro-nonterminal">$self
+                </span>.name_cache
+                .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+        <span class="prelude-val">Ok</span>(db_r)
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">uuid2rdn</span> {
+<span class="macro">macro_rules! </span>uuid2rdn {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$uuid</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
-        <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::R</span>(<span class="kw-2">ref</span> <span class="ident">rdn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">rdn</span>.<span class="ident">clone</span>()));
-        } <span class="kw">else</span> {
+        <span class="kw">let </span>cache_key = NameCacheKey::Uuid2Rdn(<span class="macro-nonterminal">$uuid</span>);
+        <span class="kw">let </span>cache_r = <span class="macro-nonterminal">$self</span>.name_cache.get(<span class="kw-2">&amp;</span>cache_key);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(NameCacheValue::R(<span class="kw-2">ref </span>rdn)) = cache_r {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(rdn.clone()));
+        } <span class="kw">else </span>{
             <span class="macro">trace!</span>(<span class="string">&quot;Cache miss rdn for uuid2rdn&quot;</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">uuid2rdn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>
-                .<span class="ident">name_cache</span>
-                .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::R</span>(<span class="ident">data</span>.<span class="ident">clone</span>()))
+        <span class="kw">let </span>db_r = <span class="macro-nonterminal">$self</span>.db.uuid2rdn(<span class="macro-nonterminal">$uuid</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>data) = db_r {
+            <span class="macro-nonterminal">$self
+                </span>.name_cache
+                .insert(cache_key, NameCacheValue::R(data.clone()))
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+        <span class="prelude-val">Ok</span>(db_r)
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">verify</span> {
+<span class="macro">macro_rules! </span>verify {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$self</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">verify</span>();
-        <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">is_dirty</span>() {
-            <span class="comment">// Check allids.</span>
-            <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">get_allids</span>() {
-                <span class="prelude-val">Ok</span>(<span class="ident">db_allids</span>) =&gt; {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">db_allids</span>.<span class="ident">is_compressed</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span>(<span class="kw-2">*</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>).<span class="ident">allids</span>).<span class="ident">is_compressed</span>() {
+        <span class="kw">let </span><span class="kw-2">mut </span>r = <span class="macro-nonterminal">$self</span>.db.verify();
+        <span class="kw">if </span>r.is_empty() &amp;&amp; !<span class="macro-nonterminal">$self</span>.is_dirty() {
+            <span class="comment">// Check allids.
+            </span><span class="kw">match </span><span class="macro-nonterminal">$self</span>.db.get_allids() {
+                <span class="prelude-val">Ok</span>(db_allids) =&gt; {
+                    <span class="kw">if </span>!db_allids.is_compressed() || !(<span class="kw-2">*</span>(<span class="macro-nonterminal">$self</span>).allids).is_compressed() {
                         <span class="macro">admin_warn!</span>(<span class="string">&quot;Inconsistent ALLIDS compression state&quot;</span>);
-                        <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendAllIdsSync</span>))
+                        r.push(<span class="prelude-val">Err</span>(ConsistencyError::BackendAllIdsSync))
                     }
-                    <span class="kw">if</span> <span class="ident">db_allids</span> <span class="op">!</span><span class="op">=</span> (<span class="kw-2">*</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>).<span class="ident">allids</span>) {
-                        <span class="comment">// might want to redo how large key-values are formatted considering what this could look like</span>
-                        <span class="macro">admin_warn!</span>(
-                            <span class="ident">db_allids</span> <span class="op">=</span> <span class="question-mark">?</span>(<span class="kw-2">&amp;</span><span class="ident">db_allids</span>).<span class="ident">andnot</span>(<span class="kw-2">&amp;</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>).<span class="ident">allids</span>),
-                            <span class="ident">arc_allids</span> <span class="op">=</span> <span class="question-mark">?</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>).<span class="ident">allids</span>)).<span class="ident">andnot</span>(<span class="kw-2">&amp;</span><span class="ident">db_allids</span>),
-                            <span class="string">&quot;Inconsistent ALLIDS set&quot;</span>
-                        );
-                        <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendAllIdsSync</span>))
+                    <span class="kw">if </span>db_allids != (<span class="kw-2">*</span>(<span class="macro-nonterminal">$self</span>).allids) {
+                        <span class="comment">// might want to redo how large key-values are formatted considering what this could look like
+                        </span><span class="macro">admin_warn!</span>(
+                            db_allids = <span class="question-mark">?</span>(<span class="kw-2">&amp;</span>db_allids).andnot(<span class="kw-2">&amp;</span>(<span class="macro-nonterminal">$self</span>).allids),
+                            arc_allids = <span class="question-mark">?</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>(<span class="macro-nonterminal">$self</span>).allids)).andnot(<span class="kw-2">&amp;</span>db_allids),
+                            <span class="string">&quot;Inconsistent ALLIDS set&quot;
+                        </span>);
+                        r.push(<span class="prelude-val">Err</span>(ConsistencyError::BackendAllIdsSync))
                     }
                 }
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::Unknown</span>)),
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; r.push(<span class="prelude-val">Err</span>(ConsistencyError::Unknown)),
             };
         };
-        <span class="ident">r</span>
+        r
     }};
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">IdlArcSqliteTransaction</span> {
-    <span class="kw">fn</span> <span class="ident">get_identry</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+<span class="kw">pub trait </span>IdlArcSqliteTransaction {
+    <span class="kw">fn </span>get_identry(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idl: <span class="kw-2">&amp;</span>IdList,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_identry_raw(<span class="kw-2">&amp;</span><span class="self">self</span>, idl: <span class="kw-2">&amp;</span>IdList) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;IdRawEntry&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">exists_idx</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="ident">IndexType</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>exists_idx(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, itype: IndexType) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_idl</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">itype</span>: <span class="ident">IndexType</span>,
-        <span class="ident">idx_key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_idl(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        attr: <span class="kw-2">&amp;</span>str,
+        itype: IndexType,
+        idx_key: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;IDLBitRange&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_db_d_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_db_ts_max(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Duration&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>verify(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt;;
 
-    <span class="kw">fn</span> <span class="ident">is_dirty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn </span>is_dirty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
 
-    <span class="kw">fn</span> <span class="ident">name2uuid</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>uuid2rdn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>list_idxs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>list_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(u64, String)&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">list_index_content</span>(
+    <span class="kw">fn </span>list_index_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">IDLBitRange</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+        index_name: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(String, IDLBitRange)&gt;, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>), <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>, id: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(u64, String), OperationError&gt;;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteTransaction</span> <span class="kw">for</span> <span class="ident">IdlArcSqliteReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">get_identry</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">get_identry!</span>(<span class="self">self</span>, <span class="ident">idl</span>, <span class="bool-val">true</span>)
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdlArcSqliteTransaction <span class="kw">for </span>IdlArcSqliteReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>get_identry(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idl: <span class="kw-2">&amp;</span>IdList,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt;, OperationError&gt; {
+        <span class="macro">get_identry!</span>(<span class="self">self</span>, idl, <span class="bool-val">true</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, <span class="ident">idl</span>)
+    <span class="kw">fn </span>get_identry_raw(<span class="kw-2">&amp;</span><span class="self">self</span>, idl: <span class="kw-2">&amp;</span>IdList) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;IdRawEntry&gt;, OperationError&gt; {
+        <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, idl)
     }
 
-    <span class="kw">fn</span> <span class="ident">exists_idx</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="ident">IndexType</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">exists_idx!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)
+    <span class="kw">fn </span>exists_idx(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, itype: IndexType) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="macro">exists_idx!</span>(<span class="self">self</span>, attr, itype)
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip_all</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_idl</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">itype</span>: <span class="ident">IndexType</span>,
-        <span class="ident">idx_key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">get_idl!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>, <span class="ident">idx_key</span>)
+    <span class="attribute">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>get_idl(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        attr: <span class="kw-2">&amp;</span>str,
+        itype: IndexType,
+        idx_key: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;IDLBitRange&gt;, OperationError&gt; {
+        <span class="macro">get_idl!</span>(<span class="self">self</span>, attr, itype, idx_key)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_s_uuid</span>()
+    <span class="kw">fn </span>get_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="self">self</span>.db.get_db_s_uuid()
     }
 
-    <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_d_uuid</span>()
+    <span class="kw">fn </span>get_db_d_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="self">self</span>.db.get_db_d_uuid()
     }
 
-    <span class="kw">fn</span> <span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_ts_max</span>()
+    <span class="kw">fn </span>get_db_ts_max(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Duration&gt;, OperationError&gt; {
+        <span class="self">self</span>.db.get_db_ts_max()
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>verify(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
         <span class="macro">verify!</span>(<span class="self">self</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">is_dirty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>is_dirty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="macro">name2uuid!</span>(<span class="self">self</span>, name)
     }
 
-    <span class="kw">fn</span> <span class="ident">name2uuid</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">name2uuid!</span>(<span class="self">self</span>, <span class="ident">name</span>)
+    <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
+        <span class="macro">uuid2spn!</span>(<span class="self">self</span>, uuid)
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">uuid2spn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
+    <span class="kw">fn </span>uuid2rdn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt; {
+        <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, uuid)
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
+    <span class="kw">fn </span>list_idxs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.list_idxs()
     }
 
-    <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_idxs</span>()
+    <span class="kw">fn </span>list_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(u64, String)&gt;, OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.list_id2entry()
     }
 
-    <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_id2entry</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">list_index_content</span>(
+    <span class="kw">fn </span>list_index_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">IDLBitRange</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_index_content</span>(<span class="ident">index_name</span>)
+        index_name: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(String, IDLBitRange)&gt;, OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.list_index_content(index_name)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_id2entry</span>(<span class="ident">id</span>)
+    <span class="kw">fn </span>get_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>, id: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(u64, String), OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.get_id2entry(id)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteTransaction</span> <span class="kw">for</span> <span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">get_identry</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">get_identry!</span>(<span class="self">self</span>, <span class="ident">idl</span>, <span class="bool-val">false</span>)
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdlArcSqliteTransaction <span class="kw">for </span>IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>get_identry(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idl: <span class="kw-2">&amp;</span>IdList,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt;, OperationError&gt; {
+        <span class="macro">get_identry!</span>(<span class="self">self</span>, idl, <span class="bool-val">false</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, <span class="ident">idl</span>)
+    <span class="kw">fn </span>get_identry_raw(<span class="kw-2">&amp;</span><span class="self">self</span>, idl: <span class="kw-2">&amp;</span>IdList) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;IdRawEntry&gt;, OperationError&gt; {
+        <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, idl)
     }
 
-    <span class="kw">fn</span> <span class="ident">exists_idx</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="ident">IndexType</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">exists_idx!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)
+    <span class="kw">fn </span>exists_idx(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, itype: IndexType) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="macro">exists_idx!</span>(<span class="self">self</span>, attr, itype)
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip_all</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_idl</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">itype</span>: <span class="ident">IndexType</span>,
-        <span class="ident">idx_key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">get_idl!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>, <span class="ident">idx_key</span>)
+    <span class="attribute">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>get_idl(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        attr: <span class="kw-2">&amp;</span>str,
+        itype: IndexType,
+        idx_key: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;IDLBitRange&gt;, OperationError&gt; {
+        <span class="macro">get_idl!</span>(<span class="self">self</span>, attr, itype, idx_key)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_s_uuid</span>()
+    <span class="kw">fn </span>get_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="self">self</span>.db.get_db_s_uuid()
     }
 
-    <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_d_uuid</span>()
+    <span class="kw">fn </span>get_db_d_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="self">self</span>.db.get_db_d_uuid()
     }
 
-    <span class="kw">fn</span> <span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">op_ts_max</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">ts</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ts</span>)),
-            <span class="prelude-val">None</span> =&gt; <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_ts_max</span>(),
+    <span class="kw">fn </span>get_db_ts_max(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Duration&gt;, OperationError&gt; {
+        <span class="kw">match </span><span class="kw-2">*</span><span class="self">self</span>.op_ts_max {
+            <span class="prelude-val">Some</span>(ts) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(ts)),
+            <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.db.get_db_ts_max(),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>verify(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
         <span class="macro">verify!</span>(<span class="self">self</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">is_dirty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">is_dirty</span>()
+    <span class="kw">fn </span>is_dirty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.entry_cache.is_dirty()
     }
 
-    <span class="kw">fn</span> <span class="ident">name2uuid</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">name2uuid!</span>(<span class="self">self</span>, <span class="ident">name</span>)
+    <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="macro">name2uuid!</span>(<span class="self">self</span>, name)
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">uuid2spn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
+    <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
+        <span class="macro">uuid2spn!</span>(<span class="self">self</span>, uuid)
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
+    <span class="kw">fn </span>uuid2rdn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt; {
+        <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, uuid)
     }
 
-    <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_idxs</span>()
+    <span class="kw">fn </span>list_idxs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.list_idxs()
     }
 
-    <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_id2entry</span>()
+    <span class="kw">fn </span>list_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(u64, String)&gt;, OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.list_id2entry()
     }
 
-    <span class="kw">fn</span> <span class="ident">list_index_content</span>(
+    <span class="kw">fn </span>list_index_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">IDLBitRange</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_index_content</span>(<span class="ident">index_name</span>)
+        index_name: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(String, IDLBitRange)&gt;, OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.list_index_content(index_name)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_id2entry</span>(<span class="ident">id</span>)
+    <span class="kw">fn </span>get_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>, id: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(u64, String), OperationError&gt; {
+        <span class="comment">// This is only used in tests or debug tools, so bypass the cache.
+        </span><span class="self">self</span>.db.get_id2entry(id)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;idl_arc_sqlite::commit&quot;</span>, <span class="ident">skip_all</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">IdlArcSqliteWriteTransaction</span> {
-            <span class="ident">db</span>,
-            <span class="kw-2">mut</span> <span class="ident">entry_cache</span>,
-            <span class="kw-2">mut</span> <span class="ident">idl_cache</span>,
-            <span class="kw-2">mut</span> <span class="ident">name_cache</span>,
-            <span class="ident">op_ts_max</span>,
-            <span class="ident">allids</span>,
-            <span class="ident">maxid</span>,
-        } <span class="op">=</span> <span class="self">self</span>;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;idl_arc_sqlite::commit&quot;</span>, skip_all)]
+    </span><span class="kw">pub fn </span>commit(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>IdlArcSqliteWriteTransaction {
+            db,
+            <span class="kw-2">mut </span>entry_cache,
+            <span class="kw-2">mut </span>idl_cache,
+            <span class="kw-2">mut </span>name_cache,
+            op_ts_max,
+            allids,
+            maxid,
+        } = <span class="self">self</span>;
 
-        <span class="comment">// Write any dirty items to the disk.</span>
-        <span class="ident">entry_cache</span>
-            .<span class="ident">iter_mut_mark_clean</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="kw">match</span> <span class="ident">v</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">e</span>) =&gt; <span class="ident">db</span>.<span class="ident">write_identry</span>(<span class="ident">e</span>),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">db</span>.<span class="ident">delete_identry</span>(<span class="kw-2">*</span><span class="ident">k</span>),
+        <span class="comment">// Write any dirty items to the disk.
+        </span>entry_cache
+            .iter_mut_mark_clean()
+            .try_for_each(|(k, v)| <span class="kw">match </span>v {
+                <span class="prelude-val">Some</span>(e) =&gt; db.write_identry(e),
+                <span class="prelude-val">None </span>=&gt; db.delete_identry(<span class="kw-2">*</span>k),
             })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to sync entry cache to sqlite&quot;</span>);
-                <span class="ident">e</span>
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to sync entry cache to sqlite&quot;</span>);
+                e
             })<span class="question-mark">?</span>;
 
-        <span class="ident">idl_cache</span>
-            .<span class="ident">iter_mut_mark_clean</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
-                <span class="kw">match</span> <span class="ident">v</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">idl</span>) =&gt; <span class="ident">db</span>.<span class="ident">write_idl</span>(<span class="ident">k</span>.<span class="ident">a</span>.<span class="ident">as_str</span>(), <span class="ident">k</span>.<span class="ident">i</span>, <span class="ident">k</span>.<span class="ident">k</span>.<span class="ident">as_str</span>(), <span class="ident">idl</span>),
-                    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unreachable</span>)]</span>
-                    <span class="prelude-val">None</span> =&gt; {
-                        <span class="comment">// Due to how we remove items, we always write an empty idl</span>
-                        <span class="comment">// to the cache, so this should never be none.</span>
-                        <span class="comment">//</span>
-                        <span class="comment">// If it is none, this means we have memory corruption so we MUST</span>
-                        <span class="comment">// panic.</span>
-                        <span class="comment">// Why is `v` the `Option` type then?</span>
-                        <span class="macro">unreachable!</span>();
+        idl_cache
+            .iter_mut_mark_clean()
+            .try_for_each(|(k, v)| {
+                <span class="kw">match </span>v {
+                    <span class="prelude-val">Some</span>(idl) =&gt; db.write_idl(k.a.as_str(), k.i, k.k.as_str(), idl),
+                    <span class="attribute">#[allow(clippy::unreachable)]
+                    </span><span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// Due to how we remove items, we always write an empty idl
+                        // to the cache, so this should never be none.
+                        //
+                        // If it is none, this means we have memory corruption so we MUST
+                        // panic.
+                        // Why is `v` the `Option` type then?
+                        </span><span class="macro">unreachable!</span>();
                     }
                 }
             })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to sync idl cache to sqlite&quot;</span>);
-                <span class="ident">e</span>
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to sync idl cache to sqlite&quot;</span>);
+                e
             })<span class="question-mark">?</span>;
 
-        <span class="ident">name_cache</span>
-            .<span class="ident">iter_mut_mark_clean</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="kw">match</span> (<span class="ident">k</span>, <span class="ident">v</span>) {
-                (<span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::U</span>(<span class="ident">v</span>))) =&gt; {
-                    <span class="ident">db</span>.<span class="ident">write_name2uuid_add</span>(<span class="ident">k</span>, <span class="kw-2">*</span><span class="ident">v</span>)
+        name_cache
+            .iter_mut_mark_clean()
+            .try_for_each(|(k, v)| <span class="kw">match </span>(k, v) {
+                (NameCacheKey::Name2Uuid(k), <span class="prelude-val">Some</span>(NameCacheValue::U(v))) =&gt; {
+                    db.write_name2uuid_add(k, <span class="kw-2">*</span>v)
                 }
-                (<span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>), <span class="prelude-val">None</span>) =&gt; <span class="ident">db</span>.<span class="ident">write_name2uuid_rem</span>(<span class="ident">k</span>),
-                (<span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="ident">uuid</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::S</span>(<span class="ident">v</span>))) =&gt; {
-                    <span class="ident">db</span>.<span class="ident">write_uuid2spn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>, <span class="prelude-val">Some</span>(<span class="ident">v</span>))
+                (NameCacheKey::Name2Uuid(k), <span class="prelude-val">None</span>) =&gt; db.write_name2uuid_rem(k),
+                (NameCacheKey::Uuid2Spn(uuid), <span class="prelude-val">Some</span>(NameCacheValue::S(v))) =&gt; {
+                    db.write_uuid2spn(<span class="kw-2">*</span>uuid, <span class="prelude-val">Some</span>(v))
                 }
-                (<span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="ident">uuid</span>), <span class="prelude-val">None</span>) =&gt; <span class="ident">db</span>.<span class="ident">write_uuid2spn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>, <span class="prelude-val">None</span>),
-                (<span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="ident">uuid</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::R</span>(<span class="ident">v</span>))) =&gt; {
-                    <span class="ident">db</span>.<span class="ident">write_uuid2rdn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>, <span class="prelude-val">Some</span>(<span class="ident">v</span>))
+                (NameCacheKey::Uuid2Spn(uuid), <span class="prelude-val">None</span>) =&gt; db.write_uuid2spn(<span class="kw-2">*</span>uuid, <span class="prelude-val">None</span>),
+                (NameCacheKey::Uuid2Rdn(uuid), <span class="prelude-val">Some</span>(NameCacheValue::R(v))) =&gt; {
+                    db.write_uuid2rdn(<span class="kw-2">*</span>uuid, <span class="prelude-val">Some</span>(v))
                 }
-                (<span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="ident">uuid</span>), <span class="prelude-val">None</span>) =&gt; <span class="ident">db</span>.<span class="ident">write_uuid2rdn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>, <span class="prelude-val">None</span>),
+                (NameCacheKey::Uuid2Rdn(uuid), <span class="prelude-val">None</span>) =&gt; db.write_uuid2rdn(<span class="kw-2">*</span>uuid, <span class="prelude-val">None</span>),
 
-                <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidCacheState</span>),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidCacheState),
             })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to sync name cache to sqlite&quot;</span>);
-                <span class="ident">e</span>
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to sync name cache to sqlite&quot;</span>);
+                e
             })<span class="question-mark">?</span>;
 
-        <span class="comment">// Undo the caches in the reverse order.</span>
-        <span class="ident">db</span>.<span class="ident">commit</span>().<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
-            <span class="ident">op_ts_max</span>.<span class="ident">commit</span>();
-            <span class="ident">name_cache</span>.<span class="ident">commit</span>();
-            <span class="ident">idl_cache</span>.<span class="ident">commit</span>();
-            <span class="ident">entry_cache</span>.<span class="ident">commit</span>();
-            <span class="ident">allids</span>.<span class="ident">commit</span>();
-            <span class="ident">maxid</span>.<span class="ident">commit</span>();
+        <span class="comment">// Undo the caches in the reverse order.
+        </span>db.commit().map(|()| {
+            op_ts_max.commit();
+            name_cache.commit();
+            idl_cache.commit();
+            entry_cache.commit();
+            allids.commit();
+            maxid.commit();
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_id2entry_max_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">maxid</span>)
+    <span class="kw">pub fn </span>get_id2entry_max_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="kw-2">*</span><span class="self">self</span>.maxid)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_id2entry_max_id</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">mid</span>: <span class="ident">u64</span>) {
-        <span class="macro">assert!</span>(<span class="ident">mid</span> <span class="op">&gt;</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">maxid</span>);
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">maxid</span> <span class="op">=</span> <span class="ident">mid</span>;
+    <span class="kw">pub fn </span>set_id2entry_max_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mid: u64) {
+        <span class="macro">assert!</span>(mid &gt; <span class="kw-2">*</span><span class="self">self</span>.maxid);
+        <span class="kw-2">*</span><span class="self">self</span>.maxid = mid;
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identries</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">entries</span>: <span class="ident">I</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub fn </span>write_identries&lt;<span class="lifetime">&#39;b</span>, I&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="kw-2">mut </span><span class="self">self</span>, <span class="kw-2">mut </span>entries: I) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt;
+    <span class="kw">where
+        </span>I: Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
     {
-        <span class="ident">entries</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">trace!</span>(<span class="string">&quot;Inserting {:?} to cache&quot;</span>, <span class="ident">e</span>.<span class="ident">get_id</span>());
-            <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">get_id</span>() <span class="op">==</span> <span class="number">0</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryId</span>)
-            } <span class="kw">else</span> {
-                (<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">allids</span>).<span class="ident">insert_id</span>(<span class="ident">e</span>.<span class="ident">get_id</span>());
-                <span class="self">self</span>.<span class="ident">entry_cache</span>
-                    .<span class="ident">insert_dirty</span>(<span class="ident">e</span>.<span class="ident">get_id</span>(), <span class="ident">Arc::new</span>(<span class="ident">e</span>.<span class="ident">clone</span>()));
+        entries.try_for_each(|e| {
+            <span class="macro">trace!</span>(<span class="string">&quot;Inserting {:?} to cache&quot;</span>, e.get_id());
+            <span class="kw">if </span>e.get_id() == <span class="number">0 </span>{
+                <span class="prelude-val">Err</span>(OperationError::InvalidEntryId)
+            } <span class="kw">else </span>{
+                (<span class="kw-2">*</span><span class="self">self</span>.allids).insert_id(e.get_id());
+                <span class="self">self</span>.entry_cache
+                    .insert_dirty(e.get_id(), Arc::new(e.clone()));
                 <span class="prelude-val">Ok</span>(())
             }
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identries_raw</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">entries</span>: <span class="ident">I</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">IdRawEntry</span><span class="op">&gt;</span>,
+    <span class="kw">pub fn </span>write_identries_raw&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, entries: I) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt;
+    <span class="kw">where
+        </span>I: Iterator&lt;Item = IdRawEntry&gt;,
     {
-        <span class="comment">// Drop the entry cache.</span>
-        <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">clear</span>();
-        <span class="comment">// Write the raw ents</span>
-        <span class="self">self</span>.<span class="ident">db</span>
-            .<span class="ident">write_identries_raw</span>(<span class="ident">entries</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span>()<span class="op">|</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_allids</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">ids</span><span class="op">|</span> {
-                <span class="comment">// Update allids since we cleared them and need to reset it in the cache.</span>
-                <span class="ident">std::mem::swap</span>(<span class="self">self</span>.<span class="ident">allids</span>.<span class="ident">deref_mut</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">ids</span>);
+        <span class="comment">// Drop the entry cache.
+        </span><span class="self">self</span>.entry_cache.clear();
+        <span class="comment">// Write the raw ents
+        </span><span class="self">self</span>.db
+            .write_identries_raw(entries)
+            .and_then(|()| <span class="self">self</span>.db.get_allids())
+            .map(|<span class="kw-2">mut </span>ids| {
+                <span class="comment">// Update allids since we cleared them and need to reset it in the cache.
+                </span>std::mem::swap(<span class="self">self</span>.allids.deref_mut(), <span class="kw-2">&amp;mut </span>ids);
             })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_identry</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">idl</span>: <span class="ident">I</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">u64</span><span class="op">&gt;</span>,
+    <span class="kw">pub fn </span>delete_identry&lt;I&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>idl: I) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt;
+    <span class="kw">where
+        </span>I: Iterator&lt;Item = u64&gt;,
     {
-        <span class="ident">idl</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="macro">trace!</span>(<span class="string">&quot;Removing {:?} from cache&quot;</span>, <span class="ident">i</span>);
-            <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryId</span>)
-            } <span class="kw">else</span> {
-                (<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">allids</span>).<span class="ident">remove_id</span>(<span class="ident">i</span>);
-                <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">i</span>);
+        idl.try_for_each(|i| {
+            <span class="macro">trace!</span>(<span class="string">&quot;Removing {:?} from cache&quot;</span>, i);
+            <span class="kw">if </span>i == <span class="number">0 </span>{
+                <span class="prelude-val">Err</span>(OperationError::InvalidEntryId)
+            } <span class="kw">else </span>{
+                (<span class="kw-2">*</span><span class="self">self</span>.allids).remove_id(i);
+                <span class="self">self</span>.entry_cache.remove_dirty(i);
                 <span class="prelude-val">Ok</span>(())
             }
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_idl</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">itype</span>: <span class="ident">IndexType</span>,
-        <span class="ident">idx_key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IDLBitRange</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKey</span> {
-            <span class="ident">a</span>: <span class="ident">attr</span>.<span class="ident">into</span>(),
-            <span class="ident">i</span>: <span class="ident">itype</span>,
-            <span class="ident">k</span>: <span class="ident">idx_key</span>.<span class="ident">into</span>(),
+    <span class="kw">pub fn </span>write_idl(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        attr: <span class="kw-2">&amp;</span>str,
+        itype: IndexType,
+        idx_key: <span class="kw-2">&amp;</span>str,
+        idl: <span class="kw-2">&amp;</span>IDLBitRange,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>cache_key = IdlCacheKey {
+            a: attr.into(),
+            i: itype,
+            k: idx_key.into(),
         };
-        <span class="comment">// On idl == 0 the db will remove this, and synthesise an empty IdList on a miss</span>
-        <span class="comment">// but we can cache this as a new empty IdList instead, so that we can avoid the</span>
-        <span class="comment">// db lookup on this idl.</span>
-        <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">is_empty</span>() {
-            <span class="self">self</span>.<span class="ident">idl_cache</span>
-                .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">Box::new</span>(<span class="ident">IDLBitRange::new</span>()));
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">idl_cache</span>
-                .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">Box::new</span>(<span class="ident">idl</span>.<span class="ident">clone</span>()));
+        <span class="comment">// On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
+        // but we can cache this as a new empty IdList instead, so that we can avoid the
+        // db lookup on this idl.
+        </span><span class="kw">if </span>idl.is_empty() {
+            <span class="self">self</span>.idl_cache
+                .insert_dirty(cache_key, Box::new(IDLBitRange::new()));
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.idl_cache
+                .insert_dirty(cache_key, Box::new(idl.clone()));
         }
-        <span class="comment">// self.db.write_idl(audit, attr, itype, idx_key, idl)</span>
-        <span class="prelude-val">Ok</span>(())
+        <span class="comment">// self.db.write_idl(audit, attr, itype, idx_key, idl)
+        </span><span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">optimise_dirty_idls</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">iter_mut_dirty</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">maybe_idl</span>)<span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span> <span class="ident">maybe_idl</span> {
-                <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">maybe_compress</span>() {
-                    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">k</span>, <span class="string">&quot;Compressed idl&quot;</span>);
+    <span class="kw">pub fn </span>optimise_dirty_idls(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.idl_cache.iter_mut_dirty().for_each(|(k, maybe_idl)| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(idl) = maybe_idl {
+                <span class="kw">if </span>idl.maybe_compress() {
+                    <span class="macro">trace!</span>(<span class="question-mark">?</span>k, <span class="string">&quot;Compressed idl&quot;</span>);
                 }
             }
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_idx_slopeyness_generated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">is_idx_slopeyness_generated</span>()
+    <span class="kw">pub fn </span>is_idx_slopeyness_generated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="self">self</span>.db.is_idx_slopeyness_generated()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_idx_slope</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ikey</span>: <span class="kw-2">&amp;</span><span class="ident">IdxKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IdxSlope</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_idx_slope</span>(<span class="ident">ikey</span>)
+    <span class="kw">pub fn </span>get_idx_slope(<span class="kw-2">&amp;</span><span class="self">self</span>, ikey: <span class="kw-2">&amp;</span>IdxKey) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;IdxSlope&gt;, OperationError&gt; {
+        <span class="self">self</span>.db.get_idx_slope(ikey)
     }
 
-    <span class="doccomment">/// Index Slope Analysis. For the purpose of external modules you can consider this as a</span>
-    <span class="doccomment">/// module that generates &quot;weights&quot; for each index that we have. Smaller values are faster</span>
-    <span class="doccomment">/// indexes - larger values are more costly ones. This is not intended to yield perfect</span>
-    <span class="doccomment">/// weights. The intent is to seperate over obviously more effective indexes rather than</span>
-    <span class="doccomment">/// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always</span>
-    <span class="doccomment">/// be better than class=*, but comparing name=foo to spn=foo is &quot;much over muchness&quot; since</span>
-    <span class="doccomment">/// both are really fast.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">analyse_idx_slopes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Index Slope Analysis. For the purpose of external modules you can consider this as a
+    /// module that generates &quot;weights&quot; for each index that we have. Smaller values are faster
+    /// indexes - larger values are more costly ones. This is not intended to yield perfect
+    /// weights. The intent is to seperate over obviously more effective indexes rather than
+    /// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always
+    /// be better than class=*, but comparing name=foo to spn=foo is &quot;much over muchness&quot; since
+    /// both are really fast.
+    </span><span class="kw">pub fn </span>analyse_idx_slopes(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">/*
          * Inside of this analysis there are two major factors we need to understand
          *
@@ -1919,9 +1919,9 @@
          * approach.
          *
          * These are commented in line to help understand the process.
-         */</span>
+         */
 
-        <span class="comment">/*
+        /*
          * Step 1 - we have an index like &quot;idx_eq_member&quot;. It has data that looks somewhat
          * like:
          *
@@ -1940,22 +1940,22 @@
          *
          * We then assemble these to a map so we have each idxkey and it&#39;s associated list
          * of idl lens.
-         */</span>
+         */
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IdxKey</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-        <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">iter_dirty</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">maybe_idl</span>)<span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span> <span class="ident">maybe_idl</span> {
-                <span class="kw">let</span> <span class="ident">idl_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">idl</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">unwrap_or</span>(<span class="ident">u32::MAX</span>);
-                <span class="comment">// Convert to something we can use.</span>
-                <span class="kw">let</span> <span class="ident">idl_len</span> <span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">idl_len</span>);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>data: HashMap&lt;IdxKey, Vec&lt;f64&gt;&gt; = HashMap::new();
+        <span class="self">self</span>.idl_cache.iter_dirty().for_each(|(k, maybe_idl)| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(idl) = maybe_idl {
+                <span class="kw">let </span>idl_len: u32 = idl.len().try_into().unwrap_or(u32::MAX);
+                <span class="comment">// Convert to something we can use.
+                </span><span class="kw">let </span>idl_len = f64::from(idl_len);
 
-                <span class="kw">let</span> <span class="ident">kref</span> <span class="op">=</span> <span class="ident">IdxKeyRef::new</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>.<span class="ident">a</span>, <span class="kw-2">&amp;</span><span class="ident">k</span>.<span class="ident">i</span>);
-                <span class="kw">if</span> <span class="ident">idl_len</span> <span class="op">&gt;</span> <span class="number">0.0</span> {
-                    <span class="comment">// It&#39;s worth looking at. Anything len 0 will be removed.</span>
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lens</span>) <span class="op">=</span> <span class="ident">data</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">kref</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">IdxKeyToRef</span>) {
-                        <span class="ident">lens</span>.<span class="ident">push</span>(<span class="ident">idl_len</span>)
-                    } <span class="kw">else</span> {
-                        <span class="ident">data</span>.<span class="ident">insert</span>(<span class="ident">kref</span>.<span class="ident">as_key</span>(), <span class="macro">vec!</span>[<span class="ident">idl_len</span>]);
+                <span class="kw">let </span>kref = IdxKeyRef::new(<span class="kw-2">&amp;</span>k.a, <span class="kw-2">&amp;</span>k.i);
+                <span class="kw">if </span>idl_len &gt; <span class="number">0.0 </span>{
+                    <span class="comment">// It&#39;s worth looking at. Anything len 0 will be removed.
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lens) = data.get_mut(<span class="kw-2">&amp;</span>kref <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>IdxKeyToRef) {
+                        lens.push(idl_len)
+                    } <span class="kw">else </span>{
+                        data.insert(kref.as_key(), <span class="macro">vec!</span>[idl_len]);
                     }
                 }
             }
@@ -2071,311 +2071,311 @@
         *
         * And there we have it! A slope factor of the index! A way to compare these sets quickly
         * at query optimisation time to minimse index access.
-        */</span>
-        <span class="kw">let</span> <span class="ident">slopes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">data</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">lens</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">slope_factor</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::calculate_sd_slope</span>(<span class="kw-2">&amp;</span><span class="ident">lens</span>);
-                <span class="kw">if</span> <span class="ident">slope_factor</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">slope_factor</span> <span class="op">==</span> <span class="ident">IdxSlope::MAX</span> {
-                    <span class="prelude-val">None</span>
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Some</span>((<span class="ident">k</span>, <span class="ident">slope_factor</span>))
+        */
+        </span><span class="kw">let </span>slopes: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = data
+            .into_iter()
+            .filter_map(|(k, lens)| {
+                <span class="kw">let </span>slope_factor = <span class="self">Self</span>::calculate_sd_slope(<span class="kw-2">&amp;</span>lens);
+                <span class="kw">if </span>slope_factor == <span class="number">0 </span>|| slope_factor == IdxSlope::MAX {
+                    <span class="prelude-val">None
+                </span>} <span class="kw">else </span>{
+                    <span class="prelude-val">Some</span>((k, slope_factor))
                 }
             })
-            .<span class="ident">collect</span>();
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">slopes</span>, <span class="string">&quot;Generated slopes&quot;</span>);
-        <span class="comment">// Write the data down</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">store_idx_slope_analysis</span>(<span class="kw-2">&amp;</span><span class="ident">slopes</span>)
+            .collect();
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>slopes, <span class="string">&quot;Generated slopes&quot;</span>);
+        <span class="comment">// Write the data down
+        </span><span class="self">self</span>.db.store_idx_slope_analysis(<span class="kw-2">&amp;</span>slopes)
     }
 
-    <span class="kw">fn</span> <span class="ident">calculate_sd_slope</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">f64</span>]) -&gt; <span class="ident">IdxSlope</span> {
-        <span class="kw">let</span> (<span class="ident">n_keys</span>, <span class="ident">sd_1</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">data</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">2</span> {
-            <span class="comment">// We can only do SD on sets greater than 2</span>
-            <span class="kw">let</span> <span class="ident">l</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">unwrap_or</span>(<span class="ident">u32::MAX</span>);
-            <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">f64::from</span>(<span class="ident">l</span>);
-            <span class="kw">let</span> <span class="ident">mean</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="ident">u32::MAX</span> <span class="kw">as</span> <span class="ident">usize</span>).<span class="ident">sum</span>::<span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>() <span class="op">/</span> <span class="ident">c</span>;
-            <span class="kw">let</span> <span class="ident">varience</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="ident">data</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">take</span>(<span class="ident">u32::MAX</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">len</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">delta</span> <span class="op">=</span> <span class="ident">mean</span> <span class="op">-</span> <span class="ident">len</span>;
-                    <span class="ident">delta</span> <span class="op">*</span> <span class="ident">delta</span>
+    <span class="kw">fn </span>calculate_sd_slope(data: <span class="kw-2">&amp;</span>[f64]) -&gt; IdxSlope {
+        <span class="kw">let </span>(n_keys, sd_1) = <span class="kw">if </span>data.len() &gt;= <span class="number">2 </span>{
+            <span class="comment">// We can only do SD on sets greater than 2
+            </span><span class="kw">let </span>l: u32 = data.len().try_into().unwrap_or(u32::MAX);
+            <span class="kw">let </span>c = f64::from(l);
+            <span class="kw">let </span>mean = data.iter().take(u32::MAX <span class="kw">as </span>usize).sum::&lt;f64&gt;() / c;
+            <span class="kw">let </span>varience: f64 = data
+                .iter()
+                .take(u32::MAX <span class="kw">as </span>usize)
+                .map(|len| {
+                    <span class="kw">let </span>delta = mean - len;
+                    delta * delta
                 })
-                .<span class="ident">sum</span>::<span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>()
-                <span class="op">/</span> (<span class="ident">c</span> <span class="op">-</span> <span class="number">1.0</span>);
+                .sum::&lt;f64&gt;()
+                / (c - <span class="number">1.0</span>);
 
-            <span class="kw">let</span> <span class="ident">sd</span> <span class="op">=</span> <span class="ident">varience</span>.<span class="ident">sqrt</span>();
+            <span class="kw">let </span>sd = varience.sqrt();
 
-            <span class="comment">// This is saying ~85% of values will be at least this len or less.</span>
-            <span class="kw">let</span> <span class="ident">sd_1</span> <span class="op">=</span> <span class="ident">mean</span> <span class="op">+</span> <span class="ident">sd</span>;
-            (<span class="ident">c</span>, <span class="ident">sd_1</span>)
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">data</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
-            (<span class="number">1.0</span>, <span class="ident">data</span>[<span class="number">0</span>])
-        } <span class="kw">else</span> {
-            <span class="comment">// Cant resolve.</span>
-            <span class="kw">return</span> <span class="ident">IdxSlope::MAX</span>;
+            <span class="comment">// This is saying ~85% of values will be at least this len or less.
+            </span><span class="kw">let </span>sd_1 = mean + sd;
+            (c, sd_1)
+        } <span class="kw">else if </span>data.len() == <span class="number">1 </span>{
+            (<span class="number">1.0</span>, data[<span class="number">0</span>])
+        } <span class="kw">else </span>{
+            <span class="comment">// Cant resolve.
+            </span><span class="kw">return </span>IdxSlope::MAX;
         };
 
-        <span class="comment">// Now we know sd_1 and number of keys. We can use this as a triangle to work out</span>
-        <span class="comment">// the angle along the hypotenuse. We use this angle - or slope - to show which</span>
-        <span class="comment">// elements have the smallest sd_1 and most keys available. Then because this</span>
-        <span class="comment">// is bound between 0.0 -&gt; 90.0, we &quot;unfurl&quot; this around a half circle by multipling</span>
-        <span class="comment">// by 2. This gives us a little more precision when we drop the decimal point.</span>
-        <span class="kw">let</span> <span class="ident">sf</span> <span class="op">=</span> (<span class="ident">sd_1</span> <span class="op">/</span> <span class="ident">n_keys</span>).<span class="ident">atan</span>().<span class="ident">to_degrees</span>() <span class="op">*</span> <span class="number">2.8</span>;
+        <span class="comment">// Now we know sd_1 and number of keys. We can use this as a triangle to work out
+        // the angle along the hypotenuse. We use this angle - or slope - to show which
+        // elements have the smallest sd_1 and most keys available. Then because this
+        // is bound between 0.0 -&gt; 90.0, we &quot;unfurl&quot; this around a half circle by multipling
+        // by 2. This gives us a little more precision when we drop the decimal point.
+        </span><span class="kw">let </span>sf = (sd_1 / n_keys).atan().to_degrees() * <span class="number">2.8</span>;
 
-        <span class="comment">// Now these are fractions, and we can&#39;t use those in u8, so we clamp the min/max values</span>
-        <span class="comment">// that we expect to be yielded.</span>
-        <span class="kw">let</span> <span class="ident">sf</span> <span class="op">=</span> <span class="ident">sf</span>.<span class="ident">clamp</span>(<span class="number">1.0</span>, <span class="number">254.0</span>);
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">sf</span>.<span class="ident">is_finite</span>() {
-            <span class="ident">IdxSlope::MAX</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// SAFETY</span>
-            <span class="comment">// `sf` is clamped between 1.0 and 180.0 above, ensuring it is</span>
-            <span class="comment">// always in range.</span>
-            <span class="kw">unsafe</span> { <span class="ident">sf</span>.<span class="ident">to_int_unchecked</span>::<span class="op">&lt;</span><span class="ident">IdxSlope</span><span class="op">&gt;</span>() }
+        <span class="comment">// Now these are fractions, and we can&#39;t use those in u8, so we clamp the min/max values
+        // that we expect to be yielded.
+        </span><span class="kw">let </span>sf = sf.clamp(<span class="number">1.0</span>, <span class="number">254.0</span>);
+        <span class="kw">if </span>!sf.is_finite() {
+            IdxSlope::MAX
+        } <span class="kw">else </span>{
+            <span class="comment">// SAFETY
+            // `sf` is clamped between 1.0 and 180.0 above, ensuring it is
+            // always in range.
+            </span><span class="kw">unsafe </span>{ sf.to_int_unchecked::&lt;IdxSlope&gt;() }
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_name2uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_name2uuid</span>()
+    <span class="kw">pub fn </span>create_name2uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.create_name2uuid()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_add</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-        <span class="ident">add</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="ident">add</span>.<span class="ident">into_iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>);
-            <span class="kw">let</span> <span class="ident">cache_value</span> <span class="op">=</span> <span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>);
-            <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">cache_value</span>)
+    <span class="kw">pub fn </span>write_name2uuid_add(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        uuid: Uuid,
+        add: BTreeSet&lt;String&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        add.into_iter().for_each(|k| {
+            <span class="kw">let </span>cache_key = NameCacheKey::Name2Uuid(k);
+            <span class="kw">let </span>cache_value = NameCacheValue::U(uuid);
+            <span class="self">self</span>.name_cache.insert_dirty(cache_key, cache_value)
         });
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_rem</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">rem</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="ident">rem</span>.<span class="ident">into_iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-            <span class="comment">// why not just a for loop here...</span>
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>);
-            <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>)
+    <span class="kw">pub fn </span>write_name2uuid_rem(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rem: BTreeSet&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        rem.into_iter().for_each(|k| {
+            <span class="comment">// why not just a for loop here...
+            </span><span class="kw">let </span>cache_key = NameCacheKey::Name2Uuid(k);
+            <span class="self">self</span>.name_cache.remove_dirty(cache_key)
         });
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_uuid2spn</span>()
+    <span class="kw">pub fn </span>create_uuid2spn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.create_uuid2spn()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2spn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>, <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="ident">uuid</span>);
-        <span class="kw">match</span> <span class="ident">k</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="self">self</span>
-                .<span class="ident">name_cache</span>
-                .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::S</span>(<span class="ident">Box::new</span>(<span class="ident">v</span>))),
-            <span class="prelude-val">None</span> =&gt; <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>),
+    <span class="kw">pub fn </span>write_uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid, k: <span class="prelude-ty">Option</span>&lt;Value&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>cache_key = NameCacheKey::Uuid2Spn(uuid);
+        <span class="kw">match </span>k {
+            <span class="prelude-val">Some</span>(v) =&gt; <span class="self">self
+                </span>.name_cache
+                .insert_dirty(cache_key, NameCacheValue::S(Box::new(v))),
+            <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.name_cache.remove_dirty(cache_key),
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_uuid2rdn</span>()
+    <span class="kw">pub fn </span>create_uuid2rdn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.create_uuid2rdn()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2rdn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>, <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="ident">uuid</span>);
-        <span class="kw">match</span> <span class="ident">k</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="self">self</span>
-                .<span class="ident">name_cache</span>
-                .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::R</span>(<span class="ident">s</span>)),
-            <span class="prelude-val">None</span> =&gt; <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>),
+    <span class="kw">pub fn </span>write_uuid2rdn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid, k: <span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>cache_key = NameCacheKey::Uuid2Rdn(uuid);
+        <span class="kw">match </span>k {
+            <span class="prelude-val">Some</span>(s) =&gt; <span class="self">self
+                </span>.name_cache
+                .insert_dirty(cache_key, NameCacheValue::R(s)),
+            <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.name_cache.remove_dirty(cache_key),
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_idx</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="ident">IndexType</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// We don&#39;t need to affect this, so pass it down.</span>
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_idx</span>(<span class="ident">attr</span>, <span class="ident">itype</span>)
+    <span class="kw">pub fn </span>create_idx(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, itype: IndexType) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// We don&#39;t need to affect this, so pass it down.
+        </span><span class="self">self</span>.db.create_idx(attr, itype)
     }
 
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_idxs</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">purge_idxs</span>().<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
-            <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">clear</span>();
+    <span class="kw">pub unsafe fn </span>purge_idxs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.purge_idxs().map(|()| {
+            <span class="self">self</span>.idl_cache.clear();
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_id2entry</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">purge_id2entry</span>().<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
-            <span class="ident">ids</span>.<span class="ident">compress</span>();
-            <span class="ident">std::mem::swap</span>(<span class="self">self</span>.<span class="ident">allids</span>.<span class="ident">deref_mut</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">ids</span>);
-            <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">clear</span>();
+    <span class="kw">pub unsafe fn </span>purge_id2entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.purge_id2entry().map(|()| {
+            <span class="kw">let </span><span class="kw-2">mut </span>ids = IDLBitRange::new();
+            ids.compress();
+            std::mem::swap(<span class="self">self</span>.allids.deref_mut(), <span class="kw-2">&amp;mut </span>ids);
+            <span class="self">self</span>.entry_cache.clear();
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write_db_s_uuid</span>(<span class="ident">nsid</span>)
+    <span class="kw">pub fn </span>write_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, nsid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.write_db_s_uuid(nsid)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write_db_d_uuid</span>(<span class="ident">nsid</span>)
+    <span class="kw">pub fn </span>write_db_d_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, nsid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.write_db_d_uuid(nsid)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_db_ts_max</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">op_ts_max</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ts</span>);
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">set_db_ts_max</span>(<span class="ident">ts</span>)
+    <span class="kw">pub fn </span>set_db_ts_max(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw-2">*</span><span class="self">self</span>.op_ts_max = <span class="prelude-val">Some</span>(ts);
+        <span class="self">self</span>.db.set_db_ts_max(ts)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_db_index_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">i64</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_index_version</span>()
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_db_index_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i64 {
+        <span class="self">self</span>.db.get_db_index_version()
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_db_index_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">v</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">set_db_index_version</span>(<span class="ident">v</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_db_index_version(<span class="kw-2">&amp;</span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.set_db_index_version(v)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">setup</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">db</span>
-            .<span class="ident">setup</span>()
-            .<span class="ident">and_then</span>(<span class="op">|</span>()<span class="op">|</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_allids</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">ids</span><span class="op">|</span> {
-                <span class="ident">std::mem::swap</span>(<span class="self">self</span>.<span class="ident">allids</span>.<span class="ident">deref_mut</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">ids</span>);
+    <span class="kw">pub fn </span>setup(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db
+            .setup()
+            .and_then(|()| <span class="self">self</span>.db.get_allids())
+            .map(|<span class="kw-2">mut </span>ids| {
+                std::mem::swap(<span class="self">self</span>.allids.deref_mut(), <span class="kw-2">&amp;mut </span>ids);
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span>()<span class="op">|</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_id2entry_max_id</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">mid</span><span class="op">|</span> {
-                <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">maxid</span> <span class="op">=</span> <span class="ident">mid</span>;
+            .and_then(|()| <span class="self">self</span>.db.get_id2entry_max_id())
+            .map(|mid| {
+                <span class="kw-2">*</span><span class="self">self</span>.maxid = mid;
             })
     }
 }
 
-<span class="kw">impl</span> <span class="ident">IdlArcSqlite</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">BackendConfig</span>, <span class="ident">vacuum</span>: <span class="ident">bool</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">IdlSqlite::new</span>(<span class="ident">cfg</span>, <span class="ident">vacuum</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>IdlArcSqlite {
+    <span class="kw">pub fn </span>new(cfg: <span class="kw-2">&amp;</span>BackendConfig, vacuum: bool) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>db = IdlSqlite::new(cfg, vacuum)<span class="question-mark">?</span>;
 
-        <span class="comment">// Autotune heuristic.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache_size</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">arcsize</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// Due to changes in concread, we can now scale this up! We now aim for 120%</span>
-            <span class="comment">// of entries.</span>
-            <span class="ident">db</span>.<span class="ident">get_allids_count</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">tmpsize</span> <span class="op">=</span> ((<span class="ident">c</span> <span class="op">/</span> <span class="number">5</span>) <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">*</span> <span class="number">6</span>;
-                    <span class="comment">// if our calculation&#39;s too small anyway, just set it to the minimum target</span>
-                    <span class="ident">std::cmp::max</span>(<span class="ident">tmpsize</span>, <span class="ident">DEFAULT_CACHE_TARGET</span>)
+        <span class="comment">// Autotune heuristic.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>cache_size = cfg.arcsize.unwrap_or_else(|| {
+            <span class="comment">// Due to changes in concread, we can now scale this up! We now aim for 120%
+            // of entries.
+            </span>db.get_allids_count()
+                .map(|c| {
+                    <span class="kw">let </span>tmpsize = ((c / <span class="number">5</span>) <span class="kw">as </span>usize) * <span class="number">6</span>;
+                    <span class="comment">// if our calculation&#39;s too small anyway, just set it to the minimum target
+                    </span>std::cmp::max(tmpsize, DEFAULT_CACHE_TARGET)
                 })
-                .<span class="ident">unwrap_or</span>(<span class="ident">DEFAULT_CACHE_TARGET</span>)
+                .unwrap_or(DEFAULT_CACHE_TARGET)
         });
 
-        <span class="kw">if</span> <span class="ident">cache_size</span> <span class="op">&lt;</span> <span class="ident">DEFAULT_CACHE_TARGET</span> {
+        <span class="kw">if </span>cache_size &lt; DEFAULT_CACHE_TARGET {
             <span class="macro">admin_warn!</span>(
-                <span class="ident">old</span> <span class="op">=</span> <span class="ident">cache_size</span>,
-                <span class="ident">new</span> <span class="op">=</span> <span class="ident">DEFAULT_CACHE_TARGET</span>,
-                <span class="string">&quot;Configured Arc Cache size too low, increasing...&quot;</span>
-            );
-            <span class="ident">cache_size</span> <span class="op">=</span> <span class="ident">DEFAULT_CACHE_TARGET</span>; <span class="comment">// this being above the log was an uncaught bug</span>
-        }
+                old = cache_size,
+                new = DEFAULT_CACHE_TARGET,
+                <span class="string">&quot;Configured Arc Cache size too low, increasing...&quot;
+            </span>);
+            cache_size = DEFAULT_CACHE_TARGET; <span class="comment">// this being above the log was an uncaught bug
+        </span>}
 
-        <span class="kw">let</span> <span class="ident">entry_cache</span> <span class="op">=</span> <span class="ident">ARCacheBuilder::new</span>()
-            .<span class="ident">set_expected_workload</span>(
-                <span class="ident">cache_size</span>,
-                <span class="ident">cfg</span>.<span class="ident">pool_size</span> <span class="kw">as</span> <span class="ident">usize</span>,
-                <span class="ident">DEFAULT_CACHE_RMISS</span>,
-                <span class="ident">DEFAULT_CACHE_WMISS</span>,
+        <span class="kw">let </span>entry_cache = ARCacheBuilder::new()
+            .set_expected_workload(
+                cache_size,
+                cfg.pool_size <span class="kw">as </span>usize,
+                DEFAULT_CACHE_RMISS,
+                DEFAULT_CACHE_WMISS,
                 <span class="bool-val">false</span>,
             )
-            .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
-            .<span class="ident">build</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            .set_reader_quiesce(<span class="bool-val">true</span>)
+            .build()
+            .ok_or_else(|| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to construct entry_cache&quot;</span>);
-                <span class="ident">OperationError::InvalidState</span>
+                OperationError::InvalidState
             })<span class="question-mark">?</span>;
-        <span class="comment">// The idl cache should have smaller items, and is critical for fast searches</span>
-        <span class="comment">// so we allow it to have a higher ratio of items relative to the entries.</span>
-        <span class="kw">let</span> <span class="ident">idl_cache</span> <span class="op">=</span> <span class="ident">ARCacheBuilder::new</span>()
-            .<span class="ident">set_expected_workload</span>(
-                <span class="ident">cache_size</span> <span class="op">*</span> <span class="ident">DEFAULT_IDL_CACHE_RATIO</span>,
-                <span class="ident">cfg</span>.<span class="ident">pool_size</span> <span class="kw">as</span> <span class="ident">usize</span>,
-                <span class="ident">DEFAULT_CACHE_RMISS</span>,
-                <span class="ident">DEFAULT_CACHE_WMISS</span>,
+        <span class="comment">// The idl cache should have smaller items, and is critical for fast searches
+        // so we allow it to have a higher ratio of items relative to the entries.
+        </span><span class="kw">let </span>idl_cache = ARCacheBuilder::new()
+            .set_expected_workload(
+                cache_size * DEFAULT_IDL_CACHE_RATIO,
+                cfg.pool_size <span class="kw">as </span>usize,
+                DEFAULT_CACHE_RMISS,
+                DEFAULT_CACHE_WMISS,
                 <span class="bool-val">false</span>,
             )
-            .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
-            .<span class="ident">build</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            .set_reader_quiesce(<span class="bool-val">true</span>)
+            .build()
+            .ok_or_else(|| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to construct idl_cache&quot;</span>);
-                <span class="ident">OperationError::InvalidState</span>
+                OperationError::InvalidState
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">name_cache</span> <span class="op">=</span> <span class="ident">ARCacheBuilder::new</span>()
-            .<span class="ident">set_expected_workload</span>(
-                <span class="ident">cache_size</span> <span class="op">*</span> <span class="ident">DEFAULT_NAME_CACHE_RATIO</span>,
-                <span class="ident">cfg</span>.<span class="ident">pool_size</span> <span class="kw">as</span> <span class="ident">usize</span>,
-                <span class="ident">DEFAULT_CACHE_RMISS</span>,
-                <span class="ident">DEFAULT_CACHE_WMISS</span>,
+        <span class="kw">let </span>name_cache = ARCacheBuilder::new()
+            .set_expected_workload(
+                cache_size * DEFAULT_NAME_CACHE_RATIO,
+                cfg.pool_size <span class="kw">as </span>usize,
+                DEFAULT_CACHE_RMISS,
+                DEFAULT_CACHE_WMISS,
                 <span class="bool-val">true</span>,
             )
-            .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
-            .<span class="ident">build</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            .set_reader_quiesce(<span class="bool-val">true</span>)
+            .build()
+            .ok_or_else(|| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to construct name_cache&quot;</span>);
-                <span class="ident">OperationError::InvalidState</span>
+                OperationError::InvalidState
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">allids</span> <span class="op">=</span> <span class="ident">CowCell::new</span>(<span class="ident">IDLBitRange::new</span>());
+        <span class="kw">let </span>allids = CowCell::new(IDLBitRange::new());
 
-        <span class="kw">let</span> <span class="ident">maxid</span> <span class="op">=</span> <span class="ident">CowCell::new</span>(<span class="number">0</span>);
+        <span class="kw">let </span>maxid = CowCell::new(<span class="number">0</span>);
 
-        <span class="kw">let</span> <span class="ident">op_ts_max</span> <span class="op">=</span> <span class="ident">CowCell::new</span>(<span class="prelude-val">None</span>);
+        <span class="kw">let </span>op_ts_max = CowCell::new(<span class="prelude-val">None</span>);
 
-        <span class="prelude-val">Ok</span>(<span class="ident">IdlArcSqlite</span> {
-            <span class="ident">db</span>,
-            <span class="ident">entry_cache</span>,
-            <span class="ident">idl_cache</span>,
-            <span class="ident">name_cache</span>,
-            <span class="ident">op_ts_max</span>,
-            <span class="ident">allids</span>,
-            <span class="ident">maxid</span>,
+        <span class="prelude-val">Ok</span>(IdlArcSqlite {
+            db,
+            entry_cache,
+            idl_cache,
+            name_cache,
+            op_ts_max,
+            allids,
+            maxid,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_quiesce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">try_quiesce</span>();
-        <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">try_quiesce</span>();
-        <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">try_quiesce</span>();
+    <span class="kw">pub fn </span>try_quiesce(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.entry_cache.try_quiesce();
+        <span class="self">self</span>.idl_cache.try_quiesce();
+        <span class="self">self</span>.name_cache.try_quiesce();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdlArcSqliteReadTransaction</span> {
-        <span class="comment">// IMPORTANT! Always take entrycache FIRST</span>
-        <span class="kw">let</span> <span class="ident">entry_cache_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">read</span>();
-        <span class="kw">let</span> <span class="ident">idl_cache_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">read</span>();
-        <span class="kw">let</span> <span class="ident">name_cache_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">read</span>();
-        <span class="kw">let</span> <span class="ident">allids_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">allids</span>.<span class="ident">read</span>();
-        <span class="kw">let</span> <span class="ident">db_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">read</span>();
+    <span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IdlArcSqliteReadTransaction {
+        <span class="comment">// IMPORTANT! Always take entrycache FIRST
+        </span><span class="kw">let </span>entry_cache_read = <span class="self">self</span>.entry_cache.read();
+        <span class="kw">let </span>idl_cache_read = <span class="self">self</span>.idl_cache.read();
+        <span class="kw">let </span>name_cache_read = <span class="self">self</span>.name_cache.read();
+        <span class="kw">let </span>allids_read = <span class="self">self</span>.allids.read();
+        <span class="kw">let </span>db_read = <span class="self">self</span>.db.read();
 
-        <span class="ident">IdlArcSqliteReadTransaction</span> {
-            <span class="ident">db</span>: <span class="ident">db_read</span>,
-            <span class="ident">entry_cache</span>: <span class="ident">entry_cache_read</span>,
-            <span class="ident">idl_cache</span>: <span class="ident">idl_cache_read</span>,
-            <span class="ident">name_cache</span>: <span class="ident">name_cache_read</span>,
-            <span class="ident">allids</span>: <span class="ident">allids_read</span>,
+        IdlArcSqliteReadTransaction {
+            db: db_read,
+            entry_cache: entry_cache_read,
+            idl_cache: idl_cache_read,
+            name_cache: name_cache_read,
+            allids: allids_read,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdlArcSqliteWriteTransaction</span> {
-        <span class="comment">// IMPORTANT! Always take entrycache FIRST</span>
-        <span class="kw">let</span> <span class="ident">entry_cache_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">write</span>();
-        <span class="kw">let</span> <span class="ident">idl_cache_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">write</span>();
-        <span class="kw">let</span> <span class="ident">name_cache_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">write</span>();
-        <span class="kw">let</span> <span class="ident">op_ts_max_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">op_ts_max</span>.<span class="ident">write</span>();
-        <span class="kw">let</span> <span class="ident">allids_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">allids</span>.<span class="ident">write</span>();
-        <span class="kw">let</span> <span class="ident">maxid_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">maxid</span>.<span class="ident">write</span>();
-        <span class="kw">let</span> <span class="ident">db_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>();
-        <span class="ident">IdlArcSqliteWriteTransaction</span> {
-            <span class="ident">db</span>: <span class="ident">db_write</span>,
-            <span class="ident">entry_cache</span>: <span class="ident">entry_cache_write</span>,
-            <span class="ident">idl_cache</span>: <span class="ident">idl_cache_write</span>,
-            <span class="ident">name_cache</span>: <span class="ident">name_cache_write</span>,
-            <span class="ident">op_ts_max</span>: <span class="ident">op_ts_max_write</span>,
-            <span class="ident">allids</span>: <span class="ident">allids_write</span>,
-            <span class="ident">maxid</span>: <span class="ident">maxid_write</span>,
+    <span class="kw">pub fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IdlArcSqliteWriteTransaction {
+        <span class="comment">// IMPORTANT! Always take entrycache FIRST
+        </span><span class="kw">let </span>entry_cache_write = <span class="self">self</span>.entry_cache.write();
+        <span class="kw">let </span>idl_cache_write = <span class="self">self</span>.idl_cache.write();
+        <span class="kw">let </span>name_cache_write = <span class="self">self</span>.name_cache.write();
+        <span class="kw">let </span>op_ts_max_write = <span class="self">self</span>.op_ts_max.write();
+        <span class="kw">let </span>allids_write = <span class="self">self</span>.allids.write();
+        <span class="kw">let </span>maxid_write = <span class="self">self</span>.maxid.write();
+        <span class="kw">let </span>db_write = <span class="self">self</span>.db.write();
+        IdlArcSqliteWriteTransaction {
+            db: db_write,
+            entry_cache: entry_cache_write,
+            idl_cache: idl_cache_write,
+            name_cache: name_cache_write,
+            op_ts_max: op_ts_max_write,
+            allids: allids_write,
+            maxid: maxid_write,
         }
     }
 
@@ -2386,7 +2386,7 @@
         ladmin_info!(audit, &quot;entry_cache stats -&gt; {:?}&quot;, *entry_stats);
         ladmin_info!(audit, &quot;idl_cache stats -&gt; {:?}&quot;, *idl_stats);
     }
-    */</span>
-}
+    */
+</span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

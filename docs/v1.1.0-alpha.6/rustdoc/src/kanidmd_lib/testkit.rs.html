@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/testkit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>testkit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/testkit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>testkit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -29,36 +29,36 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">Backend</span>, <span class="ident">BackendConfig</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::Schema</span>;
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::duration_from_epoch_now</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
+<span class="attribute">#[allow(unused_imports)]
+</span><span class="kw">use </span><span class="kw">crate</span>::utils::duration_from_epoch_now;
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_test</span>() -&gt; <span class="ident">QueryServer</span> {
-    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
+<span class="kw">pub async fn </span>setup_test() -&gt; QueryServer {
+    <span class="kw">let _ </span>= sketching::test_init();
 
-    <span class="comment">// Create an in memory BE</span>
-    <span class="kw">let</span> <span class="ident">schema_outer</span> <span class="op">=</span> <span class="ident">Schema::new</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to init schema&quot;</span>);
-    <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="ident">schema_txn</span> <span class="op">=</span> <span class="ident">schema_outer</span>.<span class="ident">write</span>();
-        <span class="ident">schema_txn</span>.<span class="ident">reload_idxmeta</span>()
+    <span class="comment">// Create an in memory BE
+    </span><span class="kw">let </span>schema_outer = Schema::new().expect(<span class="string">&quot;Failed to init schema&quot;</span>);
+    <span class="kw">let </span>idxmeta = {
+        <span class="kw">let </span>schema_txn = schema_outer.write();
+        schema_txn.reload_idxmeta()
     };
-    <span class="kw">let</span> <span class="ident">be</span> <span class="op">=</span> <span class="ident">Backend::new</span>(<span class="ident">BackendConfig::new_test</span>(), <span class="ident">idxmeta</span>, <span class="bool-val">false</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to init BE&quot;</span>);
+    <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(), idxmeta, <span class="bool-val">false</span>).expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="ident">QueryServer::new</span>(<span class="ident">be</span>, <span class="ident">schema_outer</span>, <span class="string">&quot;example.com&quot;</span>.<span class="ident">to_string</span>());
-    <span class="comment">// Init is called via the proc macro</span>
-    <span class="ident">qs</span>
+    <span class="kw">let </span>qs = QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string());
+    <span class="comment">// Init is called via the proc macro
+    </span>qs
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_idm_test</span>() -&gt; (<span class="ident">IdmServer</span>, <span class="ident">IdmServerDelayed</span>) {
-    <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="ident">setup_test</span>().<span class="kw">await</span>;
+<span class="kw">pub async fn </span>setup_idm_test() -&gt; (IdmServer, IdmServerDelayed) {
+    <span class="kw">let </span>qs = setup_test().<span class="kw">await</span>;
 
-    <span class="ident">qs</span>.<span class="ident">initialise_helper</span>(<span class="ident">duration_from_epoch_now</span>())
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;init failed!&quot;</span>);
+    qs.initialise_helper(duration_from_epoch_now())
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;init failed!&quot;</span>);
 
-    <span class="ident">IdmServer::new</span>(<span class="ident">qs</span>, <span class="string">&quot;https://idm.example.com&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to setup idms&quot;</span>)
+    IdmServer::new(qs, <span class="string">&quot;https://idm.example.com&quot;</span>).expect(<span class="string">&quot;Failed to setup idms&quot;</span>)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

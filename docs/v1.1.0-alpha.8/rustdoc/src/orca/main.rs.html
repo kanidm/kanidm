@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -205,212 +205,212 @@
 <span id="205">205</span>
 <span id="206">206</span>
 <span id="207">207</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::panic</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unreachable</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::await_holding_lock</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>))]</span>
-<span class="attribute">#[<span class="ident">global_allocator</span>]</span>
-<span class="kw">static</span> <span class="ident">ALLOC</span>: <span class="ident">tikv_jemallocator::Jemalloc</span> <span class="op">=</span> <span class="ident">tikv_jemallocator::Jemalloc</span>;
+#[cfg(not(target_family = <span class="string">&quot;windows&quot;</span>))]
+#[global_allocator]
+</span><span class="kw">static </span>ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
+<span class="attribute">#[macro_use]
+</span><span class="kw">extern crate </span>tracing;
 
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
+<span class="kw">use </span>std::collections::{HashMap, HashSet};
+<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::time::{Duration, Instant};
 
-<span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Parser</span>, <span class="ident">Subcommand</span>};
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>clap::{Parser, Subcommand};
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ds::DirectoryServer</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::kani</span>::{<span class="ident">KaniHttpServer</span>, <span class="ident">KaniLdapServer</span>};
+<span class="kw">use </span><span class="kw">crate</span>::ds::DirectoryServer;
+<span class="kw">use </span><span class="kw">crate</span>::kani::{KaniHttpServer, KaniLdapServer};
 
-<span class="kw">mod</span> <span class="ident">data</span>;
-<span class="kw">mod</span> <span class="ident">ds</span>;
-<span class="kw">mod</span> <span class="ident">kani</span>;
-<span class="kw">mod</span> <span class="ident">ldap</span>;
-<span class="kw">mod</span> <span class="ident">preprocess</span>;
-<span class="kw">mod</span> <span class="ident">profile</span>;
-<span class="kw">mod</span> <span class="ident">runner</span>;
-<span class="kw">mod</span> <span class="ident">setup</span>;
+<span class="kw">mod </span>data;
+<span class="kw">mod </span>ds;
+<span class="kw">mod </span>kani;
+<span class="kw">mod </span>ldap;
+<span class="kw">mod </span>preprocess;
+<span class="kw">mod </span>profile;
+<span class="kw">mod </span>runner;
+<span class="kw">mod </span>setup;
 
 <span class="macro">include!</span>(<span class="string">&quot;./opt.rs&quot;</span>);
 
-<span class="kw">impl</span> <span class="ident">OrcaOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">OrcaOpt::PreProc</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">OrcaOpt::Setup</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">OrcaOpt::Run</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+<span class="kw">impl </span>OrcaOpt {
+    <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            OrcaOpt::PreProc(opt) =&gt; opt.copt.debug,
+            OrcaOpt::Setup(opt) =&gt; opt.copt.debug,
+            OrcaOpt::Run(opt) =&gt; opt.copt.debug,
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TargetServerBuilder</span> {
-    <span class="ident">Kanidm</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="ident">KanidmLdap</span>(<span class="ident">String</span>, <span class="ident">String</span>, <span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="ident">DirSrv</span>(<span class="ident">String</span>, <span class="ident">String</span>, <span class="ident">String</span>),
+<span class="kw">pub enum </span>TargetServerBuilder {
+    Kanidm(String, String),
+    KanidmLdap(String, String, String, String),
+    DirSrv(String, String, String),
 }
 
-<span class="kw">impl</span> <span class="ident">TargetServerBuilder</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::result_unit_err</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServerBuilder::Kanidm</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="ident">KaniHttpServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>),
-            <span class="ident">TargetServerBuilder::KanidmLdap</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>) =&gt; <span class="ident">KaniLdapServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>),
-            <span class="ident">TargetServerBuilder::DirSrv</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>) =&gt; <span class="ident">DirectoryServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>),
+<span class="kw">impl </span>TargetServerBuilder {
+    <span class="attribute">#[allow(clippy::result_unit_err)]
+    </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;TargetServer, ()&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServerBuilder::Kanidm(a, b) =&gt; KaniHttpServer::build(a, b),
+            TargetServerBuilder::KanidmLdap(a, b, c, d) =&gt; KaniLdapServer::build(a, b, c, d),
+            TargetServerBuilder::DirSrv(a, b, c) =&gt; DirectoryServer::build(a, b, c),
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TargetServer</span> {
-    <span class="ident">Kanidm</span>(<span class="ident">KaniHttpServer</span>),
-    <span class="ident">KanidmLdap</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">KaniLdapServer</span><span class="op">&gt;</span>),
-    <span class="ident">DirSrv</span>(<span class="ident">DirectoryServer</span>),
+<span class="kw">pub enum </span>TargetServer {
+    Kanidm(KaniHttpServer),
+    KanidmLdap(Box&lt;KaniLdapServer&gt;),
+    DirSrv(DirectoryServer),
 }
 
-<span class="kw">impl</span> <span class="ident">TargetServer</span> {
-    <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">info</span>(),
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">info</span>(),
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">info</span>(),
+<span class="kw">impl </span>TargetServer {
+    <span class="kw">fn </span>info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.info(),
+            TargetServer::KanidmLdap(k) =&gt; k.info(),
+            TargetServer::DirSrv(k) =&gt; k.info(),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">rname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_http&quot;</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_ldap&quot;</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;directory_server&quot;</span>,
+    <span class="kw">fn </span>rname(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_http&quot;</span>,
+            TargetServer::KanidmLdap(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_ldap&quot;</span>,
+            TargetServer::DirSrv(<span class="kw">_</span>) =&gt; <span class="string">&quot;directory_server&quot;</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">TargetServerBuilder</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">builder</span>(),
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">builder</span>(),
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">builder</span>(),
+    <span class="kw">fn </span>builder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TargetServerBuilder {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.builder(),
+            TargetServer::KanidmLdap(k) =&gt; k.builder(),
+            TargetServer::DirSrv(k) =&gt; k.builder(),
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
+    <span class="kw">async fn </span>open_admin_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.open_admin_connection().<span class="kw">await</span>,
+            TargetServer::KanidmLdap(k) =&gt; k.open_admin_connection().<span class="kw">await</span>,
+            TargetServer::DirSrv(k) =&gt; k.open_admin_connection().<span class="kw">await</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
+    <span class="kw">async fn </span>setup_admin_delete_uuids(<span class="kw-2">&amp;</span><span class="self">self</span>, targets: <span class="kw-2">&amp;</span>[Uuid]) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.setup_admin_delete_uuids(targets).<span class="kw">await</span>,
+            TargetServer::KanidmLdap(k) =&gt; k.setup_admin_delete_uuids(targets).<span class="kw">await</span>,
+            TargetServer::DirSrv(k) =&gt; k.setup_admin_delete_uuids(targets).<span class="kw">await</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_precreate_entities</span>(
+    <span class="kw">async fn </span>setup_admin_precreate_entities(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">targets</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">data::Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; {
-                <span class="ident">k</span>.<span class="ident">setup_admin_precreate_entities</span>(<span class="ident">targets</span>, <span class="ident">all_entities</span>)
-                    .<span class="kw">await</span>
-            }
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; {
-                <span class="ident">k</span>.<span class="ident">setup_admin_precreate_entities</span>(<span class="ident">targets</span>, <span class="ident">all_entities</span>)
-                    .<span class="kw">await</span>
-            }
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; {
-                <span class="ident">k</span>.<span class="ident">setup_admin_precreate_entities</span>(<span class="ident">targets</span>, <span class="ident">all_entities</span>)
-                    .<span class="kw">await</span>
-            }
+        targets: <span class="kw-2">&amp;</span>HashSet&lt;Uuid&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, data::Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .<span class="kw">await
+            </span>}
+            TargetServer::KanidmLdap(k) =&gt; {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .<span class="kw">await
+            </span>}
+            TargetServer::DirSrv(k) =&gt; {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .<span class="kw">await
+            </span>}
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_access_controls</span>(
+    <span class="kw">async fn </span>setup_access_controls(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">access</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">data::EntityType</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">data::Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
+        access: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Vec&lt;data::EntityType&gt;&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, data::Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.setup_access_controls(access, all_entities).<span class="kw">await</span>,
+            TargetServer::KanidmLdap(k) =&gt; k.setup_access_controls(access, all_entities).<span class="kw">await</span>,
+            TargetServer::DirSrv(k) =&gt; k.setup_access_controls(access, all_entities).<span class="kw">await</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_user_connection</span>(
+    <span class="kw">async fn </span>open_user_connection(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
+        test_start: Instant,
+        name: <span class="kw-2">&amp;</span>str,
+        pw: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration), ()&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.open_user_connection(test_start, name, pw).<span class="kw">await</span>,
+            TargetServer::KanidmLdap(k) =&gt; k.open_user_connection(test_start, name, pw).<span class="kw">await</span>,
+            TargetServer::DirSrv(k) =&gt; k.open_user_connection(test_start, name, pw).<span class="kw">await</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
+    <span class="kw">async fn </span>close_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.close_connection().<span class="kw">await</span>,
+            TargetServer::KanidmLdap(k) =&gt; k.close_connection().<span class="kw">await</span>,
+            TargetServer::DirSrv(k) =&gt; k.close_connection().<span class="kw">await</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(
+    <span class="kw">async fn </span>search(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
+        test_start: Instant,
+        ids: <span class="kw-2">&amp;</span>[String],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration, usize), ()&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            TargetServer::Kanidm(k) =&gt; k.search(test_start, ids).<span class="kw">await</span>,
+            TargetServer::KanidmLdap(k) =&gt; k.search(test_start, ids).<span class="kw">await</span>,
+            TargetServer::DirSrv(k) =&gt; k.search(test_start, ids).<span class="kw">await</span>,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">OrcaOpt::parse</span>();
+<span class="attribute">#[tokio::main]
+</span><span class="kw">async fn </span>main() {
+    <span class="kw">let </span>opt = OrcaOpt::parse();
 
-    <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">debug</span>() {
-        <span class="ident">::std::env::set_var</span>(
+    <span class="kw">if </span>opt.debug() {
+        ::std::env::set_var(
             <span class="string">&quot;RUST_LOG&quot;</span>,
             <span class="string">&quot;orca=debug,kanidm=debug,kanidm_client=debug,webauthn=debug&quot;</span>,
         );
     }
-    <span class="ident">tracing_subscriber::fmt::init</span>();
+    tracing_subscriber::fmt::init();
 
     <span class="macro">info!</span>(<span class="string">&quot;Orca - the Kanidm Load Testing Utility.&quot;</span>);
-    <span class="macro">debug!</span>(<span class="string">&quot;cli -&gt; {:?}&quot;</span>, <span class="ident">opt</span>);
-    <span class="kw">match</span> <span class="ident">opt</span> {
-        <span class="ident">OrcaOpt::PreProc</span>(<span class="ident">opt</span>) =&gt; <span class="ident">preprocess::doit</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">input_path</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">output_path</span>),
-        <span class="ident">OrcaOpt::Setup</span>(<span class="ident">opt</span>) =&gt; {
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">setup::doit</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">profile_path</span>).<span class="kw">await</span>;
+    <span class="macro">debug!</span>(<span class="string">&quot;cli -&gt; {:?}&quot;</span>, opt);
+    <span class="kw">match </span>opt {
+        OrcaOpt::PreProc(opt) =&gt; preprocess::doit(<span class="kw-2">&amp;</span>opt.input_path, <span class="kw-2">&amp;</span>opt.output_path),
+        OrcaOpt::Setup(opt) =&gt; {
+            <span class="kw">let _ </span>= setup::doit(<span class="kw-2">&amp;</span>opt.target, <span class="kw-2">&amp;</span>opt.profile_path).<span class="kw">await</span>;
         }
-        <span class="ident">OrcaOpt::Run</span>(<span class="ident">opt</span>) =&gt; {
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">runner::doit</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">test_type</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">profile_path</span>).<span class="kw">await</span>;
-            <span class="comment">// read the profile that we are going to be using/testing</span>
-            <span class="comment">// load the related data (if any) or generate it</span>
-            <span class="comment">// run the test!</span>
-        }
+        OrcaOpt::Run(opt) =&gt; {
+            <span class="kw">let _ </span>= runner::doit(<span class="kw-2">&amp;</span>opt.test_type, <span class="kw-2">&amp;</span>opt.target, <span class="kw-2">&amp;</span>opt.profile_path).<span class="kw">await</span>;
+            <span class="comment">// read the profile that we are going to be using/testing
+            // load the related data (if any) or generate it
+            // run the test!
+        </span>}
     };
     <span class="macro">info!</span>(<span class="string">&quot;Success&quot;</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

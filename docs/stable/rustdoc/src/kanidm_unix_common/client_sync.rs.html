@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/client_sync.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client_sync.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unix_common/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/client_sync.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>client_sync.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unix_common/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -97,104 +97,104 @@
 <span id="97">97</span>
 <span id="98">98</span>
 <span id="99">99</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::error::Error</span>;
-<span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Error</span> <span class="kw">as</span> <span class="ident">IoError</span>, <span class="ident">ErrorKind</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
-<span class="kw">use</span> <span class="ident">std::os::unix::net::UnixStream</span>;
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::error::Error;
+<span class="kw">use </span>std::io::{Error <span class="kw">as </span>IoError, ErrorKind, Read, Write};
+<span class="kw">use </span>std::os::unix::net::UnixStream;
+<span class="kw">use </span>std::time::{Duration, SystemTime};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>};
+<span class="kw">use </span><span class="kw">crate</span>::unix_proto::{ClientRequest, ClientResponse};
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">call_daemon_blocking</span>(
-    <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">ClientRequest</span>,
-    <span class="ident">timeout</span>: <span class="ident">u64</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ClientResponse</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">timeout</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">timeout</span>);
+<span class="kw">pub fn </span>call_daemon_blocking(
+    path: <span class="kw-2">&amp;</span>str,
+    req: <span class="kw-2">&amp;</span>ClientRequest,
+    timeout: u64,
+) -&gt; <span class="prelude-ty">Result</span>&lt;ClientResponse, Box&lt;<span class="kw">dyn </span>Error&gt;&gt; {
+    <span class="kw">let </span>timeout = Duration::from_secs(timeout);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stream</span> <span class="op">=</span> <span class="ident">UnixStream::connect</span>(<span class="ident">path</span>)
-        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">socket</span><span class="op">|</span> <span class="ident">socket</span>.<span class="ident">set_read_timeout</span>(<span class="prelude-val">Some</span>(<span class="ident">timeout</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">socket</span>))
-        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">socket</span><span class="op">|</span> <span class="ident">socket</span>.<span class="ident">set_write_timeout</span>(<span class="prelude-val">Some</span>(<span class="ident">timeout</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">socket</span>))
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;stream setup error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">e</span>
+    <span class="kw">let </span><span class="kw-2">mut </span>stream = UnixStream::connect(path)
+        .and_then(|socket| socket.set_read_timeout(<span class="prelude-val">Some</span>(timeout)).map(|<span class="kw">_</span>| socket))
+        .and_then(|socket| socket.set_write_timeout(<span class="prelude-val">Some</span>(timeout)).map(|<span class="kw">_</span>| socket))
+        .map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;stream setup error -&gt; {:?}&quot;</span>, e);
+            e
         })
-        .<span class="ident">map_err</span>(<span class="ident">Box::new</span>)<span class="question-mark">?</span>;
+        .map_err(Box::new)<span class="question-mark">?</span>;
 
-    <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_json::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">req</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-        <span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;JSON encode error&quot;</span>))
+    <span class="kw">let </span>data = serde_json::to_vec(<span class="kw-2">&amp;</span>req).map_err(|e| {
+        <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, e);
+        Box::new(IoError::new(ErrorKind::Other, <span class="string">&quot;JSON encode error&quot;</span>))
     })<span class="question-mark">?</span>;
-    <span class="comment">//  .map_err(Box::new)?;</span>
+    <span class="comment">//  .map_err(Box::new)?;
 
-    <span class="ident">stream</span>
-        .<span class="ident">write_all</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>())
-        .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">stream</span>.<span class="ident">flush</span>())
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;stream write error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">e</span>
+    </span>stream
+        .write_all(data.as_slice())
+        .and_then(|<span class="kw">_</span>| stream.flush())
+        .map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;stream write error -&gt; {:?}&quot;</span>, e);
+            e
         })
-        .<span class="ident">map_err</span>(<span class="ident">Box::new</span>)<span class="question-mark">?</span>;
+        .map_err(Box::new)<span class="question-mark">?</span>;
 
-    <span class="comment">// Now wait on the response.</span>
-    <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">read_started</span> <span class="op">=</span> <span class="bool-val">false</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">1024</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counter</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="comment">// Now wait on the response.
+    </span><span class="kw">let </span>start = SystemTime::now();
+    <span class="kw">let </span><span class="kw-2">mut </span>read_started = <span class="bool-val">false</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>data = Vec::with_capacity(<span class="number">1024</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>counter = <span class="number">0</span>;
 
-    <span class="kw">loop</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">1024</span>];
-        <span class="kw">let</span> <span class="ident">durr</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">duration_since</span>(<span class="ident">start</span>).<span class="ident">map_err</span>(<span class="ident">Box::new</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">durr</span> <span class="op">&gt;</span> <span class="ident">timeout</span> {
+    <span class="kw">loop </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = [<span class="number">0</span>; <span class="number">1024</span>];
+        <span class="kw">let </span>durr = SystemTime::now().duration_since(start).map_err(Box::new)<span class="question-mark">?</span>;
+        <span class="kw">if </span>durr &gt; timeout {
             <span class="macro">error!</span>(<span class="string">&quot;Socket timeout&quot;</span>);
-            <span class="comment">// timed out, not enough activity.</span>
-            <span class="kw">break</span>;
+            <span class="comment">// timed out, not enough activity.
+            </span><span class="kw">break</span>;
         }
-        <span class="comment">// Would be a lot easier if we had peek ...</span>
-        <span class="comment">// https://github.com/rust-lang/rust/issues/76923</span>
-        <span class="kw">match</span> <span class="ident">stream</span>.<span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buffer</span>) {
+        <span class="comment">// Would be a lot easier if we had peek ...
+        // https://github.com/rust-lang/rust/issues/76923
+        </span><span class="kw">match </span>stream.read(<span class="kw-2">&amp;mut </span>buffer) {
             <span class="prelude-val">Ok</span>(<span class="number">0</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">read_started</span> {
+                <span class="kw">if </span>read_started {
                     <span class="macro">debug!</span>(<span class="string">&quot;read_started true, we have completed&quot;</span>);
-                    <span class="comment">// We&#39;re done, no more bytes.</span>
-                    <span class="kw">break</span>;
-                } <span class="kw">else</span> {
+                    <span class="comment">// We&#39;re done, no more bytes.
+                    </span><span class="kw">break</span>;
+                } <span class="kw">else </span>{
                     <span class="macro">debug!</span>(<span class="string">&quot;Waiting ...&quot;</span>);
-                    <span class="comment">// Still can wait ...</span>
-                    <span class="kw">continue</span>;
+                    <span class="comment">// Still can wait ...
+                    </span><span class="kw">continue</span>;
                 }
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">count</span>) =&gt; {
-                <span class="ident">data</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>);
-                <span class="ident">counter</span> <span class="op">+</span><span class="op">=</span> <span class="ident">count</span>;
-                <span class="kw">if</span> <span class="ident">count</span> <span class="op">==</span> <span class="number">1024</span> {
+            <span class="prelude-val">Ok</span>(count) =&gt; {
+                data.extend_from_slice(<span class="kw-2">&amp;</span>buffer);
+                counter += count;
+                <span class="kw">if </span>count == <span class="number">1024 </span>{
                     <span class="macro">debug!</span>(<span class="string">&quot;Filled 1024 bytes, looping ...&quot;</span>);
-                    <span class="comment">// We have filled the buffer, we need to copy and loop again.</span>
-                    <span class="ident">read_started</span> <span class="op">=</span> <span class="bool-val">true</span>;
+                    <span class="comment">// We have filled the buffer, we need to copy and loop again.
+                    </span>read_started = <span class="bool-val">true</span>;
                     <span class="kw">continue</span>;
-                } <span class="kw">else</span> {
-                    <span class="macro">debug!</span>(<span class="string">&quot;Filled {} bytes, complete&quot;</span>, <span class="ident">count</span>);
-                    <span class="comment">// We have a partial read, so we are complete.</span>
-                    <span class="kw">break</span>;
+                } <span class="kw">else </span>{
+                    <span class="macro">debug!</span>(<span class="string">&quot;Filled {} bytes, complete&quot;</span>, count);
+                    <span class="comment">// We have a partial read, so we are complete.
+                    </span><span class="kw">break</span>;
                 }
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;Steam read failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="comment">// Failure!</span>
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">e</span>));
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;Steam read failure -&gt; {:?}&quot;</span>, e);
+                <span class="comment">// Failure!
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(e));
             }
         }
     }
 
-    <span class="comment">// Extend from slice fills with 0&#39;s, so we need to truncate now.</span>
-    <span class="ident">data</span>.<span class="ident">truncate</span>(<span class="ident">counter</span>);
+    <span class="comment">// Extend from slice fills with 0&#39;s, so we need to truncate now.
+    </span>data.truncate(counter);
 
-    <span class="comment">// Now attempt to decode.</span>
-    <span class="kw">let</span> <span class="ident">cr</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">ClientResponse</span><span class="op">&gt;</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-        <span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;JSON decode error&quot;</span>))
+    <span class="comment">// Now attempt to decode.
+    </span><span class="kw">let </span>cr = serde_json::from_slice::&lt;ClientResponse&gt;(data.as_slice()).map_err(|e| {
+        <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, e);
+        Box::new(IoError::new(ErrorKind::Other, <span class="string">&quot;JSON decode error&quot;</span>))
     })<span class="question-mark">?</span>;
 
-    <span class="prelude-val">Ok</span>(<span class="ident">cr</span>)
+    <span class="prelude-val">Ok</span>(cr)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unix_common" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unix_common" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/constants/schema.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>schema.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/constants/schema.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>schema.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1633,11 +1633,11 @@
 <span id="1633">1633</span>
 <span id="1634">1634</span>
 <span id="1635">1635</span>
-</pre><pre class="rust"><code><span class="comment">// Core</span>
-<span class="comment">// Schema uuids start at 00000000-0000-0000-0000-ffff00000000</span>
+</pre><pre class="rust"><code><span class="comment">// Core
+// Schema uuids start at 00000000-0000-0000-0000-ffff00000000
 
-<span class="comment">// system supplementary</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DISPLAYNAME</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+// system supplementary
+</span><span class="kw">pub const </span>JSON_SCHEMA_ATTR_DISPLAYNAME: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -1667,7 +1667,7 @@
       ]
     }
 }&quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_MAIL</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_MAIL: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -1699,7 +1699,7 @@
     }
   }
 &quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_SSH_PUBLICKEY</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_SSH_PUBLICKEY: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -1729,7 +1729,7 @@
     }
   }
 &quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -1759,7 +1759,7 @@
     }
   }
 &quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_LEGALNAME</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_LEGALNAME: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -1789,7 +1789,7 @@
       ]
     }
 }&quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_RADIUS_SECRET</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_RADIUS_SECRET: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -1818,7 +1818,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_NAME</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_DOMAIN_NAME: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -1850,7 +1850,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
   &quot;attrs&quot;: {
     &quot;class&quot;: [
       &quot;object&quot;,
@@ -1881,7 +1881,7 @@
   }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_UUID</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_DOMAIN_UUID: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -1911,7 +1911,7 @@
       ]
     }
 }&quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_SSID</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_DOMAIN_SSID: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -1942,7 +1942,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -1971,7 +1971,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2000,7 +2000,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_GIDNUMBER</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_GIDNUMBER: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2031,7 +2031,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_BADLIST_PASSWORD</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_BADLIST_PASSWORD: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2060,7 +2060,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_LOGINSHELL</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_LOGINSHELL: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2089,7 +2089,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_UNIX_PASSWORD</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_UNIX_PASSWORD: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2118,7 +2118,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_NSUNIQUEID</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_NSUNIQUEID: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2149,7 +2149,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2178,7 +2178,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2207,7 +2207,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_NAME</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_RS_NAME: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2238,7 +2238,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2267,7 +2267,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2298,7 +2298,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2329,7 +2329,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2358,7 +2358,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2387,7 +2387,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2416,7 +2416,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2447,7 +2447,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2476,7 +2476,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2505,7 +2505,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2536,7 +2536,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2565,7 +2565,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2594,7 +2594,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2625,7 +2625,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_PASSKEYS</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_PASSKEYS: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2656,7 +2656,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DEVICEKEYS</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_DEVICEKEYS: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2687,7 +2687,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_DYNGROUP_FILTER</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_DYNGROUP_FILTER: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2715,7 +2715,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2744,7 +2744,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_API_TOKEN_SESSION</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_API_TOKEN_SESSION: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2775,7 +2775,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2806,7 +2806,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2837,7 +2837,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_ATTR_SYNC_COOKIE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_SYNC_COOKIE: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
         &quot;object&quot;,
@@ -2866,9 +2866,9 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// === classes ===</span>
+<span class="comment">// === classes ===
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_PERSON</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+</span><span class="kw">pub const </span>JSON_SCHEMA_CLASS_PERSON: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -2897,7 +2897,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_ORGPERSON</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_ORGPERSON: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -2926,7 +2926,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_GROUP</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_GROUP: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -2954,7 +2954,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_DYNGROUP</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_DYNGROUP: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -2981,7 +2981,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_ACCOUNT</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_ACCOUNT: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3024,7 +3024,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_SERVICE_ACCOUNT</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_SERVICE_ACCOUNT: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3054,7 +3054,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_SYNC_ACCOUNT</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_SYNC_ACCOUNT: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3086,12 +3086,12 @@
   }
 &quot;#</span>;
 
-<span class="comment">// domain_info type</span>
-<span class="comment">//  domain_uuid</span>
-<span class="comment">//  domain_name &lt;- should be the dns name?</span>
-<span class="comment">//  domain_ssid &lt;- for radius</span>
-<span class="comment">//</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_DOMAIN_INFO</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="comment">// domain_info type
+//  domain_uuid
+//  domain_name &lt;- should be the dns name?
+//  domain_ssid &lt;- for radius
+//
+</span><span class="kw">pub const </span>JSON_SCHEMA_CLASS_DOMAIN_INFO: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3124,7 +3124,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_POSIXGROUP</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_POSIXGROUP: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3151,7 +3151,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_POSIXACCOUNT</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_POSIXACCOUNT: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3182,7 +3182,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_SYSTEM_CONFIG</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_SYSTEM_CONFIG: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3207,7 +3207,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_OAUTH2_RS</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_OAUTH2_RS: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3244,7 +3244,7 @@
   }
 &quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
+<span class="kw">pub const </span>JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;
   {
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3269,4 +3269,4 @@
   }
 &quot;#</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/runner/search.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>search.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../orca/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/runner/search.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>search.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../orca/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -337,344 +337,344 @@
 <span id="337">337</span>
 <span id="338">338</span>
 <span id="339">339</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fs::File</span>;
-<span class="kw">use</span> <span class="ident">std::io::BufWriter</span>;
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::fs::File;
+<span class="kw">use </span>std::io::BufWriter;
+<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::time::{Duration, Instant};
 
-<span class="kw">use</span> <span class="ident">crossbeam::channel</span>::{<span class="ident">unbounded</span>, <span class="ident">RecvTimeoutError</span>};
-<span class="kw">use</span> <span class="ident">mathru::statistics::distrib</span>::{<span class="ident">Continuous</span>, <span class="ident">Normal</span>};
-<span class="kw">use</span> <span class="ident">rand::seq</span>::{<span class="ident">IteratorRandom</span>, <span class="ident">SliceRandom</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">tokio::sync::broadcast</span>;
-<span class="kw">use</span> <span class="ident">tokio::task</span>;
+<span class="kw">use </span>crossbeam::channel::{unbounded, RecvTimeoutError};
+<span class="kw">use </span>mathru::statistics::distrib::{Continuous, Normal};
+<span class="kw">use </span>rand::seq::{IteratorRandom, SliceRandom};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>tokio::sync::broadcast;
+<span class="kw">use </span>tokio::task;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::data</span>::{<span class="ident">Entity</span>, <span class="ident">OpType</span>, <span class="ident">TestData</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::profile::Profile</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TargetServer</span>, <span class="ident">TargetServerBuilder</span>};
+<span class="kw">use </span><span class="kw">crate</span>::data::{Entity, OpType, TestData};
+<span class="kw">use </span><span class="kw">crate</span>::profile::Profile;
+<span class="kw">use crate</span>::{TargetServer, TargetServerBuilder};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">TestPhase</span> {
-    <span class="ident">WarmUp</span>,
-    <span class="comment">// Running,</span>
-    <span class="ident">Shutdown</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">enum </span>TestPhase {
+    WarmUp,
+    <span class="comment">// Running,
+    </span>Shutdown,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">struct</span> <span class="ident">CsvRow</span> {
-    <span class="ident">start</span>: <span class="ident">f64</span>,
-    <span class="ident">duration</span>: <span class="ident">f64</span>,
-    <span class="ident">count</span>: <span class="ident">usize</span>,
+<span class="attribute">#[derive(Serialize, Deserialize)]
+</span><span class="kw">struct </span>CsvRow {
+    start: f64,
+    duration: f64,
+    count: usize,
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">basic_arbiter</span>(
-    <span class="kw-2">mut</span> <span class="ident">broadcast_rx</span>: <span class="ident">tokio::sync::broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">TestPhase</span><span class="op">&gt;</span>,
-    <span class="ident">raw_results_rx</span>: <span class="kw-2">&amp;</span><span class="ident">crossbeam::channel::Receiver</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
-    <span class="ident">warmup_seconds</span>: <span class="ident">u32</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
+<span class="kw">async fn </span>basic_arbiter(
+    <span class="kw-2">mut </span>broadcast_rx: tokio::sync::broadcast::Receiver&lt;TestPhase&gt;,
+    raw_results_rx: <span class="kw-2">&amp;</span>crossbeam::channel::Receiver&lt;(Duration, Duration, usize)&gt;,
+    warmup_seconds: u32,
+) -&gt; Vec&lt;(Duration, Duration, usize)&gt; {
     <span class="macro">info!</span>(<span class="string">&quot;Starting test arbiter ...&quot;</span>);
 
-    <span class="comment">// Wait on the message that the workers have started the warm up.</span>
-    <span class="kw">let</span> <span class="ident">bcast_msg</span> <span class="op">=</span> <span class="ident">broadcast_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">unwrap</span>();
+    <span class="comment">// Wait on the message that the workers have started the warm up.
+    </span><span class="kw">let </span>bcast_msg = broadcast_rx.recv().<span class="kw">await</span>.unwrap();
 
-    <span class="kw">if</span> <span class="op">!</span><span class="macro">matches!</span>(<span class="ident">bcast_msg</span>, <span class="ident">TestPhase::WarmUp</span>) {
+    <span class="kw">if </span>!<span class="macro">matches!</span>(bcast_msg, TestPhase::WarmUp) {
         <span class="macro">error!</span>(<span class="string">&quot;Invalid broadcast state to arbiter&quot;</span>);
-        <span class="kw">return</span> <span class="ident">Vec::new</span>();
+        <span class="kw">return </span>Vec::new();
     }
 
-    <span class="comment">// Wait for warmup seconds.</span>
-    <span class="comment">// end of warmup</span>
+    <span class="comment">// Wait for warmup seconds.
+    // end of warmup
 
-    <span class="kw">let</span> <span class="ident">end_of_warmup</span> <span class="op">=</span> <span class="ident">Instant::now</span>() <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">warmup_seconds</span> <span class="kw">as</span> <span class="ident">u64</span>);
+    </span><span class="kw">let </span>end_of_warmup = Instant::now() + Duration::from_secs(warmup_seconds <span class="kw">as </span>u64);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">count</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
 
-    <span class="kw">loop</span> {
-        <span class="kw">match</span> <span class="ident">raw_results_rx</span>.<span class="ident">recv_deadline</span>(<span class="ident">end_of_warmup</span>) {
-            <span class="comment">// We are currently discarding results.</span>
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                <span class="ident">count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+    <span class="kw">loop </span>{
+        <span class="kw">match </span>raw_results_rx.recv_deadline(end_of_warmup) {
+            <span class="comment">// We are currently discarding results.
+            </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                count += <span class="number">1</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="ident">RecvTimeoutError::Timeout</span>) =&gt; {
+            <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
                 <span class="kw">break</span>;
             }
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Worker channel error&quot;</span>);
-                <span class="kw">return</span> <span class="ident">Vec::new</span>();
+                <span class="kw">return </span>Vec::new();
             }
         }
     }
 
     <span class="macro">info!</span>(<span class="string">&quot;Warmup has passed, collecting data&quot;</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">results</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">count</span> <span class="op">*</span> <span class="number">4</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::with_capacity(count * <span class="number">4</span>);
 
-    <span class="comment">// Now we are running, so collect our data.</span>
-    <span class="kw">let</span> <span class="ident">end_of_test</span> <span class="op">=</span> <span class="ident">Instant::now</span>() <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="number">10</span>);
+    <span class="comment">// Now we are running, so collect our data.
+    </span><span class="kw">let </span>end_of_test = Instant::now() + Duration::from_secs(<span class="number">10</span>);
 
-    <span class="kw">loop</span> {
-        <span class="kw">match</span> <span class="ident">raw_results_rx</span>.<span class="ident">recv_deadline</span>(<span class="ident">end_of_test</span>) {
-            <span class="comment">// We are currently discarding results.</span>
-            <span class="prelude-val">Ok</span>(<span class="ident">datum</span>) =&gt; <span class="ident">results</span>.<span class="ident">push</span>(<span class="ident">datum</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">RecvTimeoutError::Timeout</span>) =&gt; {
+    <span class="kw">loop </span>{
+        <span class="kw">match </span>raw_results_rx.recv_deadline(end_of_test) {
+            <span class="comment">// We are currently discarding results.
+            </span><span class="prelude-val">Ok</span>(datum) =&gt; results.push(datum),
+            <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
                 <span class="kw">break</span>;
             }
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Worker channel error&quot;</span>);
-                <span class="kw">return</span> <span class="ident">Vec::new</span>();
+                <span class="kw">return </span>Vec::new();
             }
         }
     }
 
     <span class="macro">info!</span>(
         <span class="string">&quot;Stopping test arbiter. Gathered {} datapoints&quot;</span>,
-        <span class="ident">results</span>.<span class="ident">len</span>()
+        results.len()
     );
-    <span class="ident">results</span>
+    results
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">basic_worker</span>(
-    <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-    <span class="ident">builder</span>: <span class="ident">TargetServerBuilder</span>,
-    <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="ident">pw</span>: <span class="ident">String</span>,
-    <span class="ident">searches</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw-2">mut</span> <span class="ident">broadcast_rx</span>: <span class="ident">tokio::sync::broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">TestPhase</span><span class="op">&gt;</span>,
-    <span class="ident">raw_results_tx</span>: <span class="ident">crossbeam::channel::Sender</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
+<span class="kw">async fn </span>basic_worker(
+    test_start: Instant,
+    builder: TargetServerBuilder,
+    name: String,
+    pw: String,
+    searches: Arc&lt;Vec&lt;Vec&lt;String&gt;&gt;&gt;,
+    <span class="kw-2">mut </span>broadcast_rx: tokio::sync::broadcast::Receiver&lt;TestPhase&gt;,
+    raw_results_tx: crossbeam::channel::Sender&lt;(Duration, Duration, usize)&gt;,
 ) {
     <span class="macro">debug!</span>(<span class="string">&quot;Starting worker ...&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">server</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">builder</span>.<span class="ident">build</span>() {
-        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+    <span class="kw">let </span>server = <span class="kw">match </span>builder.build() {
+        <span class="prelude-val">Ok</span>(s) =&gt; s,
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to build client&quot;</span>);
             <span class="kw">return</span>;
         }
     };
 
-    <span class="kw">if</span> <span class="ident">server</span>
-        .<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">pw</span>)
-        .<span class="kw">await</span>
-        .<span class="ident">is_err</span>()
+    <span class="kw">if </span>server
+        .open_user_connection(test_start, <span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>pw)
+        .<span class="kw">await
+        </span>.is_err()
     {
         <span class="macro">error!</span>(<span class="string">&quot;Failed to authenticate connection&quot;</span>);
         <span class="kw">return</span>;
     }
 
-    <span class="kw">loop</span> {
-        <span class="comment">// While nothing in broadcast.</span>
-        <span class="kw">match</span> <span class="ident">broadcast_rx</span>.<span class="ident">try_recv</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">TestPhase::Shutdown</span>) =&gt; {
-                <span class="comment">// Complete.</span>
-                <span class="kw">break</span>;
+    <span class="kw">loop </span>{
+        <span class="comment">// While nothing in broadcast.
+        </span><span class="kw">match </span>broadcast_rx.try_recv() {
+            <span class="prelude-val">Ok</span>(TestPhase::Shutdown) =&gt; {
+                <span class="comment">// Complete.
+                </span><span class="kw">break</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="ident">tokio::sync::broadcast::error::TryRecvError::Empty</span>) <span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                <span class="comment">// Ignore</span>
-            }
+            <span class="prelude-val">Err</span>(tokio::sync::broadcast::error::TryRecvError::Empty) | <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                <span class="comment">// Ignore
+            </span>}
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;broadcast error&quot;</span>);
                 <span class="kw">return</span>;
             }
         }
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
-            <span class="ident">searches</span>.<span class="ident">as_slice</span>().<span class="ident">choose</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>).<span class="ident">unwrap</span>()
+        <span class="kw">let </span>s = {
+            <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
+            searches.as_slice().choose(<span class="kw-2">&amp;mut </span>rng).unwrap()
         };
 
-        <span class="comment">// Ensure we are logged out.</span>
-        <span class="ident">server</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>;
+        <span class="comment">// Ensure we are logged out.
+        </span>server.close_connection().<span class="kw">await</span>;
 
-        <span class="comment">// Search something!</span>
-        <span class="kw">let</span> <span class="ident">cr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">server</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">pw</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
+        <span class="comment">// Search something!
+        </span><span class="kw">let </span>cr = <span class="kw">match </span>server.open_user_connection(test_start, <span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>pw).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(r) =&gt; r,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to authenticate connection&quot;</span>);
                 <span class="kw">continue</span>;
             }
         };
-        <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">server</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">s</span>.<span class="ident">as_slice</span>()).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
+        <span class="kw">let </span>sr = <span class="kw">match </span>server.search(test_start, s.as_slice()).<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(r) =&gt; r,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Search Error&quot;</span>);
                 <span class="kw">continue</span>;
             }
         };
-        <span class="comment">// Append results</span>
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> (<span class="ident">cr</span>.<span class="number">0</span>, <span class="ident">cr</span>.<span class="number">1</span> <span class="op">+</span> <span class="ident">sr</span>.<span class="number">1</span>, <span class="ident">sr</span>.<span class="number">2</span>);
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">raw_results_tx</span>.<span class="ident">send</span>(<span class="ident">r</span>);
+        <span class="comment">// Append results
+        </span><span class="kw">let </span>r = (cr.<span class="number">0</span>, cr.<span class="number">1 </span>+ sr.<span class="number">1</span>, sr.<span class="number">2</span>);
+        <span class="kw">let _ </span>= raw_results_tx.send(r);
     }
-    <span class="comment">// Done</span>
-    <span class="macro">debug!</span>(<span class="string">&quot;Stopping worker ...&quot;</span>);
+    <span class="comment">// Done
+    </span><span class="macro">debug!</span>(<span class="string">&quot;Stopping worker ...&quot;</span>);
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">basic</span>(
-    <span class="ident">data</span>: <span class="ident">TestData</span>,
-    <span class="ident">profile</span>: <span class="ident">Profile</span>,
-    <span class="ident">server</span>: <span class="ident">TargetServer</span>,
-    <span class="ident">result_path</span>: <span class="ident">PathBuf</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-    <span class="comment">// From all the data, process and find all the search events.</span>
-    <span class="comment">// Create these into an Arc&lt;vec&gt; so they can be sampled from by workers.</span>
-    <span class="kw">let</span> <span class="ident">searches</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">data</span>
-        .<span class="ident">connections</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">conn</span><span class="op">|</span> <span class="ident">conn</span>.<span class="ident">ops</span>.<span class="ident">iter</span>())
-        .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">OpType::Search</span>(<span class="ident">list</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">op</span>.<span class="ident">op_type</span> {
-                <span class="comment">// Now get each name.</span>
-                <span class="kw">let</span> <span class="ident">names</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">list</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">data</span>.<span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>().<span class="ident">get_name</span>().<span class="ident">to_string</span>())
-                    .<span class="ident">collect</span>();
-                <span class="prelude-val">Some</span>(<span class="ident">names</span>)
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            }
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>basic(
+    data: TestData,
+    profile: Profile,
+    server: TargetServer,
+    result_path: PathBuf,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    <span class="comment">// From all the data, process and find all the search events.
+    // Create these into an Arc&lt;vec&gt; so they can be sampled from by workers.
+    </span><span class="kw">let </span>searches: Vec&lt;Vec&lt;String&gt;&gt; = data
+        .connections
+        .iter()
+        .flat_map(|conn| conn.ops.iter())
+        .filter_map(|op| {
+            <span class="kw">if let </span>OpType::Search(list) = <span class="kw-2">&amp;</span>op.op_type {
+                <span class="comment">// Now get each name.
+                </span><span class="kw">let </span>names: Vec&lt;String&gt; = list
+                    .iter()
+                    .map(|u| data.all_entities.get(u).unwrap().get_name().to_string())
+                    .collect();
+                <span class="prelude-val">Some</span>(names)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
         })
-        .<span class="ident">collect</span>();
+        .collect();
 
-    <span class="kw">let</span> <span class="ident">searches</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">searches</span>);
+    <span class="kw">let </span>searches = Arc::new(searches);
 
-    <span class="comment">// We need a channel for all the results.</span>
-    <span class="kw">let</span> (<span class="ident">raw_results_tx</span>, <span class="ident">raw_results_rx</span>) <span class="op">=</span> <span class="ident">unbounded</span>();
+    <span class="comment">// We need a channel for all the results.
+    </span><span class="kw">let </span>(raw_results_tx, raw_results_rx) = unbounded();
 
-    <span class="comment">// Setup a broadcast for the notifications.</span>
-    <span class="kw">let</span> (<span class="ident">broadcast_tx</span>, <span class="ident">broadcast_rx</span>) <span class="op">=</span> <span class="ident">broadcast::channel</span>(<span class="number">2</span>);
+    <span class="comment">// Setup a broadcast for the notifications.
+    </span><span class="kw">let </span>(broadcast_tx, broadcast_rx) = broadcast::channel(<span class="number">2</span>);
 
-    <span class="comment">// Start an arbiter that will control the test.</span>
-    <span class="comment">// This should use spawn blocking.</span>
-    <span class="kw">let</span> <span class="ident">warmup_seconds</span> <span class="op">=</span> <span class="ident">profile</span>.<span class="ident">search_basic_config</span>.<span class="ident">warmup_seconds</span>;
-    <span class="kw">let</span> <span class="ident">arbiter_join_handle</span> <span class="op">=</span>
-        <span class="ident">task::spawn</span>(
-            <span class="kw">async</span> <span class="kw">move</span> { <span class="ident">basic_arbiter</span>(<span class="ident">broadcast_rx</span>, <span class="kw-2">&amp;</span><span class="ident">raw_results_rx</span>, <span class="ident">warmup_seconds</span>).<span class="kw">await</span> },
+    <span class="comment">// Start an arbiter that will control the test.
+    // This should use spawn blocking.
+    </span><span class="kw">let </span>warmup_seconds = profile.search_basic_config.warmup_seconds;
+    <span class="kw">let </span>arbiter_join_handle =
+        task::spawn(
+            <span class="kw">async move </span>{ basic_arbiter(broadcast_rx, <span class="kw-2">&amp;</span>raw_results_rx, warmup_seconds).<span class="kw">await </span>},
         );
 
-    <span class="comment">// Get out our conn details</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
-    <span class="comment">// But only if they exist from the start.</span>
-    <span class="kw">let</span> <span class="ident">accs</span> <span class="op">=</span> <span class="ident">data</span>
-        .<span class="ident">accounts</span>
-        .<span class="ident">intersection</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>.<span class="ident">precreate</span>)
-        .<span class="ident">choose_multiple</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>, <span class="ident">profile</span>.<span class="ident">search_basic_config</span>.<span class="ident">workers</span> <span class="kw">as</span> <span class="ident">usize</span>);
+    <span class="comment">// Get out our conn details
+    </span><span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
+    <span class="comment">// But only if they exist from the start.
+    </span><span class="kw">let </span>accs = data
+        .accounts
+        .intersection(<span class="kw-2">&amp;</span>data.precreate)
+        .choose_multiple(<span class="kw-2">&amp;mut </span>rng, profile.search_basic_config.workers <span class="kw">as </span>usize);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">accs</span>
-        .<span class="ident">into_iter</span>()
-        .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>();
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entity::Account</span>(<span class="ident">aref</span>) <span class="op">=</span> <span class="ident">e</span> {
-                <span class="prelude-val">Some</span>((<span class="ident">aref</span>.<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">aref</span>.<span class="ident">password</span>.<span class="ident">clone</span>()))
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            }
+    <span class="kw">let </span><span class="kw-2">mut </span>accs: Vec&lt;<span class="kw">_</span>&gt; = accs
+        .into_iter()
+        .filter_map(|u| {
+            <span class="kw">let </span>e = data.all_entities.get(u).unwrap();
+            <span class="kw">if let </span>Entity::Account(aref) = e {
+                <span class="prelude-val">Some</span>((aref.name.clone(), aref.password.clone()))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
         })
-        .<span class="ident">collect</span>();
+        .collect();
 
-    <span class="kw">if</span> <span class="ident">accs</span>.<span class="ident">is_empty</span>() {
+    <span class="kw">if </span>accs.is_empty() {
         <span class="macro">error!</span>(<span class="string">&quot;No accounts found in data set, unable to proceed&quot;</span>);
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+        <span class="kw">return </span><span class="prelude-val">Err</span>(());
     }
 
-    <span class="kw">while</span> <span class="ident">accs</span>.<span class="ident">len</span>() <span class="op">&lt;</span> (<span class="ident">profile</span>.<span class="ident">search_basic_config</span>.<span class="ident">workers</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dup</span> <span class="op">=</span> <span class="ident">accs</span>.<span class="ident">clone</span>();
-        <span class="ident">accs</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">dup</span>);
+    <span class="kw">while </span>accs.len() &lt; (profile.search_basic_config.workers <span class="kw">as </span>usize) {
+        <span class="kw">let </span><span class="kw-2">mut </span>dup = accs.clone();
+        accs.append(<span class="kw-2">&amp;mut </span>dup);
     }
 
-    <span class="kw">let</span> <span class="ident">test_start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
+    <span class="kw">let </span>test_start = Instant::now();
 
-    <span class="comment">// Start up as many async as workers requested.</span>
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">profile</span>.<span class="ident">search_basic_config</span>.<span class="ident">workers</span> {
-        <span class="comment">// give each worker</span>
-        <span class="comment">// * server connection</span>
-        <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">builder</span>();
-        <span class="comment">// Which is authenticated ...</span>
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">accs</span>[<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="number">0</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">pw</span> <span class="op">=</span> <span class="ident">accs</span>[<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="number">1</span>.<span class="ident">clone</span>();
-        <span class="comment">// * arc searches</span>
-        <span class="kw">let</span> <span class="ident">searches_c</span> <span class="op">=</span> <span class="ident">searches</span>.<span class="ident">clone</span>();
-        <span class="comment">// * the broadcast reciever.</span>
-        <span class="kw">let</span> <span class="ident">broadcast_rx_c</span> <span class="op">=</span> <span class="ident">broadcast_tx</span>.<span class="ident">subscribe</span>();
-        <span class="comment">// * the result queue</span>
-        <span class="kw">let</span> <span class="ident">raw_results_tx_c</span> <span class="op">=</span> <span class="ident">raw_results_tx</span>.<span class="ident">clone</span>();
-        <span class="ident">task::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="ident">basic_worker</span>(
-                <span class="ident">test_start</span>,
-                <span class="ident">builder</span>,
-                <span class="ident">name</span>,
-                <span class="ident">pw</span>,
-                <span class="ident">searches_c</span>,
-                <span class="ident">broadcast_rx_c</span>,
-                <span class="ident">raw_results_tx_c</span>,
+    <span class="comment">// Start up as many async as workers requested.
+    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..profile.search_basic_config.workers {
+        <span class="comment">// give each worker
+        // * server connection
+        </span><span class="kw">let </span>builder = server.builder();
+        <span class="comment">// Which is authenticated ...
+        </span><span class="kw">let </span>name = accs[i <span class="kw">as </span>usize].<span class="number">0</span>.clone();
+        <span class="kw">let </span>pw = accs[i <span class="kw">as </span>usize].<span class="number">1</span>.clone();
+        <span class="comment">// * arc searches
+        </span><span class="kw">let </span>searches_c = searches.clone();
+        <span class="comment">// * the broadcast reciever.
+        </span><span class="kw">let </span>broadcast_rx_c = broadcast_tx.subscribe();
+        <span class="comment">// * the result queue
+        </span><span class="kw">let </span>raw_results_tx_c = raw_results_tx.clone();
+        task::spawn(<span class="kw">async move </span>{
+            basic_worker(
+                test_start,
+                builder,
+                name,
+                pw,
+                searches_c,
+                broadcast_rx_c,
+                raw_results_tx_c,
             )
-            .<span class="kw">await</span>
-        });
+            .<span class="kw">await
+        </span>});
     }
 
-    <span class="comment">// Tell the arbiter to start the warm up counter now.</span>
-    <span class="ident">broadcast_tx</span>
-        .<span class="ident">send</span>(<span class="ident">TestPhase::WarmUp</span>)
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">error!</span>(<span class="string">&quot;Unable to broadcast warmup state change&quot;</span>))<span class="question-mark">?</span>;
+    <span class="comment">// Tell the arbiter to start the warm up counter now.
+    </span>broadcast_tx
+        .send(TestPhase::WarmUp)
+        .map_err(|<span class="kw">_</span>| <span class="macro">error!</span>(<span class="string">&quot;Unable to broadcast warmup state change&quot;</span>))<span class="question-mark">?</span>;
 
-    <span class="comment">// Wait on the arbiter, it will return our results when it&#39;s ready.</span>
-    <span class="kw">let</span> <span class="ident">raw_results</span> <span class="op">=</span> <span class="ident">arbiter_join_handle</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+    <span class="comment">// Wait on the arbiter, it will return our results when it&#39;s ready.
+    </span><span class="kw">let </span>raw_results = arbiter_join_handle.<span class="kw">await</span>.map_err(|<span class="kw">_</span>| {
         <span class="macro">error!</span>(<span class="string">&quot;Test arbiter was unable to rejoin.&quot;</span>);
     })<span class="question-mark">?</span>;
 
-    <span class="comment">// Now signal the workers to stop. We don&#39;t care if this fails.</span>
-    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">broadcast_tx</span>
-        .<span class="ident">send</span>(<span class="ident">TestPhase::Shutdown</span>)
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">error!</span>(<span class="string">&quot;Unable to broadcast stop state change&quot;</span>));
+    <span class="comment">// Now signal the workers to stop. We don&#39;t care if this fails.
+    </span><span class="kw">let _ </span>= broadcast_tx
+        .send(TestPhase::Shutdown)
+        .map_err(|<span class="kw">_</span>| <span class="macro">error!</span>(<span class="string">&quot;Unable to broadcast stop state change&quot;</span>));
 
-    <span class="comment">// Now we can finalise our data, based on what analysis we can actually do here.</span>
-    <span class="ident">process_raw_results</span>(<span class="kw-2">&amp;</span><span class="ident">raw_results</span>);
+    <span class="comment">// Now we can finalise our data, based on what analysis we can actually do here.
+    </span>process_raw_results(<span class="kw-2">&amp;</span>raw_results);
 
-    <span class="comment">// Write the raw results out.</span>
+    <span class="comment">// Write the raw results out.
 
-    <span class="kw">let</span> <span class="ident">result_name</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;basic_{}.csv&quot;</span>, <span class="ident">server</span>.<span class="ident">rname</span>());
-    <span class="kw">let</span> <span class="ident">result_path</span> <span class="op">=</span> <span class="ident">result_path</span>.<span class="ident">join</span>(<span class="ident">result_name</span>);
+    </span><span class="kw">let </span>result_name = <span class="macro">format!</span>(<span class="string">&quot;basic_{}.csv&quot;</span>, server.rname());
+    <span class="kw">let </span>result_path = result_path.join(result_name);
 
-    <span class="kw">let</span> <span class="ident">result_file</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::create</span>(<span class="kw-2">&amp;</span><span class="ident">result_path</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to open {} - {:?}&quot;</span>, <span class="ident">result_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>(), <span class="ident">e</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+    <span class="kw">let </span>result_file = <span class="kw">match </span>File::create(<span class="kw-2">&amp;</span>result_path) {
+        <span class="prelude-val">Ok</span>(f) =&gt; f,
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to open {} - {:?}&quot;</span>, result_path.to_str().unwrap(), e);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(());
         }
     };
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wtr</span> <span class="op">=</span> <span class="ident">csv::Writer::from_writer</span>(<span class="ident">BufWriter::new</span>(<span class="ident">result_file</span>));
+    <span class="kw">let </span><span class="kw-2">mut </span>wtr = csv::Writer::from_writer(BufWriter::new(result_file));
 
-    <span class="ident">raw_results</span>
-        .<span class="ident">into_iter</span>()
-        .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">s</span>, <span class="ident">d</span>, <span class="ident">c</span>)<span class="op">|</span> {
-            <span class="ident">wtr</span>.<span class="ident">serialize</span>(<span class="ident">CsvRow</span> {
-                <span class="ident">start</span>: <span class="ident">s</span>.<span class="ident">as_secs_f64</span>(),
-                <span class="ident">duration</span>: <span class="ident">d</span>.<span class="ident">as_secs_f64</span>(),
-                <span class="ident">count</span>: <span class="ident">c</span>,
+    raw_results
+        .into_iter()
+        .try_for_each(|(s, d, c)| {
+            wtr.serialize(CsvRow {
+                start: s.as_secs_f64(),
+                duration: d.as_secs_f64(),
+                count: c,
             })
         })
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">error!</span>(<span class="string">&quot;csv error {:?}&quot;</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
+        .map_err(|e| <span class="macro">error!</span>(<span class="string">&quot;csv error {:?}&quot;</span>, e))<span class="question-mark">?</span>;
 
-    <span class="ident">wtr</span>.<span class="ident">flush</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">error!</span>(<span class="string">&quot;csv error {:?}&quot;</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
+    wtr.flush().map_err(|e| <span class="macro">error!</span>(<span class="string">&quot;csv error {:?}&quot;</span>, e))<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn</span> <span class="ident">process_raw_results</span>(<span class="ident">raw_results</span>: <span class="kw-2">&amp;</span>[(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>)]) {
-    <span class="comment">// Do nerd shit.</span>
+<span class="kw">fn </span>process_raw_results(raw_results: <span class="kw-2">&amp;</span>[(Duration, Duration, usize)]) {
+    <span class="comment">// Do nerd shit.
 
-    <span class="comment">// Get the times</span>
-    <span class="kw">let</span> <span class="ident">optimes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">raw_results</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">d</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">d</span>.<span class="ident">as_secs_f64</span>())
-        .<span class="ident">collect</span>();
+    // Get the times
+    </span><span class="kw">let </span>optimes: Vec&lt;<span class="kw">_</span>&gt; = raw_results
+        .iter()
+        .map(|(<span class="kw">_</span>, d, <span class="kw">_</span>)| d.as_secs_f64())
+        .collect();
 
-    <span class="kw">let</span> <span class="ident">distrib</span>: <span class="ident">Normal</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Normal::from_data</span>(<span class="kw-2">&amp;</span><span class="ident">optimes</span>);
-    <span class="kw">let</span> <span class="ident">sd</span> <span class="op">=</span> <span class="ident">distrib</span>.<span class="ident">variance</span>().<span class="ident">sqrt</span>();
+    <span class="kw">let </span>distrib: Normal&lt;f64&gt; = Normal::from_data(<span class="kw-2">&amp;</span>optimes);
+    <span class="kw">let </span>sd = distrib.variance().sqrt();
 
-    <span class="macro">info!</span>(<span class="string">&quot;mean: {} seconds&quot;</span>, <span class="ident">distrib</span>.<span class="ident">mean</span>());
-    <span class="macro">info!</span>(<span class="string">&quot;variance: {}&quot;</span>, <span class="ident">distrib</span>.<span class="ident">variance</span>());
-    <span class="macro">info!</span>(<span class="string">&quot;SD: {} seconds&quot;</span>, <span class="ident">sd</span>);
-    <span class="macro">info!</span>(<span class="string">&quot;95%: {}&quot;</span>, <span class="ident">distrib</span>.<span class="ident">mean</span>() <span class="op">+</span> (<span class="number">2.0</span> <span class="op">*</span> <span class="ident">sd</span>));
+    <span class="macro">info!</span>(<span class="string">&quot;mean: {} seconds&quot;</span>, distrib.mean());
+    <span class="macro">info!</span>(<span class="string">&quot;variance: {}&quot;</span>, distrib.variance());
+    <span class="macro">info!</span>(<span class="string">&quot;SD: {} seconds&quot;</span>, sd);
+    <span class="macro">info!</span>(<span class="string">&quot;95%: {}&quot;</span>, distrib.mean() + (<span class="number">2.0 </span>* sd));
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

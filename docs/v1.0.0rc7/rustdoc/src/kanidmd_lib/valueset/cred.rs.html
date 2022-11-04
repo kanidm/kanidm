@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/valueset/cred.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cred.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/valueset/cred.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cred.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -669,676 +669,676 @@
 <span id="669">669</span>
 <span id="670">670</span>
 <span id="671">671</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::btree_map::Entry</span> <span class="kw">as</span> <span class="ident">BTreeEntry</span>;
-<span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
+<span class="kw">use </span>std::collections::BTreeMap;
 
-<span class="kw">use</span> <span class="ident">webauthn_rs::prelude</span>::{<span class="ident">DeviceKey</span> <span class="kw">as</span> <span class="ident">DeviceKeyV4</span>, <span class="ident">Passkey</span> <span class="kw">as</span> <span class="ident">PasskeyV4</span>};
+<span class="kw">use </span>webauthn_rs::prelude::{DeviceKey <span class="kw">as </span>DeviceKeyV4, Passkey <span class="kw">as </span>PasskeyV4};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue</span>::{
-    <span class="ident">DbValueCredV1</span>, <span class="ident">DbValueDeviceKeyV1</span>, <span class="ident">DbValueIntentTokenStateV1</span>, <span class="ident">DbValuePasskeyV1</span>,
+<span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::{
+    DbValueCredV1, DbValueDeviceKeyV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::Credential</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaAttribute</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset</span>::{<span class="ident">DbValueSetV2</span>, <span class="ident">IntentTokenState</span>, <span class="ident">ValueSet</span>};
+<span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
+<span class="kw">use </span><span class="kw">crate</span>::valueset::{DbValueSetV2, IntentTokenState, ValueSet};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueSetCredential</span> {
-    <span class="ident">map</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Credential</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ValueSetCredential {
+    map: BTreeMap&lt;String, Credential&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetCredential</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">c</span>: <span class="ident">Credential</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-        <span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">t</span>, <span class="ident">c</span>);
-        <span class="ident">Box::new</span>(<span class="ident">ValueSetCredential</span> { <span class="ident">map</span> })
+<span class="kw">impl </span>ValueSetCredential {
+    <span class="kw">pub fn </span>new(t: String, c: Credential) -&gt; Box&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>map = BTreeMap::new();
+        map.insert(t, c);
+        Box::new(ValueSetCredential { map })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">c</span>: <span class="ident">Credential</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">t</span>, <span class="ident">c</span>).<span class="ident">is_none</span>()
+    <span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: String, c: Credential) -&gt; bool {
+        <span class="self">self</span>.map.insert(t, c).is_none()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbvs2</span>(<span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueCredV1</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">data</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dc</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">dc</span>.<span class="ident">tag</span>.<span class="ident">clone</span>();
-                <span class="ident">Credential::try_from</span>(<span class="ident">dc</span>.<span class="ident">data</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span>()<span class="op">|</span> <span class="ident">OperationError::InvalidValueState</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> (<span class="ident">t</span>, <span class="ident">c</span>))
+    <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;DbValueCredV1&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>map = data
+            .into_iter()
+            .map(|dc| {
+                <span class="kw">let </span>t = dc.tag.clone();
+                Credential::try_from(dc.data)
+                    .map_err(|()| OperationError::InvalidValueState)
+                    .map(|c| (t, c))
             })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetCredential</span> { <span class="ident">map</span> }))
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetCredential { map }))
     }
 
-    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign</span>
-    <span class="comment">// types, and tuples are always foreign.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">String</span>, <span class="ident">Credential</span>)<span class="op">&gt;</span>,
+    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    </span><span class="attribute">#[allow(clippy::should_implement_trait)]
+    </span><span class="kw">pub fn </span>from_iter&lt;T&gt;(iter: T) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = (String, Credential)&gt;,
     {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-        <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetCredential</span> { <span class="ident">map</span> }))
+        <span class="kw">let </span>map = iter.into_iter().collect();
+        <span class="prelude-val">Some</span>(Box::new(ValueSetCredential { map }))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetT</span> <span class="kw">for</span> <span class="ident">ValueSetCredential</span> {
-    <span class="kw">fn</span> <span class="ident">insert_checked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">Value::Cred</span>(<span class="ident">t</span>, <span class="ident">c</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">BTreeEntry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">entry</span>(<span class="ident">t</span>) {
-                    <span class="ident">e</span>.<span class="ident">insert</span>(<span class="ident">c</span>);
+<span class="kw">impl </span>ValueSetT <span class="kw">for </span>ValueSetCredential {
+    <span class="kw">fn </span>insert_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span>value {
+            Value::Cred(t, c) =&gt; {
+                <span class="kw">if let </span>BTreeEntry::Vacant(e) = <span class="self">self</span>.map.entry(t) {
+                    e.insert(c);
                     <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
                 }
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidValueState),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">clear</span>();
+    <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.map.clear();
     }
 
-    <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::Cred</span>(<span class="ident">t</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">remove</span>(<span class="ident">t</span>.<span class="ident">as_str</span>()).<span class="ident">is_some</span>(),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::Cred(t) =&gt; <span class="self">self</span>.map.remove(t.as_str()).is_some(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::Cred</span>(<span class="ident">t</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">contains_key</span>(<span class="ident">t</span>.<span class="ident">as_str</span>()),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::Cred(t) =&gt; <span class="self">self</span>.map.contains_key(t.as_str()),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>substring(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>lessthan(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.map.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>generate_idx_eq_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt; {
+        <span class="self">self</span>.map.keys().cloned().collect()
     }
 
-    <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">len</span>()
+    <span class="kw">fn </span>syntax(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SyntaxType {
+        SyntaxType::Credential
     }
 
-    <span class="kw">fn</span> <span class="ident">generate_idx_eq_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>()
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.keys().cloned())
     }
 
-    <span class="kw">fn</span> <span class="ident">syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SyntaxType</span> {
-        <span class="ident">SyntaxType::Credential</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_schema_attr</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">true</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_proto_string_clone_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_db_valueset_v2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DbValueSetV2</span> {
-        <span class="ident">DbValueSetV2::Credential</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">tag</span>, <span class="ident">cred</span>)<span class="op">|</span> <span class="ident">DbValueCredV1</span> {
-                    <span class="ident">tag</span>: <span class="ident">tag</span>.<span class="ident">clone</span>(),
-                    <span class="ident">data</span>: <span class="ident">cred</span>.<span class="ident">to_db_valuev1</span>(),
+    <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
+        DbValueSetV2::Credential(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(tag, cred)| DbValueCredV1 {
+                    tag: tag.clone(),
+                    data: cred.to_db_valuev1(),
                 })
-                .<span class="ident">collect</span>(),
+                .collect(),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">to_partialvalue_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">PartialValue::Cred</span>))
+    <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.keys().cloned().map(PartialValue::Cred))
     }
 
-    <span class="kw">fn</span> <span class="ident">to_value_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">t</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">Value::Cred</span>(<span class="ident">t</span>.<span class="ident">clone</span>(), <span class="ident">c</span>.<span class="ident">clone</span>())),
+    <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(t, c)| Value::Cred(t.clone(), c.clone())),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">equal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// Looks like we may not need this?</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">other</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_credential_map</span>() {
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span> <span class="op">==</span> <span class="ident">other</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// debug_assert!(false);</span>
-            <span class="bool-val">false</span>
-        }
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
+        <span class="comment">// Looks like we may not need this?
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(other) = other.as_credential_map() {
+            <span class="kw-2">&amp;</span><span class="self">self</span>.map == other
+        } <span class="kw">else </span>{
+            <span class="comment">// debug_assert!(false);
+            </span><span class="bool-val">false
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">b</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_credential_map</span>() {
-            <span class="macro">mergemaps!</span>(<span class="self">self</span>.<span class="ident">map</span>, <span class="ident">b</span>)
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = other.as_credential_map() {
+            <span class="macro">mergemaps!</span>(<span class="self">self</span>.map, b)
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">to_credential_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
-            <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">values</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>()
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+    <span class="kw">fn </span>to_credential_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
+        <span class="kw">if </span><span class="self">self</span>.map.len() == <span class="number">1 </span>{
+            <span class="self">self</span>.map.values().take(<span class="number">1</span>).next()
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">as_credential_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Credential</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span>)
+    <span class="kw">fn </span>as_credential_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, Credential&gt;&gt; {
+        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.map)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueSetIntentToken</span> {
-    <span class="ident">map</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">IntentTokenState</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ValueSetIntentToken {
+    map: BTreeMap&lt;String, IntentTokenState&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetIntentToken</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">s</span>: <span class="ident">IntentTokenState</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-        <span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">t</span>, <span class="ident">s</span>);
-        <span class="ident">Box::new</span>(<span class="ident">ValueSetIntentToken</span> { <span class="ident">map</span> })
+<span class="kw">impl </span>ValueSetIntentToken {
+    <span class="kw">pub fn </span>new(t: String, s: IntentTokenState) -&gt; Box&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>map = BTreeMap::new();
+        map.insert(t, s);
+        Box::new(ValueSetIntentToken { map })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">s</span>: <span class="ident">IntentTokenState</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">t</span>, <span class="ident">s</span>).<span class="ident">is_none</span>()
+    <span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: String, s: IntentTokenState) -&gt; bool {
+        <span class="self">self</span>.map.insert(t, s).is_none()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbvs2</span>(
-        <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">DbValueIntentTokenStateV1</span>)<span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">data</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">s</span>, <span class="ident">dits</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">ts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">dits</span> {
-                    <span class="ident">DbValueIntentTokenStateV1::Valid</span> { <span class="ident">max_ttl</span> } =&gt; {
-                        <span class="ident">IntentTokenState::Valid</span> { <span class="ident">max_ttl</span> }
+    <span class="kw">pub fn </span>from_dbvs2(
+        data: Vec&lt;(String, DbValueIntentTokenStateV1)&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>map = data
+            .into_iter()
+            .map(|(s, dits)| {
+                <span class="kw">let </span>ts = <span class="kw">match </span>dits {
+                    DbValueIntentTokenStateV1::Valid { max_ttl } =&gt; {
+                        IntentTokenState::Valid { max_ttl }
                     }
-                    <span class="ident">DbValueIntentTokenStateV1::InProgress</span> {
-                        <span class="ident">max_ttl</span>,
-                        <span class="ident">session_id</span>,
-                        <span class="ident">session_ttl</span>,
-                    } =&gt; <span class="ident">IntentTokenState::InProgress</span> {
-                        <span class="ident">max_ttl</span>,
-                        <span class="ident">session_id</span>,
-                        <span class="ident">session_ttl</span>,
+                    DbValueIntentTokenStateV1::InProgress {
+                        max_ttl,
+                        session_id,
+                        session_ttl,
+                    } =&gt; IntentTokenState::InProgress {
+                        max_ttl,
+                        session_id,
+                        session_ttl,
                     },
-                    <span class="ident">DbValueIntentTokenStateV1::Consumed</span> { <span class="ident">max_ttl</span> } =&gt; {
-                        <span class="ident">IntentTokenState::Consumed</span> { <span class="ident">max_ttl</span> }
+                    DbValueIntentTokenStateV1::Consumed { max_ttl } =&gt; {
+                        IntentTokenState::Consumed { max_ttl }
                     }
                 };
-                (<span class="ident">s</span>, <span class="ident">ts</span>)
+                (s, ts)
             })
-            .<span class="ident">collect</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetIntentToken</span> { <span class="ident">map</span> }))
+            .collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetIntentToken { map }))
     }
 
-    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign</span>
-    <span class="comment">// types, and tuples are always foreign.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">String</span>, <span class="ident">IntentTokenState</span>)<span class="op">&gt;</span>,
+    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    </span><span class="attribute">#[allow(clippy::should_implement_trait)]
+    </span><span class="kw">pub fn </span>from_iter&lt;T&gt;(iter: T) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = (String, IntentTokenState)&gt;,
     {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-        <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetIntentToken</span> { <span class="ident">map</span> }))
+        <span class="kw">let </span>map = iter.into_iter().collect();
+        <span class="prelude-val">Some</span>(Box::new(ValueSetIntentToken { map }))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetT</span> <span class="kw">for</span> <span class="ident">ValueSetIntentToken</span> {
-    <span class="kw">fn</span> <span class="ident">insert_checked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">Value::IntentToken</span>(<span class="ident">u</span>, <span class="ident">s</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">BTreeEntry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">entry</span>(<span class="ident">u</span>) {
-                    <span class="ident">e</span>.<span class="ident">insert</span>(<span class="ident">s</span>);
+<span class="kw">impl </span>ValueSetT <span class="kw">for </span>ValueSetIntentToken {
+    <span class="kw">fn </span>insert_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span>value {
+            Value::IntentToken(u, s) =&gt; {
+                <span class="kw">if let </span>BTreeEntry::Vacant(e) = <span class="self">self</span>.map.entry(u) {
+                    e.insert(s);
                     <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
                 }
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidValueState),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">clear</span>();
+    <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.map.clear();
     }
 
-    <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">remove</span>(<span class="ident">u</span>).<span class="ident">is_some</span>(),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::IntentToken(u) =&gt; <span class="self">self</span>.map.remove(u).is_some(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">contains_key</span>(<span class="ident">u</span>),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::IntentToken(u) =&gt; <span class="self">self</span>.map.contains_key(u),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>substring(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>lessthan(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.map.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>generate_idx_eq_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt; {
+        <span class="self">self</span>.map.keys().cloned().collect()
     }
 
-    <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">len</span>()
+    <span class="kw">fn </span>syntax(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SyntaxType {
+        SyntaxType::IntentToken
     }
 
-    <span class="kw">fn</span> <span class="ident">generate_idx_eq_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>()
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.keys().cloned())
     }
 
-    <span class="kw">fn</span> <span class="ident">syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SyntaxType</span> {
-        <span class="ident">SyntaxType::IntentToken</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_schema_attr</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">true</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_proto_string_clone_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_db_valueset_v2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DbValueSetV2</span> {
-        <span class="ident">DbValueSetV2::IntentToken</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">s</span>)<span class="op">|</span> {
+    <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
+        DbValueSetV2::IntentToken(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(u, s)| {
                     (
-                        <span class="ident">u</span>.<span class="ident">clone</span>(),
-                        <span class="kw">match</span> <span class="ident">s</span> {
-                            <span class="ident">IntentTokenState::Valid</span> { <span class="ident">max_ttl</span> } =&gt; {
-                                <span class="ident">DbValueIntentTokenStateV1::Valid</span> { <span class="ident">max_ttl</span>: <span class="kw-2">*</span><span class="ident">max_ttl</span> }
+                        u.clone(),
+                        <span class="kw">match </span>s {
+                            IntentTokenState::Valid { max_ttl } =&gt; {
+                                DbValueIntentTokenStateV1::Valid { max_ttl: <span class="kw-2">*</span>max_ttl }
                             }
-                            <span class="ident">IntentTokenState::InProgress</span> {
-                                <span class="ident">max_ttl</span>,
-                                <span class="ident">session_id</span>,
-                                <span class="ident">session_ttl</span>,
-                            } =&gt; <span class="ident">DbValueIntentTokenStateV1::InProgress</span> {
-                                <span class="ident">max_ttl</span>: <span class="kw-2">*</span><span class="ident">max_ttl</span>,
-                                <span class="ident">session_id</span>: <span class="kw-2">*</span><span class="ident">session_id</span>,
-                                <span class="ident">session_ttl</span>: <span class="kw-2">*</span><span class="ident">session_ttl</span>,
+                            IntentTokenState::InProgress {
+                                max_ttl,
+                                session_id,
+                                session_ttl,
+                            } =&gt; DbValueIntentTokenStateV1::InProgress {
+                                max_ttl: <span class="kw-2">*</span>max_ttl,
+                                session_id: <span class="kw-2">*</span>session_id,
+                                session_ttl: <span class="kw-2">*</span>session_ttl,
                             },
-                            <span class="ident">IntentTokenState::Consumed</span> { <span class="ident">max_ttl</span> } =&gt; {
-                                <span class="ident">DbValueIntentTokenStateV1::Consumed</span> { <span class="ident">max_ttl</span>: <span class="kw-2">*</span><span class="ident">max_ttl</span> }
+                            IntentTokenState::Consumed { max_ttl } =&gt; {
+                                DbValueIntentTokenStateV1::Consumed { max_ttl: <span class="kw-2">*</span>max_ttl }
                             }
                         },
                     )
                 })
-                .<span class="ident">collect</span>(),
+                .collect(),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">to_partialvalue_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">PartialValue::IntentToken</span>))
+    <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.keys().cloned().map(PartialValue::IntentToken))
     }
 
-    <span class="kw">fn</span> <span class="ident">to_value_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">Value::IntentToken</span>(<span class="ident">u</span>.<span class="ident">clone</span>(), <span class="ident">s</span>.<span class="ident">clone</span>())),
+    <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(u, s)| Value::IntentToken(u.clone(), s.clone())),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">equal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">other</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_intenttoken_map</span>() {
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span> <span class="op">==</span> <span class="ident">other</span>
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(other) = other.as_intenttoken_map() {
+            <span class="kw-2">&amp;</span><span class="self">self</span>.map == other
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="bool-val">false</span>
+            <span class="bool-val">false
+        </span>}
+    }
+
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = other.as_intenttoken_map() {
+            <span class="macro">mergemaps!</span>(<span class="self">self</span>.map, b)
+        } <span class="kw">else </span>{
+            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">b</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_intenttoken_map</span>() {
-            <span class="macro">mergemaps!</span>(<span class="self">self</span>.<span class="ident">map</span>, <span class="ident">b</span>)
-        } <span class="kw">else</span> {
-            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
-        }
-    }
-
-    <span class="kw">fn</span> <span class="ident">as_intenttoken_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">IntentTokenState</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span>)
+    <span class="kw">fn </span>as_intenttoken_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, IntentTokenState&gt;&gt; {
+        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.map)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueSetPasskey</span> {
-    <span class="ident">map</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ValueSetPasskey {
+    map: BTreeMap&lt;Uuid, (String, PasskeyV4)&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetPasskey</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">u</span>: <span class="ident">Uuid</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">k</span>: <span class="ident">PasskeyV4</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-        <span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>));
-        <span class="ident">Box::new</span>(<span class="ident">ValueSetPasskey</span> { <span class="ident">map</span> })
+<span class="kw">impl </span>ValueSetPasskey {
+    <span class="kw">pub fn </span>new(u: Uuid, t: String, k: PasskeyV4) -&gt; Box&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>map = BTreeMap::new();
+        map.insert(u, (t, k));
+        Box::new(ValueSetPasskey { map })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">u</span>: <span class="ident">Uuid</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">k</span>: <span class="ident">PasskeyV4</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>)).<span class="ident">is_none</span>()
+    <span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, u: Uuid, t: String, k: PasskeyV4) -&gt; bool {
+        <span class="self">self</span>.map.insert(u, (t, k)).is_none()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbvs2</span>(<span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValuePasskeyV1</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">data</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">k</span> {
-                <span class="ident">DbValuePasskeyV1::V4</span> { <span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span> } =&gt; <span class="prelude-val">Ok</span>((<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))),
+    <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;DbValuePasskeyV1&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>map = data
+            .into_iter()
+            .map(|k| <span class="kw">match </span>k {
+                DbValuePasskeyV1::V4 { u, t, k } =&gt; <span class="prelude-val">Ok</span>((u, (t, k))),
             })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetPasskey</span> { <span class="ident">map</span> }))
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetPasskey { map }))
     }
 
-    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign</span>
-    <span class="comment">// types, and tuples are always foreign.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">Uuid</span>, <span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span>,
+    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    </span><span class="attribute">#[allow(clippy::should_implement_trait)]
+    </span><span class="kw">pub fn </span>from_iter&lt;T&gt;(iter: T) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = (Uuid, String, PasskeyV4)&gt;,
     {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>)<span class="op">|</span> (<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))).<span class="ident">collect</span>();
-        <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetPasskey</span> { <span class="ident">map</span> }))
+        <span class="kw">let </span>map = iter.into_iter().map(|(u, t, k)| (u, (t, k))).collect();
+        <span class="prelude-val">Some</span>(Box::new(ValueSetPasskey { map }))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetT</span> <span class="kw">for</span> <span class="ident">ValueSetPasskey</span> {
-    <span class="kw">fn</span> <span class="ident">insert_checked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">Value::Passkey</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">BTreeEntry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">entry</span>(<span class="ident">u</span>) {
-                    <span class="ident">e</span>.<span class="ident">insert</span>((<span class="ident">t</span>, <span class="ident">k</span>));
+<span class="kw">impl </span>ValueSetT <span class="kw">for </span>ValueSetPasskey {
+    <span class="kw">fn </span>insert_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span>value {
+            Value::Passkey(u, t, k) =&gt; {
+                <span class="kw">if let </span>BTreeEntry::Vacant(e) = <span class="self">self</span>.map.entry(u) {
+                    e.insert((t, k));
                     <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
                 }
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidValueState),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">clear</span>();
+    <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.map.clear();
     }
 
-    <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::Passkey</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">remove</span>(<span class="ident">u</span>).<span class="ident">is_some</span>(),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::Passkey(u) =&gt; <span class="self">self</span>.map.remove(u).is_some(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::Passkey</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">contains_key</span>(<span class="ident">u</span>),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::Passkey(u) =&gt; <span class="self">self</span>.map.contains_key(u),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>substring(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>lessthan(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.map.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>generate_idx_eq_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt; {
+        <span class="self">self</span>.map
+            .keys()
+            .map(|u| u.as_hyphenated().to_string())
+            .collect()
     }
 
-    <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">len</span>()
+    <span class="kw">fn </span>syntax(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SyntaxType {
+        SyntaxType::Passkey
     }
 
-    <span class="kw">fn</span> <span class="ident">generate_idx_eq_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">map</span>
-            .<span class="ident">keys</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
-            .<span class="ident">collect</span>()
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.values().map(|(t, <span class="kw">_</span>)| t).cloned())
     }
 
-    <span class="kw">fn</span> <span class="ident">syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SyntaxType</span> {
-        <span class="ident">SyntaxType::Passkey</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_schema_attr</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">true</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_proto_string_clone_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">values</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">t</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">t</span>).<span class="ident">cloned</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_db_valueset_v2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DbValueSetV2</span> {
-        <span class="ident">DbValueSetV2::Passkey</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))<span class="op">|</span> <span class="ident">DbValuePasskeyV1::V4</span> {
-                    <span class="ident">u</span>: <span class="kw-2">*</span><span class="ident">u</span>,
-                    <span class="ident">t</span>: <span class="ident">t</span>.<span class="ident">clone</span>(),
-                    <span class="ident">k</span>: <span class="ident">k</span>.<span class="ident">clone</span>(),
+    <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
+        DbValueSetV2::Passkey(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(u, (t, k))| DbValuePasskeyV1::V4 {
+                    u: <span class="kw-2">*</span>u,
+                    t: t.clone(),
+                    k: k.clone(),
                 })
-                .<span class="ident">collect</span>(),
+                .collect(),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">to_partialvalue_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">PartialValue::Passkey</span>))
+    <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.keys().cloned().map(PartialValue::Passkey))
     }
 
-    <span class="kw">fn</span> <span class="ident">to_value_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))<span class="op">|</span> <span class="ident">Value::Passkey</span>(<span class="kw-2">*</span><span class="ident">u</span>, <span class="ident">t</span>.<span class="ident">clone</span>(), <span class="ident">k</span>.<span class="ident">clone</span>())),
+    <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(u, (t, k))| Value::Passkey(<span class="kw-2">*</span>u, t.clone(), k.clone())),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">equal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// Looks like we may not need this?</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">other</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_passkey_map</span>() {
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span> <span class="op">==</span> <span class="ident">other</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// debug_assert!(false);</span>
-            <span class="bool-val">false</span>
-        }
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
+        <span class="comment">// Looks like we may not need this?
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(other) = other.as_passkey_map() {
+            <span class="kw-2">&amp;</span><span class="self">self</span>.map == other
+        } <span class="kw">else </span>{
+            <span class="comment">// debug_assert!(false);
+            </span><span class="bool-val">false
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">b</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_passkey_map</span>() {
-            <span class="macro">mergemaps!</span>(<span class="self">self</span>.<span class="ident">map</span>, <span class="ident">b</span>)
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = other.as_passkey_map() {
+            <span class="macro">mergemaps!</span>(<span class="self">self</span>.map, b)
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">to_passkey_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PasskeyV4</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
-            <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">values</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">k</span>)<span class="op">|</span> <span class="ident">k</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+    <span class="kw">fn </span>to_passkey_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PasskeyV4&gt; {
+        <span class="kw">if </span><span class="self">self</span>.map.len() == <span class="number">1 </span>{
+            <span class="self">self</span>.map.values().take(<span class="number">1</span>).next().map(|(<span class="kw">_</span>, k)| k)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">as_passkey_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span>)
+    <span class="kw">fn </span>as_passkey_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, (String, PasskeyV4)&gt;&gt; {
+        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.map)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueSetDeviceKey</span> {
-    <span class="ident">map</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">DeviceKeyV4</span>)<span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ValueSetDeviceKey {
+    map: BTreeMap&lt;Uuid, (String, DeviceKeyV4)&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetDeviceKey</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">u</span>: <span class="ident">Uuid</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">k</span>: <span class="ident">DeviceKeyV4</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-        <span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>));
-        <span class="ident">Box::new</span>(<span class="ident">ValueSetDeviceKey</span> { <span class="ident">map</span> })
+<span class="kw">impl </span>ValueSetDeviceKey {
+    <span class="kw">pub fn </span>new(u: Uuid, t: String, k: DeviceKeyV4) -&gt; Box&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>map = BTreeMap::new();
+        map.insert(u, (t, k));
+        Box::new(ValueSetDeviceKey { map })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">u</span>: <span class="ident">Uuid</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">k</span>: <span class="ident">DeviceKeyV4</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>)).<span class="ident">is_none</span>()
+    <span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, u: Uuid, t: String, k: DeviceKeyV4) -&gt; bool {
+        <span class="self">self</span>.map.insert(u, (t, k)).is_none()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbvs2</span>(<span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueDeviceKeyV1</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">data</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">k</span> {
-                <span class="ident">DbValueDeviceKeyV1::V4</span> { <span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span> } =&gt; <span class="prelude-val">Ok</span>((<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))),
+    <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;DbValueDeviceKeyV1&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>map = data
+            .into_iter()
+            .map(|k| <span class="kw">match </span>k {
+                DbValueDeviceKeyV1::V4 { u, t, k } =&gt; <span class="prelude-val">Ok</span>((u, (t, k))),
             })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetDeviceKey</span> { <span class="ident">map</span> }))
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetDeviceKey { map }))
     }
 
-    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign</span>
-    <span class="comment">// types, and tuples are always foreign.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">Uuid</span>, <span class="ident">String</span>, <span class="ident">DeviceKeyV4</span>)<span class="op">&gt;</span>,
+    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    </span><span class="attribute">#[allow(clippy::should_implement_trait)]
+    </span><span class="kw">pub fn </span>from_iter&lt;T&gt;(iter: T) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = (Uuid, String, DeviceKeyV4)&gt;,
     {
-        <span class="kw">let</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>)<span class="op">|</span> (<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))).<span class="ident">collect</span>();
-        <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetDeviceKey</span> { <span class="ident">map</span> }))
+        <span class="kw">let </span>map = iter.into_iter().map(|(u, t, k)| (u, (t, k))).collect();
+        <span class="prelude-val">Some</span>(Box::new(ValueSetDeviceKey { map }))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetT</span> <span class="kw">for</span> <span class="ident">ValueSetDeviceKey</span> {
-    <span class="kw">fn</span> <span class="ident">insert_checked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">Value::DeviceKey</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">BTreeEntry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">entry</span>(<span class="ident">u</span>) {
-                    <span class="ident">e</span>.<span class="ident">insert</span>((<span class="ident">t</span>, <span class="ident">k</span>));
+<span class="kw">impl </span>ValueSetT <span class="kw">for </span>ValueSetDeviceKey {
+    <span class="kw">fn </span>insert_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span>value {
+            Value::DeviceKey(u, t, k) =&gt; {
+                <span class="kw">if let </span>BTreeEntry::Vacant(e) = <span class="self">self</span>.map.entry(u) {
+                    e.insert((t, k));
                     <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
                 }
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidValueState),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">clear</span>();
+    <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.map.clear();
     }
 
-    <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::DeviceKey</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">remove</span>(<span class="ident">u</span>).<span class="ident">is_some</span>(),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::DeviceKey(u) =&gt; <span class="self">self</span>.map.remove(u).is_some(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::DeviceKey</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">contains_key</span>(<span class="ident">u</span>),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::DeviceKey(u) =&gt; <span class="self">self</span>.map.contains_key(u),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>substring(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>lessthan(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.map.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>generate_idx_eq_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt; {
+        <span class="self">self</span>.map
+            .keys()
+            .map(|u| u.as_hyphenated().to_string())
+            .collect()
     }
 
-    <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">len</span>()
+    <span class="kw">fn </span>syntax(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SyntaxType {
+        SyntaxType::DeviceKey
     }
 
-    <span class="kw">fn</span> <span class="ident">generate_idx_eq_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">map</span>
-            .<span class="ident">keys</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
-            .<span class="ident">collect</span>()
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.values().map(|(t, <span class="kw">_</span>)| t).cloned())
     }
 
-    <span class="kw">fn</span> <span class="ident">syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SyntaxType</span> {
-        <span class="ident">SyntaxType::DeviceKey</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_schema_attr</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">true</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_proto_string_clone_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">values</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">t</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">t</span>).<span class="ident">cloned</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_db_valueset_v2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DbValueSetV2</span> {
-        <span class="ident">DbValueSetV2::DeviceKey</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))<span class="op">|</span> <span class="ident">DbValueDeviceKeyV1::V4</span> {
-                    <span class="ident">u</span>: <span class="kw-2">*</span><span class="ident">u</span>,
-                    <span class="ident">t</span>: <span class="ident">t</span>.<span class="ident">clone</span>(),
-                    <span class="ident">k</span>: <span class="ident">k</span>.<span class="ident">clone</span>(),
+    <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
+        DbValueSetV2::DeviceKey(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(u, (t, k))| DbValueDeviceKeyV1::V4 {
+                    u: <span class="kw-2">*</span>u,
+                    t: t.clone(),
+                    k: k.clone(),
                 })
-                .<span class="ident">collect</span>(),
+                .collect(),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">to_partialvalue_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">map</span>(<span class="ident">PartialValue::DeviceKey</span>))
+    <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.map.keys().copied().map(PartialValue::DeviceKey))
     }
 
-    <span class="kw">fn</span> <span class="ident">to_value_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(
-            <span class="self">self</span>.<span class="ident">map</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))<span class="op">|</span> <span class="ident">Value::DeviceKey</span>(<span class="kw-2">*</span><span class="ident">u</span>, <span class="ident">t</span>.<span class="ident">clone</span>(), <span class="ident">k</span>.<span class="ident">clone</span>())),
+    <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(
+            <span class="self">self</span>.map
+                .iter()
+                .map(|(u, (t, k))| Value::DeviceKey(<span class="kw-2">*</span>u, t.clone(), k.clone())),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">equal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// Looks like we may not need this?</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">other</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_devicekey_map</span>() {
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span> <span class="op">==</span> <span class="ident">other</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// debug_assert!(false);</span>
-            <span class="bool-val">false</span>
-        }
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
+        <span class="comment">// Looks like we may not need this?
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(other) = other.as_devicekey_map() {
+            <span class="kw-2">&amp;</span><span class="self">self</span>.map == other
+        } <span class="kw">else </span>{
+            <span class="comment">// debug_assert!(false);
+            </span><span class="bool-val">false
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">b</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_devicekey_map</span>() {
-            <span class="macro">mergemaps!</span>(<span class="self">self</span>.<span class="ident">map</span>, <span class="ident">b</span>)
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = other.as_devicekey_map() {
+            <span class="macro">mergemaps!</span>(<span class="self">self</span>.map, b)
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">to_devicekey_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">DeviceKeyV4</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
-            <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">values</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">k</span>)<span class="op">|</span> <span class="ident">k</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+    <span class="kw">fn </span>to_devicekey_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DeviceKeyV4&gt; {
+        <span class="kw">if </span><span class="self">self</span>.map.len() == <span class="number">1 </span>{
+            <span class="self">self</span>.map.values().take(<span class="number">1</span>).next().map(|(<span class="kw">_</span>, k)| k)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">as_devicekey_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">DeviceKeyV4</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">map</span>)
+    <span class="kw">fn </span>as_devicekey_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, (String, DeviceKeyV4)&gt;&gt; {
+        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.map)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

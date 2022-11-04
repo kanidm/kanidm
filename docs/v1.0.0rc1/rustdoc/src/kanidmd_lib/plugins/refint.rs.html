@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/refint.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>refint.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/refint.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>refint.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -776,281 +776,281 @@
 <span id="776">776</span>
 <span id="777">777</span>
 <span id="778">778</span>
-</pre><pre class="rust"><code><span class="comment">// Referential Integrity</span>
-<span class="comment">//</span>
-<span class="comment">// Given an entry, modification or change, ensure that all referential links</span>
-<span class="comment">// in the database are maintained. IE there are no dangling references that</span>
-<span class="comment">// are unable to be resolved, as this may cause errors in Item -&gt; ProtoItem</span>
-<span class="comment">// translation.</span>
-<span class="comment">//</span>
-<span class="comment">// It will be important to understand the interaction of this plugin with memberof</span>
-<span class="comment">// when that is written, as they *both* manipulate and alter entry reference</span>
-<span class="comment">// data, so we should be careful not to step on each other.</span>
+</pre><pre class="rust"><code><span class="comment">// Referential Integrity
+//
+// Given an entry, modification or change, ensure that all referential links
+// in the database are maintained. IE there are no dangling references that
+// are unable to be resolved, as this may cause errors in Item -&gt; ProtoItem
+// translation.
+//
+// It will be important to understand the interaction of this plugin with memberof
+// when that is written, as they *both* manipulate and alter entry reference
+// data, so we should be careful not to step on each other.
 
-<span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+</span><span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">use</span> <span class="ident">hashbrown::HashSet</span> <span class="kw">as</span> <span class="ident">Set</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ConsistencyError</span>, <span class="ident">PluginError</span>};
-<span class="kw">use</span> <span class="ident">tracing::trace</span>;
+<span class="kw">use </span>hashbrown::HashSet <span class="kw">as </span>Set;
+<span class="kw">use </span>kanidm_proto::v1::{ConsistencyError, PluginError};
+<span class="kw">use </span>tracing::trace;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">CreateEvent</span>, <span class="ident">DeleteEvent</span>, <span class="ident">ModifyEvent</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::f_eq</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify::Modify</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plugins::Plugin</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaTransaction</span>;
+<span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, DeleteEvent, ModifyEvent};
+<span class="kw">use </span><span class="kw">crate</span>::filter::f_eq;
+<span class="kw">use </span><span class="kw">crate</span>::modify::Modify;
+<span class="kw">use </span><span class="kw">crate</span>::plugins::Plugin;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
 
-<span class="comment">// NOTE: This *must* be after base.rs!!!</span>
+<span class="comment">// NOTE: This *must* be after base.rs!!!
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReferentialIntegrity</span>;
+</span><span class="kw">pub struct </span>ReferentialIntegrity;
 
-<span class="kw">impl</span> <span class="ident">ReferentialIntegrity</span> {
-    <span class="kw">fn</span> <span class="ident">check_uuids_exist</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">inner</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">is_empty</span>() {
-            <span class="comment">// There is nothing to check! Move on.</span>
-            <span class="macro">trace!</span>(<span class="string">&quot;no reference types modified, skipping check&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+<span class="kw">impl </span>ReferentialIntegrity {
+    <span class="kw">fn </span>check_uuids_exist(
+        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        inner: Vec&lt;PartialValue&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if </span>inner.is_empty() {
+            <span class="comment">// There is nothing to check! Move on.
+            </span><span class="macro">trace!</span>(<span class="string">&quot;no reference types modified, skipping check&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">pv</span><span class="op">|</span> <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">pv</span>)).<span class="ident">collect</span>();
+        <span class="kw">let </span>inner = inner.into_iter().map(|pv| f_eq(<span class="string">&quot;uuid&quot;</span>, pv)).collect();
 
-        <span class="comment">// F_inc(lusion). All items of inner must be 1 or more, or the filter</span>
-        <span class="comment">// will fail. This will return the union of the inclusion after the</span>
-        <span class="comment">// operationn.</span>
-        <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_inc</span>(<span class="ident">inner</span>));
-        <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_exists</span>(<span class="ident">filt_in</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;internal exists failure&quot;</span>);
-            <span class="ident">e</span>
+        <span class="comment">// F_inc(lusion). All items of inner must be 1 or more, or the filter
+        // will fail. This will return the union of the inclusion after the
+        // operationn.
+        </span><span class="kw">let </span>filt_in = <span class="macro">filter!</span>(f_inc(inner));
+        <span class="kw">let </span>b = qs.internal_exists(filt_in).map_err(|e| {
+            <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;internal exists failure&quot;</span>);
+            e
         })<span class="question-mark">?</span>;
 
-        <span class="comment">// Is the existance of all id&#39;s confirmed?</span>
-        <span class="kw">if</span> <span class="ident">b</span> {
+        <span class="comment">// Is the existance of all id&#39;s confirmed?
+        </span><span class="kw">if </span>b {
             <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else</span> {
+        } <span class="kw">else </span>{
             <span class="macro">admin_error!</span>(
-                <span class="string">&quot;UUID reference set size differs from query result size &lt;fast path, no uuid info available&gt;&quot;</span>
-            );
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::ReferentialIntegrity</span>(
-                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="string">&quot;UUID reference set size differs from query result size &lt;fast path, no uuid info available&gt;&quot;
+            </span>);
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.to_string(),
             )))
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">ReferentialIntegrity</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="string">&quot;referential_integrity&quot;</span>
-    }
+<span class="kw">impl </span>Plugin <span class="kw">for </span>ReferentialIntegrity {
+    <span class="kw">fn </span>id() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="string">&quot;referential_integrity&quot;
+    </span>}
 
-    <span class="comment">// Why are these checks all in post?</span>
-    <span class="comment">//</span>
-    <span class="comment">// There is a situation to account for which is that a create or mod</span>
-    <span class="comment">// may introduce the entry which is also to be referenced in the same</span>
-    <span class="comment">// transaction. Rather than have seperate verification paths - one to</span>
-    <span class="comment">// check the UUID is in the cand set, and one to check the UUID exists</span>
-    <span class="comment">// in the DB, we do the &quot;correct&quot; thing, write to the DB, and then assert</span>
-    <span class="comment">// that the DB content is complete and valid instead.</span>
-    <span class="comment">//</span>
-    <span class="comment">// Yes, this does mean we do more work to add/index/rollback in an error</span>
-    <span class="comment">// condition, *but* it means we only have developed a single verification</span>
-    <span class="comment">// so we can assert stronger trust in it&#39;s correct operation and interaction</span>
-    <span class="comment">// in complex scenarioes - It actually simplifies the check from &quot;could</span>
-    <span class="comment">// be in cand AND db&quot; to simply &quot;is it in the DB?&quot;.</span>
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;refint_post_create&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">_ce</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">post_create</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
-        <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
-        <span class="kw">let</span> <span class="ident">ref_types</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_reference_types</span>();
+    <span class="comment">// Why are these checks all in post?
+    //
+    // There is a situation to account for which is that a create or mod
+    // may introduce the entry which is also to be referenced in the same
+    // transaction. Rather than have seperate verification paths - one to
+    // check the UUID is in the cand set, and one to check the UUID exists
+    // in the DB, we do the &quot;correct&quot; thing, write to the DB, and then assert
+    // that the DB content is complete and valid instead.
+    //
+    // Yes, this does mean we do more work to add/index/rollback in an error
+    // condition, *but* it means we only have developed a single verification
+    // so we can assert stronger trust in it&#39;s correct operation and interaction
+    // in complex scenarioes - It actually simplifies the check from &quot;could
+    // be in cand AND db&quot; to simply &quot;is it in the DB?&quot;.
+    </span><span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;refint_post_create&quot;</span>, skip(qs, cand, _ce))]
+    </span><span class="kw">fn </span>post_create(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        _ce: <span class="kw-2">&amp;</span>CreateEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>schema = qs.get_schema();
+        <span class="kw">let </span>ref_types = schema.get_reference_types();
 
-        <span class="comment">// Fast Path</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vsiter</span> <span class="op">=</span> <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-            <span class="ident">ref_types</span>
-                .<span class="ident">values</span>()
-                .<span class="ident">filter_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">rtype</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">get_ava_set</span>(<span class="kw-2">&amp;</span><span class="ident">rtype</span>.<span class="ident">name</span>))
+        <span class="comment">// Fast Path
+        </span><span class="kw">let </span><span class="kw-2">mut </span>vsiter = cand.iter().flat_map(|c| {
+            ref_types
+                .values()
+                .filter_map(<span class="kw">move </span>|rtype| c.get_ava_set(<span class="kw-2">&amp;</span>rtype.name))
         });
 
-        <span class="comment">// Could check len first?</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">i</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="comment">// Could check len first?
+        </span><span class="kw">let </span><span class="kw-2">mut </span>i = Vec::new();
 
-        <span class="ident">vsiter</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">uuid_iter</span>) <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">as_ref_uuid_iter</span>() {
-                <span class="ident">uuid_iter</span>.<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> {
-                    <span class="ident">i</span>.<span class="ident">push</span>(<span class="ident">PartialValue::new_uuid</span>(<span class="ident">u</span>))
+        vsiter.try_for_each(|vs| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(uuid_iter) = vs.as_ref_uuid_iter() {
+                uuid_iter.for_each(|u| {
+                    i.push(PartialValue::new_uuid(u))
                 });
                 <span class="prelude-val">Ok</span>(())
-            } <span class="kw">else</span> {
-                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">vs</span>, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
+            } <span class="kw">else </span>{
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>vs, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
                 <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(
-                    <span class="string">&quot;uuid could not become reference value&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(
+                    <span class="string">&quot;uuid could not become reference value&quot;</span>.to_string(),
                 ))
             }
         })<span class="question-mark">?</span>;
 
-        <span class="ident"><span class="self">Self</span>::check_uuids_exist</span>(<span class="ident">qs</span>, <span class="ident">i</span>)
+        <span class="self">Self</span>::check_uuids_exist(qs, i)
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;refint_post_modify&quot;</span>,
-        <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">_pre_cand</span>, <span class="ident">_cand</span>, <span class="ident">me</span>)
-    )]</span>
-    <span class="kw">fn</span> <span class="ident">post_modify</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">_pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
-        <span class="ident">_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
-        <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
-        <span class="kw">let</span> <span class="ident">ref_types</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_reference_types</span>();
+    <span class="attribute">#[instrument(
+        level = <span class="string">&quot;debug&quot;</span>,
+        name = <span class="string">&quot;refint_post_modify&quot;</span>,
+        skip(qs, _pre_cand, _cand, me)
+    )]
+    </span><span class="kw">fn </span>post_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        _pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
+        _cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        me: <span class="kw-2">&amp;</span>ModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>schema = qs.get_schema();
+        <span class="kw">let </span>ref_types = schema.get_reference_types();
 
-        <span class="kw">let</span> <span class="ident">i</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">into_iter</span>().<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">modify</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">modify</span> {
-                <span class="kw">if</span> <span class="ident">ref_types</span>.<span class="ident">get</span>(<span class="ident">a</span>).<span class="ident">is_some</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">v</span>)
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">None</span>
-                }
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            }
+        <span class="kw">let </span>i: <span class="prelude-ty">Result</span>&lt;Vec&lt;PartialValue&gt;, <span class="kw">_</span>&gt; = me.modlist.into_iter().filter_map(|modify| {
+            <span class="kw">if let </span>Modify::Present(a, v) = <span class="kw-2">&amp;</span>modify {
+                <span class="kw">if </span>ref_types.get(a).is_some() {
+                    <span class="prelude-val">Some</span>(v)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
         })
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-            <span class="ident">v</span>.<span class="ident">to_ref_uuid</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">uuid</span><span class="op">|</span> <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>))
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">v</span>, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
+        .map(|v| {
+            v.to_ref_uuid()
+                .map(|uuid| PartialValue::new_uuid(<span class="kw-2">*</span>uuid))
+                .ok_or_else(|| {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span>v, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
                     <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
-                    <span class="ident">OperationError::InvalidAttribute</span>(
-                        <span class="string">&quot;uuid could not become reference value&quot;</span>.<span class="ident">to_string</span>(),
+                    OperationError::InvalidAttribute(
+                        <span class="string">&quot;uuid could not become reference value&quot;</span>.to_string(),
                     )
                 })
 
         })
-        .<span class="ident">collect</span>();
+        .collect();
 
-        <span class="kw">let</span> <span class="ident">i</span> <span class="op">=</span> <span class="ident">i</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>i = i<span class="question-mark">?</span>;
 
-        <span class="ident"><span class="self">Self</span>::check_uuids_exist</span>(<span class="ident">qs</span>, <span class="ident">i</span>)
+        <span class="self">Self</span>::check_uuids_exist(qs, i)
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;refint_post_delete&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">_ce</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">post_delete</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
-        <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Delete is pretty different to the other pre checks. This is</span>
-        <span class="comment">// actually the bulk of the work we&#39;ll do to clean up references</span>
-        <span class="comment">// when they are deleted.</span>
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;refint_post_delete&quot;</span>, skip(qs, cand, _ce))]
+    </span><span class="kw">fn </span>post_delete(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        _ce: <span class="kw-2">&amp;</span>DeleteEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// Delete is pretty different to the other pre checks. This is
+        // actually the bulk of the work we&#39;ll do to clean up references
+        // when they are deleted.
 
-        <span class="comment">// Find all reference types in the schema</span>
-        <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
-        <span class="kw">let</span> <span class="ident">ref_types</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_reference_types</span>();
-        <span class="comment">// Get the UUID of all entries we are deleting</span>
-        <span class="comment">// let uuids: Vec&lt;&amp;Uuid&gt; = cand.iter().map(|e| e.get_uuid()).collect();</span>
+        // Find all reference types in the schema
+        </span><span class="kw">let </span>schema = qs.get_schema();
+        <span class="kw">let </span>ref_types = schema.get_reference_types();
+        <span class="comment">// Get the UUID of all entries we are deleting
+        // let uuids: Vec&lt;&amp;Uuid&gt; = cand.iter().map(|e| e.get_uuid()).collect();
 
-        <span class="comment">// Generate a filter which is the set of all schema reference types</span>
-        <span class="comment">// as EQ to all uuid of all entries in delete. - this INCLUDES recycled</span>
-        <span class="comment">// types too!</span>
-        <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">FC::Or</span>(
-            <span class="comment">// uuids</span>
-            <span class="comment">// .iter()</span>
-            <span class="ident">cand</span>.<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>())
-                .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">ref_types</span>.<span class="ident">values</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">r_type</span><span class="op">|</span> {
-                    <span class="comment">// For everything that references the uuid&#39;s in the deleted set.</span>
-                    <span class="ident">f_eq</span>(<span class="ident">r_type</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">PartialValue::new_refer</span>(<span class="ident">u</span>))
+        // Generate a filter which is the set of all schema reference types
+        // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
+        // types too!
+        </span><span class="kw">let </span>filt = <span class="macro">filter_all!</span>(FC::Or(
+            <span class="comment">// uuids
+            // .iter()
+            </span>cand.iter()
+                .map(|e| e.get_uuid())
+                .flat_map(|u| ref_types.values().map(<span class="kw">move </span>|r_type| {
+                    <span class="comment">// For everything that references the uuid&#39;s in the deleted set.
+                    </span>f_eq(r_type.name.as_str(), PartialValue::new_refer(u))
                 }))
-                .<span class="ident">collect</span>(),
+                .collect(),
         ));
 
-        <span class="macro">trace!</span>(<span class="string">&quot;refint post_delete filter {:?}&quot;</span>, <span class="ident">filt</span>);
+        <span class="macro">trace!</span>(<span class="string">&quot;refint post_delete filter {:?}&quot;</span>, filt);
 
-        <span class="kw">let</span> <span class="ident">removed_ids</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">cand</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">PartialValue::new_refer</span>(<span class="ident">e</span>.<span class="ident">get_uuid</span>()))
-            .<span class="ident">collect</span>();
+        <span class="kw">let </span>removed_ids: BTreeSet&lt;<span class="kw">_</span>&gt; = cand
+            .iter()
+            .map(|e| PartialValue::new_refer(e.get_uuid()))
+            .collect();
 
-        <span class="kw">let</span> <span class="ident">work_set</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_search_writeable</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> (<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>) <span class="op">=</span> <span class="ident">work_set</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">pre</span>, <span class="kw-2">mut</span> <span class="ident">post</span>)<span class="op">|</span> {
-                <span class="ident">ref_types</span>
-                    .<span class="ident">values</span>()
-                    .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">attr</span><span class="op">|</span> <span class="ident">post</span>.<span class="ident">remove_avas</span>(<span class="ident">attr</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">removed_ids</span>));
-                (<span class="ident">pre</span>, <span class="ident">post</span>)
+        <span class="kw">let </span>(pre_candidates, candidates) = work_set
+            .into_iter()
+            .map(|(pre, <span class="kw-2">mut </span>post)| {
+                ref_types
+                    .values()
+                    .for_each(|attr| post.remove_avas(attr.name.as_str(), <span class="kw-2">&amp;</span>removed_ids));
+                (pre, post)
             })
-            .<span class="ident">unzip</span>();
+            .unzip();
 
-        <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
+        qs.internal_batch_modify(pre_candidates, candidates)
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;verify&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// Get all entries as cand</span>
-        <span class="comment">//      build a cand-uuid set</span>
-        <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;verify&quot;</span>, skip(qs))]
+    </span><span class="kw">fn </span>verify(qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
+        <span class="comment">// Get all entries as cand
+        //      build a cand-uuid set
+        </span><span class="kw">let </span>filt_in = <span class="macro">filter_all!</span>(f_pres(<span class="string">&quot;class&quot;</span>));
 
-        <span class="kw">let</span> <span class="ident">all_cand</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>
-            .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
+        <span class="kw">let </span>all_cand = <span class="kw">match </span>qs
+            .internal_search(filt_in)
+            .map_err(|<span class="kw">_</span>| <span class="prelude-val">Err</span>(ConsistencyError::QueryServerSearchFailure))
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) =&gt; <span class="ident">all_cand</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
+            <span class="prelude-val">Ok</span>(all_cand) =&gt; all_cand,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="macro">vec!</span>[e],
         };
 
-        <span class="kw">let</span> <span class="ident">acu_map</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">all_cand</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>()).<span class="ident">collect</span>();
+        <span class="kw">let </span>acu_map: Set&lt;Uuid&gt; = all_cand.iter().map(|e| e.get_uuid()).collect();
 
-        <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
-        <span class="kw">let</span> <span class="ident">ref_types</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_reference_types</span>();
+        <span class="kw">let </span>schema = qs.get_schema();
+        <span class="kw">let </span>ref_types = schema.get_reference_types();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="comment">// For all cands</span>
-        <span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">all_cand</span> {
-            <span class="comment">// For all reference in each cand.</span>
-            <span class="kw">for</span> <span class="ident">rtype</span> <span class="kw">in</span> <span class="ident">ref_types</span>.<span class="ident">values</span>() {
-                <span class="comment">// If the attribute is present</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">c</span>.<span class="ident">get_ava_set</span>(<span class="kw-2">&amp;</span><span class="ident">rtype</span>.<span class="ident">name</span>) {
-                    <span class="comment">// For each value in the set.</span>
-                    <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">as_ref_uuid_iter</span>() {
-                        <span class="prelude-val">Some</span>(<span class="ident">uuid_iter</span>) =&gt; {
-                            <span class="kw">for</span> <span class="ident">vu</span> <span class="kw">in</span> <span class="ident">uuid_iter</span> {
-                                <span class="kw">if</span> <span class="ident">acu_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">vu</span>).<span class="ident">is_none</span>() {
-                                    <span class="ident">res</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::RefintNotUpheld</span>(<span class="ident">c</span>.<span class="ident">get_id</span>())))
+        <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::new();
+        <span class="comment">// For all cands
+        </span><span class="kw">for </span>c <span class="kw">in </span><span class="kw-2">&amp;</span>all_cand {
+            <span class="comment">// For all reference in each cand.
+            </span><span class="kw">for </span>rtype <span class="kw">in </span>ref_types.values() {
+                <span class="comment">// If the attribute is present
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = c.get_ava_set(<span class="kw-2">&amp;</span>rtype.name) {
+                    <span class="comment">// For each value in the set.
+                    </span><span class="kw">match </span>vs.as_ref_uuid_iter() {
+                        <span class="prelude-val">Some</span>(uuid_iter) =&gt; {
+                            <span class="kw">for </span>vu <span class="kw">in </span>uuid_iter {
+                                <span class="kw">if </span>acu_map.get(<span class="kw-2">&amp;</span>vu).is_none() {
+                                    res.push(<span class="prelude-val">Err</span>(ConsistencyError::RefintNotUpheld(c.get_id())))
                                 }
                             }
                         }
-                        <span class="prelude-val">None</span> =&gt; <span class="ident">res</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::InvalidAttributeType</span>(
-                            <span class="string">&quot;A non-value-ref type was found.&quot;</span>.<span class="ident">to_string</span>(),
+                        <span class="prelude-val">None </span>=&gt; res.push(<span class="prelude-val">Err</span>(ConsistencyError::InvalidAttributeType(
+                            <span class="string">&quot;A non-value-ref type was found.&quot;</span>.to_string(),
                         ))),
                     }
                 }
             }
         }
 
-        <span class="ident">res</span>
+        res
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">kanidm_proto::v1::PluginError</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>kanidm_proto::v1::PluginError;
 
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-    <span class="comment">// The create references a uuid that doesn&#39;t exist - reject</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_create_uuid_reference_not_exist</span>() {
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// The create references a uuid that doesn&#39;t exist - reject
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_create_uuid_reference_not_exist() {
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1061,23 +1061,23 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = Vec::new();
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::ReferentialIntegrity</span>(
-                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// The create references a uuid that does exist - validate</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_create_uuid_reference_exist</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// The create references a uuid that does exist - validate
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_create_uuid_reference_exist() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1088,7 +1088,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1099,32 +1099,32 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>];
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[eb];
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">qs</span>
-                    .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+                <span class="kw">let </span>cands = qs
+                    .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
-                        <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>)
+                        PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>)
                     )))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
-                <span class="kw">let</span> <span class="ident">_ue</span> <span class="op">=</span> <span class="ident">cands</span>.<span class="ident">first</span>().<span class="ident">expect</span>(<span class="string">&quot;No cand&quot;</span>);
+                    .expect(<span class="string">&quot;Internal search failure&quot;</span>);
+                <span class="kw">let </span>_ue = cands.first().expect(<span class="string">&quot;No cand&quot;</span>);
             }
         );
     }
 
-    <span class="comment">// The create references itself - allow</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_create_uuid_reference_self</span>() {
-        <span class="kw">let</span> <span class="ident">preload</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="comment">// The create references itself - allow
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_create_uuid_reference_self() {
+        <span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1136,26 +1136,26 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e];
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">qs</span>
-                    .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup&quot;</span>))))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
-                <span class="kw">let</span> <span class="ident">_ue</span> <span class="op">=</span> <span class="ident">cands</span>.<span class="ident">first</span>().<span class="ident">expect</span>(<span class="string">&quot;No cand&quot;</span>);
+            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+                <span class="kw">let </span>cands = qs
+                    .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup&quot;</span>))))
+                    .expect(<span class="string">&quot;Internal search failure&quot;</span>);
+                <span class="kw">let </span>_ue = cands.first().expect(<span class="string">&quot;No cand&quot;</span>);
             }
         );
     }
 
-    <span class="comment">// Modify references a different object - allow</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_uuid_reference_exist</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Modify references a different object - allow
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_uuid_reference_exist() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1166,7 +1166,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1176,26 +1176,26 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
-                <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
+                AttrString::from(<span class="string">&quot;member&quot;</span>),
+                Value::new_refer_s(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).unwrap()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// Modify reference something that doesn&#39;t exist - must be rejected</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_uuid_reference_not_exist</span>() {
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Modify reference something that doesn&#39;t exist - must be rejected
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_uuid_reference_not_exist() {
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1205,29 +1205,29 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[eb];
 
         <span class="macro">run_modify_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::ReferentialIntegrity</span>(
-                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
-                <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
+                AttrString::from(<span class="string">&quot;member&quot;</span>),
+                Value::new_refer_s(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).unwrap()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// Check that even when SOME references exist, so long as one does not,</span>
-    <span class="comment">// we fail.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_uuid_reference_partial_not_exist</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Check that even when SOME references exist, so long as one does not,
+    // we fail.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_uuid_reference_partial_not_exist() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1238,7 +1238,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1248,34 +1248,34 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_modify_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::ReferentialIntegrity</span>(
-                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[
-                <span class="ident">Modify::Present</span>(
-                    <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
-                    <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[
+                Modify::Present(
+                    AttrString::from(<span class="string">&quot;member&quot;</span>),
+                    Value::new_refer_s(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).unwrap()
                 ),
-                <span class="ident">Modify::Present</span>(
-                    <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
-                    <span class="ident">Value::new_refer</span>(<span class="ident">UUID_DOES_NOT_EXIST</span>)
+                Modify::Present(
+                    AttrString::from(<span class="string">&quot;member&quot;</span>),
+                    Value::new_refer(UUID_DOES_NOT_EXIST)
                 ),
             ]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// Modify removes the reference to an entry</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_remove_referee</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Modify removes the reference to an entry
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_remove_referee() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1286,7 +1286,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1297,23 +1297,23 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>))]),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Purged(AttrString::from(<span class="string">&quot;member&quot;</span>))]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// Modify adds reference to self - allow</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_uuid_reference_self</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Modify adds reference to self - allow
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_uuid_reference_self() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1324,26 +1324,26 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
-                <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_a&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
+                AttrString::from(<span class="string">&quot;member&quot;</span>),
+                Value::new_refer_s(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).unwrap()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// Test that deleted entries can not be referenced</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_reference_deleted</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Test that deleted entries can not be referenced
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_reference_deleted() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1354,7 +1354,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1364,39 +1364,39 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_modify_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::ReferentialIntegrity</span>(
-                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                <span class="string">&quot;Uuid referenced not found in database&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
-                <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
+                AttrString::from(<span class="string">&quot;member&quot;</span>),
+                Value::new_refer_s(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).unwrap()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
-                <span class="comment">// Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a</span>
-                <span class="kw">let</span> <span class="ident">de_sin</span> <span class="op">=</span> <span class="kw">unsafe</span> {
-                    <span class="ident"><span class="kw">crate</span>::event::DeleteEvent::new_internal_invalid</span>(<span class="macro">filter!</span>(<span class="macro">f_or!</span>([<span class="ident">f_eq</span>(
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
+                <span class="comment">// Any pre_hooks we need. In this case, we need to trigger the delete of testgroup_a
+                </span><span class="kw">let </span>de_sin = <span class="kw">unsafe </span>{
+                    <span class="kw">crate</span>::event::DeleteEvent::new_internal_invalid(<span class="macro">filter!</span>(<span class="macro">f_or!</span>([f_eq(
                         <span class="string">&quot;name&quot;</span>,
-                        <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>)
+                        PartialValue::new_iname(<span class="string">&quot;testgroup_a&quot;</span>)
                     )])))
                 };
-                <span class="macro">assert!</span>(<span class="ident">qs</span>.<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="ident">de_sin</span>).<span class="ident">is_ok</span>());
+                <span class="macro">assert!</span>(qs.delete(<span class="kw-2">&amp;</span>de_sin).is_ok());
             },
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// Delete of something that is referenced - must remove ref in other (unless would make inconsistent)</span>
-    <span class="comment">//</span>
-    <span class="comment">// This is the valid case, where the reference is MAY.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_delete_remove_referent_valid</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Delete of something that is referenced - must remove ref in other (unless would make inconsistent)
+    //
+    // This is the valid case, where the reference is MAY.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_delete_remove_referent_valid() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1407,7 +1407,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1418,27 +1418,27 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_a&quot;</span>))),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            |_qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {}
         );
     }
 
-    <span class="comment">// Delete of something that is referenced - must remove ref in other (unless would make inconsistent)</span>
-    <span class="comment">//</span>
-    <span class="comment">// this is the invalid case, where the reference is MUST.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_delete_remove_referent_invalid</span>() {}
+    <span class="comment">// Delete of something that is referenced - must remove ref in other (unless would make inconsistent)
+    //
+    // this is the invalid case, where the reference is MUST.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_delete_remove_referent_invalid() {}
 
-    <span class="comment">// Delete of something that holds references.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_delete_remove_referee</span>() {
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Delete of something that holds references.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_delete_remove_referee() {
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1449,7 +1449,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1460,21 +1460,21 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>))),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            |_qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {}
         );
     }
 
-    <span class="comment">// Delete something that has a self reference.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_delete_remove_reference_self</span>() {
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// Delete something that has a self reference.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_delete_remove_reference_self() {
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1486,73 +1486,73 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[eb];
 
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_b&quot;</span>))),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            |_qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_delete_remove_reference_oauth2</span>() {
-        <span class="comment">// Oauth2 types are also capable of uuid referencing to groups for their</span>
-        <span class="comment">// scope maps, so we need to check that when the group is deleted, that the</span>
-        <span class="comment">// scope map is also appropriately affected.</span>
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
-            (<span class="string">&quot;oauth2_rs_name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;test_resource_server&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;test_resource_server&quot;</span>)),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_delete_remove_reference_oauth2() {
+        <span class="comment">// Oauth2 types are also capable of uuid referencing to groups for their
+        // scope maps, so we need to check that when the group is deleted, that the
+        // scope map is also appropriately affected.
+        </span><span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
+            (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
             (
                 <span class="string">&quot;oauth2_rs_origin&quot;</span>,
-                <span class="ident">Value::new_url_s</span>(<span class="string">&quot;https://demo.example.com&quot;</span>).<span class="ident">unwrap</span>()
+                Value::new_url_s(<span class="string">&quot;https://demo.example.com&quot;</span>).unwrap()
             ),
             (
                 <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
-                <span class="ident">Value::new_oauthscopemap</span>(
-                    <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;uuid&quot;</span>),
-                    <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>()]
+                Value::new_oauthscopemap(
+                    Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>),
+                    <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.to_string()]
                 )
-                .<span class="ident">expect</span>(<span class="string">&quot;Invalid scope&quot;</span>)
+                .expect(<span class="string">&quot;Invalid scope&quot;</span>)
             )
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;group&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testgroup&quot;</span>)),
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                <span class="ident">Value::new_uuids</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;uuid&quot;</span>)
+                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
             ),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testgroup&quot;</span>))
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testgroup&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup&quot;</span>))),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup&quot;</span>))),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">qs</span>
-                    .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
+                <span class="kw">let </span>cands = qs
+                    .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;oauth2_rs_name&quot;</span>,
-                        <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;test_resource_server&quot;</span>)
+                        PartialValue::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)
                     )))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
-                <span class="kw">let</span> <span class="ident">ue</span> <span class="op">=</span> <span class="ident">cands</span>.<span class="ident">first</span>().<span class="ident">expect</span>(<span class="string">&quot;No entry&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">ue</span>
-                    .<span class="ident">get_ava_as_oauthscopemaps</span>(<span class="string">&quot;oauth2_rs_scope_map&quot;</span>)
-                    .<span class="ident">is_none</span>())
+                    .expect(<span class="string">&quot;Internal search failure&quot;</span>);
+                <span class="kw">let </span>ue = cands.first().expect(<span class="string">&quot;No entry&quot;</span>);
+                <span class="macro">assert!</span>(ue
+                    .get_ava_as_oauthscopemaps(<span class="string">&quot;oauth2_rs_scope_map&quot;</span>)
+                    .is_none())
             }
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

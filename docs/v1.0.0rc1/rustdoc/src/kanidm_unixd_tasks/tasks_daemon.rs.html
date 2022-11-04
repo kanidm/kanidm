@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/tasks_daemon.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>tasks_daemon.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unixd_tasks/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unixd_tasks/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unixd_tasks/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/tasks_daemon.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>tasks_daemon.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unixd_tasks/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unixd_tasks/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unixd_tasks/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -265,272 +265,322 @@
 <span id="265">265</span>
 <span id="266">266</span>
 <span id="267">267</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unimplemented</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::expect_used</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::panic</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unreachable</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::await_holding_lock</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+</pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
 
-<span class="kw">use</span> <span class="ident">std::ffi::CString</span>;
-<span class="kw">use</span> <span class="ident">std::os::unix::fs::symlink</span>;
-<span class="kw">use</span> <span class="ident">std::path::Path</span>;
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fs</span>, <span class="ident">io</span>};
+</span><span class="kw">use </span>std::ffi::CString;
+<span class="kw">use </span>std::os::unix::fs::symlink;
+<span class="kw">use </span>std::os::unix::ffi::OsStrExt;
+<span class="kw">use </span>std::path::Path;
+<span class="kw">use </span>std::time::Duration;
+<span class="kw">use </span>std::{fs, io};
 
-<span class="kw">use</span> <span class="ident">bytes</span>::{<span class="ident">BufMut</span>, <span class="ident">BytesMut</span>};
-<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">SinkExt</span>, <span class="ident">StreamExt</span>};
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">HomeDirectoryInfo</span>, <span class="ident">TaskRequest</span>, <span class="ident">TaskResponse</span>};
-<span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">lchown</span>, <span class="ident">umask</span>};
-<span class="kw">use</span> <span class="ident">sketching::tracing_forest::traits</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">sketching::tracing_forest::util</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">sketching::tracing_forest</span>::{<span class="self">self</span>};
-<span class="kw">use</span> <span class="ident">tokio::net::UnixStream</span>;
-<span class="kw">use</span> <span class="ident">tokio::time</span>;
-<span class="kw">use</span> <span class="ident">tokio_util::codec</span>::{<span class="ident">Decoder</span>, <span class="ident">Encoder</span>, <span class="ident">Framed</span>};
-<span class="kw">use</span> <span class="ident">users</span>::{<span class="ident">get_effective_gid</span>, <span class="ident">get_effective_uid</span>};
+<span class="kw">use </span>bytes::{BufMut, BytesMut};
+<span class="kw">use </span>futures::{SinkExt, StreamExt};
+<span class="kw">use </span>kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+<span class="kw">use </span>kanidm_unix_common::unix_config::KanidmUnixdConfig;
+<span class="kw">use </span>kanidm_unix_common::unix_proto::{HomeDirectoryInfo, TaskRequest, TaskResponse};
+<span class="kw">use </span>libc::{lchown, umask};
+<span class="kw">use </span>sketching::tracing_forest::traits::<span class="kw-2">*</span>;
+<span class="kw">use </span>sketching::tracing_forest::util::<span class="kw-2">*</span>;
+<span class="kw">use </span>sketching::tracing_forest::{<span class="self">self</span>};
+<span class="kw">use </span>tokio::net::UnixStream;
+<span class="kw">use </span>tokio::time;
+<span class="kw">use </span>tokio_util::codec::{Decoder, Encoder, Framed};
+<span class="kw">use </span>users::{get_effective_gid, get_effective_uid};
+<span class="kw">use </span>walkdir::WalkDir;
 
-<span class="kw">struct</span> <span class="ident">TaskCodec</span>;
+<span class="kw">struct </span>TaskCodec;
 
-<span class="kw">impl</span> <span class="ident">Decoder</span> <span class="kw">for</span> <span class="ident">TaskCodec</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">io::Error</span>;
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">TaskRequest</span>;
+<span class="kw">impl </span>Decoder <span class="kw">for </span>TaskCodec {
+    <span class="kw">type </span>Error = io::Error;
+    <span class="kw">type </span>Item = TaskRequest;
 
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BytesMut</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">TaskRequest</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">src</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">msg</span>) =&gt; {
-                <span class="comment">// Clear the buffer for the next message.</span>
-                <span class="ident">src</span>.<span class="ident">clear</span>();
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">msg</span>))
+    <span class="kw">fn </span>decode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;mut </span>BytesMut) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">match </span>serde_json::from_slice::&lt;TaskRequest&gt;(<span class="kw-2">&amp;</span>src) {
+            <span class="prelude-val">Ok</span>(msg) =&gt; {
+                <span class="comment">// Clear the buffer for the next message.
+                </span>src.clear();
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(msg))
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Encoder</span><span class="op">&lt;</span><span class="ident">TaskResponse</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TaskCodec</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">io::Error</span>;
+<span class="kw">impl </span>Encoder&lt;TaskResponse&gt; <span class="kw">for </span>TaskCodec {
+    <span class="kw">type </span>Error = io::Error;
 
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">TaskResponse</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BytesMut</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to send request -&gt; {:?} ...&quot;</span>, <span class="ident">msg</span>);
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_json::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">io::Error::new</span>(<span class="ident">io::ErrorKind::Other</span>, <span class="string">&quot;JSON encode error&quot;</span>)
+    <span class="kw">fn </span>encode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: TaskResponse, dst: <span class="kw-2">&amp;mut </span>BytesMut) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to send request -&gt; {:?} ...&quot;</span>, msg);
+        <span class="kw">let </span>data = serde_json::to_vec(<span class="kw-2">&amp;</span>msg).map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, e);
+            io::Error::new(io::ErrorKind::Other, <span class="string">&quot;JSON encode error&quot;</span>)
         })<span class="question-mark">?</span>;
-        <span class="ident">dst</span>.<span class="ident">put</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>());
+        dst.put(data.as_slice());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TaskCodec</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">TaskCodec</span>
+<span class="kw">impl </span>TaskCodec {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        TaskCodec
     }
 }
 
-<span class="kw">fn</span> <span class="ident">create_home_directory</span>(<span class="ident">info</span>: <span class="kw-2">&amp;</span><span class="ident">HomeDirectoryInfo</span>, <span class="ident">home_prefix</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-    <span class="comment">// Final sanity check to prevent certain classes of attacks.</span>
-    <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">info</span>
-        .<span class="ident">name</span>
-        .<span class="ident">trim_start_matches</span>(<span class="string">&#39;.&#39;</span>)
-        .<span class="ident">replace</span>(<span class="string">&quot;/&quot;</span>, <span class="string">&quot;&quot;</span>)
-        .<span class="ident">replace</span>(<span class="string">&quot;\\&quot;</span>, <span class="string">&quot;&quot;</span>);
+<span class="kw">fn </span>chown(path: <span class="kw-2">&amp;</span>Path, gid: u32) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+    <span class="kw">let </span>path_os = CString::new(path.as_os_str().as_bytes())
+        .map_err(|<span class="kw">_</span>| <span class="string">&quot;Unable to create c-string&quot;</span>.to_string())<span class="question-mark">?</span>;
 
-    <span class="kw">let</span> <span class="ident">home_prefix_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">home_prefix</span>);
+    <span class="comment">// Change the owner to the gid - remember, kanidm ONLY has gid&#39;s, the uid is implied.
+    </span><span class="kw">if unsafe </span>{ lchown(path_os.as_ptr(), gid, gid) } != <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Unable to set ownership&quot;</span>.to_string());
+    }
+    <span class="prelude-val">Ok</span>(())
+}
 
-    <span class="comment">// Does our home_prefix actually exist?</span>
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">home_prefix_path</span>.<span class="ident">exists</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">home_prefix_path</span>.<span class="ident">is_dir</span>() {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid home_prefix from configuration&quot;</span>.<span class="ident">to_string</span>());
+<span class="kw">fn </span>create_home_directory(info: <span class="kw-2">&amp;</span>HomeDirectoryInfo, home_prefix: <span class="kw-2">&amp;</span>str, use_etc_skel: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+    <span class="comment">// Final sanity check to prevent certain classes of attacks.
+    </span><span class="kw">let </span>name = info
+        .name
+        .trim_start_matches(<span class="string">&#39;.&#39;</span>)
+        .replace(<span class="string">&quot;/&quot;</span>, <span class="string">&quot;&quot;</span>)
+        .replace(<span class="string">&quot;\\&quot;</span>, <span class="string">&quot;&quot;</span>);
+
+    <span class="kw">let </span>home_prefix_path = Path::new(home_prefix);
+
+    <span class="comment">// Does our home_prefix actually exist?
+    </span><span class="kw">if </span>!home_prefix_path.exists() || !home_prefix_path.is_dir() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invalid home_prefix from configuration&quot;</span>.to_string());
     }
 
-    <span class="comment">// Actually process the request here.</span>
-    <span class="kw">let</span> <span class="ident">hd_path_raw</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="ident">home_prefix</span>, <span class="ident">name</span>);
-    <span class="kw">let</span> <span class="ident">hd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">hd_path_raw</span>);
+    <span class="comment">// Actually process the request here.
+    </span><span class="kw">let </span>hd_path_raw = <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, home_prefix, name);
+    <span class="kw">let </span>hd_path = Path::new(<span class="kw-2">&amp;</span>hd_path_raw);
 
-    <span class="comment">// Assert the resulting named home path is consistent and correct.</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pp</span>) <span class="op">=</span> <span class="ident">hd_path</span>.<span class="ident">parent</span>() {
-        <span class="kw">if</span> <span class="ident">pp</span> <span class="op">!</span><span class="op">=</span> <span class="ident">home_prefix_path</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid home directory name - not within home_prefix&quot;</span>.<span class="ident">to_string</span>());
+    <span class="comment">// Assert the resulting named home path is consistent and correct.
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(pp) = hd_path.parent() {
+        <span class="kw">if </span>pp != home_prefix_path {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invalid home directory name - not within home_prefix&quot;</span>.to_string());
         }
-    } <span class="kw">else</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid/Corrupt home directory path - no prefix found&quot;</span>.<span class="ident">to_string</span>());
+    } <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invalid/Corrupt home directory path - no prefix found&quot;</span>.to_string());
     }
 
-    <span class="kw">let</span> <span class="ident">hd_path_os</span> <span class="op">=</span>
-        <span class="ident">CString::new</span>(<span class="ident">hd_path_raw</span>.<span class="ident">clone</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;Unable to create c-string&quot;</span>.<span class="ident">to_string</span>())<span class="question-mark">?</span>;
-
-    <span class="comment">// Does the home directory exist?</span>
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">hd_path</span>.<span class="ident">exists</span>() {
-        <span class="comment">// Set a umask</span>
-        <span class="kw">let</span> <span class="ident">before</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="number">0o0027</span>) };
-        <span class="comment">// TODO: Should we copy content from /etc/skel?</span>
-        <span class="comment">// Create the dir</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">fs::create_dir_all</span>(<span class="ident">hd_path</span>) {
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="ident">before</span>) };
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>));
+    <span class="comment">// Does the home directory exist?
+    </span><span class="kw">if </span>!hd_path.exists() {
+        <span class="comment">// Set a umask
+        </span><span class="kw">let </span>before = <span class="kw">unsafe </span>{ umask(<span class="number">0o0027</span>) };
+        <span class="comment">// Create the dir
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = fs::create_dir_all(hd_path) {
+            <span class="kw">let _ </span>= <span class="kw">unsafe </span>{ umask(before) };
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e));
         }
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="ident">before</span>) };
+        <span class="kw">let _ </span>= <span class="kw">unsafe </span>{ umask(before) };
 
-        <span class="comment">// Change the owner to the gid - remember, kanidm ONLY has gid&#39;s, the uid is implied.</span>
+        chown(hd_path, info.gid)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="kw">unsafe</span> { <span class="ident">lchown</span>(<span class="ident">hd_path_os</span>.<span class="ident">as_ptr</span>(), <span class="ident">info</span>.<span class="ident">gid</span>, <span class="ident">info</span>.<span class="ident">gid</span>) } <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Unable to set ownership&quot;</span>.<span class="ident">to_string</span>());
-        }
-    }
-
-    <span class="kw">let</span> <span class="ident">name_rel_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>);
-    <span class="comment">// Does the aliases exist</span>
-    <span class="kw">for</span> <span class="ident">alias</span> <span class="kw">in</span> <span class="ident">info</span>.<span class="ident">aliases</span>.<span class="ident">iter</span>() {
-        <span class="comment">// Sanity check the alias.</span>
-        <span class="comment">// let alias = alias.replace(&quot;.&quot;, &quot;&quot;).replace(&quot;/&quot;, &quot;&quot;).replace(&quot;\\&quot;, &quot;&quot;);</span>
-        <span class="kw">let</span> <span class="ident">alias</span> <span class="op">=</span> <span class="ident">alias</span>
-            .<span class="ident">trim_start_matches</span>(<span class="string">&#39;.&#39;</span>)
-            .<span class="ident">replace</span>(<span class="string">&quot;/&quot;</span>, <span class="string">&quot;&quot;</span>)
-            .<span class="ident">replace</span>(<span class="string">&quot;\\&quot;</span>, <span class="string">&quot;&quot;</span>);
-        <span class="kw">let</span> <span class="ident">alias_path_raw</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="ident">home_prefix</span>, <span class="ident">alias</span>);
-        <span class="kw">let</span> <span class="ident">alias_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">alias_path_raw</span>);
-
-        <span class="comment">// Assert the resulting alias path is consistent and correct.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pp</span>) <span class="op">=</span> <span class="ident">alias_path</span>.<span class="ident">parent</span>() {
-            <span class="kw">if</span> <span class="ident">pp</span> <span class="op">!</span><span class="op">=</span> <span class="ident">home_prefix_path</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid home directory alias - not within home_prefix&quot;</span>.<span class="ident">to_string</span>());
+        <span class="comment">// Copy in structure from /etc/skel/ if present
+        </span><span class="kw">let </span>skel_dir = Path::new(<span class="string">&quot;/etc/skel/&quot;</span>);
+        <span class="kw">if </span>use_etc_skel &amp;&amp; skel_dir.exists() {
+            <span class="macro">info!</span>(<span class="string">&quot;preparing homedir using /etc/skel&quot;</span>);
+            <span class="kw">for </span>entry <span class="kw">in </span>WalkDir::new(skel_dir).into_iter().filter_map(|e| e.ok()) {
+                <span class="kw">let </span>dest = <span class="kw-2">&amp;</span>hd_path.join(
+                    entry
+                        .path()
+                        .strip_prefix(skel_dir)
+                        .map_err(|e| e.to_string())<span class="question-mark">?</span>,
+                );
+                <span class="kw">if </span>entry.path().is_dir() {
+                    fs::create_dir_all(dest).map_err(|e| e.to_string())<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    fs::copy(entry.path(), dest).map_err(|e| e.to_string())<span class="question-mark">?</span>;
+                }
+                chown(dest, info.gid)<span class="question-mark">?</span>;
             }
-        } <span class="kw">else</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid/Corrupt alias directory path - no prefix found&quot;</span>.<span class="ident">to_string</span>());
+        }
+    }
+
+    <span class="kw">let </span>name_rel_path = Path::new(<span class="kw-2">&amp;</span>name);
+    <span class="comment">// Does the aliases exist
+    </span><span class="kw">for </span>alias <span class="kw">in </span>info.aliases.iter() {
+        <span class="comment">// Sanity check the alias.
+        // let alias = alias.replace(&quot;.&quot;, &quot;&quot;).replace(&quot;/&quot;, &quot;&quot;).replace(&quot;\\&quot;, &quot;&quot;);
+        </span><span class="kw">let </span>alias = alias
+            .trim_start_matches(<span class="string">&#39;.&#39;</span>)
+            .replace(<span class="string">&quot;/&quot;</span>, <span class="string">&quot;&quot;</span>)
+            .replace(<span class="string">&quot;\\&quot;</span>, <span class="string">&quot;&quot;</span>);
+        <span class="kw">let </span>alias_path_raw = <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, home_prefix, alias);
+        <span class="kw">let </span>alias_path = Path::new(<span class="kw-2">&amp;</span>alias_path_raw);
+
+        <span class="comment">// Assert the resulting alias path is consistent and correct.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(pp) = alias_path.parent() {
+            <span class="kw">if </span>pp != home_prefix_path {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invalid home directory alias - not within home_prefix&quot;</span>.to_string());
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invalid/Corrupt alias directory path - no prefix found&quot;</span>.to_string());
         }
 
-        <span class="kw">if</span> <span class="ident">alias_path</span>.<span class="ident">exists</span>() {
-            <span class="kw">let</span> <span class="ident">attr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">fs::symlink_metadata</span>(<span class="ident">alias_path</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>));
+        <span class="kw">if </span>alias_path.exists() {
+            <span class="kw">let </span>attr = <span class="kw">match </span>fs::symlink_metadata(alias_path) {
+                <span class="prelude-val">Ok</span>(a) =&gt; a,
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e));
                 }
             };
 
-            <span class="kw">if</span> <span class="ident">attr</span>.<span class="ident">file_type</span>().<span class="ident">is_symlink</span>() {
-                <span class="comment">// Probably need to update it.</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">fs::remove_file</span>(<span class="ident">alias_path</span>) {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>));
+            <span class="kw">if </span>attr.file_type().is_symlink() {
+                <span class="comment">// Probably need to update it.
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = fs::remove_file(alias_path) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e));
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">symlink</span>(<span class="ident">name_rel_path</span>, <span class="ident">alias_path</span>) {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>));
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = symlink(name_rel_path, alias_path) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e));
                 }
             }
-        } <span class="kw">else</span> {
-            <span class="comment">// Does not exist. Create.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">symlink</span>(<span class="ident">name_rel_path</span>, <span class="ident">alias_path</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>));
+        } <span class="kw">else </span>{
+            <span class="comment">// Does not exist. Create.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = symlink(name_rel_path, alias_path) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e));
             }
         }
     }
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_tasks</span>(<span class="ident">stream</span>: <span class="ident">UnixStream</span>, <span class="ident">home_prefix</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">reqs</span> <span class="op">=</span> <span class="ident">Framed::new</span>(<span class="ident">stream</span>, <span class="ident">TaskCodec::new</span>());
+<span class="kw">async fn </span>handle_tasks(stream: UnixStream, cfg: <span class="kw-2">&amp;</span>KanidmUnixdConfig) {
+    <span class="kw">let </span><span class="kw-2">mut </span>reqs = Framed::new(stream, TaskCodec::new());
 
-    <span class="kw">loop</span> {
-        <span class="kw">match</span> <span class="ident">reqs</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">TaskRequest::HomeDirectory</span>(<span class="ident">info</span>))) =&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;Received task -&gt; HomeDirectory({:?})&quot;</span>, <span class="ident">info</span>);
+    <span class="kw">loop </span>{
+        <span class="kw">match </span>reqs.next().<span class="kw">await </span>{
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(TaskRequest::HomeDirectory(info))) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;Received task -&gt; HomeDirectory({:?})&quot;</span>, info);
 
-                <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">create_home_directory</span>(<span class="kw-2">&amp;</span><span class="ident">info</span>, <span class="ident">home_prefix</span>) {
-                    <span class="prelude-val">Ok</span>(()) =&gt; <span class="ident">TaskResponse::Success</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">msg</span>) =&gt; <span class="ident">TaskResponse::Error</span>(<span class="ident">msg</span>),
+                <span class="kw">let </span>resp = <span class="kw">match </span>create_home_directory(<span class="kw-2">&amp;</span>info, <span class="kw-2">&amp;</span>cfg.home_prefix, cfg.use_etc_skel) {
+                    <span class="prelude-val">Ok</span>(()) =&gt; TaskResponse::Success,
+                    <span class="prelude-val">Err</span>(msg) =&gt; TaskResponse::Error(msg),
                 };
 
-                <span class="comment">// Now send a result.</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">reqs</span>.<span class="ident">send</span>(<span class="ident">resp</span>).<span class="kw">await</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="comment">// Now send a result.
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = reqs.send(resp).<span class="kw">await </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                     <span class="kw">return</span>;
                 }
-                <span class="comment">// All good, loop.</span>
-            }
-            <span class="ident">other</span> =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">other</span>);
+                <span class="comment">// All good, loop.
+            </span>}
+            other =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, other);
                 <span class="kw">return</span>;
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="comment">// let cuid = get_current_uid();</span>
-    <span class="comment">// let cgid = get_current_gid();</span>
-    <span class="comment">// We only need to check effective id</span>
-    <span class="kw">let</span> <span class="ident">ceuid</span> <span class="op">=</span> <span class="ident">get_effective_uid</span>();
-    <span class="kw">let</span> <span class="ident">cegid</span> <span class="op">=</span> <span class="ident">get_effective_gid</span>();
+<span class="attribute">#[tokio::main]
+</span><span class="kw">async fn </span>main() {
+    <span class="comment">// let cuid = get_current_uid();
+    // let cgid = get_current_gid();
+    // We only need to check effective id
+    </span><span class="kw">let </span>ceuid = get_effective_uid();
+    <span class="kw">let </span>cegid = get_effective_gid();
 
-    <span class="kw">if</span> <span class="ident">ceuid</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">cegid</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+    <span class="kw">if </span>ceuid != <span class="number">0 </span>|| cegid != <span class="number">0 </span>{
         <span class="macro">eprintln!</span>(<span class="string">&quot;Refusing to run - this process *MUST* operate as root.&quot;</span>);
-        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        std::process::exit(<span class="number">1</span>);
     }
 
-    <span class="ident">tracing_forest::worker_task</span>()
-        .<span class="ident">set_global</span>(<span class="bool-val">true</span>)
-        <span class="comment">// Fall back to stderr</span>
-        .<span class="ident">map_sender</span>(<span class="op">|</span><span class="ident">sender</span><span class="op">|</span> <span class="ident">sender</span>.<span class="ident">or_stderr</span>())
-        .<span class="ident">build_on</span>(<span class="op">|</span><span class="ident">subscriber</span><span class="op">|</span> {
-            <span class="ident">subscriber</span>.<span class="ident">with</span>(
-                <span class="ident">EnvFilter::try_from_default_env</span>()
-                    .<span class="ident">or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">EnvFilter::try_new</span>(<span class="string">&quot;info&quot;</span>))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to init envfilter&quot;</span>),
+    tracing_forest::worker_task()
+        .set_global(<span class="bool-val">true</span>)
+        <span class="comment">// Fall back to stderr
+        </span>.map_sender(|sender| sender.or_stderr())
+        .build_on(|subscriber| {
+            subscriber.with(
+                EnvFilter::try_from_default_env()
+                    .or_else(|<span class="kw">_</span>| EnvFilter::try_new(<span class="string">&quot;info&quot;</span>))
+                    .expect(<span class="string">&quot;Failed to init envfilter&quot;</span>),
             )
         })
-        .<span class="ident">on</span>(<span class="kw">async</span> {
-            <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>);
-            <span class="kw">let</span> <span class="ident">unixd_path_str</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">unixd_path</span>.<span class="ident">to_str</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">cps</span>) =&gt; <span class="ident">cps</span>,
-                <span class="prelude-val">None</span> =&gt; {
+        .on(<span class="kw">async </span>{
+            <span class="kw">let </span>unixd_path = Path::new(DEFAULT_CONFIG_PATH);
+            <span class="kw">let </span>unixd_path_str = <span class="kw">match </span>unixd_path.to_str() {
+                <span class="prelude-val">Some</span>(cps) =&gt; cps,
+                <span class="prelude-val">None </span>=&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Unable to turn unixd_path to str&quot;</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                    std::process::exit(<span class="number">1</span>);
                 }
             };
 
-            <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="ident">unixd_path</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+            <span class="kw">let </span>cfg = <span class="kw">match </span>KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
+                <span class="prelude-val">Ok</span>(v) =&gt; v,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, <span class="ident">unixd_path_str</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                    <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, unixd_path_str);
+                    std::process::exit(<span class="number">1</span>);
                 }
             };
 
-            <span class="kw">let</span> <span class="ident">task_sock_path</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">task_sock_path</span>.<span class="ident">clone</span>();
-            <span class="macro">debug!</span>(<span class="string">&quot;Attempting to use {} ...&quot;</span>, <span class="ident">task_sock_path</span>);
+            <span class="kw">let </span>task_sock_path = cfg.task_sock_path.clone();
+            <span class="macro">debug!</span>(<span class="string">&quot;Attempting to use {} ...&quot;</span>, task_sock_path);
 
-            <span class="kw">let</span> <span class="ident">server</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
-                <span class="kw">loop</span> {
+            <span class="kw">let </span>server = <span class="kw">async move </span>{
+                <span class="kw">loop </span>{
                     <span class="macro">info!</span>(<span class="string">&quot;Attempting to connect to kanidm_unixd ...&quot;</span>);
-                    <span class="comment">// Try to connect to the daemon.</span>
-                    <span class="kw">match</span> <span class="ident">UnixStream::connect</span>(<span class="kw-2">&amp;</span><span class="ident">task_sock_path</span>).<span class="kw">await</span> {
-                        <span class="comment">// Did we connect?</span>
-                        <span class="prelude-val">Ok</span>(<span class="ident">stream</span>) =&gt; {
+                    <span class="comment">// Try to connect to the daemon.
+                    </span><span class="kw">match </span>UnixStream::connect(<span class="kw-2">&amp;</span>task_sock_path).<span class="kw">await </span>{
+                        <span class="comment">// Did we connect?
+                        </span><span class="prelude-val">Ok</span>(stream) =&gt; {
                             <span class="macro">info!</span>(<span class="string">&quot;Found kanidm_unixd, waiting for tasks ...&quot;</span>);
-                            <span class="comment">// Yep! Now let the main handler do it&#39;s job.</span>
-                            <span class="comment">// If it returns (dc, etc, then we loop and try again).</span>
-                            <span class="ident">handle_tasks</span>(<span class="ident">stream</span>, <span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">home_prefix</span>).<span class="kw">await</span>;
+                            <span class="comment">// Yep! Now let the main handler do it&#39;s job.
+                            // If it returns (dc, etc, then we loop and try again).
+                            </span>handle_tasks(stream, <span class="kw-2">&amp;</span>cfg).<span class="kw">await</span>;
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                        <span class="prelude-val">Err</span>(e) =&gt; {
                             <span class="macro">error!</span>(<span class="string">&quot;Unable to find kanidm_unixd, sleeping ...&quot;</span>);
-                            <span class="macro">debug!</span>(<span class="string">&quot;\\---&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                            <span class="comment">// Back off.</span>
-                            <span class="ident">time::sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">5000</span>)).<span class="kw">await</span>;
+                            <span class="macro">debug!</span>(<span class="string">&quot;\\---&gt; {:?}&quot;</span>, e);
+                            <span class="comment">// Back off.
+                            </span>time::sleep(Duration::from_millis(<span class="number">5000</span>)).<span class="kw">await</span>;
                         }
                     }
                 }
             };
 
-            <span class="ident">server</span>.<span class="kw">await</span>;
+            server.<span class="kw">await</span>;
         })
         .<span class="kw">await</span>;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unixd_tasks" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unixd_tasks" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

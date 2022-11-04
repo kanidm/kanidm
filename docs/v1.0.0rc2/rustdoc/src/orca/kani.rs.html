@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/kani.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kani.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/kani.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kani.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -420,177 +420,177 @@
 <span id="420">420</span>
 <span id="421">421</span>
 <span id="422">422</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
+<span class="kw">use </span>std::time::{Duration, Instant};
 
-<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClient</span>, <span class="ident">KanidmClientBuilder</span>, <span class="ident">StatusCode</span>};
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
+<span class="kw">use </span>kanidm_proto::v1::<span class="kw-2">*</span>;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::data</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap</span>::{<span class="ident">LdapClient</span>, <span class="ident">LdapSchema</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::profile</span>::{<span class="ident">KaniHttpConfig</span>, <span class="ident">KaniLdapConfig</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TargetServer</span>, <span class="ident">TargetServerBuilder</span>};
+<span class="kw">use </span><span class="kw">crate</span>::data::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::ldap::{LdapClient, LdapSchema};
+<span class="kw">use </span><span class="kw">crate</span>::profile::{KaniHttpConfig, KaniLdapConfig};
+<span class="kw">use crate</span>::{TargetServer, TargetServerBuilder};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KaniHttpServer</span> {
-    <span class="ident">uri</span>: <span class="ident">String</span>,
-    <span class="ident">admin_pw</span>: <span class="ident">String</span>,
-    <span class="ident">client</span>: <span class="ident">KanidmClient</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>KaniHttpServer {
+    uri: String,
+    admin_pw: String,
+    client: KanidmClient,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KaniLdapServer</span> {
-    <span class="ident">http</span>: <span class="ident">KaniHttpServer</span>,
-    <span class="ident">ldap</span>: <span class="ident">LdapClient</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>KaniLdapServer {
+    http: KaniHttpServer,
+    ldap: LdapClient,
 }
 
-<span class="kw">impl</span> <span class="ident">KaniHttpServer</span> {
-    <span class="kw">fn</span> <span class="ident">construct</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">admin_pw</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">KanidmClientBuilder::new</span>()
-            .<span class="ident">address</span>(<span class="ident">uri</span>.<span class="ident">clone</span>())
-            .<span class="ident">danger_accept_invalid_hostnames</span>(<span class="bool-val">true</span>)
-            .<span class="ident">danger_accept_invalid_certs</span>(<span class="bool-val">true</span>)
-            .<span class="ident">build</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Unable to create kanidm client {:?}&quot;</span>, <span class="ident">e</span>);
+<span class="kw">impl </span>KaniHttpServer {
+    <span class="kw">fn </span>construct(uri: String, admin_pw: String) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt; {
+        <span class="kw">let </span>client = KanidmClientBuilder::new()
+            .address(uri.clone())
+            .danger_accept_invalid_hostnames(<span class="bool-val">true</span>)
+            .danger_accept_invalid_certs(<span class="bool-val">true</span>)
+            .build()
+            .map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Unable to create kanidm client {:?}&quot;</span>, e);
             })<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">KaniHttpServer</span> {
-            <span class="ident">uri</span>,
-            <span class="ident">admin_pw</span>,
-            <span class="ident">client</span>,
+        <span class="prelude-val">Ok</span>(KaniHttpServer {
+            uri,
+            admin_pw,
+            client,
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">admin_pw</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::construct</span>(<span class="ident">uri</span>, <span class="ident">admin_pw</span>).<span class="ident">map</span>(<span class="ident">TargetServer::Kanidm</span>)
+    <span class="kw">pub fn </span>build(uri: String, admin_pw: String) -&gt; <span class="prelude-ty">Result</span>&lt;TargetServer, ()&gt; {
+        <span class="self">Self</span>::construct(uri, admin_pw).map(TargetServer::Kanidm)
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_ret_no_self</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">khconfig</span>: <span class="kw-2">&amp;</span><span class="ident">KaniHttpConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::construct</span>(<span class="ident">khconfig</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(), <span class="ident">khconfig</span>.<span class="ident">admin_pw</span>.<span class="ident">clone</span>()).<span class="ident">map</span>(<span class="ident">TargetServer::Kanidm</span>)
+    <span class="attribute">#[allow(clippy::new_ret_no_self)]
+    </span><span class="kw">pub fn </span>new(khconfig: <span class="kw-2">&amp;</span>KaniHttpConfig) -&gt; <span class="prelude-ty">Result</span>&lt;TargetServer, ()&gt; {
+        <span class="self">Self</span>::construct(khconfig.uri.clone(), khconfig.admin_pw.clone()).map(TargetServer::Kanidm)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;Kanidm HTTP Connection: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uri</span>)
+    <span class="kw">pub fn </span>info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;Kanidm HTTP Connection: {}&quot;</span>, <span class="self">self</span>.uri)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">TargetServerBuilder</span> {
-        <span class="ident">TargetServerBuilder::Kanidm</span>(<span class="self">self</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">admin_pw</span>.<span class="ident">clone</span>())
+    <span class="kw">pub fn </span>builder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TargetServerBuilder {
+        TargetServerBuilder::Kanidm(<span class="self">self</span>.uri.clone(), <span class="self">self</span>.admin_pw.clone())
     }
 
-    <span class="comment">// open the admin internal connection</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">client</span>
-            .<span class="ident">auth_simple_password</span>(<span class="string">&quot;admin&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">admin_pw</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Unable to authenticate -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="comment">// open the admin internal connection
+    </span><span class="kw">pub async fn </span>open_admin_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="self">self</span>.client
+            .auth_simple_password(<span class="string">&quot;admin&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.admin_pw)
+            .<span class="kw">await
+            </span>.map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Unable to authenticate -&gt; {:?}&quot;</span>, e);
             })<span class="question-mark">?</span>;
-        <span class="comment">// For admin to work, we need idm permissions.</span>
-        <span class="comment">// NOT RECOMMENDED IN PRODUCTION.</span>
-        <span class="self">self</span>.<span class="ident">client</span>
-            .<span class="ident">idm_group_add_members</span>(<span class="string">&quot;idm_admins&quot;</span>, <span class="kw-2">&amp;</span>[<span class="string">&quot;admin&quot;</span>])
-            .<span class="kw">await</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Unable to extend admin permissions (idm) -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="comment">// For admin to work, we need idm permissions.
+        // NOT RECOMMENDED IN PRODUCTION.
+        </span><span class="self">self</span>.client
+            .idm_group_add_members(<span class="string">&quot;idm_admins&quot;</span>, <span class="kw-2">&amp;</span>[<span class="string">&quot;admin&quot;</span>])
+            .<span class="kw">await
+            </span>.map(|<span class="kw">_</span>| ())
+            .map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Unable to extend admin permissions (idm) -&gt; {:?}&quot;</span>, e);
             })
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// Build the filter.</span>
-        <span class="kw">let</span> <span class="ident">inner</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">targets</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">Filter::Eq</span>(<span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(), <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">u</span>)))
-            .<span class="ident">collect</span>();
+    <span class="kw">pub async fn </span>setup_admin_delete_uuids(<span class="kw-2">&amp;</span><span class="self">self</span>, targets: <span class="kw-2">&amp;</span>[Uuid]) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// Build the filter.
+        </span><span class="kw">let </span>inner: Vec&lt;Filter&gt; = targets
+            .iter()
+            .map(|u| Filter::Eq(<span class="string">&quot;name&quot;</span>.to_string(), <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, u)))
+            .collect();
 
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">Filter::Or</span>(<span class="ident">inner</span>);
+        <span class="kw">let </span>filter = Filter::Or(inner);
 
-        <span class="comment">// Submit it.</span>
-        <span class="self">self</span>.<span class="ident">client</span>.<span class="ident">delete</span>(<span class="ident">filter</span>).<span class="kw">await</span>.<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()).<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Error during delete -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="comment">// Submit it.
+        </span><span class="self">self</span>.client.delete(filter).<span class="kw">await</span>.map(|<span class="kw">_</span>| ()).or_else(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Error during delete -&gt; {:?}&quot;</span>, e);
             <span class="prelude-val">Ok</span>(())
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_precreate_entities</span>(
+    <span class="kw">pub async fn </span>setup_admin_precreate_entities(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">targets</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// Create all the accounts and groups</span>
-        <span class="kw">for</span> <span class="ident">u</span> <span class="kw">in</span> <span class="ident">targets</span> {
-            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>();
-            <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">client</span>
-                        .<span class="ident">idm_person_account_create</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">display_name</span>)
-                        .<span class="kw">await</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                        .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="kw">match</span> <span class="ident">e</span> {
-                                <span class="ident">ClientError::Http</span>(
-                                    <span class="ident">StatusCode::INTERNAL_SERVER_ERROR</span>,
-                                    <span class="prelude-val">Some</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::AttrUnique</span>(<span class="kw">_</span>))),
+        targets: <span class="kw-2">&amp;</span>HashSet&lt;Uuid&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// Create all the accounts and groups
+        </span><span class="kw">for </span>u <span class="kw">in </span>targets {
+            <span class="kw">let </span>e = all_entities.get(u).unwrap();
+            <span class="kw">match </span>e {
+                Entity::Account(a) =&gt; {
+                    <span class="self">self</span>.client
+                        .idm_person_account_create(<span class="kw-2">&amp;</span>a.name, <span class="kw-2">&amp;</span>a.display_name)
+                        .<span class="kw">await
+                        </span>.map(|<span class="kw">_</span>| ())
+                        .or_else(|e| {
+                            <span class="kw">match </span>e {
+                                ClientError::Http(
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    <span class="prelude-val">Some</span>(OperationError::Plugin(PluginError::AttrUnique(<span class="kw">_</span>))),
                                     <span class="kw">_</span>,
                                 ) =&gt; {
-                                    <span class="comment">// Ignore.</span>
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Account already exists ...&quot;</span>);
+                                    <span class="comment">// Ignore.
+                                    </span><span class="macro">debug!</span>(<span class="string">&quot;Account already exists ...&quot;</span>);
                                     <span class="prelude-val">Ok</span>(())
                                 }
-                                <span class="kw">_</span> =&gt; {
-                                    <span class="macro">error!</span>(<span class="string">&quot;Error creating account -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                                <span class="kw">_ </span>=&gt; {
+                                    <span class="macro">error!</span>(<span class="string">&quot;Error creating account -&gt; {:?}&quot;</span>, e);
                                     <span class="prelude-val">Err</span>(())
                                 }
                             }
                         })<span class="question-mark">?</span>;
 
-                    <span class="comment">// Now set the account password</span>
-                    <span class="self">self</span>.<span class="ident">client</span>
-                        .<span class="ident">idm_person_account_primary_credential_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">password</span>)
-                        .<span class="kw">await</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">error!</span>(<span class="string">&quot;Unable to set password for {}: {:?}&quot;</span>, <span class="ident">a</span>.<span class="ident">name</span>, <span class="ident">e</span>);
+                    <span class="comment">// Now set the account password
+                    </span><span class="self">self</span>.client
+                        .idm_person_account_primary_credential_set_password(<span class="kw-2">&amp;</span>a.name, <span class="kw-2">&amp;</span>a.password)
+                        .<span class="kw">await
+                        </span>.map(|<span class="kw">_</span>| ())
+                        .map_err(|e| {
+                            <span class="macro">error!</span>(<span class="string">&quot;Unable to set password for {}: {:?}&quot;</span>, a.name, e);
                         })<span class="question-mark">?</span>;
 
-                    <span class="comment">// For ldap tests, we need to make these posix accounts.</span>
-                    <span class="self">self</span>.<span class="ident">client</span>
-                        .<span class="ident">idm_person_account_unix_extend</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">name</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
-                        .<span class="kw">await</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">error!</span>(<span class="string">&quot;Unable to set unix attributes for {}: {:?}&quot;</span>, <span class="ident">a</span>.<span class="ident">name</span>, <span class="ident">e</span>);
+                    <span class="comment">// For ldap tests, we need to make these posix accounts.
+                    </span><span class="self">self</span>.client
+                        .idm_person_account_unix_extend(<span class="kw-2">&amp;</span>a.name, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+                        .<span class="kw">await
+                        </span>.map(|<span class="kw">_</span>| ())
+                        .map_err(|e| {
+                            <span class="macro">error!</span>(<span class="string">&quot;Unable to set unix attributes for {}: {:?}&quot;</span>, a.name, e);
                         })<span class="question-mark">?</span>;
 
-                    <span class="self">self</span>.<span class="ident">client</span>
-                        .<span class="ident">idm_person_account_unix_cred_put</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">password</span>)
-                        .<span class="kw">await</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">error!</span>(<span class="string">&quot;Unable to set unix password for {}: {:?}&quot;</span>, <span class="ident">a</span>.<span class="ident">name</span>, <span class="ident">e</span>);
+                    <span class="self">self</span>.client
+                        .idm_person_account_unix_cred_put(<span class="kw-2">&amp;</span>a.name, <span class="kw-2">&amp;</span>a.password)
+                        .<span class="kw">await
+                        </span>.map(|<span class="kw">_</span>| ())
+                        .map_err(|e| {
+                            <span class="macro">error!</span>(<span class="string">&quot;Unable to set unix password for {}: {:?}&quot;</span>, a.name, e);
                         })<span class="question-mark">?</span>;
                 }
-                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">client</span>
-                        .<span class="ident">idm_group_create</span>(<span class="kw-2">&amp;</span><span class="ident">g</span>.<span class="ident">name</span>)
-                        .<span class="kw">await</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                        .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="kw">match</span> <span class="ident">e</span> {
-                                <span class="ident">ClientError::Http</span>(
-                                    <span class="ident">StatusCode::INTERNAL_SERVER_ERROR</span>,
-                                    <span class="prelude-val">Some</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::AttrUnique</span>(<span class="kw">_</span>))),
+                Entity::Group(g) =&gt; {
+                    <span class="self">self</span>.client
+                        .idm_group_create(<span class="kw-2">&amp;</span>g.name)
+                        .<span class="kw">await
+                        </span>.map(|<span class="kw">_</span>| ())
+                        .or_else(|e| {
+                            <span class="kw">match </span>e {
+                                ClientError::Http(
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    <span class="prelude-val">Some</span>(OperationError::Plugin(PluginError::AttrUnique(<span class="kw">_</span>))),
                                     <span class="kw">_</span>,
                                 ) =&gt; {
-                                    <span class="comment">// Ignore.</span>
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Group already exists ...&quot;</span>);
+                                    <span class="comment">// Ignore.
+                                    </span><span class="macro">debug!</span>(<span class="string">&quot;Group already exists ...&quot;</span>);
                                     <span class="prelude-val">Ok</span>(())
                                 }
-                                <span class="kw">_</span> =&gt; {
-                                    <span class="macro">error!</span>(<span class="string">&quot;Error creating group -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                                <span class="kw">_ </span>=&gt; {
+                                    <span class="macro">error!</span>(<span class="string">&quot;Error creating group -&gt; {:?}&quot;</span>, e);
                                     <span class="prelude-val">Err</span>(())
                                 }
                             }
@@ -599,25 +599,25 @@
             }
         }
 
-        <span class="comment">// Then add the members to the groups.</span>
-        <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="ident">targets</span>.<span class="ident">iter</span>().<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>();
-            <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">g</span>),
-                <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+        <span class="comment">// Then add the members to the groups.
+        </span><span class="kw">for </span>g <span class="kw">in </span>targets.iter().filter_map(|u| {
+            <span class="kw">let </span>e = all_entities.get(u).unwrap();
+            <span class="kw">match </span>e {
+                Entity::Group(g) =&gt; <span class="prelude-val">Some</span>(g),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             }
         }) {
-            <span class="kw">let</span> <span class="ident">m</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">g</span>
-                .<span class="ident">members</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">unwrap</span>().<span class="ident">get_name</span>())
-                .<span class="ident">collect</span>();
-            <span class="self">self</span>.<span class="ident">client</span>
-                .<span class="ident">idm_group_set_members</span>(<span class="kw-2">&amp;</span><span class="ident">g</span>.<span class="ident">name</span>, <span class="ident">m</span>.<span class="ident">as_slice</span>())
-                .<span class="kw">await</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="kw">let </span>m: Vec&lt;<span class="kw">_</span>&gt; = g
+                .members
+                .iter()
+                .map(|id| all_entities.get(id).unwrap().get_name())
+                .collect();
+            <span class="self">self</span>.client
+                .idm_group_set_members(<span class="kw-2">&amp;</span>g.name, m.as_slice())
+                .<span class="kw">await
+                </span>.map(|<span class="kw">_</span>| ())
+                .or_else(|e| {
+                    <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, e);
                     <span class="prelude-val">Ok</span>(())
                 })<span class="question-mark">?</span>;
         }
@@ -625,65 +625,65 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_access_controls</span>(
+    <span class="kw">pub async fn </span>setup_access_controls(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">access</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityType</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// To make this somewhat effecient, we fold each access req to &quot;need group&quot; or &quot;need user&quot;</span>
-        <span class="comment">// access.</span>
-        <span class="macro">debug!</span>(<span class="string">&quot;setup_access_controls&quot;</span>);
+        access: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Vec&lt;EntityType&gt;&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// To make this somewhat effecient, we fold each access req to &quot;need group&quot; or &quot;need user&quot;
+        // access.
+        </span><span class="macro">debug!</span>(<span class="string">&quot;setup_access_controls&quot;</span>);
 
-        <span class="kw">for</span> (<span class="ident">id</span>, <span class="ident">list</span>) <span class="kw">in</span> <span class="ident">access</span>.<span class="ident">iter</span>() {
-            <span class="comment">// get the users name.</span>
-            <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">unwrap</span>();
+        <span class="kw">for </span>(id, list) <span class="kw">in </span>access.iter() {
+            <span class="comment">// get the users name.
+            </span><span class="kw">let </span>account = all_entities.get(id).unwrap();
 
-            <span class="kw">let</span> <span class="ident">need_account</span> <span class="op">=</span> <span class="ident">list</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">EntityType::Account</span>(<span class="kw">_</span>)))
-                .<span class="ident">count</span>()
-                <span class="op">==</span> <span class="number">0</span>;
-            <span class="kw">let</span> <span class="ident">need_group</span> <span class="op">=</span> <span class="ident">list</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">EntityType::Group</span>(<span class="kw">_</span>)))
-                .<span class="ident">count</span>()
-                <span class="op">==</span> <span class="number">0</span>;
+            <span class="kw">let </span>need_account = list
+                .iter()
+                .filter(|v| <span class="macro">matches!</span>(v, EntityType::Account(<span class="kw">_</span>)))
+                .count()
+                == <span class="number">0</span>;
+            <span class="kw">let </span>need_group = list
+                .iter()
+                .filter(|v| <span class="macro">matches!</span>(v, EntityType::Group(<span class="kw">_</span>)))
+                .count()
+                == <span class="number">0</span>;
 
-            <span class="kw">if</span> <span class="ident">need_account</span> {
-                <span class="self">self</span>.<span class="ident">client</span>
-                    .<span class="ident">idm_group_add_members</span>(<span class="string">&quot;idm_account_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[<span class="ident">account</span>.<span class="ident">get_name</span>()])
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                    .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="kw">if </span>need_account {
+                <span class="self">self</span>.client
+                    .idm_group_add_members(<span class="string">&quot;idm_account_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[account.get_name()])
+                    .<span class="kw">await
+                    </span>.map(|<span class="kw">_</span>| ())
+                    .or_else(|e| {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, e);
                         <span class="prelude-val">Ok</span>(())
                     })<span class="question-mark">?</span>;
 
-                <span class="self">self</span>.<span class="ident">client</span>
-                    .<span class="ident">idm_group_add_members</span>(<span class="string">&quot;idm_hp_account_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[<span class="ident">account</span>.<span class="ident">get_name</span>()])
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                    .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="self">self</span>.client
+                    .idm_group_add_members(<span class="string">&quot;idm_hp_account_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[account.get_name()])
+                    .<span class="kw">await
+                    </span>.map(|<span class="kw">_</span>| ())
+                    .or_else(|e| {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, e);
                         <span class="prelude-val">Ok</span>(())
                     })<span class="question-mark">?</span>;
             }
-            <span class="kw">if</span> <span class="ident">need_group</span> {
-                <span class="self">self</span>.<span class="ident">client</span>
-                    .<span class="ident">idm_group_add_members</span>(<span class="string">&quot;idm_group_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[<span class="ident">account</span>.<span class="ident">get_name</span>()])
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                    .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="kw">if </span>need_group {
+                <span class="self">self</span>.client
+                    .idm_group_add_members(<span class="string">&quot;idm_group_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[account.get_name()])
+                    .<span class="kw">await
+                    </span>.map(|<span class="kw">_</span>| ())
+                    .or_else(|e| {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, e);
                         <span class="prelude-val">Ok</span>(())
                     })<span class="question-mark">?</span>;
 
-                <span class="self">self</span>.<span class="ident">client</span>
-                    .<span class="ident">idm_group_add_members</span>(<span class="string">&quot;idm_hp_group_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[<span class="ident">account</span>.<span class="ident">get_name</span>()])
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                    .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="self">self</span>.client
+                    .idm_group_add_members(<span class="string">&quot;idm_hp_group_manage_priv&quot;</span>, <span class="kw-2">&amp;</span>[account.get_name()])
+                    .<span class="kw">await
+                    </span>.map(|<span class="kw">_</span>| ())
+                    .or_else(|e| {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error setting group members -&gt; {:?}&quot;</span>, e);
                         <span class="prelude-val">Ok</span>(())
                     })<span class="question-mark">?</span>;
             }
@@ -691,156 +691,156 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_user_connection</span>(
+    <span class="kw">pub async fn </span>open_user_connection(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="self">self</span>.<span class="ident">client</span>
-            .<span class="ident">auth_simple_password</span>(<span class="ident">name</span>, <span class="ident">pw</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Unable to authenticate -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        test_start: Instant,
+        name: <span class="kw-2">&amp;</span>str,
+        pw: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration), ()&gt; {
+        <span class="kw">let </span>start = Instant::now();
+        <span class="self">self</span>.client
+            .auth_simple_password(name, pw)
+            .<span class="kw">await
+            </span>.map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Unable to authenticate -&gt; {:?}&quot;</span>, e);
             })
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-                <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">end</span>.<span class="ident">duration_since</span>(<span class="ident">start</span>);
-                <span class="kw">let</span> <span class="ident">rel_diff</span> <span class="op">=</span> <span class="ident">start</span>.<span class="ident">duration_since</span>(<span class="ident">test_start</span>);
-                (<span class="ident">rel_diff</span>, <span class="ident">diff</span>)
+            .map(|<span class="kw">_</span>| {
+                <span class="kw">let </span>end = Instant::now();
+                <span class="kw">let </span>diff = end.duration_since(start);
+                <span class="kw">let </span>rel_diff = start.duration_since(test_start);
+                (rel_diff, diff)
             })
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">assert!</span>(<span class="self">self</span>.<span class="ident">client</span>.<span class="ident">logout</span>().<span class="kw">await</span>.<span class="ident">is_ok</span>());
+    <span class="kw">pub async fn </span>close_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="macro">assert!</span>(<span class="self">self</span>.client.logout().<span class="kw">await</span>.is_ok());
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(
+    <span class="kw">pub async fn </span>search(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
-        <span class="comment">// Create the filter</span>
-        <span class="kw">let</span> <span class="ident">inner</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ids</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">Filter::Eq</span>(<span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">n</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">Filter::Or</span>(<span class="ident">inner</span>);
+        test_start: Instant,
+        ids: <span class="kw-2">&amp;</span>[String],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration, usize), ()&gt; {
+        <span class="comment">// Create the filter
+        </span><span class="kw">let </span>inner: Vec&lt;<span class="kw">_</span>&gt; = ids
+            .iter()
+            .map(|n| Filter::Eq(<span class="string">&quot;name&quot;</span>.to_string(), n.to_string()))
+            .collect();
+        <span class="kw">let </span>filter = Filter::Or(inner);
 
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">client</span>
-            .<span class="ident">search</span>(<span class="ident">filter</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">r</span>.<span class="ident">len</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">let </span>start = Instant::now();
+        <span class="kw">let </span>l = <span class="self">self
+            </span>.client
+            .search(filter)
+            .<span class="kw">await
+            </span>.map(|r| r.len())
+            .map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;{:?}&quot;</span>, e);
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">end</span>.<span class="ident">duration_since</span>(<span class="ident">start</span>);
-        <span class="kw">let</span> <span class="ident">rel_diff</span> <span class="op">=</span> <span class="ident">start</span>.<span class="ident">duration_since</span>(<span class="ident">test_start</span>);
+        <span class="kw">let </span>end = Instant::now();
+        <span class="kw">let </span>diff = end.duration_since(start);
+        <span class="kw">let </span>rel_diff = start.duration_since(test_start);
 
-        <span class="prelude-val">Ok</span>((<span class="ident">rel_diff</span>, <span class="ident">diff</span>, <span class="ident">l</span>))
+        <span class="prelude-val">Ok</span>((rel_diff, diff, l))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">KaniLdapServer</span> {
-    <span class="kw">fn</span> <span class="ident">construct</span>(
-        <span class="ident">uri</span>: <span class="ident">String</span>,
-        <span class="ident">admin_pw</span>: <span class="ident">String</span>,
-        <span class="ident">ldap_uri</span>: <span class="ident">String</span>,
-        <span class="ident">basedn</span>: <span class="ident">String</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">http</span> <span class="op">=</span> <span class="ident">KaniHttpServer::construct</span>(<span class="ident">uri</span>, <span class="ident">admin_pw</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">ldap</span> <span class="op">=</span> <span class="ident">LdapClient::new</span>(<span class="ident">ldap_uri</span>, <span class="ident">basedn</span>, <span class="ident">LdapSchema::Kanidm</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>KaniLdapServer {
+    <span class="kw">fn </span>construct(
+        uri: String,
+        admin_pw: String,
+        ldap_uri: String,
+        basedn: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="self">Self</span>&gt;, ()&gt; {
+        <span class="kw">let </span>http = KaniHttpServer::construct(uri, admin_pw)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ldap = LdapClient::new(ldap_uri, basedn, LdapSchema::Kanidm)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">KaniLdapServer</span> { <span class="ident">http</span>, <span class="ident">ldap</span> }))
+        <span class="prelude-val">Ok</span>(Box::new(KaniLdapServer { http, ldap }))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(
-        <span class="ident">uri</span>: <span class="ident">String</span>,
-        <span class="ident">admin_pw</span>: <span class="ident">String</span>,
-        <span class="ident">ldap_uri</span>: <span class="ident">String</span>,
-        <span class="ident">basedn</span>: <span class="ident">String</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::construct</span>(<span class="ident">uri</span>, <span class="ident">admin_pw</span>, <span class="ident">ldap_uri</span>, <span class="ident">basedn</span>).<span class="ident">map</span>(<span class="ident">TargetServer::KanidmLdap</span>)
+    <span class="kw">pub fn </span>build(
+        uri: String,
+        admin_pw: String,
+        ldap_uri: String,
+        basedn: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;TargetServer, ()&gt; {
+        <span class="self">Self</span>::construct(uri, admin_pw, ldap_uri, basedn).map(TargetServer::KanidmLdap)
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_ret_no_self</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">klconfig</span>: <span class="kw-2">&amp;</span><span class="ident">KaniLdapConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::construct</span>(
-            <span class="ident">klconfig</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(),
-            <span class="ident">klconfig</span>.<span class="ident">admin_pw</span>.<span class="ident">clone</span>(),
-            <span class="ident">klconfig</span>.<span class="ident">ldap_uri</span>.<span class="ident">clone</span>(),
-            <span class="ident">klconfig</span>.<span class="ident">base_dn</span>.<span class="ident">clone</span>(),
+    <span class="attribute">#[allow(clippy::new_ret_no_self)]
+    </span><span class="kw">pub fn </span>new(klconfig: <span class="kw-2">&amp;</span>KaniLdapConfig) -&gt; <span class="prelude-ty">Result</span>&lt;TargetServer, ()&gt; {
+        <span class="self">Self</span>::construct(
+            klconfig.uri.clone(),
+            klconfig.admin_pw.clone(),
+            klconfig.ldap_uri.clone(),
+            klconfig.base_dn.clone(),
         )
-        .<span class="ident">map</span>(<span class="ident">TargetServer::KanidmLdap</span>)
+        .map(TargetServer::KanidmLdap)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
+    <span class="kw">pub fn </span>info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="macro">format!</span>(
             <span class="string">&quot;Kanidm LDAP Connection: {} {}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">uri</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>
+            <span class="self">self</span>.ldap.uri, <span class="self">self</span>.ldap.basedn
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">TargetServerBuilder</span> {
-        <span class="ident">TargetServerBuilder::KanidmLdap</span>(
-            <span class="self">self</span>.<span class="ident">http</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">http</span>.<span class="ident">admin_pw</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>.<span class="ident">clone</span>(),
+    <span class="kw">pub fn </span>builder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TargetServerBuilder {
+        TargetServerBuilder::KanidmLdap(
+            <span class="self">self</span>.http.uri.clone(),
+            <span class="self">self</span>.http.admin_pw.clone(),
+            <span class="self">self</span>.ldap.uri.clone(),
+            <span class="self">self</span>.ldap.basedn.clone(),
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">http</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>open_admin_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="self">self</span>.http.open_admin_connection().<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">http</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>setup_admin_delete_uuids(<span class="kw-2">&amp;</span><span class="self">self</span>, targets: <span class="kw-2">&amp;</span>[Uuid]) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="self">self</span>.http.setup_admin_delete_uuids(targets).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_precreate_entities</span>(
+    <span class="kw">pub async fn </span>setup_admin_precreate_entities(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">targets</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">http</span>
-            .<span class="ident">setup_admin_precreate_entities</span>(<span class="ident">targets</span>, <span class="ident">all_entities</span>)
-            .<span class="kw">await</span>
-    }
+        targets: <span class="kw-2">&amp;</span>HashSet&lt;Uuid&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="self">self</span>.http
+            .setup_admin_precreate_entities(targets, all_entities)
+            .<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_access_controls</span>(
+    <span class="kw">pub async fn </span>setup_access_controls(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">access</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityType</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">http</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>
-    }
+        access: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Vec&lt;EntityType&gt;&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="self">self</span>.http.setup_access_controls(access, all_entities).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_user_connection</span>(
+    <span class="kw">pub async fn </span>open_user_connection(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>
+        test_start: Instant,
+        name: <span class="kw-2">&amp;</span>str,
+        pw: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration), ()&gt; {
+        <span class="self">self</span>.ldap.open_user_connection(test_start, name, pw).<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>close_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.ldap.close_connection().<span class="kw">await</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(
+    <span class="kw">pub async fn </span>search(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">search_name</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>
-    }
+        test_start: Instant,
+        ids: <span class="kw-2">&amp;</span>[String],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration, usize), ()&gt; {
+        <span class="self">self</span>.ldap.search_name(test_start, ids).<span class="kw">await
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

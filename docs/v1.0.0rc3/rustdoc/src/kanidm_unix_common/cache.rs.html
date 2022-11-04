@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/cache.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unix_common/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/cache.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unix_common/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -968,975 +968,975 @@
 <span id="968">968</span>
 <span id="969">969</span>
 <span id="970">970</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::num::NonZeroUsize</span>;
-<span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Add</span>, <span class="ident">Sub</span>};
-<span class="kw">use</span> <span class="ident">std::path::Path</span>;
-<span class="kw">use</span> <span class="ident">std::string::ToString</span>;
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::num::NonZeroUsize;
+<span class="kw">use </span>std::ops::{Add, Sub};
+<span class="kw">use </span>std::path::Path;
+<span class="kw">use </span>std::string::ToString;
+<span class="kw">use </span>std::time::{Duration, SystemTime};
 
-<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClient</span>};
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>};
-<span class="kw">use</span> <span class="ident">lru::LruCache</span>;
-<span class="kw">use</span> <span class="ident">reqwest::StatusCode</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
+<span class="kw">use </span>kanidm_client::{ClientError, KanidmClient};
+<span class="kw">use </span>kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
+<span class="kw">use </span>lru::LruCache;
+<span class="kw">use </span>reqwest::StatusCode;
+<span class="kw">use </span>tokio::sync::{Mutex, RwLock};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::db::Db</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::unix_config</span>::{<span class="ident">HomeAttr</span>, <span class="ident">UidAttr</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::unix_proto</span>::{<span class="ident">HomeDirectoryInfo</span>, <span class="ident">NssGroup</span>, <span class="ident">NssUser</span>};
+<span class="kw">use </span><span class="kw">crate</span>::db::Db;
+<span class="kw">use </span><span class="kw">crate</span>::unix_config::{HomeAttr, UidAttr};
+<span class="kw">use </span><span class="kw">crate</span>::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
 
-<span class="kw">const</span> <span class="ident">NXCACHE_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2048</span>;
+<span class="kw">const </span>NXCACHE_SIZE: usize = <span class="number">2048</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Id</span> {
-    <span class="ident">Name</span>(<span class="ident">String</span>),
-    <span class="ident">Gid</span>(<span class="ident">u32</span>),
+<span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+</span><span class="kw">pub enum </span>Id {
+    Name(String),
+    Gid(u32),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">CacheState</span> {
-    <span class="ident">Online</span>,
-    <span class="ident">Offline</span>,
-    <span class="ident">OfflineNextCheck</span>(<span class="ident">SystemTime</span>),
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">enum </span>CacheState {
+    Online,
+    Offline,
+    OfflineNextCheck(SystemTime),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CacheLayer</span> {
-    <span class="ident">db</span>: <span class="ident">Db</span>,
-    <span class="ident">client</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">KanidmClient</span><span class="op">&gt;</span>,
-    <span class="ident">state</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">CacheState</span><span class="op">&gt;</span>,
-    <span class="ident">pam_allow_groups</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">timeout_seconds</span>: <span class="ident">u64</span>,
-    <span class="ident">default_shell</span>: <span class="ident">String</span>,
-    <span class="ident">home_prefix</span>: <span class="ident">String</span>,
-    <span class="ident">home_attr</span>: <span class="ident">HomeAttr</span>,
-    <span class="ident">home_alias</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HomeAttr</span><span class="op">&gt;</span>,
-    <span class="ident">uid_attr_map</span>: <span class="ident">UidAttr</span>,
-    <span class="ident">gid_attr_map</span>: <span class="ident">UidAttr</span>,
-    <span class="ident">nxcache</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">LruCache</span><span class="op">&lt;</span><span class="ident">Id</span>, <span class="ident">SystemTime</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>CacheLayer {
+    db: Db,
+    client: RwLock&lt;KanidmClient&gt;,
+    state: Mutex&lt;CacheState&gt;,
+    pam_allow_groups: BTreeSet&lt;String&gt;,
+    timeout_seconds: u64,
+    default_shell: String,
+    home_prefix: String,
+    home_attr: HomeAttr,
+    home_alias: <span class="prelude-ty">Option</span>&lt;HomeAttr&gt;,
+    uid_attr_map: UidAttr,
+    gid_attr_map: UidAttr,
+    nxcache: Mutex&lt;LruCache&lt;Id, SystemTime&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ToString</span> <span class="kw">for</span> <span class="ident">Id</span> {
-    <span class="kw">fn</span> <span class="ident">to_string</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Id::Name</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>.<span class="ident">clone</span>(),
-            <span class="ident">Id::Gid</span>(<span class="ident">g</span>) =&gt; <span class="ident">g</span>.<span class="ident">to_string</span>(),
+<span class="kw">impl </span>ToString <span class="kw">for </span>Id {
+    <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">match </span><span class="self">self </span>{
+            Id::Name(s) =&gt; s.clone(),
+            Id::Gid(g) =&gt; g.to_string(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">CacheLayer</span> {
-    <span class="comment">// TODO: Could consider refactoring this to be better ...</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="comment">// need db path</span>
-        <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="comment">// cache timeout</span>
-        <span class="ident">timeout_seconds</span>: <span class="ident">u64</span>,
-        <span class="comment">//</span>
-        <span class="ident">client</span>: <span class="ident">KanidmClient</span>,
-        <span class="ident">pam_allow_groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">default_shell</span>: <span class="ident">String</span>,
-        <span class="ident">home_prefix</span>: <span class="ident">String</span>,
-        <span class="ident">home_attr</span>: <span class="ident">HomeAttr</span>,
-        <span class="ident">home_alias</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HomeAttr</span><span class="op">&gt;</span>,
-        <span class="ident">uid_attr_map</span>: <span class="ident">UidAttr</span>,
-        <span class="ident">gid_attr_map</span>: <span class="ident">UidAttr</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="ident">path</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>CacheLayer {
+    <span class="comment">// TODO: Could consider refactoring this to be better ...
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub async fn </span>new(
+        <span class="comment">// need db path
+        </span>path: <span class="kw-2">&amp;</span>str,
+        <span class="comment">// cache timeout
+        </span>timeout_seconds: u64,
+        <span class="comment">//
+        </span>client: KanidmClient,
+        pam_allow_groups: Vec&lt;String&gt;,
+        default_shell: String,
+        home_prefix: String,
+        home_attr: HomeAttr,
+        home_alias: <span class="prelude-ty">Option</span>&lt;HomeAttr&gt;,
+        uid_attr_map: UidAttr,
+        gid_attr_map: UidAttr,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt; {
+        <span class="kw">let </span>db = Db::new(path)<span class="question-mark">?</span>;
 
-        <span class="comment">// setup and do a migrate.</span>
-        {
-            <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">dbtxn</span>.<span class="ident">migrate</span>()<span class="question-mark">?</span>;
-            <span class="ident">dbtxn</span>.<span class="ident">commit</span>()<span class="question-mark">?</span>;
+        <span class="comment">// setup and do a migrate.
+        </span>{
+            <span class="kw">let </span>dbtxn = db.write().<span class="kw">await</span>;
+            dbtxn.migrate()<span class="question-mark">?</span>;
+            dbtxn.commit()<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if</span> <span class="ident">pam_allow_groups</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
+        <span class="kw">if </span>pam_allow_groups.len() == <span class="number">0 </span>{
             <span class="macro">eprintln!</span>(<span class="string">&quot;Will not be able to authenticate users, pam_allow_groups config is not configured.&quot;</span>);
         }
 
-        <span class="comment">// We assume we are offline at start up, and we mark the next &quot;online check&quot; as</span>
-        <span class="comment">// being valid from &quot;now&quot;.</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">CacheLayer</span> {
-            <span class="ident">db</span>,
-            <span class="ident">client</span>: <span class="ident">RwLock::new</span>(<span class="ident">client</span>),
-            <span class="ident">state</span>: <span class="ident">Mutex::new</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">SystemTime::now</span>())),
-            <span class="ident">timeout_seconds</span>,
-            <span class="ident">pam_allow_groups</span>: <span class="ident">pam_allow_groups</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>(),
-            <span class="ident">default_shell</span>,
-            <span class="ident">home_prefix</span>,
-            <span class="ident">home_attr</span>,
-            <span class="ident">home_alias</span>,
-            <span class="ident">uid_attr_map</span>,
-            <span class="ident">gid_attr_map</span>,
-            <span class="ident">nxcache</span>: <span class="ident">Mutex::new</span>(<span class="ident">LruCache::new</span>(<span class="ident">NonZeroUsize::new</span>(<span class="ident">NXCACHE_SIZE</span>).<span class="ident">unwrap</span>())),
+        <span class="comment">// We assume we are offline at start up, and we mark the next &quot;online check&quot; as
+        // being valid from &quot;now&quot;.
+        </span><span class="prelude-val">Ok</span>(CacheLayer {
+            db,
+            client: RwLock::new(client),
+            state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
+            timeout_seconds,
+            pam_allow_groups: pam_allow_groups.into_iter().collect(),
+            default_shell,
+            home_prefix,
+            home_attr,
+            home_alias,
+            uid_attr_map,
+            gid_attr_map,
+            nxcache: Mutex::new(LruCache::new(NonZeroUsize::new(NXCACHE_SIZE).unwrap())),
         })
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_cachestate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CacheState</span> {
-        <span class="kw">let</span> <span class="ident">g</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        (<span class="kw-2">*</span><span class="ident">g</span>).<span class="ident">clone</span>()
+    <span class="kw">async fn </span>get_cachestate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CacheState {
+        <span class="kw">let </span>g = <span class="self">self</span>.state.lock().<span class="kw">await</span>;
+        (<span class="kw-2">*</span>g).clone()
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">set_cachestate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">state</span>: <span class="ident">CacheState</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw-2">*</span><span class="ident">g</span> <span class="op">=</span> <span class="ident">state</span>;
+    <span class="kw">async fn </span>set_cachestate(<span class="kw-2">&amp;</span><span class="self">self</span>, state: CacheState) {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = <span class="self">self</span>.state.lock().<span class="kw">await</span>;
+        <span class="kw-2">*</span>g = state;
     }
 
-    <span class="comment">// Need a way to mark online/offline.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">attempt_online</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">SystemTime::now</span>()))
+    <span class="comment">// Need a way to mark online/offline.
+    </span><span class="kw">pub async fn </span>attempt_online(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(SystemTime::now()))
             .<span class="kw">await</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mark_offline</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::Offline</span>).<span class="kw">await</span>;
+    <span class="kw">pub async fn </span>mark_offline(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.set_cachestate(CacheState::Offline).<span class="kw">await</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">clear_cache</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nxcache_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nxcache</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="ident">nxcache_txn</span>.<span class="ident">clear</span>();
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>.<span class="ident">clear_cache</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>())
+    <span class="kw">pub async fn </span>clear_cache(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>nxcache_txn = <span class="self">self</span>.nxcache.lock().<span class="kw">await</span>;
+        nxcache_txn.clear();
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn.clear_cache().and_then(|<span class="kw">_</span>| dbtxn.commit())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">invalidate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nxcache_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nxcache</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="ident">nxcache_txn</span>.<span class="ident">clear</span>();
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>.<span class="ident">invalidate</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>())
+    <span class="kw">pub async fn </span>invalidate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>nxcache_txn = <span class="self">self</span>.nxcache.lock().<span class="kw">await</span>;
+        nxcache_txn.clear();
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn.invalidate().and_then(|<span class="kw">_</span>| dbtxn.commit())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_cached_usertokens</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>.<span class="ident">get_accounts</span>()
+    <span class="kw">async fn </span>get_cached_usertokens(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UnixUserToken&gt;, ()&gt; {
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn.get_accounts()
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_cached_grouptokens</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>.<span class="ident">get_groups</span>()
+    <span class="kw">async fn </span>get_cached_grouptokens(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UnixGroupToken&gt;, ()&gt; {
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn.get_groups()
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">set_nxcache</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nxcache_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nxcache</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">ex_time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>() <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="self">self</span>.<span class="ident">timeout_seconds</span>);
-        <span class="ident">nxcache_txn</span>.<span class="ident">put</span>(<span class="ident">id</span>.<span class="ident">clone</span>(), <span class="ident">ex_time</span>);
+    <span class="kw">async fn </span>set_nxcache(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>Id) {
+        <span class="kw">let </span><span class="kw-2">mut </span>nxcache_txn = <span class="self">self</span>.nxcache.lock().<span class="kw">await</span>;
+        <span class="kw">let </span>ex_time = SystemTime::now() + Duration::from_secs(<span class="self">self</span>.timeout_seconds);
+        nxcache_txn.put(id.clone(), ex_time);
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_nxcache</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">nxcache_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nxcache</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="ident">nxcache_txn</span>.<span class="ident">contains</span>(<span class="ident">id</span>)
+    <span class="kw">pub async fn </span>check_nxcache(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>Id) -&gt; bool {
+        <span class="kw">let </span>nxcache_txn = <span class="self">self</span>.nxcache.lock().<span class="kw">await</span>;
+        nxcache_txn.contains(id)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_cached_usertoken</span>(
+    <span class="kw">async fn </span>get_cached_usertoken(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">bool</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>), ()<span class="op">&gt;</span> {
-        <span class="comment">// Account_id could be:</span>
-        <span class="comment">//  * gidnumber</span>
-        <span class="comment">//  * name</span>
-        <span class="comment">//  * spn</span>
-        <span class="comment">//  * uuid</span>
-        <span class="comment">//  Attempt to search these in the db.</span>
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">dbtxn</span>.<span class="ident">get_account</span>(<span class="kw-2">&amp;</span><span class="ident">account_id</span>)<span class="question-mark">?</span>;
+        account_id: <span class="kw-2">&amp;</span>Id,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(bool, <span class="prelude-ty">Option</span>&lt;UnixUserToken&gt;), ()&gt; {
+        <span class="comment">// Account_id could be:
+        //  * gidnumber
+        //  * name
+        //  * spn
+        //  * uuid
+        //  Attempt to search these in the db.
+        </span><span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        <span class="kw">let </span>r = dbtxn.get_account(<span class="kw-2">&amp;</span>account_id)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="ident">r</span> {
-            <span class="prelude-val">Some</span>((<span class="ident">ut</span>, <span class="ident">ex</span>)) =&gt; {
-                <span class="comment">// Are we expired?</span>
-                <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">ex</span>);
-                <span class="kw">let</span> <span class="ident">ex_time</span> <span class="op">=</span> <span class="ident">SystemTime::UNIX_EPOCH</span> <span class="op">+</span> <span class="ident">offset</span>;
-                <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
+        <span class="kw">match </span>r {
+            <span class="prelude-val">Some</span>((ut, ex)) =&gt; {
+                <span class="comment">// Are we expired?
+                </span><span class="kw">let </span>offset = Duration::from_secs(ex);
+                <span class="kw">let </span>ex_time = SystemTime::UNIX_EPOCH + offset;
+                <span class="kw">let </span>now = SystemTime::now();
 
-                <span class="kw">if</span> <span class="ident">now</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">ex_time</span> {
-                    <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="ident">ut</span>)))
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">Some</span>(<span class="ident">ut</span>)))
+                <span class="kw">if </span>now &gt;= ex_time {
+                    <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(ut)))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">Some</span>(ut)))
                 }
             }
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="comment">// it wasn&#39;t in the DB - lets see if it&#39;s in the nxcache.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nxcache_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nxcache</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">nxcache_txn</span>.<span class="ident">get</span>(<span class="ident">account_id</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">ex_time</span>) =&gt; {
-                        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
-                        <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">now</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">ex_time</span> {
-                            <span class="comment">// It&#39;s in the LRU, but we are past the expiry so</span>
-                            <span class="comment">// lets attempt a refresh.</span>
-                            <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
-                        } <span class="kw">else</span> {
-                            <span class="comment">// It&#39;s in the LRU and still valid, so return that</span>
-                            <span class="comment">// no check is needed.</span>
-                            <span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">None</span>))
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// it wasn&#39;t in the DB - lets see if it&#39;s in the nxcache.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>nxcache_txn = <span class="self">self</span>.nxcache.lock().<span class="kw">await</span>;
+                <span class="kw">match </span>nxcache_txn.get(account_id) {
+                    <span class="prelude-val">Some</span>(ex_time) =&gt; {
+                        <span class="kw">let </span>now = SystemTime::now();
+                        <span class="kw">if </span><span class="kw-2">&amp;</span>now &gt;= ex_time {
+                            <span class="comment">// It&#39;s in the LRU, but we are past the expiry so
+                            // lets attempt a refresh.
+                            </span><span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
+                        } <span class="kw">else </span>{
+                            <span class="comment">// It&#39;s in the LRU and still valid, so return that
+                            // no check is needed.
+                            </span><span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">None</span>))
                         }
                     }
-                    <span class="prelude-val">None</span> =&gt; {
-                        <span class="comment">// Not in the LRU. Return that this IS expired</span>
-                        <span class="comment">// and we have no data.</span>
-                        <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// Not in the LRU. Return that this IS expired
+                        // and we have no data.
+                        </span><span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
                     }
                 }
             }
-        } <span class="comment">// end match r</span>
-    }
+        } <span class="comment">// end match r
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_cached_grouptoken</span>(
+    <span class="kw">async fn </span>get_cached_grouptoken(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">grp_id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">bool</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span><span class="op">&gt;</span>), ()<span class="op">&gt;</span> {
-        <span class="comment">// grp_id could be:</span>
-        <span class="comment">//  * gidnumber</span>
-        <span class="comment">//  * name</span>
-        <span class="comment">//  * spn</span>
-        <span class="comment">//  * uuid</span>
-        <span class="comment">//  Attempt to search these in the db.</span>
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">dbtxn</span>.<span class="ident">get_group</span>(<span class="kw-2">&amp;</span><span class="ident">grp_id</span>)<span class="question-mark">?</span>;
+        grp_id: <span class="kw-2">&amp;</span>Id,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(bool, <span class="prelude-ty">Option</span>&lt;UnixGroupToken&gt;), ()&gt; {
+        <span class="comment">// grp_id could be:
+        //  * gidnumber
+        //  * name
+        //  * spn
+        //  * uuid
+        //  Attempt to search these in the db.
+        </span><span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        <span class="kw">let </span>r = dbtxn.get_group(<span class="kw-2">&amp;</span>grp_id)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="ident">r</span> {
-            <span class="prelude-val">Some</span>((<span class="ident">ut</span>, <span class="ident">ex</span>)) =&gt; {
-                <span class="comment">// Are we expired?</span>
-                <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">ex</span>);
-                <span class="kw">let</span> <span class="ident">ex_time</span> <span class="op">=</span> <span class="ident">SystemTime::UNIX_EPOCH</span> <span class="op">+</span> <span class="ident">offset</span>;
-                <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
+        <span class="kw">match </span>r {
+            <span class="prelude-val">Some</span>((ut, ex)) =&gt; {
+                <span class="comment">// Are we expired?
+                </span><span class="kw">let </span>offset = Duration::from_secs(ex);
+                <span class="kw">let </span>ex_time = SystemTime::UNIX_EPOCH + offset;
+                <span class="kw">let </span>now = SystemTime::now();
 
-                <span class="kw">if</span> <span class="ident">now</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">ex_time</span> {
-                    <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="ident">ut</span>)))
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">Some</span>(<span class="ident">ut</span>)))
+                <span class="kw">if </span>now &gt;= ex_time {
+                    <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(ut)))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">Some</span>(ut)))
                 }
             }
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="comment">// it wasn&#39;t in the DB - lets see if it&#39;s in the nxcache.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nxcache_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nxcache</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">nxcache_txn</span>.<span class="ident">get</span>(<span class="ident">grp_id</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">ex_time</span>) =&gt; {
-                        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>();
-                        <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">now</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">ex_time</span> {
-                            <span class="comment">// It&#39;s in the LRU, but we are past the expiry so</span>
-                            <span class="comment">// lets attempt a refresh.</span>
-                            <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
-                        } <span class="kw">else</span> {
-                            <span class="comment">// It&#39;s in the LRU and still valid, so return that</span>
-                            <span class="comment">// no check is needed.</span>
-                            <span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">None</span>))
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// it wasn&#39;t in the DB - lets see if it&#39;s in the nxcache.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>nxcache_txn = <span class="self">self</span>.nxcache.lock().<span class="kw">await</span>;
+                <span class="kw">match </span>nxcache_txn.get(grp_id) {
+                    <span class="prelude-val">Some</span>(ex_time) =&gt; {
+                        <span class="kw">let </span>now = SystemTime::now();
+                        <span class="kw">if </span><span class="kw-2">&amp;</span>now &gt;= ex_time {
+                            <span class="comment">// It&#39;s in the LRU, but we are past the expiry so
+                            // lets attempt a refresh.
+                            </span><span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
+                        } <span class="kw">else </span>{
+                            <span class="comment">// It&#39;s in the LRU and still valid, so return that
+                            // no check is needed.
+                            </span><span class="prelude-val">Ok</span>((<span class="bool-val">false</span>, <span class="prelude-val">None</span>))
                         }
                     }
-                    <span class="prelude-val">None</span> =&gt; {
-                        <span class="comment">// Not in the LRU. Return that this IS expired</span>
-                        <span class="comment">// and we have no data.</span>
-                        <span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// Not in the LRU. Return that this IS expired
+                        // and we have no data.
+                        </span><span class="prelude-val">Ok</span>((<span class="bool-val">true</span>, <span class="prelude-val">None</span>))
                     }
                 }
             }
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">set_cache_usertoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;mut</span> <span class="ident">UnixUserToken</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// Set an expiry</span>
-        <span class="kw">let</span> <span class="ident">ex_time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>() <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="self">self</span>.<span class="ident">timeout_seconds</span>);
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">ex_time</span>
-            .<span class="ident">duration_since</span>(<span class="ident">SystemTime::UNIX_EPOCH</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;time conversion error - ex_time less than epoch? {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="kw">async fn </span>set_cache_usertoken(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;mut </span>UnixUserToken) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// Set an expiry
+        </span><span class="kw">let </span>ex_time = SystemTime::now() + Duration::from_secs(<span class="self">self</span>.timeout_seconds);
+        <span class="kw">let </span>offset = ex_time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;time conversion error - ex_time less than epoch? {:?}&quot;</span>, e);
             })<span class="question-mark">?</span>;
-        <span class="comment">// WIP #392</span>
-        <span class="comment">// Check if requested `shell` exists on the system, else use `default_shell`</span>
-        <span class="kw">let</span> <span class="ident">requested_shell_exists</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="ident">token</span>
-            .<span class="ident">shell</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">shell</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">exists</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">shell</span>).<span class="ident">exists</span>();
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">exists</span> {
+        <span class="comment">// WIP #392
+        // Check if requested `shell` exists on the system, else use `default_shell`
+        </span><span class="kw">let </span>requested_shell_exists: bool = token
+            .shell
+            .as_ref()
+            .map(|shell| {
+                <span class="kw">let </span>exists = Path::new(shell).exists();
+                <span class="kw">if </span>!exists {
                     <span class="macro">info!</span>(
                         <span class="string">&quot;User requested shell is not present on this system - {}&quot;</span>,
-                        <span class="ident">shell</span>
+                        shell
                     )
                 }
-                <span class="ident">exists</span>
+                exists
             })
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            .unwrap_or_else(|| {
                 <span class="macro">info!</span>(<span class="string">&quot;User has not specified a shell, using default&quot;</span>);
-                <span class="bool-val">false</span>
-            });
+                <span class="bool-val">false
+            </span>});
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">requested_shell_exists</span> {
-            <span class="ident">token</span>.<span class="ident">shell</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">default_shell</span>.<span class="ident">clone</span>())
+        <span class="kw">if </span>!requested_shell_exists {
+            token.shell = <span class="prelude-val">Some</span>(<span class="self">self</span>.default_shell.clone())
         }
 
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="comment">// We need to add the groups first</span>
-        <span class="ident">token</span>
-            .<span class="ident">groups</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">update_group</span>(<span class="ident">g</span>, <span class="ident">offset</span>.<span class="ident">as_secs</span>()))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span>
-                <span class="comment">// So that when we add the account it can make the relationships.</span>
-                <span class="ident">dbtxn</span>
-                    .<span class="ident">update_account</span>(<span class="ident">token</span>, <span class="ident">offset</span>.<span class="ident">as_secs</span>()))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>())
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        <span class="comment">// We need to add the groups first
+        </span>token
+            .groups
+            .iter()
+            .try_for_each(|g| dbtxn.update_group(g, offset.as_secs()))
+            .and_then(|<span class="kw">_</span>|
+                <span class="comment">// So that when we add the account it can make the relationships.
+                </span>dbtxn
+                    .update_account(token, offset.as_secs()))
+            .and_then(|<span class="kw">_</span>| dbtxn.commit())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">set_cache_grouptoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">UnixGroupToken</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// Set an expiry</span>
-        <span class="kw">let</span> <span class="ident">ex_time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>() <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="self">self</span>.<span class="ident">timeout_seconds</span>);
-        <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">ex_time</span>
-            .<span class="ident">duration_since</span>(<span class="ident">SystemTime::UNIX_EPOCH</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;time conversion error - ex_time less than epoch? {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="kw">async fn </span>set_cache_grouptoken(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;</span>UnixGroupToken) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// Set an expiry
+        </span><span class="kw">let </span>ex_time = SystemTime::now() + Duration::from_secs(<span class="self">self</span>.timeout_seconds);
+        <span class="kw">let </span>offset = ex_time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;time conversion error - ex_time less than epoch? {:?}&quot;</span>, e);
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>
-            .<span class="ident">update_group</span>(<span class="ident">token</span>, <span class="ident">offset</span>.<span class="ident">as_secs</span>())
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>())
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn
+            .update_group(token, offset.as_secs())
+            .and_then(|<span class="kw">_</span>| dbtxn.commit())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete_cache_usertoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a_uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>.<span class="ident">delete_account</span>(<span class="ident">a_uuid</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>())
+    <span class="kw">async fn </span>delete_cache_usertoken(<span class="kw-2">&amp;</span><span class="self">self</span>, a_uuid: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn.delete_account(a_uuid).and_then(|<span class="kw">_</span>| dbtxn.commit())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete_cache_grouptoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">g_uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>.<span class="ident">delete_group</span>(<span class="ident">g_uuid</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>())
+    <span class="kw">async fn </span>delete_cache_grouptoken(<span class="kw-2">&amp;</span><span class="self">self</span>, g_uuid: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn.delete_group(g_uuid).and_then(|<span class="kw">_</span>| dbtxn.commit())
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">set_cache_userpassword</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a_uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>
-            .<span class="ident">update_account_password</span>(<span class="ident">a_uuid</span>, <span class="ident">cred</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">x</span>))
+    <span class="kw">async fn </span>set_cache_userpassword(<span class="kw-2">&amp;</span><span class="self">self</span>, a_uuid: <span class="kw-2">&amp;</span>str, cred: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn
+            .update_account_password(a_uuid, cred)
+            .and_then(|x| dbtxn.commit().map(|<span class="kw">_</span>| x))
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_cache_userpassword</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a_uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">dbtxn</span>
-            .<span class="ident">check_account_password</span>(<span class="ident">a_uuid</span>, <span class="ident">cred</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">dbtxn</span>.<span class="ident">commit</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">x</span>))
+    <span class="kw">async fn </span>check_cache_userpassword(<span class="kw-2">&amp;</span><span class="self">self</span>, a_uuid: <span class="kw-2">&amp;</span>str, cred: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ()&gt; {
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
+        dbtxn
+            .check_account_password(a_uuid, cred)
+            .and_then(|x| dbtxn.commit().map(|<span class="kw">_</span>| x))
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">refresh_usertoken</span>(
+    <span class="kw">async fn </span>refresh_usertoken(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>,
-        <span class="ident">token</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>
-            .<span class="ident">client</span>
-            .<span class="ident">read</span>()
-            .<span class="kw">await</span>
-            .<span class="ident">idm_account_unix_token_get</span>(<span class="ident">account_id</span>.<span class="ident">to_string</span>().<span class="ident">as_str</span>())
-            .<span class="kw">await</span>
-        {
-            <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">n_tok</span>) =&gt; {
-                <span class="comment">// We have the token!</span>
-                <span class="self">self</span>.<span class="ident">set_cache_usertoken</span>(<span class="kw-2">&amp;mut</span> <span class="ident">n_tok</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">n_tok</span>))
+        account_id: <span class="kw-2">&amp;</span>Id,
+        token: <span class="prelude-ty">Option</span>&lt;UnixUserToken&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;UnixUserToken&gt;, ()&gt; {
+        <span class="kw">match </span><span class="self">self
+            </span>.client
+            .read()
+            .<span class="kw">await
+            </span>.idm_account_unix_token_get(account_id.to_string().as_str())
+            .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>n_tok) =&gt; {
+                <span class="comment">// We have the token!
+                </span><span class="self">self</span>.set_cache_usertoken(<span class="kw-2">&amp;mut </span>n_tok).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(n_tok))
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">match</span> <span class="ident">e</span> {
-                    <span class="ident">ClientError::Transport</span>(<span class="ident">er</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;transport error, moving to offline -&gt; {:?}&quot;</span>, <span class="ident">er</span>);
-                        <span class="comment">// Something went wrong, mark offline.</span>
-                        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">add</span>(<span class="ident">Duration::from_secs</span>(<span class="number">15</span>));
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>))
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">match </span>e {
+                    ClientError::Transport(er) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;transport error, moving to offline -&gt; {:?}&quot;</span>, er);
+                        <span class="comment">// Something went wrong, mark offline.
+                        </span><span class="kw">let </span>time = SystemTime::now().add(Duration::from_secs(<span class="number">15</span>));
+                        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(time))
                             .<span class="kw">await</span>;
-                        <span class="prelude-val">Ok</span>(<span class="ident">token</span>)
+                        <span class="prelude-val">Ok</span>(token)
                     }
-                    <span class="ident">ClientError::Http</span>(<span class="ident">StatusCode::UNAUTHORIZED</span>, <span class="ident">reason</span>, <span class="ident">opid</span>) =&gt; {
-                        <span class="kw">match</span> <span class="ident">reason</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NotAuthenticated</span>) =&gt;
-                            <span class="macro">warn!</span>(<span class="string">&quot;session not authenticated - attempting reauthentication - eventid {}&quot;</span>, <span class="ident">opid</span>),
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::SessionExpired</span>) =&gt;
-                            <span class="macro">warn!</span>(<span class="string">&quot;session expired - attempting reauthentication - eventid {}&quot;</span>, <span class="ident">opid</span>),
-                        <span class="ident">e</span> =&gt;
+                    ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid) =&gt; {
+                        <span class="kw">match </span>reason {
+                        <span class="prelude-val">Some</span>(OperationError::NotAuthenticated) =&gt;
+                            <span class="macro">warn!</span>(<span class="string">&quot;session not authenticated - attempting reauthentication - eventid {}&quot;</span>, opid),
+                        <span class="prelude-val">Some</span>(OperationError::SessionExpired) =&gt;
+                            <span class="macro">warn!</span>(<span class="string">&quot;session expired - attempting reauthentication - eventid {}&quot;</span>, opid),
+                        e =&gt;
                         <span class="macro">error!</span>(
-                            <span class="string">&quot;authentication error {:?}, moving to offline - eventid {}&quot;</span>, <span class="ident">e</span>, <span class="ident">opid</span>
+                            <span class="string">&quot;authentication error {:?}, moving to offline - eventid {}&quot;</span>, e, opid
                         ),
                     };
-                        <span class="comment">// Something went wrong, mark offline to force a re-auth ASAP.</span>
-                        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">sub</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1</span>));
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>))
+                        <span class="comment">// Something went wrong, mark offline to force a re-auth ASAP.
+                        </span><span class="kw">let </span>time = SystemTime::now().sub(Duration::from_secs(<span class="number">1</span>));
+                        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(time))
                             .<span class="kw">await</span>;
-                        <span class="prelude-val">Ok</span>(<span class="ident">token</span>)
+                        <span class="prelude-val">Ok</span>(token)
                     }
-                    <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::BAD_REQUEST</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
-                        <span class="ident">opid</span>,
+                    ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        <span class="prelude-val">Some</span>(OperationError::NoMatchingEntries),
+                        opid,
                     )
-                    <span class="op">|</span> <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::NOT_FOUND</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
-                        <span class="ident">opid</span>,
+                    | ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        <span class="prelude-val">Some</span>(OperationError::NoMatchingEntries),
+                        opid,
                     )
-                    <span class="op">|</span> <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::BAD_REQUEST</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::InvalidAccountState</span>(<span class="kw">_</span>)),
-                        <span class="ident">opid</span>,
+                    | ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        <span class="prelude-val">Some</span>(OperationError::InvalidAccountState(<span class="kw">_</span>)),
+                        opid,
                     ) =&gt; {
-                        <span class="comment">// We wele able to contact the server but the entry has been removed, or</span>
-                        <span class="comment">// is not longer a valid posix account.</span>
-                        <span class="macro">debug!</span>(<span class="string">&quot;entry has been removed or is no longer a valid posix account, clearing from cache ... - eventid {}&quot;</span>, <span class="ident">opid</span>);
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">tok</span>) <span class="op">=</span> <span class="ident">token</span> {
-                            <span class="self">self</span>.<span class="ident">delete_cache_usertoken</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>.<span class="ident">uuid</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+                        <span class="comment">// We wele able to contact the server but the entry has been removed, or
+                        // is not longer a valid posix account.
+                        </span><span class="macro">debug!</span>(<span class="string">&quot;entry has been removed or is no longer a valid posix account, clearing from cache ... - eventid {}&quot;</span>, opid);
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(tok) = token {
+                            <span class="self">self</span>.delete_cache_usertoken(<span class="kw-2">&amp;</span>tok.uuid).<span class="kw">await</span><span class="question-mark">?</span>;
                         };
-                        <span class="comment">// Cache the NX here.</span>
-                        <span class="self">self</span>.<span class="ident">set_nxcache</span>(<span class="ident">account_id</span>).<span class="kw">await</span>;
+                        <span class="comment">// Cache the NX here.
+                        </span><span class="self">self</span>.set_nxcache(account_id).<span class="kw">await</span>;
 
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
                     }
-                    <span class="ident">er</span> =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;client error -&gt; {:?}&quot;</span>, <span class="ident">er</span>);
-                        <span class="comment">// Some other transient error, continue with the token.</span>
-                        <span class="prelude-val">Ok</span>(<span class="ident">token</span>)
+                    er =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;client error -&gt; {:?}&quot;</span>, er);
+                        <span class="comment">// Some other transient error, continue with the token.
+                        </span><span class="prelude-val">Ok</span>(token)
                     }
                 }
             }
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">refresh_grouptoken</span>(
+    <span class="kw">async fn </span>refresh_grouptoken(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">grp_id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>,
-        <span class="ident">token</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>
-            .<span class="ident">client</span>
-            .<span class="ident">read</span>()
-            .<span class="kw">await</span>
-            .<span class="ident">idm_group_unix_token_get</span>(<span class="ident">grp_id</span>.<span class="ident">to_string</span>().<span class="ident">as_str</span>())
-            .<span class="kw">await</span>
-        {
-            <span class="prelude-val">Ok</span>(<span class="ident">n_tok</span>) =&gt; {
-                <span class="comment">// We have the token!</span>
-                <span class="self">self</span>.<span class="ident">set_cache_grouptoken</span>(<span class="kw-2">&amp;</span><span class="ident">n_tok</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">n_tok</span>))
+        grp_id: <span class="kw-2">&amp;</span>Id,
+        token: <span class="prelude-ty">Option</span>&lt;UnixGroupToken&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;UnixGroupToken&gt;, ()&gt; {
+        <span class="kw">match </span><span class="self">self
+            </span>.client
+            .read()
+            .<span class="kw">await
+            </span>.idm_group_unix_token_get(grp_id.to_string().as_str())
+            .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Ok</span>(n_tok) =&gt; {
+                <span class="comment">// We have the token!
+                </span><span class="self">self</span>.set_cache_grouptoken(<span class="kw-2">&amp;</span>n_tok).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(n_tok))
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">match</span> <span class="ident">e</span> {
-                    <span class="ident">ClientError::Transport</span>(<span class="ident">er</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;transport error, moving to offline -&gt; {:?}&quot;</span>, <span class="ident">er</span>);
-                        <span class="comment">// Something went wrong, mark offline.</span>
-                        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">add</span>(<span class="ident">Duration::from_secs</span>(<span class="number">15</span>));
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>))
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">match </span>e {
+                    ClientError::Transport(er) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;transport error, moving to offline -&gt; {:?}&quot;</span>, er);
+                        <span class="comment">// Something went wrong, mark offline.
+                        </span><span class="kw">let </span>time = SystemTime::now().add(Duration::from_secs(<span class="number">15</span>));
+                        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(time))
                             .<span class="kw">await</span>;
-                        <span class="prelude-val">Ok</span>(<span class="ident">token</span>)
+                        <span class="prelude-val">Ok</span>(token)
                     }
-                    <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::UNAUTHORIZED</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NotAuthenticated</span>),
-                        <span class="ident">opid</span>,
+                    ClientError::Http(
+                        StatusCode::UNAUTHORIZED,
+                        <span class="prelude-val">Some</span>(OperationError::NotAuthenticated),
+                        opid,
                     ) =&gt; {
                         <span class="macro">error!</span>(
                             <span class="string">&quot;transport unauthenticated, moving to offline - eventid {}&quot;</span>,
-                            <span class="ident">opid</span>
+                            opid
                         );
-                        <span class="comment">// Something went wrong, mark offline.</span>
-                        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">add</span>(<span class="ident">Duration::from_secs</span>(<span class="number">15</span>));
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>))
+                        <span class="comment">// Something went wrong, mark offline.
+                        </span><span class="kw">let </span>time = SystemTime::now().add(Duration::from_secs(<span class="number">15</span>));
+                        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(time))
                             .<span class="kw">await</span>;
-                        <span class="prelude-val">Ok</span>(<span class="ident">token</span>)
+                        <span class="prelude-val">Ok</span>(token)
                     }
-                    <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::BAD_REQUEST</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
-                        <span class="ident">opid</span>,
+                    ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        <span class="prelude-val">Some</span>(OperationError::NoMatchingEntries),
+                        opid,
                     )
-                    <span class="op">|</span> <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::NOT_FOUND</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
-                        <span class="ident">opid</span>,
+                    | ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        <span class="prelude-val">Some</span>(OperationError::NoMatchingEntries),
+                        opid,
                     )
-                    <span class="op">|</span> <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::BAD_REQUEST</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::InvalidAccountState</span>(<span class="kw">_</span>)),
-                        <span class="ident">opid</span>,
+                    | ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        <span class="prelude-val">Some</span>(OperationError::InvalidAccountState(<span class="kw">_</span>)),
+                        opid,
                     ) =&gt; {
-                        <span class="macro">debug!</span>(<span class="string">&quot;entry has been removed or is no longer a valid posix group, clearing from cache ... - eventid {}&quot;</span>, <span class="ident">opid</span>);
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">tok</span>) <span class="op">=</span> <span class="ident">token</span> {
-                            <span class="self">self</span>.<span class="ident">delete_cache_grouptoken</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>.<span class="ident">uuid</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+                        <span class="macro">debug!</span>(<span class="string">&quot;entry has been removed or is no longer a valid posix group, clearing from cache ... - eventid {}&quot;</span>, opid);
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(tok) = token {
+                            <span class="self">self</span>.delete_cache_grouptoken(<span class="kw-2">&amp;</span>tok.uuid).<span class="kw">await</span><span class="question-mark">?</span>;
                         };
-                        <span class="comment">// Cache the NX here.</span>
-                        <span class="self">self</span>.<span class="ident">set_nxcache</span>(<span class="ident">grp_id</span>).<span class="kw">await</span>;
+                        <span class="comment">// Cache the NX here.
+                        </span><span class="self">self</span>.set_nxcache(grp_id).<span class="kw">await</span>;
 
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
                     }
-                    <span class="ident">er</span> =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;client error -&gt; {:?}&quot;</span>, <span class="ident">er</span>);
-                        <span class="comment">// Some other transient error, continue with the token.</span>
-                        <span class="prelude-val">Ok</span>(<span class="ident">token</span>)
+                    er =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;client error -&gt; {:?}&quot;</span>, er);
+                        <span class="comment">// Some other transient error, continue with the token.
+                        </span><span class="prelude-val">Ok</span>(token)
                     }
                 }
             }
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_usertoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">account_id</span>: <span class="ident">Id</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">async fn </span>get_usertoken(<span class="kw-2">&amp;</span><span class="self">self</span>, account_id: Id) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;UnixUserToken&gt;, ()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;get_usertoken&quot;</span>);
-        <span class="comment">// get the item from the cache</span>
-        <span class="kw">let</span> (<span class="ident">expired</span>, <span class="ident">item</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cached_usertoken</span>(<span class="kw-2">&amp;</span><span class="ident">account_id</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">debug!</span>(<span class="string">&quot;get_usertoken error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="comment">// get the item from the cache
+        </span><span class="kw">let </span>(expired, item) = <span class="self">self</span>.get_cached_usertoken(<span class="kw-2">&amp;</span>account_id).<span class="kw">await</span>.map_err(|e| {
+            <span class="macro">debug!</span>(<span class="string">&quot;get_usertoken error -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cachestate</span>().<span class="kw">await</span>;
+        <span class="kw">let </span>state = <span class="self">self</span>.get_cachestate().<span class="kw">await</span>;
 
-        <span class="kw">match</span> (<span class="ident">expired</span>, <span class="ident">state</span>) {
-            (<span class="kw">_</span>, <span class="ident">CacheState::Offline</span>) =&gt; {
+        <span class="kw">match </span>(expired, state) {
+            (<span class="kw">_</span>, CacheState::Offline) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;offline, returning cached item&quot;</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+                <span class="prelude-val">Ok</span>(item)
             }
-            (<span class="bool-val">false</span>, <span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>)) =&gt; {
+            (<span class="bool-val">false</span>, CacheState::OfflineNextCheck(time)) =&gt; {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;offline valid, next check {:?}, returning cached item&quot;</span>,
-                    <span class="ident">time</span>
+                    time
                 );
-                <span class="comment">// Still valid within lifetime, return.</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+                <span class="comment">// Still valid within lifetime, return.
+                </span><span class="prelude-val">Ok</span>(item)
             }
-            (<span class="bool-val">false</span>, <span class="ident">CacheState::Online</span>) =&gt; {
+            (<span class="bool-val">false</span>, CacheState::Online) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;online valid, returning cached item&quot;</span>);
-                <span class="comment">// Still valid within lifetime, return.</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+                <span class="comment">// Still valid within lifetime, return.
+                </span><span class="prelude-val">Ok</span>(item)
             }
-            (<span class="bool-val">true</span>, <span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>)) =&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;offline expired, next check {:?}, refresh cache&quot;</span>, <span class="ident">time</span>);
-                <span class="comment">// Attempt to refresh the item</span>
-                <span class="comment">// Return it.</span>
-                <span class="kw">if</span> <span class="ident">SystemTime::now</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">time</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">test_connection</span>().<span class="kw">await</span> {
-                    <span class="comment">// We brought ourselves online, lets go</span>
-                    <span class="self">self</span>.<span class="ident">refresh_usertoken</span>(<span class="kw-2">&amp;</span><span class="ident">account_id</span>, <span class="ident">item</span>).<span class="kw">await</span>
-                } <span class="kw">else</span> {
-                    <span class="comment">// Unable to bring up connection, return cache.</span>
-                    <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+            (<span class="bool-val">true</span>, CacheState::OfflineNextCheck(time)) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;offline expired, next check {:?}, refresh cache&quot;</span>, time);
+                <span class="comment">// Attempt to refresh the item
+                // Return it.
+                </span><span class="kw">if </span>SystemTime::now() &gt;= time &amp;&amp; <span class="self">self</span>.test_connection().<span class="kw">await </span>{
+                    <span class="comment">// We brought ourselves online, lets go
+                    </span><span class="self">self</span>.refresh_usertoken(<span class="kw-2">&amp;</span>account_id, item).<span class="kw">await
+                </span>} <span class="kw">else </span>{
+                    <span class="comment">// Unable to bring up connection, return cache.
+                    </span><span class="prelude-val">Ok</span>(item)
                 }
             }
-            (<span class="bool-val">true</span>, <span class="ident">CacheState::Online</span>) =&gt; {
+            (<span class="bool-val">true</span>, CacheState::Online) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;online expired, refresh cache&quot;</span>);
-                <span class="comment">// Attempt to refresh the item</span>
-                <span class="comment">// Return it.</span>
-                <span class="self">self</span>.<span class="ident">refresh_usertoken</span>(<span class="kw-2">&amp;</span><span class="ident">account_id</span>, <span class="ident">item</span>).<span class="kw">await</span>
-            }
+                <span class="comment">// Attempt to refresh the item
+                // Return it.
+                </span><span class="self">self</span>.refresh_usertoken(<span class="kw-2">&amp;</span>account_id, item).<span class="kw">await
+            </span>}
         }
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> {
-            <span class="macro">debug!</span>(<span class="string">&quot;token -&gt; {:?}&quot;</span>, <span class="ident">t</span>);
-            <span class="ident">t</span>
+        .map(|t| {
+            <span class="macro">debug!</span>(<span class="string">&quot;token -&gt; {:?}&quot;</span>, t);
+            t
         })
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_grouptoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">grp_id</span>: <span class="ident">Id</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">async fn </span>get_grouptoken(<span class="kw-2">&amp;</span><span class="self">self</span>, grp_id: Id) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;UnixGroupToken&gt;, ()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;get_grouptoken&quot;</span>);
-        <span class="kw">let</span> (<span class="ident">expired</span>, <span class="ident">item</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cached_grouptoken</span>(<span class="kw-2">&amp;</span><span class="ident">grp_id</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">debug!</span>(<span class="string">&quot;get_grouptoken error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">let </span>(expired, item) = <span class="self">self</span>.get_cached_grouptoken(<span class="kw-2">&amp;</span>grp_id).<span class="kw">await</span>.map_err(|e| {
+            <span class="macro">debug!</span>(<span class="string">&quot;get_grouptoken error -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cachestate</span>().<span class="kw">await</span>;
+        <span class="kw">let </span>state = <span class="self">self</span>.get_cachestate().<span class="kw">await</span>;
 
-        <span class="kw">match</span> (<span class="ident">expired</span>, <span class="ident">state</span>) {
-            (<span class="kw">_</span>, <span class="ident">CacheState::Offline</span>) =&gt; {
+        <span class="kw">match </span>(expired, state) {
+            (<span class="kw">_</span>, CacheState::Offline) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;offline, returning cached item&quot;</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+                <span class="prelude-val">Ok</span>(item)
             }
-            (<span class="bool-val">false</span>, <span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>)) =&gt; {
+            (<span class="bool-val">false</span>, CacheState::OfflineNextCheck(time)) =&gt; {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;offline valid, next check {:?}, returning cached item&quot;</span>,
-                    <span class="ident">time</span>
+                    time
                 );
-                <span class="comment">// Still valid within lifetime, return.</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+                <span class="comment">// Still valid within lifetime, return.
+                </span><span class="prelude-val">Ok</span>(item)
             }
-            (<span class="bool-val">false</span>, <span class="ident">CacheState::Online</span>) =&gt; {
+            (<span class="bool-val">false</span>, CacheState::Online) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;online valid, returning cached item&quot;</span>);
-                <span class="comment">// Still valid within lifetime, return.</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+                <span class="comment">// Still valid within lifetime, return.
+                </span><span class="prelude-val">Ok</span>(item)
             }
-            (<span class="bool-val">true</span>, <span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>)) =&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;offline expired, next check {:?}, refresh cache&quot;</span>, <span class="ident">time</span>);
-                <span class="comment">// Attempt to refresh the item</span>
-                <span class="comment">// Return it.</span>
-                <span class="kw">if</span> <span class="ident">SystemTime::now</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">time</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">test_connection</span>().<span class="kw">await</span> {
-                    <span class="comment">// We brought ourselves online, lets go</span>
-                    <span class="self">self</span>.<span class="ident">refresh_grouptoken</span>(<span class="kw-2">&amp;</span><span class="ident">grp_id</span>, <span class="ident">item</span>).<span class="kw">await</span>
-                } <span class="kw">else</span> {
-                    <span class="comment">// Unable to bring up connection, return cache.</span>
-                    <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
+            (<span class="bool-val">true</span>, CacheState::OfflineNextCheck(time)) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;offline expired, next check {:?}, refresh cache&quot;</span>, time);
+                <span class="comment">// Attempt to refresh the item
+                // Return it.
+                </span><span class="kw">if </span>SystemTime::now() &gt;= time &amp;&amp; <span class="self">self</span>.test_connection().<span class="kw">await </span>{
+                    <span class="comment">// We brought ourselves online, lets go
+                    </span><span class="self">self</span>.refresh_grouptoken(<span class="kw-2">&amp;</span>grp_id, item).<span class="kw">await
+                </span>} <span class="kw">else </span>{
+                    <span class="comment">// Unable to bring up connection, return cache.
+                    </span><span class="prelude-val">Ok</span>(item)
                 }
             }
-            (<span class="bool-val">true</span>, <span class="ident">CacheState::Online</span>) =&gt; {
+            (<span class="bool-val">true</span>, CacheState::Online) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;online expired, refresh cache&quot;</span>);
-                <span class="comment">// Attempt to refresh the item</span>
-                <span class="comment">// Return it.</span>
-                <span class="self">self</span>.<span class="ident">refresh_grouptoken</span>(<span class="kw-2">&amp;</span><span class="ident">grp_id</span>, <span class="ident">item</span>).<span class="kw">await</span>
-            }
+                <span class="comment">// Attempt to refresh the item
+                // Return it.
+                </span><span class="self">self</span>.refresh_grouptoken(<span class="kw-2">&amp;</span>grp_id, item).<span class="kw">await
+            </span>}
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_groupmembers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+    <span class="kw">async fn </span>get_groupmembers(<span class="kw-2">&amp;</span><span class="self">self</span>, uuid: <span class="kw-2">&amp;</span>str) -&gt; Vec&lt;String&gt; {
+        <span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
 
-        <span class="ident">dbtxn</span>
-            .<span class="ident">get_group_members</span>(<span class="ident">uuid</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Vec::new</span>())
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ut</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">token_uidattr</span>(<span class="kw-2">&amp;</span><span class="ident">ut</span>))
-            .<span class="ident">collect</span>()
+        dbtxn
+            .get_group_members(uuid)
+            .unwrap_or_else(|<span class="kw">_</span>| Vec::new())
+            .into_iter()
+            .map(|ut| <span class="self">self</span>.token_uidattr(<span class="kw-2">&amp;</span>ut))
+            .collect()
     }
 
-    <span class="comment">// Get ssh keys for an account id</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_sshkeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_usertoken</span>(<span class="ident">Id::Name</span>(<span class="ident">account_id</span>.<span class="ident">to_string</span>())).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">token</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> {
-                <span class="comment">// Only return keys if the account is valid</span>
-                <span class="kw">if</span> <span class="ident">t</span>.<span class="ident">valid</span> {
-                    <span class="ident">t</span>.<span class="ident">sshkeys</span>
-                } <span class="kw">else</span> {
-                    <span class="ident">Vec::with_capacity</span>(<span class="number">0</span>)
+    <span class="comment">// Get ssh keys for an account id
+    </span><span class="kw">pub async fn </span>get_sshkeys(<span class="kw-2">&amp;</span><span class="self">self</span>, account_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, ()&gt; {
+        <span class="kw">let </span>token = <span class="self">self</span>.get_usertoken(Id::Name(account_id.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(token
+            .map(|t| {
+                <span class="comment">// Only return keys if the account is valid
+                </span><span class="kw">if </span>t.valid {
+                    t.sshkeys
+                } <span class="kw">else </span>{
+                    Vec::with_capacity(<span class="number">0</span>)
                 }
             })
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Vec::with_capacity</span>(<span class="number">0</span>)))
+            .unwrap_or_else(|| Vec::with_capacity(<span class="number">0</span>)))
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">token_homedirectory_alias</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">UnixUserToken</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">home_alias</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">t</span> {
-            <span class="comment">// If we have an alias. use it.</span>
-            <span class="ident">HomeAttr::Uuid</span> =&gt; <span class="ident">token</span>.<span class="ident">uuid</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>(),
-            <span class="ident">HomeAttr::Spn</span> =&gt; <span class="ident">token</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>(),
-            <span class="ident">HomeAttr::Name</span> =&gt; <span class="ident">token</span>.<span class="ident">name</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>(),
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">fn </span>token_homedirectory_alias(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;</span>UnixUserToken) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="self">self</span>.home_alias.map(|t| <span class="kw">match </span>t {
+            <span class="comment">// If we have an alias. use it.
+            </span>HomeAttr::Uuid =&gt; token.uuid.as_str().to_string(),
+            HomeAttr::Spn =&gt; token.spn.as_str().to_string(),
+            HomeAttr::Name =&gt; token.name.as_str().to_string(),
         })
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">token_homedirectory_attr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">UnixUserToken</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">home_attr</span> {
-            <span class="ident">HomeAttr::Uuid</span> =&gt; <span class="ident">token</span>.<span class="ident">uuid</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>(),
-            <span class="ident">HomeAttr::Spn</span> =&gt; <span class="ident">token</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>(),
-            <span class="ident">HomeAttr::Name</span> =&gt; <span class="ident">token</span>.<span class="ident">name</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>(),
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">fn </span>token_homedirectory_attr(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;</span>UnixUserToken) -&gt; String {
+        <span class="kw">match </span><span class="self">self</span>.home_attr {
+            HomeAttr::Uuid =&gt; token.uuid.as_str().to_string(),
+            HomeAttr::Spn =&gt; token.spn.as_str().to_string(),
+            HomeAttr::Name =&gt; token.name.as_str().to_string(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">token_homedirectory</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">UnixUserToken</span>) -&gt; <span class="ident">String</span> {
-        <span class="self">self</span>.<span class="ident">token_homedirectory_alias</span>(<span class="ident">token</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">token_homedirectory_attr</span>(<span class="ident">token</span>))
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">fn </span>token_homedirectory(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;</span>UnixUserToken) -&gt; String {
+        <span class="self">self</span>.token_homedirectory_alias(token)
+            .unwrap_or_else(|| <span class="self">self</span>.token_homedirectory_attr(token))
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">token_abs_homedirectory</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">UnixUserToken</span>) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">home_prefix</span>, <span class="self">self</span>.<span class="ident">token_homedirectory</span>(<span class="ident">token</span>))
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">fn </span>token_abs_homedirectory(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;</span>UnixUserToken) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.home_prefix, <span class="self">self</span>.token_homedirectory(token))
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">token_uidattr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">UnixUserToken</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">uid_attr_map</span> {
-            <span class="ident">UidAttr::Spn</span> =&gt; <span class="ident">token</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>(),
-            <span class="ident">UidAttr::Name</span> =&gt; <span class="ident">token</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">fn </span>token_uidattr(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;</span>UnixUserToken) -&gt; String {
+        <span class="kw">match </span><span class="self">self</span>.uid_attr_map {
+            UidAttr::Spn =&gt; token.spn.as_str(),
+            UidAttr::Name =&gt; token.name.as_str(),
         }
-        .<span class="ident">to_string</span>()
+        .to_string()
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssaccounts</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NssUser</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_cached_usertokens</span>().<span class="kw">await</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> {
-            <span class="ident">l</span>.<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> <span class="ident">NssUser</span> {
-                    <span class="ident">homedir</span>: <span class="self">self</span>.<span class="ident">token_abs_homedirectory</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>),
-                    <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">token_uidattr</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>),
-                    <span class="ident">gid</span>: <span class="ident">tok</span>.<span class="ident">gidnumber</span>,
-                    <span class="ident">gecos</span>: <span class="ident">tok</span>.<span class="ident">displayname</span>,
-                    <span class="ident">shell</span>: <span class="ident">tok</span>.<span class="ident">shell</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">default_shell</span>.<span class="ident">clone</span>()),
+    <span class="kw">pub async fn </span>get_nssaccounts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NssUser&gt;, ()&gt; {
+        <span class="self">self</span>.get_cached_usertokens().<span class="kw">await</span>.map(|l| {
+            l.into_iter()
+                .map(|tok| NssUser {
+                    homedir: <span class="self">self</span>.token_abs_homedirectory(<span class="kw-2">&amp;</span>tok),
+                    name: <span class="self">self</span>.token_uidattr(<span class="kw-2">&amp;</span>tok),
+                    gid: tok.gidnumber,
+                    gecos: tok.displayname,
+                    shell: tok.shell.unwrap_or_else(|| <span class="self">self</span>.default_shell.clone()),
                 })
-                .<span class="ident">collect</span>()
+                .collect()
         })
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssaccount</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">account_id</span>: <span class="ident">Id</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NssUser</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_usertoken</span>(<span class="ident">account_id</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">token</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> <span class="ident">NssUser</span> {
-            <span class="ident">homedir</span>: <span class="self">self</span>.<span class="ident">token_abs_homedirectory</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>),
-            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">token_uidattr</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>),
-            <span class="ident">gid</span>: <span class="ident">tok</span>.<span class="ident">gidnumber</span>,
-            <span class="ident">gecos</span>: <span class="ident">tok</span>.<span class="ident">displayname</span>,
-            <span class="ident">shell</span>: <span class="ident">tok</span>.<span class="ident">shell</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">default_shell</span>.<span class="ident">clone</span>()),
+    <span class="kw">async fn </span>get_nssaccount(<span class="kw-2">&amp;</span><span class="self">self</span>, account_id: Id) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;NssUser&gt;, ()&gt; {
+        <span class="kw">let </span>token = <span class="self">self</span>.get_usertoken(account_id).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(token.map(|tok| NssUser {
+            homedir: <span class="self">self</span>.token_abs_homedirectory(<span class="kw-2">&amp;</span>tok),
+            name: <span class="self">self</span>.token_uidattr(<span class="kw-2">&amp;</span>tok),
+            gid: tok.gidnumber,
+            gecos: tok.displayname,
+            shell: tok.shell.unwrap_or_else(|| <span class="self">self</span>.default_shell.clone()),
         }))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssaccount_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NssUser</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_nssaccount</span>(<span class="ident">Id::Name</span>(<span class="ident">account_id</span>.<span class="ident">to_string</span>())).<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>get_nssaccount_name(<span class="kw-2">&amp;</span><span class="self">self</span>, account_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;NssUser&gt;, ()&gt; {
+        <span class="self">self</span>.get_nssaccount(Id::Name(account_id.to_string())).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssaccount_gid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gid</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NssUser</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_nssaccount</span>(<span class="ident">Id::Gid</span>(<span class="ident">gid</span>)).<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>get_nssaccount_gid(<span class="kw-2">&amp;</span><span class="self">self</span>, gid: u32) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;NssUser&gt;, ()&gt; {
+        <span class="self">self</span>.get_nssaccount(Id::Gid(gid)).<span class="kw">await
+    </span>}
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">token_gidattr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">UnixGroupToken</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">gid_attr_map</span> {
-            <span class="ident">UidAttr::Spn</span> =&gt; <span class="ident">token</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>(),
-            <span class="ident">UidAttr::Name</span> =&gt; <span class="ident">token</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">fn </span>token_gidattr(<span class="kw-2">&amp;</span><span class="self">self</span>, token: <span class="kw-2">&amp;</span>UnixGroupToken) -&gt; String {
+        <span class="kw">match </span><span class="self">self</span>.gid_attr_map {
+            UidAttr::Spn =&gt; token.spn.as_str(),
+            UidAttr::Name =&gt; token.name.as_str(),
         }
-        .<span class="ident">to_string</span>()
+        .to_string()
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssgroups</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NssGroup</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cached_grouptokens</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">l</span>.<span class="ident">len</span>());
-        <span class="kw">for</span> <span class="ident">tok</span> <span class="kw">in</span> <span class="ident">l</span>.<span class="ident">into_iter</span>() {
-            <span class="kw">let</span> <span class="ident">members</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_groupmembers</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>.<span class="ident">uuid</span>).<span class="kw">await</span>;
-            <span class="ident">r</span>.<span class="ident">push</span>(<span class="ident">NssGroup</span> {
-                <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">token_gidattr</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>),
-                <span class="ident">gid</span>: <span class="ident">tok</span>.<span class="ident">gidnumber</span>,
-                <span class="ident">members</span>,
+    <span class="kw">pub async fn </span>get_nssgroups(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NssGroup&gt;, ()&gt; {
+        <span class="kw">let </span>l = <span class="self">self</span>.get_cached_grouptokens().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>r: Vec&lt;<span class="kw">_</span>&gt; = Vec::with_capacity(l.len());
+        <span class="kw">for </span>tok <span class="kw">in </span>l.into_iter() {
+            <span class="kw">let </span>members = <span class="self">self</span>.get_groupmembers(<span class="kw-2">&amp;</span>tok.uuid).<span class="kw">await</span>;
+            r.push(NssGroup {
+                name: <span class="self">self</span>.token_gidattr(<span class="kw-2">&amp;</span>tok),
+                gid: tok.gidnumber,
+                members,
             })
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
+        <span class="prelude-val">Ok</span>(r)
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssgroup</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">grp_id</span>: <span class="ident">Id</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NssGroup</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_grouptoken</span>(<span class="ident">grp_id</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="comment">// Get members set.</span>
-        <span class="kw">match</span> <span class="ident">token</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">tok</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">members</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_groupmembers</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>.<span class="ident">uuid</span>).<span class="kw">await</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">NssGroup</span> {
-                    <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">token_gidattr</span>(<span class="kw-2">&amp;</span><span class="ident">tok</span>),
-                    <span class="ident">gid</span>: <span class="ident">tok</span>.<span class="ident">gidnumber</span>,
-                    <span class="ident">members</span>,
+    <span class="kw">async fn </span>get_nssgroup(<span class="kw-2">&amp;</span><span class="self">self</span>, grp_id: Id) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;NssGroup&gt;, ()&gt; {
+        <span class="kw">let </span>token = <span class="self">self</span>.get_grouptoken(grp_id).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="comment">// Get members set.
+        </span><span class="kw">match </span>token {
+            <span class="prelude-val">Some</span>(tok) =&gt; {
+                <span class="kw">let </span>members = <span class="self">self</span>.get_groupmembers(<span class="kw-2">&amp;</span>tok.uuid).<span class="kw">await</span>;
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(NssGroup {
+                    name: <span class="self">self</span>.token_gidattr(<span class="kw-2">&amp;</span>tok),
+                    gid: tok.gidnumber,
+                    members,
                 }))
             }
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssgroup_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">grp_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NssGroup</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_nssgroup</span>(<span class="ident">Id::Name</span>(<span class="ident">grp_id</span>.<span class="ident">to_string</span>())).<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>get_nssgroup_name(<span class="kw-2">&amp;</span><span class="self">self</span>, grp_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;NssGroup&gt;, ()&gt; {
+        <span class="self">self</span>.get_nssgroup(Id::Name(grp_id.to_string())).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_nssgroup_gid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gid</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NssGroup</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_nssgroup</span>(<span class="ident">Id::Gid</span>(<span class="ident">gid</span>)).<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>get_nssgroup_gid(<span class="kw-2">&amp;</span><span class="self">self</span>, gid: u32) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;NssGroup&gt;, ()&gt; {
+        <span class="self">self</span>.get_nssgroup(Id::Gid(gid)).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">online_account_authenticate</span>(
+    <span class="kw">async fn </span>online_account_authenticate(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>,
-        <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+        token: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;UnixUserToken&gt;,
+        account_id: <span class="kw-2">&amp;</span>str,
+        cred: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;, ()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;Attempt online password check&quot;</span>);
-        <span class="comment">// We are online, attempt the pw to the server.</span>
-        <span class="kw">match</span> <span class="self">self</span>
-            .<span class="ident">client</span>
-            .<span class="ident">read</span>()
-            .<span class="kw">await</span>
-            .<span class="ident">idm_account_unix_cred_verify</span>(<span class="ident">account_id</span>, <span class="ident">cred</span>)
-            .<span class="kw">await</span>
-        {
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">n_tok</span>)) =&gt; {
+        <span class="comment">// We are online, attempt the pw to the server.
+        </span><span class="kw">match </span><span class="self">self
+            </span>.client
+            .read()
+            .<span class="kw">await
+            </span>.idm_account_unix_cred_verify(account_id, cred)
+            .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw-2">mut </span>n_tok)) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;online password check success.&quot;</span>);
-                <span class="self">self</span>.<span class="ident">set_cache_usertoken</span>(<span class="kw-2">&amp;mut</span> <span class="ident">n_tok</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="self">self</span>.<span class="ident">set_cache_userpassword</span>(<span class="kw-2">&amp;</span><span class="ident">n_tok</span>.<span class="ident">uuid</span>, <span class="ident">cred</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="self">self</span>.set_cache_usertoken(<span class="kw-2">&amp;mut </span>n_tok).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="self">self</span>.set_cache_userpassword(<span class="kw-2">&amp;</span>n_tok.uuid, cred).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
             }
             <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;incorrect password&quot;</span>);
-                <span class="comment">// PW failed the check.</span>
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>))
+                <span class="comment">// PW failed the check.
+                </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>))
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">match</span> <span class="ident">e</span> {
-                    <span class="ident">ClientError::Transport</span>(<span class="ident">er</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;transport error, moving to offline -&gt; {:?}&quot;</span>, <span class="ident">er</span>);
-                        <span class="comment">// Something went wrong, mark offline.</span>
-                        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">add</span>(<span class="ident">Duration::from_secs</span>(<span class="number">15</span>));
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>))
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">match </span>e {
+                    ClientError::Transport(er) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;transport error, moving to offline -&gt; {:?}&quot;</span>, er);
+                        <span class="comment">// Something went wrong, mark offline.
+                        </span><span class="kw">let </span>time = SystemTime::now().add(Duration::from_secs(<span class="number">15</span>));
+                        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(time))
                             .<span class="kw">await</span>;
-                        <span class="kw">match</span> <span class="ident">token</span>.<span class="ident">as_ref</span>() {
-                            <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; <span class="self">self</span>.<span class="ident">check_cache_userpassword</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>.<span class="ident">uuid</span>, <span class="ident">cred</span>).<span class="kw">await</span>.<span class="ident">map</span>(<span class="prelude-val">Some</span>),
-                            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+                        <span class="kw">match </span>token.as_ref() {
+                            <span class="prelude-val">Some</span>(t) =&gt; <span class="self">self</span>.check_cache_userpassword(<span class="kw-2">&amp;</span>t.uuid, cred).<span class="kw">await</span>.map(<span class="prelude-val">Some</span>),
+                            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
                         }
                     }
-                    <span class="ident">ClientError::Http</span>(<span class="ident">StatusCode::UNAUTHORIZED</span>, <span class="ident">reason</span>, <span class="ident">opid</span>) =&gt; {
-                        <span class="kw">match</span> <span class="ident">reason</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NotAuthenticated</span>) =&gt;
-                            <span class="macro">warn!</span>(<span class="string">&quot;session not authenticated - attempting reauthentication - eventid {}&quot;</span>, <span class="ident">opid</span>),
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::SessionExpired</span>) =&gt;
-                            <span class="macro">warn!</span>(<span class="string">&quot;session expired - attempting reauthentication - eventid {}&quot;</span>, <span class="ident">opid</span>),
-                        <span class="ident">e</span> =&gt;
+                    ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid) =&gt; {
+                        <span class="kw">match </span>reason {
+                        <span class="prelude-val">Some</span>(OperationError::NotAuthenticated) =&gt;
+                            <span class="macro">warn!</span>(<span class="string">&quot;session not authenticated - attempting reauthentication - eventid {}&quot;</span>, opid),
+                        <span class="prelude-val">Some</span>(OperationError::SessionExpired) =&gt;
+                            <span class="macro">warn!</span>(<span class="string">&quot;session expired - attempting reauthentication - eventid {}&quot;</span>, opid),
+                        e =&gt;
                         <span class="macro">error!</span>(
-                            <span class="string">&quot;authentication error {:?}, moving to offline - eventid {}&quot;</span>, <span class="ident">e</span>, <span class="ident">opid</span>
+                            <span class="string">&quot;authentication error {:?}, moving to offline - eventid {}&quot;</span>, e, opid
                         ),
                     };
-                        <span class="comment">// Something went wrong, mark offline to force a re-auth ASAP.</span>
-                        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">sub</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1</span>));
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>))
+                        <span class="comment">// Something went wrong, mark offline to force a re-auth ASAP.
+                        </span><span class="kw">let </span>time = SystemTime::now().sub(Duration::from_secs(<span class="number">1</span>));
+                        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(time))
                             .<span class="kw">await</span>;
-                        <span class="kw">match</span> <span class="ident">token</span>.<span class="ident">as_ref</span>() {
-                            <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; <span class="self">self</span>.<span class="ident">check_cache_userpassword</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>.<span class="ident">uuid</span>, <span class="ident">cred</span>).<span class="kw">await</span>.<span class="ident">map</span>(<span class="prelude-val">Some</span>),
-                            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+                        <span class="kw">match </span>token.as_ref() {
+                            <span class="prelude-val">Some</span>(t) =&gt; <span class="self">self</span>.check_cache_userpassword(<span class="kw-2">&amp;</span>t.uuid, cred).<span class="kw">await</span>.map(<span class="prelude-val">Some</span>),
+                            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
                         }
                     }
-                    <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::BAD_REQUEST</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
-                        <span class="ident">opid</span>,
+                    ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        <span class="prelude-val">Some</span>(OperationError::NoMatchingEntries),
+                        opid,
                     )
-                    <span class="op">|</span> <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::NOT_FOUND</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
-                        <span class="ident">opid</span>,
+                    | ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        <span class="prelude-val">Some</span>(OperationError::NoMatchingEntries),
+                        opid,
                     )
-                    <span class="op">|</span> <span class="ident">ClientError::Http</span>(
-                        <span class="ident">StatusCode::BAD_REQUEST</span>,
-                        <span class="prelude-val">Some</span>(<span class="ident">OperationError::InvalidAccountState</span>(<span class="kw">_</span>)),
-                        <span class="ident">opid</span>,
+                    | ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        <span class="prelude-val">Some</span>(OperationError::InvalidAccountState(<span class="kw">_</span>)),
+                        opid,
                     ) =&gt; {
                         <span class="macro">error!</span>(
                             <span class="string">&quot;unknown account or is not a valid posix account - eventid {}&quot;</span>,
-                            <span class="ident">opid</span>
+                            opid
                         );
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
                     }
-                    <span class="ident">er</span> =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;client error -&gt; {:?}&quot;</span>, <span class="ident">er</span>);
-                        <span class="comment">// Some other unknown processing error?</span>
-                        <span class="prelude-val">Err</span>(())
+                    er =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;client error -&gt; {:?}&quot;</span>, er);
+                        <span class="comment">// Some other unknown processing error?
+                        </span><span class="prelude-val">Err</span>(())
                     }
                 }
             }
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">offline_account_authenticate</span>(
+    <span class="kw">async fn </span>offline_account_authenticate(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>,
-        <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+        token: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;UnixUserToken&gt;,
+        cred: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;, ()&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;Attempt offline password check&quot;</span>);
-        <span class="kw">match</span> <span class="ident">token</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">t</span>.<span class="ident">valid</span> {
-                    <span class="self">self</span>.<span class="ident">check_cache_userpassword</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>.<span class="ident">uuid</span>, <span class="ident">cred</span>).<span class="kw">await</span>.<span class="ident">map</span>(<span class="prelude-val">Some</span>)
-                } <span class="kw">else</span> {
+        <span class="kw">match </span>token.as_ref() {
+            <span class="prelude-val">Some</span>(t) =&gt; {
+                <span class="kw">if </span>t.valid {
+                    <span class="self">self</span>.check_cache_userpassword(<span class="kw-2">&amp;</span>t.uuid, cred).<span class="kw">await</span>.map(<span class="prelude-val">Some</span>)
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>))
                 }
             }
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         }
         <span class="comment">/*
         token
             .as_ref()
             .map(async |t| self.check_cache_userpassword(&amp;t.uuid, cred).await)
             .transpose()
-        */</span>
-    }
+        */
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">pam_account_allowed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_usertoken</span>(<span class="ident">Id::Name</span>(<span class="ident">account_id</span>.<span class="ident">to_string</span>())).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">pub async fn </span>pam_account_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, account_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;, ()&gt; {
+        <span class="kw">let </span>token = <span class="self">self</span>.get_usertoken(Id::Name(account_id.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pam_allow_groups</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
-            <span class="comment">// can&#39;t allow anything if the group list is zero...</span>
-            <span class="macro">eprintln!</span>(<span class="string">&quot;Cannot authenticate users, no allowed groups in configuration!&quot;</span>);
+        <span class="kw">if </span><span class="self">self</span>.pam_allow_groups.len() == <span class="number">0 </span>{
+            <span class="comment">// can&#39;t allow anything if the group list is zero...
+            </span><span class="macro">eprintln!</span>(<span class="string">&quot;Cannot authenticate users, no allowed groups in configuration!&quot;</span>);
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>))
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">token</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">user_set</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">tok</span>
-                    .<span class="ident">groups</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">g</span>.<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">g</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(), <span class="ident">g</span>.<span class="ident">uuid</span>.<span class="ident">clone</span>()])
-                    .<span class="ident">flatten</span>()
-                    .<span class="ident">collect</span>();
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(token.map(|tok| {
+                <span class="kw">let </span>user_set: BTreeSet&lt;<span class="kw">_</span>&gt; = tok
+                    .groups
+                    .iter()
+                    .map(|g| <span class="macro">vec!</span>[g.name.clone(), g.spn.clone(), g.uuid.clone()])
+                    .flatten()
+                    .collect();
 
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;Checking if user is in allowed groups ({:?}) -&gt; {:?}&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">pam_allow_groups</span>, <span class="ident">user_set</span>,
+                    <span class="self">self</span>.pam_allow_groups, user_set,
                 );
-                <span class="kw">let</span> <span class="ident">intersection_count</span> <span class="op">=</span> <span class="ident">user_set</span>.<span class="ident">intersection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pam_allow_groups</span>).<span class="ident">count</span>();
-                <span class="macro">debug!</span>(<span class="string">&quot;Number of intersecting groups: {}&quot;</span>, <span class="ident">intersection_count</span>);
-                <span class="macro">debug!</span>(<span class="string">&quot;User has valid token: {}&quot;</span>, <span class="ident">tok</span>.<span class="ident">valid</span>);
+                <span class="kw">let </span>intersection_count = user_set.intersection(<span class="kw-2">&amp;</span><span class="self">self</span>.pam_allow_groups).count();
+                <span class="macro">debug!</span>(<span class="string">&quot;Number of intersecting groups: {}&quot;</span>, intersection_count);
+                <span class="macro">debug!</span>(<span class="string">&quot;User has valid token: {}&quot;</span>, tok.valid);
 
-                <span class="ident">intersection_count</span> <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">tok</span>.<span class="ident">valid</span>
+                intersection_count &gt; <span class="number">0 </span>&amp;&amp; tok.valid
             }))
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">pam_account_authenticate</span>(
+    <span class="kw">pub async fn </span>pam_account_authenticate(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cachestate</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> (<span class="ident">_expired</span>, <span class="ident">token</span>) <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">get_cached_usertoken</span>(<span class="kw-2">&amp;</span><span class="ident">Id::Name</span>(<span class="ident">account_id</span>.<span class="ident">to_string</span>()))
+        account_id: <span class="kw-2">&amp;</span>str,
+        cred: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;, ()&gt; {
+        <span class="kw">let </span>state = <span class="self">self</span>.get_cachestate().<span class="kw">await</span>;
+        <span class="kw">let </span>(_expired, token) = <span class="self">self
+            </span>.get_cached_usertoken(<span class="kw-2">&amp;</span>Id::Name(account_id.to_string()))
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">CacheState::Online</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">online_account_authenticate</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>, <span class="ident">account_id</span>, <span class="ident">cred</span>)
-                    .<span class="kw">await</span>
+        <span class="kw">match </span>state {
+            CacheState::Online =&gt; {
+                <span class="self">self</span>.online_account_authenticate(<span class="kw-2">&amp;</span>token, account_id, cred)
+                    .<span class="kw">await
+            </span>}
+            CacheState::OfflineNextCheck(_time) =&gt; {
+                <span class="comment">// Always attempt to go online to attempt the authentication.
+                </span><span class="kw">if </span><span class="self">self</span>.test_connection().<span class="kw">await </span>{
+                    <span class="comment">// Brought ourselves online, lets check.
+                    </span><span class="self">self</span>.online_account_authenticate(<span class="kw-2">&amp;</span>token, account_id, cred)
+                        .<span class="kw">await
+                </span>} <span class="kw">else </span>{
+                    <span class="comment">// We are offline, check from the cache if possible.
+                    </span><span class="self">self</span>.offline_account_authenticate(<span class="kw-2">&amp;</span>token, cred).<span class="kw">await
+                </span>}
             }
-            <span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">_time</span>) =&gt; {
-                <span class="comment">// Always attempt to go online to attempt the authentication.</span>
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">test_connection</span>().<span class="kw">await</span> {
-                    <span class="comment">// Brought ourselves online, lets check.</span>
-                    <span class="self">self</span>.<span class="ident">online_account_authenticate</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>, <span class="ident">account_id</span>, <span class="ident">cred</span>)
-                        .<span class="kw">await</span>
-                } <span class="kw">else</span> {
-                    <span class="comment">// We are offline, check from the cache if possible.</span>
-                    <span class="self">self</span>.<span class="ident">offline_account_authenticate</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>, <span class="ident">cred</span>).<span class="kw">await</span>
-                }
-            }
-            <span class="kw">_</span> =&gt; {
-                <span class="comment">// We are offline, check from the cache if possible.</span>
-                <span class="self">self</span>.<span class="ident">offline_account_authenticate</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>, <span class="ident">cred</span>).<span class="kw">await</span>
-            }
+            <span class="kw">_ </span>=&gt; {
+                <span class="comment">// We are offline, check from the cache if possible.
+                </span><span class="self">self</span>.offline_account_authenticate(<span class="kw-2">&amp;</span>token, cred).<span class="kw">await
+            </span>}
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">pam_account_beginsession</span>(
+    <span class="kw">pub async fn </span>pam_account_beginsession(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">account_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HomeDirectoryInfo</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_usertoken</span>(<span class="ident">Id::Name</span>(<span class="ident">account_id</span>.<span class="ident">to_string</span>())).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">token</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> <span class="ident">HomeDirectoryInfo</span> {
-            <span class="ident">gid</span>: <span class="ident">tok</span>.<span class="ident">gidnumber</span>,
-            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">token_homedirectory_attr</span>(<span class="ident">tok</span>),
-            <span class="ident">aliases</span>: <span class="self">self</span>
-                .<span class="ident">token_homedirectory_alias</span>(<span class="ident">tok</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">s</span>])
-                .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>),
+        account_id: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;HomeDirectoryInfo&gt;, ()&gt; {
+        <span class="kw">let </span>token = <span class="self">self</span>.get_usertoken(Id::Name(account_id.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(token.as_ref().map(|tok| HomeDirectoryInfo {
+            gid: tok.gidnumber,
+            name: <span class="self">self</span>.token_homedirectory_attr(tok),
+            aliases: <span class="self">self
+                </span>.token_homedirectory_alias(tok)
+                .map(|s| <span class="macro">vec!</span>[s])
+                .unwrap_or_else(Vec::new),
         }))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cachestate</span>().<span class="kw">await</span>;
-        <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">CacheState::Offline</span> =&gt; {
+    <span class="kw">pub async fn </span>test_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">let </span>state = <span class="self">self</span>.get_cachestate().<span class="kw">await</span>;
+        <span class="kw">match </span>state {
+            CacheState::Offline =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;Offline -&gt; no change&quot;</span>);
-                <span class="bool-val">false</span>
-            }
-            <span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">_time</span>) =&gt; {
-                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">client</span>.<span class="ident">write</span>().<span class="kw">await</span>.<span class="ident">auth_anonymous</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">_uat</span>) =&gt; {
+                <span class="bool-val">false
+            </span>}
+            CacheState::OfflineNextCheck(_time) =&gt; {
+                <span class="kw">match </span><span class="self">self</span>.client.write().<span class="kw">await</span>.auth_anonymous().<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(_uat) =&gt; {
                         <span class="macro">debug!</span>(<span class="string">&quot;OfflineNextCheck -&gt; authenticated&quot;</span>);
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::Online</span>).<span class="kw">await</span>;
-                        <span class="bool-val">true</span>
-                    }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">debug!</span>(<span class="string">&quot;OfflineNextCheck -&gt; disconnected, staying offline. {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>().<span class="ident">add</span>(<span class="ident">Duration::from_secs</span>(<span class="number">15</span>));
-                        <span class="self">self</span>.<span class="ident">set_cachestate</span>(<span class="ident">CacheState::OfflineNextCheck</span>(<span class="ident">time</span>))
+                        <span class="self">self</span>.set_cachestate(CacheState::Online).<span class="kw">await</span>;
+                        <span class="bool-val">true
+                    </span>}
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">debug!</span>(<span class="string">&quot;OfflineNextCheck -&gt; disconnected, staying offline. {:?}&quot;</span>, e);
+                        <span class="kw">let </span>time = SystemTime::now().add(Duration::from_secs(<span class="number">15</span>));
+                        <span class="self">self</span>.set_cachestate(CacheState::OfflineNextCheck(time))
                             .<span class="kw">await</span>;
-                        <span class="bool-val">false</span>
-                    }
+                        <span class="bool-val">false
+                    </span>}
                 }
             }
-            <span class="ident">CacheState::Online</span> =&gt; {
+            CacheState::Online =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;Online, no change&quot;</span>);
-                <span class="bool-val">true</span>
-            }
+                <span class="bool-val">true
+            </span>}
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unix_common" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unix_common" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

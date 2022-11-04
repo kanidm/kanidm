@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/login.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>login.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/login.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>login.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -975,938 +975,938 @@
 <span id="975">975</span>
 <span id="976">976</span>
 <span id="977">977</span>
-</pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
-<span class="kw">use</span> <span class="ident">gloo::console</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AuthAllowed</span>, <span class="ident">AuthCredential</span>, <span class="ident">AuthIssueSession</span>, <span class="ident">AuthMech</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span>,
-    <span class="ident">AuthStep</span>,
+</pre><pre class="rust"><code><span class="comment">// use anyhow::Error;
+</span><span class="kw">use </span>gloo::console;
+<span class="kw">use </span>kanidm_proto::v1::{
+    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
+    AuthStep,
 };
-<span class="kw">use</span> <span class="ident">kanidm_proto::webauthn::PublicKeyCredential</span>;
-<span class="kw">use</span> <span class="ident">wasm_bindgen::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">wasm_bindgen::JsCast</span>;
-<span class="kw">use</span> <span class="ident">wasm_bindgen_futures</span>::{<span class="ident">spawn_local</span>, <span class="ident">JsFuture</span>};
-<span class="kw">use</span> <span class="ident">web_sys</span>::{
-    <span class="ident">CredentialRequestOptions</span>, <span class="ident">Request</span>, <span class="ident">RequestCredentials</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>,
+<span class="kw">use </span>kanidm_proto::webauthn::PublicKeyCredential;
+<span class="kw">use </span>wasm_bindgen::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>wasm_bindgen::JsCast;
+<span class="kw">use </span>wasm_bindgen_futures::{spawn_local, JsFuture};
+<span class="kw">use </span>web_sys::{
+    CredentialRequestOptions, Request, RequestCredentials, RequestInit, RequestMode, Response,
 };
-<span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">yew::virtual_dom::VNode</span>;
-<span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span>yew::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>yew::virtual_dom::VNode;
+<span class="kw">use </span>yew_router::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">CLASS_BUTTON_DARK</span>, <span class="ident">CLASS_DIV_LOGIN_BUTTON</span>, <span class="ident">CLASS_DIV_LOGIN_FIELD</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::FetchError</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">models</span>, <span class="ident">utils</span>};
+<span class="kw">use </span><span class="kw">crate</span>::constants::{CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
+<span class="kw">use </span><span class="kw">crate</span>::error::FetchError;
+<span class="kw">use crate</span>::{models, utils};
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoginApp</span> {
-    <span class="ident">inputvalue</span>: <span class="ident">String</span>,
-    <span class="ident">session_id</span>: <span class="ident">String</span>,
-    <span class="ident">state</span>: <span class="ident">LoginState</span>,
+<span class="kw">pub struct </span>LoginApp {
+    inputvalue: String,
+    session_id: String,
+    state: LoginState,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>)]</span>
-<span class="kw">enum</span> <span class="ident">TotpState</span> {
-    <span class="ident">Enabled</span>,
-    <span class="ident">Disabled</span>,
-    <span class="ident">Invalid</span>,
+<span class="attribute">#[derive(PartialEq)]
+</span><span class="kw">enum </span>TotpState {
+    Enabled,
+    Disabled,
+    Invalid,
 }
 
-<span class="kw">enum</span> <span class="ident">LoginState</span> {
-    <span class="ident">Init</span>(<span class="ident">bool</span>),
-    <span class="comment">// Select between different cred types, either password (and MFA) or Passkey</span>
-    <span class="ident">Select</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>),
-    <span class="comment">// The choices of authentication mechanism.</span>
-    <span class="ident">Continue</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>),
-    <span class="comment">// The different methods</span>
-    <span class="ident">Password</span>(<span class="ident">bool</span>),
-    <span class="ident">BackupCode</span>(<span class="ident">bool</span>),
-    <span class="ident">Totp</span>(<span class="ident">TotpState</span>),
-    <span class="ident">Passkey</span>(<span class="ident">CredentialRequestOptions</span>),
-    <span class="ident">SecurityKey</span>(<span class="ident">CredentialRequestOptions</span>),
-    <span class="comment">// Error, state handling.</span>
-    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
-    <span class="ident">UnknownUser</span>,
-    <span class="ident">Denied</span>(<span class="ident">String</span>),
-    <span class="ident">Authenticated</span>,
+<span class="kw">enum </span>LoginState {
+    Init(bool),
+    <span class="comment">// Select between different cred types, either password (and MFA) or Passkey
+    </span>Select(Vec&lt;AuthMech&gt;),
+    <span class="comment">// The choices of authentication mechanism.
+    </span>Continue(Vec&lt;AuthAllowed&gt;),
+    <span class="comment">// The different methods
+    </span>Password(bool),
+    BackupCode(bool),
+    Totp(TotpState),
+    Passkey(CredentialRequestOptions),
+    SecurityKey(CredentialRequestOptions),
+    <span class="comment">// Error, state handling.
+    </span>Error { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
+    UnknownUser,
+    Denied(String),
+    Authenticated,
 }
 
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LoginAppMsg</span> {
-    <span class="ident">Input</span>(<span class="ident">String</span>),
-    <span class="ident">Restart</span>,
-    <span class="ident">Begin</span>,
-    <span class="ident">PasswordSubmit</span>,
-    <span class="ident">BackupCodeSubmit</span>,
-    <span class="ident">TotpSubmit</span>,
-    <span class="ident">PasskeySubmit</span>(<span class="ident">PublicKeyCredential</span>),
-    <span class="ident">SecurityKeySubmit</span>(<span class="ident">PublicKeyCredential</span>),
-    <span class="ident">Start</span>(<span class="ident">String</span>, <span class="ident">AuthResponse</span>),
-    <span class="ident">Next</span>(<span class="ident">AuthResponse</span>),
-    <span class="ident">Continue</span>(<span class="ident">usize</span>),
-    <span class="ident">Select</span>(<span class="ident">usize</span>),
-    <span class="comment">// DoNothing,</span>
-    <span class="ident">UnknownUser</span>,
-    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+<span class="kw">pub enum </span>LoginAppMsg {
+    Input(String),
+    Restart,
+    Begin,
+    PasswordSubmit,
+    BackupCodeSubmit,
+    TotpSubmit,
+    PasskeySubmit(PublicKeyCredential),
+    SecurityKeySubmit(PublicKeyCredential),
+    Start(String, AuthResponse),
+    Next(AuthResponse),
+    Continue(usize),
+    Select(usize),
+    <span class="comment">// DoNothing,
+    </span>UnknownUser,
+    Error { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">FetchError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LoginAppMsg</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">fe</span>: <span class="ident">FetchError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">LoginAppMsg::Error</span> {
-            <span class="ident">emsg</span>: <span class="ident">fe</span>.<span class="ident">as_string</span>(),
-            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>From&lt;FetchError&gt; <span class="kw">for </span>LoginAppMsg {
+    <span class="kw">fn </span>from(fe: FetchError) -&gt; <span class="self">Self </span>{
+        LoginAppMsg::Error {
+            emsg: fe.as_string(),
+            kopid: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">LoginApp</span> {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_init</span>(<span class="ident">username</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LoginAppMsg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-            <span class="ident">step</span>: <span class="ident">AuthStep::Init2</span> {
-                <span class="ident">username</span>,
-                <span class="ident">issue</span>: <span class="ident">AuthIssueSession::Cookie</span>,
+<span class="kw">impl </span>LoginApp {
+    <span class="kw">async fn </span>auth_init(username: String) -&gt; <span class="prelude-ty">Result</span>&lt;LoginAppMsg, FetchError&gt; {
+        <span class="kw">let </span>authreq = AuthRequest {
+            step: AuthStep::Init2 {
+                username,
+                issue: AuthIssueSession::Cookie,
             },
         };
-        <span class="kw">let</span> <span class="ident">authreq_jsvalue</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">authreq</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">JsValue::from</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>))
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;Failed to serialise authreq&quot;</span>);
+        <span class="kw">let </span>authreq_jsvalue = serde_json::to_string(<span class="kw-2">&amp;</span>authreq)
+            .map(|s| JsValue::from(<span class="kw-2">&amp;</span>s))
+            .expect_throw(<span class="string">&quot;Failed to serialise authreq&quot;</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
-        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;POST&quot;</span>);
-        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
-        <span class="ident">opts</span>.<span class="ident">credentials</span>(<span class="ident">RequestCredentials::SameOrigin</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>opts = RequestInit::new();
+        opts.method(<span class="string">&quot;POST&quot;</span>);
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
-        <span class="ident">opts</span>.<span class="ident">body</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">authreq_jsvalue</span>));
+        opts.body(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>authreq_jsvalue));
 
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/auth&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        <span class="kw">let </span>request = Request::new_with_str_and_init(<span class="string">&quot;/v1/auth&quot;</span>, <span class="kw-2">&amp;</span>opts)<span class="question-mark">?</span>;
+        request
+            .headers()
+            .set(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .expect_throw(<span class="string">&quot;failed to set header&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
-        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>
-            .<span class="ident">dyn_into</span>()
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type - auth_init::Response&quot;</span>);
-        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
-        <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
+        <span class="kw">let </span>window = utils::window();
+        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>resp: Response = resp_value
+            .dyn_into()
+            .expect_throw(<span class="string">&quot;Invalid response type - auth_init::Response&quot;</span>);
+        <span class="kw">let </span>status = resp.status();
+        <span class="kw">let </span>headers = resp.headers();
 
-        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
-            <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="ident">headers</span>
-                .<span class="ident">get</span>(<span class="string">&quot;x-kanidm-auth-session-id&quot;</span>)
-                .<span class="ident">ok</span>()
-                .<span class="ident">flatten</span>()
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
-            <span class="kw">let</span> <span class="ident">jsval</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">json</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">AuthResponse</span> <span class="op">=</span> <span class="ident">serde_wasm_bindgen::from_value</span>(<span class="ident">jsval</span>)
-                .<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type - auth_init::AuthResponse&quot;</span>);
-            <span class="prelude-val">Ok</span>(<span class="ident">LoginAppMsg::Start</span>(<span class="ident">session_id</span>, <span class="ident">state</span>))
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">404</span> {
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
-            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">if </span>status == <span class="number">200 </span>{
+            <span class="kw">let </span>session_id = headers
+                .get(<span class="string">&quot;x-kanidm-auth-session-id&quot;</span>)
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="kw">let </span>jsval = JsFuture::from(resp.json()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+                .expect_throw(<span class="string">&quot;Invalid response type - auth_init::AuthResponse&quot;</span>);
+            <span class="prelude-val">Ok</span>(LoginAppMsg::Start(session_id, state))
+        } <span class="kw">else if </span>status == <span class="number">404 </span>{
+            <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
+            <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="macro">console::error!</span>(<span class="macro">format!</span>(
                 <span class="string">&quot;User not found: {:?}. Operation ID: {:?}&quot;</span>,
-                <span class="ident">text</span>, <span class="ident">kopid</span>
+                text, kopid
             ));
-            <span class="prelude-val">Ok</span>(<span class="ident">LoginAppMsg::UnknownUser</span>)
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
-            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
-            <span class="prelude-val">Ok</span>(<span class="ident">LoginAppMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+            <span class="prelude-val">Ok</span>(LoginAppMsg::UnknownUser)
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
+            <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="prelude-val">Ok</span>(LoginAppMsg::Error { emsg, kopid })
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step</span>(
-        <span class="ident">authreq</span>: <span class="ident">AuthRequest</span>,
-        <span class="ident">session_id</span>: <span class="ident">String</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LoginAppMsg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">authreq_jsvalue</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">authreq</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">JsValue::from</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>))
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;Failed to serialise authreq&quot;</span>);
+    <span class="kw">async fn </span>auth_step(
+        authreq: AuthRequest,
+        session_id: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LoginAppMsg, FetchError&gt; {
+        <span class="kw">let </span>authreq_jsvalue = serde_json::to_string(<span class="kw-2">&amp;</span>authreq)
+            .map(|s| JsValue::from(<span class="kw-2">&amp;</span>s))
+            .expect_throw(<span class="string">&quot;Failed to serialise authreq&quot;</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
-        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;POST&quot;</span>);
-        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
-        <span class="ident">opts</span>.<span class="ident">credentials</span>(<span class="ident">RequestCredentials::SameOrigin</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>opts = RequestInit::new();
+        opts.method(<span class="string">&quot;POST&quot;</span>);
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
-        <span class="ident">opts</span>.<span class="ident">body</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">authreq_jsvalue</span>));
+        opts.body(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>authreq_jsvalue));
 
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/auth&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set content-type header&quot;</span>);
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;x-kanidm-auth-session-id&quot;</span>, <span class="ident">session_id</span>.<span class="ident">as_str</span>())
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set x-kanidm-auth-session-id header&quot;</span>);
+        <span class="kw">let </span>request = Request::new_with_str_and_init(<span class="string">&quot;/v1/auth&quot;</span>, <span class="kw-2">&amp;</span>opts)<span class="question-mark">?</span>;
+        request
+            .headers()
+            .set(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .expect_throw(<span class="string">&quot;failed to set content-type header&quot;</span>);
+        request
+            .headers()
+            .set(<span class="string">&quot;x-kanidm-auth-session-id&quot;</span>, session_id.as_str())
+            .expect_throw(<span class="string">&quot;failed to set x-kanidm-auth-session-id header&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
-        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>
-            .<span class="ident">dyn_into</span>()
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type - auth_step::Response&quot;</span>);
-        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
-        <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
+        <span class="kw">let </span>window = utils::window();
+        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>resp: Response = resp_value
+            .dyn_into()
+            .expect_throw(<span class="string">&quot;Invalid response type - auth_step::Response&quot;</span>);
+        <span class="kw">let </span>status = resp.status();
+        <span class="kw">let </span>headers = resp.headers();
 
-        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
-            <span class="kw">let</span> <span class="ident">jsval</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">json</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">AuthResponse</span> <span class="op">=</span> <span class="ident">serde_wasm_bindgen::from_value</span>(<span class="ident">jsval</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">console::error!</span>(<span class="macro">format!</span>(<span class="string">&quot;auth_step::AuthResponse: {:?}&quot;</span>, <span class="ident">e</span>));
-                    <span class="ident">e</span>
+        <span class="kw">if </span>status == <span class="number">200 </span>{
+            <span class="kw">let </span>jsval = JsFuture::from(resp.json()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+                .map_err(|e| {
+                    <span class="macro">console::error!</span>(<span class="macro">format!</span>(<span class="string">&quot;auth_step::AuthResponse: {:?}&quot;</span>, e));
+                    e
                 })
-                .<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type - auth_step::AuthResponse&quot;</span>);
-            <span class="prelude-val">Ok</span>(<span class="ident">LoginAppMsg::Next</span>(<span class="ident">state</span>))
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
-            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>()
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;Unhandled error, please report this along with the operation ID below to your administrator. 😔&quot;</span>.<span class="ident">to_string</span>());
-            <span class="prelude-val">Ok</span>(<span class="ident">LoginAppMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+                .expect_throw(<span class="string">&quot;Invalid response type - auth_step::AuthResponse&quot;</span>);
+            <span class="prelude-val">Ok</span>(LoginAppMsg::Next(state))
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
+            <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>emsg = text.as_string()
+                .unwrap_or_else(|| <span class="string">&quot;Unhandled error, please report this along with the operation ID below to your administrator. 😔&quot;</span>.to_string());
+            <span class="prelude-val">Ok</span>(LoginAppMsg::Error { emsg, kopid })
         }
     }
 
-    <span class="doccomment">/// Renders the &quot;Start again&quot; button</span>
-    <span class="kw">fn</span> <span class="ident">button_start_again</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">VNode</span> {
-        <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;col-md-auto text-center&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>} <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Restart</span>) } <span class="op">&gt;</span>{<span class="string">&quot; Start Again &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+    <span class="doccomment">/// Renders the &quot;Start again&quot; button
+    </span><span class="kw">fn </span>button_start_again(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; VNode {
+        <span class="macro">html! </span>{
+            &lt;div class=<span class="string">&quot;col-md-auto text-center&quot;</span>&gt;
+                &lt;button <span class="kw">type</span>=<span class="string">&quot;button&quot; </span>class={CLASS_BUTTON_DARK} onclick={ ctx.link().callback(|<span class="kw">_</span>| LoginAppMsg::Restart) } &gt;{<span class="string">&quot; Start Again &quot;</span>}&lt;/button&gt;
+            &lt;/div&gt;
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">render_auth_allowed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">idx</span>: <span class="ident">usize</span>, <span class="ident">allow</span>: <span class="kw-2">&amp;</span><span class="ident">AuthAllowed</span>) -&gt; <span class="ident">Html</span> {
-        <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center mb-2&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">button</span>
-                    <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span>
-                    <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}
-                    <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Continue</span>(<span class="ident">idx</span>)) }
-                <span class="op">&gt;</span>{ <span class="ident">allow</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+    <span class="kw">fn </span>render_auth_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, idx: usize, allow: <span class="kw-2">&amp;</span>AuthAllowed) -&gt; Html {
+        <span class="macro">html! </span>{
+            &lt;li class=<span class="string">&quot;text-center mb-2&quot;</span>&gt;
+                &lt;button
+                    <span class="kw">type</span>=<span class="string">&quot;button&quot;
+                    </span>class={CLASS_BUTTON_DARK}
+                    onclick={ ctx.link().callback(<span class="kw">move </span>|<span class="kw">_</span>| LoginAppMsg::Continue(idx)) }
+                &gt;{ allow.to_string() }&lt;/button&gt;
+            &lt;/li&gt;
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">render_mech_select</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">idx</span>: <span class="ident">usize</span>, <span class="ident">allow</span>: <span class="kw-2">&amp;</span><span class="ident">AuthMech</span>) -&gt; <span class="ident">Html</span> {
-        <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center mb-2&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">button</span>
-                    <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span>
-                    <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}
-                    <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LoginAppMsg::Select</span>(<span class="ident">idx</span>)) }
-                <span class="op">&gt;</span>{ <span class="ident">allow</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+    <span class="kw">fn </span>render_mech_select(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, idx: usize, allow: <span class="kw-2">&amp;</span>AuthMech) -&gt; Html {
+        <span class="macro">html! </span>{
+            &lt;li class=<span class="string">&quot;text-center mb-2&quot;</span>&gt;
+                &lt;button
+                    <span class="kw">type</span>=<span class="string">&quot;button&quot;
+                    </span>class={CLASS_BUTTON_DARK}
+                    onclick={ ctx.link().callback(<span class="kw">move </span>|<span class="kw">_</span>| LoginAppMsg::Select(idx)) }
+                &gt;{ allow.to_string() }&lt;/button&gt;
+            &lt;/li&gt;
         }
     }
 
-    <span class="doccomment">/// shows an error-alert in a bootstrap alert container</span>
-    <span class="kw">fn</span> <span class="ident">do_alert_error</span>(
+    <span class="doccomment">/// shows an error-alert in a bootstrap alert container
+    </span><span class="kw">fn </span>do_alert_error(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">alert_title</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">alert_message</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">VNode</span> {
-        <span class="macro">html!</span> {
-        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;row justify-content-md-center&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="ident">strong</span><span class="op">&gt;</span>{ <span class="ident">alert_title</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">strong</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span> <span class="ident">alert_message</span> {
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="ident">value</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+        alert_title: <span class="kw-2">&amp;</span>str,
+        alert_message: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+        ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;,
+    ) -&gt; VNode {
+        <span class="macro">html! </span>{
+        &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+            &lt;div class=<span class="string">&quot;row justify-content-md-center&quot;</span>&gt;
+                &lt;div class=<span class="string">&quot;alert alert-danger&quot; </span>role=<span class="string">&quot;alert&quot;</span>&gt;
+                    &lt;p&gt;&lt;strong&gt;{ alert_title }&lt;/strong&gt;&lt;/p&gt;
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = alert_message {
+                        &lt;p&gt;{ value }&lt;/p&gt;
                     }
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                { <span class="self">self</span>.<span class="ident">button_start_again</span>(<span class="ident">ctx</span>) }
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                &lt;/div&gt;
+                { <span class="self">self</span>.button_start_again(ctx) }
+            &lt;/div&gt;
+        &lt;/div&gt;
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">view_state</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">let</span> <span class="ident">inputvalue</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputvalue</span>.<span class="ident">clone</span>();
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">LoginState::Init</span>(<span class="ident">enable</span>) =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;username&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Username&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">form</span>
-                        <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
-                            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                            <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Init - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
-                            <span class="ident">e</span>.<span class="ident">prevent_default</span>();
-                            <span class="ident">LoginAppMsg::Begin</span>
+    <span class="kw">fn </span>view_state(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="kw">let </span>inputvalue = <span class="self">self</span>.inputvalue.clone();
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+            LoginState::Init(enable) =&gt; {
+                <span class="macro">html! </span>{
+                    &lt;&gt;
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;label <span class="kw">for</span>=<span class="string">&quot;username&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;{ <span class="string">&quot;Username&quot; </span>}&lt;/label&gt;
+                        &lt;form
+                        onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            <span class="attribute">#[cfg(debug)]
+                            </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Init - prevent_default()&quot;</span>.to_string());
+                            e.prevent_default();
+                            LoginAppMsg::Begin
                         } ) }
-                        <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">input</span>
-                                <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
-                                <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
-                                <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }
-                                <span class="ident">id</span><span class="op">=</span><span class="string">&quot;username&quot;</span>
-                                <span class="ident">name</span><span class="op">=</span><span class="string">&quot;username&quot;</span>
-                                <span class="ident">oninput</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">InputEvent</span><span class="op">|</span> <span class="ident">LoginAppMsg::Input</span>(<span class="ident">utils::get_value_from_input_event</span>(<span class="ident">e</span>))) }
-                                <span class="kw">type</span><span class="op">=</span><span class="string">&quot;text&quot;</span>
-                                <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
-                            <span class="op">/</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                        &gt;
+                        &lt;div class={CLASS_DIV_LOGIN_FIELD}&gt;
+                            &lt;input
+                                autofocus=<span class="bool-val">true
+                                </span>class=<span class="string">&quot;autofocus form-control&quot;
+                                </span>disabled={ !enable }
+                                id=<span class="string">&quot;username&quot;
+                                </span>name=<span class="string">&quot;username&quot;
+                                </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                <span class="kw">type</span>=<span class="string">&quot;text&quot;
+                                </span>value={ inputvalue }
+                            /&gt;
+                        &lt;/div&gt;
 
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">button</span>
-                                <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span>
-                                <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}
-                                <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }
-                            <span class="op">&gt;</span>{<span class="string">&quot; Begin &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                        &lt;div class={CLASS_DIV_LOGIN_BUTTON}&gt;
+                            &lt;button
+                                <span class="kw">type</span>=<span class="string">&quot;submit&quot;
+                                </span>class={CLASS_BUTTON_DARK}
+                                disabled={ !enable }
+                            &gt;{<span class="string">&quot; Begin &quot;</span>}&lt;/button&gt;
+                        &lt;/div&gt;
+                        &lt;/form&gt;
+                    &lt;/div&gt;
+                    &lt;/&gt;
                 }
             }
-            <span class="comment">// Selecting between password (and MFA) or Passkey</span>
-            <span class="ident">LoginState::Select</span>(<span class="ident">mechs</span>) =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+            <span class="comment">// Selecting between password (and MFA) or Passkey
+            </span>LoginState::Select(mechs) =&gt; {
+                <span class="macro">html! </span>{
+                    &lt;&gt;
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;p&gt;
                         {<span class="string">&quot; Which credential would you like to use? &quot;</span>}
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">ul</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;list-unstyled&quot;</span><span class="op">&gt;</span>
-                            { <span class="kw">for</span> <span class="ident">mechs</span>.<span class="ident">iter</span>()
-                                .<span class="ident">enumerate</span>()
-                                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="ident">mech</span>)<span class="op">|</span> <span class="self">self</span>.<span class="ident">render_mech_select</span>(<span class="ident">ctx</span>, <span class="ident">idx</span>, <span class="ident">mech</span>)) }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">ul</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                        &lt;/p&gt;
+                    &lt;/div&gt;
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;ul class=<span class="string">&quot;list-unstyled&quot;</span>&gt;
+                            { <span class="kw">for </span>mechs.iter()
+                                .enumerate()
+                                .map(|(idx, mech)| <span class="self">self</span>.render_mech_select(ctx, idx, mech)) }
+                        &lt;/ul&gt;
+                    &lt;/div&gt;
+                    &lt;/&gt;
                 }
             }
-            <span class="ident">LoginState::Continue</span>(<span class="ident">allowed</span>) =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+            LoginState::Continue(allowed) =&gt; {
+                <span class="macro">html! </span>{
+                    &lt;&gt;
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;p&gt;
                         {<span class="string">&quot;Choose how to proceed:&quot;</span>}
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">ul</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;list-unstyled&quot;</span><span class="op">&gt;</span>
-                            { <span class="kw">for</span> <span class="ident">allowed</span>.<span class="ident">iter</span>()
-                                .<span class="ident">enumerate</span>()
-                                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="ident">allow</span>)<span class="op">|</span> <span class="self">self</span>.<span class="ident">render_auth_allowed</span>(<span class="ident">ctx</span>, <span class="ident">idx</span>, <span class="ident">allow</span>)) }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">ul</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                        &lt;/p&gt;
+                    &lt;/div&gt;
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;ul class=<span class="string">&quot;list-unstyled&quot;</span>&gt;
+                            { <span class="kw">for </span>allowed.iter()
+                                .enumerate()
+                                .map(|(idx, allow)| <span class="self">self</span>.render_auth_allowed(ctx, idx, allow)) }
+                        &lt;/ul&gt;
+                    &lt;/div&gt;
+                    &lt;/&gt;
                 }
             }
-            <span class="ident">LoginState::Password</span>(<span class="ident">enable</span>) =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;password&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Password&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">form</span>
-                            <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
-                                <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Password - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
-                                <span class="ident">e</span>.<span class="ident">prevent_default</span>();
-                                <span class="ident">LoginAppMsg::PasswordSubmit</span>
+            LoginState::Password(enable) =&gt; {
+                <span class="macro">html! </span>{
+                    &lt;&gt;
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;label <span class="kw">for</span>=<span class="string">&quot;password&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;{ <span class="string">&quot;Password&quot; </span>}&lt;/label&gt;
+                        &lt;form
+                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                                <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Password - prevent_default()&quot;</span>.to_string());
+                                e.prevent_default();
+                                LoginAppMsg::PasswordSubmit
                             } ) }
-                        <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">input</span>
-                                <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
-                                <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
-                                <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }
-                                <span class="ident">id</span><span class="op">=</span><span class="string">&quot;password&quot;</span>
-                                <span class="ident">name</span><span class="op">=</span><span class="string">&quot;password&quot;</span>
-                                <span class="ident">oninput</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">InputEvent</span><span class="op">|</span> <span class="ident">LoginAppMsg::Input</span>(<span class="ident">utils::get_value_from_input_event</span>(<span class="ident">e</span>))) }
-                                <span class="kw">type</span><span class="op">=</span><span class="string">&quot;password&quot;</span>
-                                <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
-                            <span class="op">/</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
-                                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>} <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }<span class="op">&gt;</span>{ <span class="string">&quot;Submit&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                        &gt;
+                        &lt;div class={CLASS_DIV_LOGIN_FIELD}&gt;
+                            &lt;input
+                                autofocus=<span class="bool-val">true
+                                </span>class=<span class="string">&quot;autofocus form-control&quot;
+                                </span>disabled={ !enable }
+                                id=<span class="string">&quot;password&quot;
+                                </span>name=<span class="string">&quot;password&quot;
+                                </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                <span class="kw">type</span>=<span class="string">&quot;password&quot;
+                                </span>value={ inputvalue }
+                            /&gt;
+                            &lt;/div&gt;
+                            &lt;div class={CLASS_DIV_LOGIN_BUTTON}&gt;
+                                &lt;button <span class="kw">type</span>=<span class="string">&quot;submit&quot; </span>class={CLASS_BUTTON_DARK} disabled={ !enable }&gt;{ <span class="string">&quot;Submit&quot; </span>}&lt;/button&gt;
+                            &lt;/div&gt;
+                        &lt;/form&gt;
+                    &lt;/div&gt;
+                    &lt;/&gt;
                 }
             }
-            <span class="ident">LoginState::BackupCode</span>(<span class="ident">enable</span>) =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
+            LoginState::BackupCode(enable) =&gt; {
+                <span class="macro">html! </span>{
+                    &lt;&gt;
 
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;backup_code&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;label <span class="kw">for</span>=<span class="string">&quot;backup_code&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;
                         {<span class="string">&quot;Backup Code&quot;</span>}
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">form</span>
-                            <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
-                                <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; BackupCode - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
-                                <span class="ident">e</span>.<span class="ident">prevent_default</span>();
-                                <span class="ident">LoginAppMsg::BackupCodeSubmit</span>
+                        &lt;/label&gt;
+                        &lt;form
+                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                                <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; BackupCode - prevent_default()&quot;</span>.to_string());
+                                e.prevent_default();
+                                LoginAppMsg::BackupCodeSubmit
                             } ) }
-                        <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">input</span>
-                                <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
-                                <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
-                                <span class="ident">disabled</span><span class="op">=</span>{ <span class="op">!</span><span class="ident">enable</span> }
-                                <span class="ident">id</span><span class="op">=</span><span class="string">&quot;backup_code&quot;</span>
-                                <span class="ident">name</span><span class="op">=</span><span class="string">&quot;backup_code&quot;</span>
-                                <span class="ident">oninput</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">InputEvent</span><span class="op">|</span> <span class="ident">LoginAppMsg::Input</span>(<span class="ident">utils::get_value_from_input_event</span>(<span class="ident">e</span>))) }
-                                <span class="kw">type</span><span class="op">=</span><span class="string">&quot;text&quot;</span>
-                                <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
-                            <span class="op">/</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
-                                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>}<span class="op">&gt;</span>{<span class="string">&quot; Submit &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                        &gt;
+                        &lt;div class={CLASS_DIV_LOGIN_FIELD}&gt;
+                            &lt;input
+                                autofocus=<span class="bool-val">true
+                                </span>class=<span class="string">&quot;autofocus form-control&quot;
+                                </span>disabled={ !enable }
+                                id=<span class="string">&quot;backup_code&quot;
+                                </span>name=<span class="string">&quot;backup_code&quot;
+                                </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
+                                <span class="kw">type</span>=<span class="string">&quot;text&quot;
+                                </span>value={ inputvalue }
+                            /&gt;
+                            &lt;/div&gt;
+                            &lt;div class={CLASS_DIV_LOGIN_BUTTON}&gt;
+                                &lt;button <span class="kw">type</span>=<span class="string">&quot;submit&quot; </span>class={CLASS_BUTTON_DARK}&gt;{<span class="string">&quot; Submit &quot;</span>}&lt;/button&gt;
+                            &lt;/div&gt;
+                        &lt;/form&gt;
+                    &lt;/div&gt;
+                    &lt;/&gt;
                 }
             }
-            <span class="ident">LoginState::Totp</span>(<span class="ident">state</span>) =&gt; {
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">label</span> <span class="kw">for</span><span class="op">=</span><span class="string">&quot;totp&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-label&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;TOTP&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">label</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">form</span>
-                            <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">FocusEvent</span><span class="op">|</span> {
-                                <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Totp - prevent_default()&quot;</span>.<span class="ident">to_string</span>());
-                                <span class="ident">e</span>.<span class="ident">prevent_default</span>();
-                                <span class="ident">LoginAppMsg::TotpSubmit</span>
+            LoginState::Totp(state) =&gt; {
+                <span class="macro">html! </span>{
+                    &lt;&gt;
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;label <span class="kw">for</span>=<span class="string">&quot;totp&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;{<span class="string">&quot;TOTP&quot;</span>}&lt;/label&gt;
+                        &lt;form
+                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                                <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Totp - prevent_default()&quot;</span>.to_string());
+                                e.prevent_default();
+                                LoginAppMsg::TotpSubmit
                             } ) }
-                        <span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_FIELD</span>}<span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">input</span>
-                            <span class="ident">autofocus</span><span class="op">=</span><span class="bool-val">true</span>
-                            <span class="ident">class</span><span class="op">=</span><span class="string">&quot;autofocus form-control&quot;</span>
-                            <span class="ident">disabled</span><span class="op">=</span>{ <span class="ident">state</span><span class="op">==</span><span class="kw-2">&amp;</span><span class="ident">TotpState::Disabled</span> }
-                            <span class="ident">id</span><span class="op">=</span><span class="string">&quot;totp&quot;</span>
-                            <span class="ident">name</span><span class="op">=</span><span class="string">&quot;totp&quot;</span>
-                            <span class="ident">oninput</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="ident">e</span>: <span class="ident">InputEvent</span><span class="op">|</span> <span class="ident">LoginAppMsg::Input</span>(<span class="ident">utils::get_value_from_input_event</span>(<span class="ident">e</span>)))}
-                            <span class="kw">type</span><span class="op">=</span><span class="string">&quot;text&quot;</span>
-                            <span class="ident">value</span><span class="op">=</span>{ <span class="ident">inputvalue</span> }
-                            <span class="op">/</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_DIV_LOGIN_BUTTON</span>}<span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CLASS_BUTTON_DARK</span>} <span class="ident">disabled</span><span class="op">=</span>{ <span class="ident">state</span><span class="op">==</span><span class="kw-2">&amp;</span><span class="ident">TotpState::Disabled</span> }<span class="op">&gt;</span>{<span class="string">&quot; Submit &quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-                            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                        &gt;
+                        &lt;div class={CLASS_DIV_LOGIN_FIELD}&gt;
+                        &lt;input
+                            autofocus=<span class="bool-val">true
+                            </span>class=<span class="string">&quot;autofocus form-control&quot;
+                            </span>disabled={ state==<span class="kw-2">&amp;</span>TotpState::Disabled }
+                            id=<span class="string">&quot;totp&quot;
+                            </span>name=<span class="string">&quot;totp&quot;
+                            </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
+                            <span class="kw">type</span>=<span class="string">&quot;text&quot;
+                            </span>value={ inputvalue }
+                            /&gt;
+                        &lt;/div&gt;
+                            &lt;div class={CLASS_DIV_LOGIN_BUTTON}&gt;
+                            &lt;button <span class="kw">type</span>=<span class="string">&quot;submit&quot; </span>class={CLASS_BUTTON_DARK} disabled={ state==<span class="kw-2">&amp;</span>TotpState::Disabled }&gt;{<span class="string">&quot; Submit &quot;</span>}&lt;/button&gt;
+                            &lt;/div&gt;
+                        &lt;/form&gt;
+                    &lt;/div&gt;
+                    &lt;/&gt;
                 }
             }
-            <span class="ident">LoginState::SecurityKey</span>(<span class="ident">challenge</span>) =&gt; {
-                <span class="comment">// Start the navigator parts.</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">win</span>) <span class="op">=</span> <span class="ident">web_sys::window</span>() {
-                    <span class="kw">let</span> <span class="ident">promise</span> <span class="op">=</span> <span class="ident">win</span>
-                        .<span class="ident">navigator</span>()
-                        .<span class="ident">credentials</span>()
-                        .<span class="ident">get_with_options</span>(<span class="ident">challenge</span>)
-                        .<span class="ident">expect_throw</span>(<span class="string">&quot;Unable to create promise&quot;</span>);
-                    <span class="kw">let</span> <span class="ident">fut</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">promise</span>);
-                    <span class="kw">let</span> <span class="ident">linkc</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">clone</span>();
+            LoginState::SecurityKey(challenge) =&gt; {
+                <span class="comment">// Start the navigator parts.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(win) = web_sys::window() {
+                    <span class="kw">let </span>promise = win
+                        .navigator()
+                        .credentials()
+                        .get_with_options(challenge)
+                        .expect_throw(<span class="string">&quot;Unable to create promise&quot;</span>);
+                    <span class="kw">let </span>fut = JsFuture::from(promise);
+                    <span class="kw">let </span>linkc = ctx.link().clone();
 
-                    <span class="ident">spawn_local</span>(<span class="kw">async</span> <span class="kw">move</span> {
-                        <span class="kw">match</span> <span class="ident">fut</span>.<span class="kw">await</span> {
-                            <span class="prelude-val">Ok</span>(<span class="ident">data</span>) =&gt; {
-                                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">PublicKeyCredential::from</span>(
-                                    <span class="ident">web_sys::PublicKeyCredential::from</span>(<span class="ident">data</span>),
+                    spawn_local(<span class="kw">async move </span>{
+                        <span class="kw">match </span>fut.<span class="kw">await </span>{
+                            <span class="prelude-val">Ok</span>(data) =&gt; {
+                                <span class="kw">let </span>data = PublicKeyCredential::from(
+                                    web_sys::PublicKeyCredential::from(data),
                                 );
-                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::SecurityKeySubmit</span>(<span class="ident">data</span>));
+                                linkc.send_message(LoginAppMsg::SecurityKeySubmit(data));
                             }
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::Error</span> {
-                                    <span class="ident">emsg</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>),
-                                    <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                            <span class="prelude-val">Err</span>(e) =&gt; {
+                                linkc.send_message(LoginAppMsg::Error {
+                                    emsg: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
+                                    kopid: <span class="prelude-val">None</span>,
                                 });
                             }
                         }
                     });
-                } <span class="kw">else</span> {
-                    <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::Error</span> {
-                        <span class="ident">emsg</span>: <span class="string">&quot;failed to access navigator credentials&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                } <span class="kw">else </span>{
+                    ctx.link().send_message(LoginAppMsg::Error {
+                        emsg: <span class="string">&quot;failed to access navigator credentials&quot;</span>.to_string(),
+                        kopid: <span class="prelude-val">None</span>,
                     });
                 };
 
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+                <span class="macro">html! </span>{
+                    &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;p&gt;
                         {<span class="string">&quot;Security Key&quot;</span>}
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                        &lt;/p&gt;
+                    &lt;/div&gt;
                 }
             }
-            <span class="ident">LoginState::Passkey</span>(<span class="ident">challenge</span>) =&gt; {
-                <span class="comment">// Start the navigator parts.</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">win</span>) <span class="op">=</span> <span class="ident">web_sys::window</span>() {
-                    <span class="kw">let</span> <span class="ident">promise</span> <span class="op">=</span> <span class="ident">win</span>
-                        .<span class="ident">navigator</span>()
-                        .<span class="ident">credentials</span>()
-                        .<span class="ident">get_with_options</span>(<span class="ident">challenge</span>)
-                        .<span class="ident">expect_throw</span>(<span class="string">&quot;Unable to create promise&quot;</span>);
-                    <span class="kw">let</span> <span class="ident">fut</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">promise</span>);
-                    <span class="kw">let</span> <span class="ident">linkc</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">clone</span>();
+            LoginState::Passkey(challenge) =&gt; {
+                <span class="comment">// Start the navigator parts.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(win) = web_sys::window() {
+                    <span class="kw">let </span>promise = win
+                        .navigator()
+                        .credentials()
+                        .get_with_options(challenge)
+                        .expect_throw(<span class="string">&quot;Unable to create promise&quot;</span>);
+                    <span class="kw">let </span>fut = JsFuture::from(promise);
+                    <span class="kw">let </span>linkc = ctx.link().clone();
 
-                    <span class="ident">spawn_local</span>(<span class="kw">async</span> <span class="kw">move</span> {
-                        <span class="kw">match</span> <span class="ident">fut</span>.<span class="kw">await</span> {
-                            <span class="prelude-val">Ok</span>(<span class="ident">data</span>) =&gt; {
-                                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">PublicKeyCredential::from</span>(
-                                    <span class="ident">web_sys::PublicKeyCredential::from</span>(<span class="ident">data</span>),
+                    spawn_local(<span class="kw">async move </span>{
+                        <span class="kw">match </span>fut.<span class="kw">await </span>{
+                            <span class="prelude-val">Ok</span>(data) =&gt; {
+                                <span class="kw">let </span>data = PublicKeyCredential::from(
+                                    web_sys::PublicKeyCredential::from(data),
                                 );
-                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::PasskeySubmit</span>(<span class="ident">data</span>));
+                                linkc.send_message(LoginAppMsg::PasskeySubmit(data));
                             }
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                                <span class="ident">linkc</span>.<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::Error</span> {
-                                    <span class="ident">emsg</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>),
-                                    <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                            <span class="prelude-val">Err</span>(e) =&gt; {
+                                linkc.send_message(LoginAppMsg::Error {
+                                    emsg: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
+                                    kopid: <span class="prelude-val">None</span>,
                                 });
                             }
                         }
                     });
-                } <span class="kw">else</span> {
-                    <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_message</span>(<span class="ident">LoginAppMsg::Error</span> {
-                        <span class="ident">emsg</span>: <span class="string">&quot;failed to access navigator credentials&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                } <span class="kw">else </span>{
+                    ctx.link().send_message(LoginAppMsg::Error {
+                        emsg: <span class="string">&quot;failed to access navigator credentials&quot;</span>.to_string(),
+                        kopid: <span class="prelude-val">None</span>,
                     });
                 };
 
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container text-center&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+                <span class="macro">html! </span>{
+                    &lt;div class=<span class="string">&quot;container text-center&quot;</span>&gt;
+                        &lt;p&gt;
                         {<span class="string">&quot;Prompting for Passkey authentication...&quot;</span>}
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                        &lt;/p&gt;
+                    &lt;/div&gt;
                 }
             }
-            <span class="ident">LoginState::Authenticated</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">loc</span> <span class="op">=</span> <span class="ident">models::pop_return_location</span>();
-                <span class="comment">// redirect</span>
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;authenticated, try going to -&gt; {:?}&quot;</span>, <span class="ident">loc</span>));
-                <span class="ident">loc</span>.<span class="ident">goto</span>(<span class="kw-2">&amp;</span><span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">history</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;failed to read history&quot;</span>));
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-success&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">h3</span><span class="op">&gt;</span>{ <span class="string">&quot;Login Success 🎉&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h3</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+            LoginState::Authenticated =&gt; {
+                <span class="kw">let </span>loc = models::pop_return_location();
+                <span class="comment">// redirect
+                </span><span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;authenticated, try going to -&gt; {:?}&quot;</span>, loc));
+                loc.goto(<span class="kw-2">&amp;</span>ctx.link().history().expect_throw(<span class="string">&quot;failed to read history&quot;</span>));
+                <span class="macro">html! </span>{
+                    &lt;div class=<span class="string">&quot;alert alert-success&quot;</span>&gt;
+                        &lt;h3&gt;{ <span class="string">&quot;Login Success 🎉&quot; </span>}&lt;/h3&gt;
+                    &lt;/div&gt;
                 }
             }
-            <span class="ident">LoginState::Denied</span>(<span class="ident">msg</span>) =&gt; {
-                <span class="self">self</span>.<span class="ident">do_alert_error</span>(<span class="string">&quot;Authentication Denied&quot;</span>, <span class="prelude-val">Some</span>(<span class="ident">msg</span>.<span class="ident">as_str</span>()), <span class="ident">ctx</span>)
+            LoginState::Denied(msg) =&gt; {
+                <span class="self">self</span>.do_alert_error(<span class="string">&quot;Authentication Denied&quot;</span>, <span class="prelude-val">Some</span>(msg.as_str()), ctx)
             }
-            <span class="ident">LoginState::UnknownUser</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">do_alert_error</span>(<span class="string">&quot;Username not found&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Please try again&quot;</span>), <span class="ident">ctx</span>)
+            LoginState::UnknownUser =&gt; {
+                <span class="self">self</span>.do_alert_error(<span class="string">&quot;Username not found&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Please try again&quot;</span>), ctx)
             }
-            <span class="ident">LoginState::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; <span class="self">self</span>.<span class="ident">do_alert_error</span>(
+            LoginState::Error { emsg, kopid } =&gt; <span class="self">self</span>.do_alert_error(
                 <span class="string">&quot;An error has occured 😔 &quot;</span>,
                 <span class="prelude-val">Some</span>(
                     <span class="macro">format!</span>(
                         <span class="string">&quot;{}\n\n{}&quot;</span>,
-                        <span class="ident">emsg</span>.<span class="ident">as_str</span>(),
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opid</span>) <span class="op">=</span> <span class="ident">kopid</span>.<span class="ident">as_ref</span>() {
-                            <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, <span class="ident">opid</span>.<span class="ident">clone</span>())
-                        } <span class="kw">else</span> {
-                            <span class="string">&quot;Error occurred client-side.&quot;</span>.<span class="ident">to_string</span>()
+                        emsg.as_str(),
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(opid) = kopid.as_ref() {
+                            <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, opid.clone())
+                        } <span class="kw">else </span>{
+                            <span class="string">&quot;Error occurred client-side.&quot;</span>.to_string()
                         }
                     )
-                    .<span class="ident">as_str</span>(),
+                    .as_str(),
                 ),
-                <span class="ident">ctx</span>,
+                ctx,
             ),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Component</span> <span class="kw">for</span> <span class="ident">LoginApp</span> {
-    <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">LoginAppMsg</span>;
-    <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> ();
+<span class="kw">impl </span>Component <span class="kw">for </span>LoginApp {
+    <span class="kw">type </span>Message = LoginAppMsg;
+    <span class="kw">type </span>Properties = ();
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;create&quot;</span>.<span class="ident">to_string</span>());
-        <span class="comment">// Assume we are here for a good reason.</span>
-        <span class="comment">// -- clear the bearer to prevent conflict</span>
-        <span class="ident">models::clear_bearer_token</span>();
-        <span class="comment">// Do we have a login hint?</span>
-        <span class="kw">let</span> <span class="ident">inputvalue</span> <span class="op">=</span> <span class="ident">models::pop_login_hint</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
+    <span class="kw">fn </span>create(_ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;create&quot;</span>.to_string());
+        <span class="comment">// Assume we are here for a good reason.
+        // -- clear the bearer to prevent conflict
+        </span>models::clear_bearer_token();
+        <span class="comment">// Do we have a login hint?
+        </span><span class="kw">let </span>inputvalue = models::pop_login_hint().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
 
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        {
-            <span class="kw">let</span> <span class="ident">document</span> <span class="op">=</span> <span class="ident">utils::document</span>();
-            <span class="kw">let</span> <span class="ident">html_document</span> <span class="op">=</span> <span class="ident">document</span>
-                .<span class="ident">dyn_into</span>::<span class="op">&lt;</span><span class="ident">web_sys::HtmlDocument</span><span class="op">&gt;</span>()
-                .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to dyn cast to htmldocument&quot;</span>);
-            <span class="kw">let</span> <span class="ident">cookie</span> <span class="op">=</span> <span class="ident">html_document</span>
-                .<span class="ident">cookie</span>()
-                .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to access page cookies&quot;</span>);
-            <span class="macro">console::debug!</span>(<span class="string">&quot;cookies&quot;</span>.<span class="ident">to_string</span>());
-            <span class="macro">console::debug!</span>(<span class="ident">cookie</span>);
+        <span class="attribute">#[cfg(debug)]
+        </span>{
+            <span class="kw">let </span>document = utils::document();
+            <span class="kw">let </span>html_document = document
+                .dyn_into::&lt;web_sys::HtmlDocument&gt;()
+                .expect_throw(<span class="string">&quot;failed to dyn cast to htmldocument&quot;</span>);
+            <span class="kw">let </span>cookie = html_document
+                .cookie()
+                .expect_throw(<span class="string">&quot;failed to access page cookies&quot;</span>);
+            <span class="macro">console::debug!</span>(<span class="string">&quot;cookies&quot;</span>.to_string());
+            <span class="macro">console::debug!</span>(cookie);
         }
-        <span class="comment">// Clean any cookies.</span>
-        <span class="comment">// TODO: actually check that it&#39;s cleaning the cookies.</span>
+        <span class="comment">// Clean any cookies.
+        // TODO: actually check that it&#39;s cleaning the cookies.
 
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Init</span>(<span class="bool-val">true</span>);
+        </span><span class="kw">let </span>state = LoginState::Init(<span class="bool-val">true</span>);
 
         <span class="macro">add_body_form_classes!</span>();
 
-        <span class="ident">LoginApp</span> {
-            <span class="ident">inputvalue</span>,
-            <span class="ident">session_id</span>: <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">state</span>,
+        LoginApp {
+            inputvalue,
+            session_id: <span class="string">&quot;&quot;</span>.to_string(),
+            state,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">changed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
-    }
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">msg</span> {
-            <span class="ident">LoginAppMsg::Input</span>(<span class="kw-2">mut</span> <span class="ident">inputvalue</span>) =&gt; {
-                <span class="ident">std::mem::swap</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">inputvalue</span>, <span class="kw-2">&amp;mut</span> <span class="ident">inputvalue</span>);
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::Restart</span> =&gt; {
-                <span class="comment">// Clear any leftover input</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="self">self</span>.<span class="ident">session_id</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Init</span>(<span class="bool-val">true</span>);
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::Begin</span> =&gt; {
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;begin -&gt; {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">inputvalue</span>));
-                <span class="comment">// Disable the button?</span>
-                <span class="kw">let</span> <span class="ident">username</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputvalue</span>.<span class="ident">clone</span>();
-                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_init</span>(<span class="ident">username</span>).<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, msg: <span class="self">Self</span>::Message) -&gt; bool {
+        <span class="kw">match </span>msg {
+            LoginAppMsg::Input(<span class="kw-2">mut </span>inputvalue) =&gt; {
+                std::mem::swap(<span class="kw-2">&amp;mut </span><span class="self">self</span>.inputvalue, <span class="kw-2">&amp;mut </span>inputvalue);
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::Restart =&gt; {
+                <span class="comment">// Clear any leftover input
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="self">self</span>.session_id = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="self">self</span>.state = LoginState::Init(<span class="bool-val">true</span>);
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::Begin =&gt; {
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;begin -&gt; {:?}&quot;</span>, <span class="self">self</span>.inputvalue));
+                <span class="comment">// Disable the button?
+                </span><span class="kw">let </span>username = <span class="self">self</span>.inputvalue.clone();
+                ctx.link().send_future(<span class="kw">async </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::auth_init(username).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
                 });
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Init</span>(<span class="bool-val">false</span>);
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::PasswordSubmit</span> =&gt; {
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="string">&quot;At password step&quot;</span>.<span class="ident">to_string</span>());
-                <span class="comment">// Disable the button?</span>
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Password</span>(<span class="bool-val">false</span>);
-                <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                    <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Password</span>(<span class="self">self</span>.<span class="ident">inputvalue</span>.<span class="ident">clone</span>())),
+                <span class="self">self</span>.state = LoginState::Init(<span class="bool-val">false</span>);
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::PasswordSubmit =&gt; {
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="string">&quot;At password step&quot;</span>.to_string());
+                <span class="comment">// Disable the button?
+                </span><span class="self">self</span>.state = LoginState::Password(<span class="bool-val">false</span>);
+                <span class="kw">let </span>authreq = AuthRequest {
+                    step: AuthStep::Cred(AuthCredential::Password(<span class="self">self</span>.inputvalue.clone())),
                 };
-                <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
-                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
+                ctx.link().send_future(<span class="kw">async </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::auth_step(authreq, session_id).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
                 });
-                <span class="comment">// Clear the password from memory.</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::BackupCodeSubmit</span> =&gt; {
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="string">&quot;backupcode&quot;</span>.<span class="ident">to_string</span>());
-                <span class="comment">// Disable the button?</span>
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::BackupCode</span>(<span class="bool-val">false</span>);
-                <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                    <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::BackupCode</span>(<span class="self">self</span>.<span class="ident">inputvalue</span>.<span class="ident">clone</span>())),
+                <span class="comment">// Clear the password from memory.
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::BackupCodeSubmit =&gt; {
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="string">&quot;backupcode&quot;</span>.to_string());
+                <span class="comment">// Disable the button?
+                </span><span class="self">self</span>.state = LoginState::BackupCode(<span class="bool-val">false</span>);
+                <span class="kw">let </span>authreq = AuthRequest {
+                    step: AuthStep::Cred(AuthCredential::BackupCode(<span class="self">self</span>.inputvalue.clone())),
                 };
-                <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
-                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
+                ctx.link().send_future(<span class="kw">async </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::auth_step(authreq, session_id).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
                 });
-                <span class="comment">// Clear the backup code from memory.</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::TotpSubmit</span> =&gt; {
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="string">&quot;totp&quot;</span>.<span class="ident">to_string</span>());
-                <span class="comment">// Disable the button?</span>
-                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">inputvalue</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>() {
-                    <span class="prelude-val">Ok</span>(<span class="ident">totp</span>) =&gt; {
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Totp</span>(<span class="ident">TotpState::Disabled</span>);
-                        <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                            <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Totp</span>(<span class="ident">totp</span>)),
+                <span class="comment">// Clear the backup code from memory.
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::TotpSubmit =&gt; {
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="string">&quot;totp&quot;</span>.to_string());
+                <span class="comment">// Disable the button?
+                </span><span class="kw">match </span><span class="self">self</span>.inputvalue.parse::&lt;u32&gt;() {
+                    <span class="prelude-val">Ok</span>(totp) =&gt; {
+                        <span class="self">self</span>.state = LoginState::Totp(TotpState::Disabled);
+                        <span class="kw">let </span>authreq = AuthRequest {
+                            step: AuthStep::Cred(AuthCredential::Totp(totp)),
                         };
-                        <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
-                        <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                            <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
-                                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                                <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                        <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
+                        ctx.link().send_future(<span class="kw">async </span>{
+                            <span class="kw">match </span><span class="self">Self</span>::auth_step(authreq, session_id).<span class="kw">await </span>{
+                                <span class="prelude-val">Ok</span>(v) =&gt; v,
+                                <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                             }
                         });
                     }
                     <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Totp</span>(<span class="ident">TotpState::Invalid</span>);
+                        <span class="self">self</span>.state = LoginState::Totp(TotpState::Invalid);
                     }
                 }
 
-                <span class="comment">// Clear the totp from memory.</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
+                <span class="comment">// Clear the totp from memory.
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
 
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::SecurityKeySubmit</span>(<span class="ident">resp</span>) =&gt; {
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="string">&quot;At securitykey step&quot;</span>.<span class="ident">to_string</span>());
-                <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                    <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::SecurityKey</span>(<span class="ident">resp</span>)),
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::SecurityKeySubmit(resp) =&gt; {
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="string">&quot;At securitykey step&quot;</span>.to_string());
+                <span class="kw">let </span>authreq = AuthRequest {
+                    step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
                 };
-                <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
-                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
+                ctx.link().send_future(<span class="kw">async </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::auth_step(authreq, session_id).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
                 });
-                <span class="comment">// Do not submit here, we need to wait for the next ui transition.</span>
-                <span class="bool-val">false</span>
-            }
-            <span class="ident">LoginAppMsg::PasskeySubmit</span>(<span class="ident">resp</span>) =&gt; {
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="string">&quot;At passkey step&quot;</span>.<span class="ident">to_string</span>());
-                <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                    <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Passkey</span>(<span class="ident">resp</span>)),
+                <span class="comment">// Do not submit here, we need to wait for the next ui transition.
+                </span><span class="bool-val">false
+            </span>}
+            LoginAppMsg::PasskeySubmit(resp) =&gt; {
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="string">&quot;At passkey step&quot;</span>.to_string());
+                <span class="kw">let </span>authreq = AuthRequest {
+                    step: AuthStep::Cred(AuthCredential::Passkey(resp)),
                 };
-                <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
-                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
+                ctx.link().send_future(<span class="kw">async </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::auth_step(authreq, session_id).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
                 });
-                <span class="comment">// Do not submit here, we need to wait for the next ui transition.</span>
-                <span class="bool-val">false</span>
-            }
-            <span class="ident">LoginAppMsg::Start</span>(<span class="ident">session_id</span>, <span class="ident">resp</span>) =&gt; {
-                <span class="comment">// Clear any leftover input</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;start -&gt; {:?} : {:?}&quot;</span>, <span class="ident">resp</span>, <span class="ident">session_id</span>));
-                <span class="kw">match</span> <span class="ident">resp</span>.<span class="ident">state</span> {
-                    <span class="ident">AuthState::Choose</span>(<span class="kw-2">mut</span> <span class="ident">mechs</span>) =&gt; {
-                        <span class="self">self</span>.<span class="ident">session_id</span> <span class="op">=</span> <span class="ident">session_id</span>;
-                        <span class="kw">if</span> <span class="ident">mechs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
-                            <span class="comment">// If it&#39;s only one mech, just submit that.</span>
-                            <span class="kw">let</span> <span class="ident">mech</span> <span class="op">=</span> <span class="ident">mechs</span>.<span class="ident">pop</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Memory corruption occured&quot;</span>);
-                            <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                                <span class="ident">step</span>: <span class="ident">AuthStep::Begin</span>(<span class="ident">mech</span>),
+                <span class="comment">// Do not submit here, we need to wait for the next ui transition.
+                </span><span class="bool-val">false
+            </span>}
+            LoginAppMsg::Start(session_id, resp) =&gt; {
+                <span class="comment">// Clear any leftover input
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;start -&gt; {:?} : {:?}&quot;</span>, resp, session_id));
+                <span class="kw">match </span>resp.state {
+                    AuthState::Choose(<span class="kw-2">mut </span>mechs) =&gt; {
+                        <span class="self">self</span>.session_id = session_id;
+                        <span class="kw">if </span>mechs.len() == <span class="number">1 </span>{
+                            <span class="comment">// If it&#39;s only one mech, just submit that.
+                            </span><span class="kw">let </span>mech = mechs.pop().expect_throw(<span class="string">&quot;Memory corruption occured&quot;</span>);
+                            <span class="kw">let </span>authreq = AuthRequest {
+                                step: AuthStep::Begin(mech),
                             };
-                            <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
-                            <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                                <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
-                                    <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                                    <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                            <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
+                            ctx.link().send_future(<span class="kw">async </span>{
+                                <span class="kw">match </span><span class="self">Self</span>::auth_step(authreq, session_id).<span class="kw">await </span>{
+                                    <span class="prelude-val">Ok</span>(v) =&gt; v,
+                                    <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                                 }
                             });
-                            <span class="comment">// We do NOT need to change state or redraw</span>
-                            <span class="bool-val">false</span>
-                        } <span class="kw">else</span> {
-                            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                            <span class="macro">console::debug!</span>(<span class="string">&quot;multiple mechs exist&quot;</span>.<span class="ident">to_string</span>());
-                            <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Select</span>(<span class="ident">mechs</span>);
-                            <span class="bool-val">true</span>
-                        }
+                            <span class="comment">// We do NOT need to change state or redraw
+                            </span><span class="bool-val">false
+                        </span>} <span class="kw">else </span>{
+                            <span class="attribute">#[cfg(debug)]
+                            </span><span class="macro">console::debug!</span>(<span class="string">&quot;multiple mechs exist&quot;</span>.to_string());
+                            <span class="self">self</span>.state = LoginState::Select(mechs);
+                            <span class="bool-val">true
+                        </span>}
                     }
-                    <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
-                        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                        <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;denied -&gt; {:?}&quot;</span>, <span class="ident">reason</span>));
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Denied</span>(<span class="ident">reason</span>);
-                        <span class="bool-val">true</span>
-                    }
-                    <span class="kw">_</span> =&gt; {
-                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.<span class="ident">to_string</span>());
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                            <span class="ident">emsg</span>: <span class="string">&quot;Invalid UI State Transition&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                    AuthState::Denied(reason) =&gt; {
+                        <span class="attribute">#[cfg(debug)]
+                        </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;denied -&gt; {:?}&quot;</span>, reason));
+                        <span class="self">self</span>.state = LoginState::Denied(reason);
+                        <span class="bool-val">true
+                    </span>}
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.to_string());
+                        <span class="self">self</span>.state = LoginState::Error {
+                            emsg: <span class="string">&quot;Invalid UI State Transition&quot;</span>.to_string(),
+                            kopid: <span class="prelude-val">None</span>,
                         };
-                        <span class="bool-val">true</span>
-                    }
+                        <span class="bool-val">true
+                    </span>}
                 }
             }
-            <span class="ident">LoginAppMsg::Select</span>(<span class="ident">idx</span>) =&gt; {
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;chose -&gt; {:?}&quot;</span>, <span class="ident">idx</span>));
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-                    <span class="ident">LoginState::Select</span>(<span class="ident">allowed</span>) =&gt; <span class="kw">match</span> <span class="ident">allowed</span>.<span class="ident">get</span>(<span class="ident">idx</span>) {
-                        <span class="prelude-val">Some</span>(<span class="ident">mech</span>) =&gt; {
-                            <span class="kw">let</span> <span class="ident">authreq</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
-                                <span class="ident">step</span>: <span class="ident">AuthStep::Begin</span>(<span class="ident">mech</span>.<span class="ident">clone</span>()),
+            LoginAppMsg::Select(idx) =&gt; {
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;chose -&gt; {:?}&quot;</span>, idx));
+                <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+                    LoginState::Select(allowed) =&gt; <span class="kw">match </span>allowed.get(idx) {
+                        <span class="prelude-val">Some</span>(mech) =&gt; {
+                            <span class="kw">let </span>authreq = AuthRequest {
+                                step: AuthStep::Begin(mech.clone()),
                             };
-                            <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_id</span>.<span class="ident">clone</span>();
-                            <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                                <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::auth_step</span>(<span class="ident">authreq</span>, <span class="ident">session_id</span>).<span class="kw">await</span> {
-                                    <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                                    <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                            <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
+                            ctx.link().send_future(<span class="kw">async </span>{
+                                <span class="kw">match </span><span class="self">Self</span>::auth_step(authreq, session_id).<span class="kw">await </span>{
+                                    <span class="prelude-val">Ok</span>(v) =&gt; v,
+                                    <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                                 }
                             });
                         }
-                        <span class="prelude-val">None</span> =&gt; {
-                            <span class="macro">console::error!</span>(<span class="string">&quot;invalid allowed mech idx&quot;</span>.<span class="ident">to_string</span>());
-                            <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                                <span class="ident">emsg</span>: <span class="string">&quot;Invalid Continue Index&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None </span>=&gt; {
+                            <span class="macro">console::error!</span>(<span class="string">&quot;invalid allowed mech idx&quot;</span>.to_string());
+                            <span class="self">self</span>.state = LoginState::Error {
+                                emsg: <span class="string">&quot;Invalid Continue Index&quot;</span>.to_string(),
+                                kopid: <span class="prelude-val">None</span>,
                             };
                         }
                     },
-                    <span class="kw">_</span> =&gt; {
-                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.<span class="ident">to_string</span>());
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                            <span class="ident">emsg</span>: <span class="string">&quot;Invalid UI State Transition&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.to_string());
+                        <span class="self">self</span>.state = LoginState::Error {
+                            emsg: <span class="string">&quot;Invalid UI State Transition&quot;</span>.to_string(),
+                            kopid: <span class="prelude-val">None</span>,
                         };
                     }
                 };
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::Next</span>(<span class="ident">resp</span>) =&gt; {
-                <span class="comment">// Clear any leftover input</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;next -&gt; {:?}&quot;</span>, <span class="ident">resp</span>));
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::Next(resp) =&gt; {
+                <span class="comment">// Clear any leftover input
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;next -&gt; {:?}&quot;</span>, resp));
 
-                <span class="comment">// Based on the state we have, we need to chose our steps.</span>
-                <span class="kw">match</span> <span class="ident">resp</span>.<span class="ident">state</span> {
-                    <span class="ident">AuthState::Choose</span>(<span class="ident">_mechs</span>) =&gt; {
-                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.<span class="ident">to_string</span>());
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                            <span class="ident">emsg</span>: <span class="string">&quot;Invalid UI State Transition&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                <span class="comment">// Based on the state we have, we need to chose our steps.
+                </span><span class="kw">match </span>resp.state {
+                    AuthState::Choose(_mechs) =&gt; {
+                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.to_string());
+                        <span class="self">self</span>.state = LoginState::Error {
+                            emsg: <span class="string">&quot;Invalid UI State Transition&quot;</span>.to_string(),
+                            kopid: <span class="prelude-val">None</span>,
                         };
-                        <span class="bool-val">true</span>
-                    }
-                    <span class="ident">AuthState::Continue</span>(<span class="kw-2">mut</span> <span class="ident">allowed</span>) =&gt; {
-                        <span class="kw">if</span> <span class="ident">allowed</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
-                            <span class="comment">// If there is only one, change our state for that input type.</span>
-                            <span class="kw">match</span> <span class="ident">allowed</span>.<span class="ident">pop</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Memory corruption occured&quot;</span>) {
-                                <span class="ident">AuthAllowed::Anonymous</span> =&gt; {
-                                    <span class="comment">// Just submit this.</span>
+                        <span class="bool-val">true
+                    </span>}
+                    AuthState::Continue(<span class="kw-2">mut </span>allowed) =&gt; {
+                        <span class="kw">if </span>allowed.len() == <span class="number">1 </span>{
+                            <span class="comment">// If there is only one, change our state for that input type.
+                            </span><span class="kw">match </span>allowed.pop().expect_throw(<span class="string">&quot;Memory corruption occured&quot;</span>) {
+                                AuthAllowed::Anonymous =&gt; {
+                                    <span class="comment">// Just submit this.
+                                </span>}
+                                AuthAllowed::Password =&gt; {
+                                    <span class="comment">// Go to the password view.
+                                    </span><span class="self">self</span>.state = LoginState::Password(<span class="bool-val">true</span>);
                                 }
-                                <span class="ident">AuthAllowed::Password</span> =&gt; {
-                                    <span class="comment">// Go to the password view.</span>
-                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Password</span>(<span class="bool-val">true</span>);
+                                AuthAllowed::BackupCode =&gt; {
+                                    <span class="self">self</span>.state = LoginState::BackupCode(<span class="bool-val">true</span>);
                                 }
-                                <span class="ident">AuthAllowed::BackupCode</span> =&gt; {
-                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::BackupCode</span>(<span class="bool-val">true</span>);
+                                AuthAllowed::Totp =&gt; {
+                                    <span class="self">self</span>.state = LoginState::Totp(TotpState::Enabled);
                                 }
-                                <span class="ident">AuthAllowed::Totp</span> =&gt; {
-                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Totp</span>(<span class="ident">TotpState::Enabled</span>);
+                                AuthAllowed::SecurityKey(challenge) =&gt; {
+                                    <span class="self">self</span>.state = LoginState::SecurityKey(challenge.into())
                                 }
-                                <span class="ident">AuthAllowed::SecurityKey</span>(<span class="ident">challenge</span>) =&gt; {
-                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::SecurityKey</span>(<span class="ident">challenge</span>.<span class="ident">into</span>())
-                                }
-                                <span class="ident">AuthAllowed::Passkey</span>(<span class="ident">challenge</span>) =&gt; {
-                                    <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Passkey</span>(<span class="ident">challenge</span>.<span class="ident">into</span>())
+                                AuthAllowed::Passkey(challenge) =&gt; {
+                                    <span class="self">self</span>.state = LoginState::Passkey(challenge.into())
                                 }
                             }
-                        } <span class="kw">else</span> {
-                            <span class="comment">// Else, present the options in a choice.</span>
-                            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                            <span class="macro">console::debug!</span>(<span class="string">&quot;multiple choices exist&quot;</span>.<span class="ident">to_string</span>());
-                            <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Continue</span>(<span class="ident">allowed</span>);
+                        } <span class="kw">else </span>{
+                            <span class="comment">// Else, present the options in a choice.
+                            </span><span class="attribute">#[cfg(debug)]
+                            </span><span class="macro">console::debug!</span>(<span class="string">&quot;multiple choices exist&quot;</span>.to_string());
+                            <span class="self">self</span>.state = LoginState::Continue(allowed);
                         }
-                        <span class="bool-val">true</span>
-                    }
-                    <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
-                        <span class="macro">console::error!</span>(<span class="macro">format!</span>(<span class="string">&quot;denied -&gt; {:?}&quot;</span>, <span class="ident">reason</span>));
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Denied</span>(<span class="ident">reason</span>);
-                        <span class="bool-val">true</span>
-                    }
-                    <span class="ident">AuthState::Success</span>(<span class="ident">_bearer_token</span>) =&gt; {
-                        <span class="comment">// Store the bearer here!</span>
-                        <span class="comment">/*
+                        <span class="bool-val">true
+                    </span>}
+                    AuthState::Denied(reason) =&gt; {
+                        <span class="macro">console::error!</span>(<span class="macro">format!</span>(<span class="string">&quot;denied -&gt; {:?}&quot;</span>, reason));
+                        <span class="self">self</span>.state = LoginState::Denied(reason);
+                        <span class="bool-val">true
+                    </span>}
+                    AuthState::Success(_bearer_token) =&gt; {
+                        <span class="comment">// Store the bearer here!
+                        /*
                         models::set_bearer_token(bearer_token);
                         self.state = LoginState::Authenticated;
                         true
-                        */</span>
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                            <span class="ident">emsg</span>: <span class="string">&quot;Invalid Issued Session Type, expected cookie&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                        */
+                        </span><span class="self">self</span>.state = LoginState::Error {
+                            emsg: <span class="string">&quot;Invalid Issued Session Type, expected cookie&quot;</span>.to_string(),
+                            kopid: <span class="prelude-val">None</span>,
                         };
-                        <span class="bool-val">true</span>
-                    }
-                    <span class="ident">AuthState::SuccessCookie</span> =&gt; {
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Authenticated</span>;
-                        <span class="bool-val">true</span>
-                    }
+                        <span class="bool-val">true
+                    </span>}
+                    AuthState::SuccessCookie =&gt; {
+                        <span class="self">self</span>.state = LoginState::Authenticated;
+                        <span class="bool-val">true
+                    </span>}
                 }
             }
-            <span class="ident">LoginAppMsg::Continue</span>(<span class="ident">idx</span>) =&gt; {
-                <span class="comment">// Are we in the correct internal state?</span>
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-                <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;chose -&gt; {:?}&quot;</span>, <span class="ident">idx</span>));
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-                    <span class="ident">LoginState::Continue</span>(<span class="ident">allowed</span>) =&gt; {
-                        <span class="kw">match</span> <span class="ident">allowed</span>.<span class="ident">get</span>(<span class="ident">idx</span>) {
-                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Anonymous</span>) =&gt; {
-                                <span class="comment">// Just submit this.</span>
+            LoginAppMsg::Continue(idx) =&gt; {
+                <span class="comment">// Are we in the correct internal state?
+                </span><span class="attribute">#[cfg(debug)]
+                </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;chose -&gt; {:?}&quot;</span>, idx));
+                <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+                    LoginState::Continue(allowed) =&gt; {
+                        <span class="kw">match </span>allowed.get(idx) {
+                            <span class="prelude-val">Some</span>(AuthAllowed::Anonymous) =&gt; {
+                                <span class="comment">// Just submit this.
+                            </span>}
+                            <span class="prelude-val">Some</span>(AuthAllowed::Password) =&gt; {
+                                <span class="comment">// Go to the password view.
+                                </span><span class="self">self</span>.state = LoginState::Password(<span class="bool-val">true</span>);
                             }
-                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Password</span>) =&gt; {
-                                <span class="comment">// Go to the password view.</span>
-                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Password</span>(<span class="bool-val">true</span>);
+                            <span class="prelude-val">Some</span>(AuthAllowed::BackupCode) =&gt; {
+                                <span class="self">self</span>.state = LoginState::BackupCode(<span class="bool-val">true</span>);
                             }
-                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::BackupCode</span>) =&gt; {
-                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::BackupCode</span>(<span class="bool-val">true</span>);
+                            <span class="prelude-val">Some</span>(AuthAllowed::Totp) =&gt; {
+                                <span class="self">self</span>.state = LoginState::Totp(TotpState::Enabled);
                             }
-                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Totp</span>) =&gt; {
-                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Totp</span>(<span class="ident">TotpState::Enabled</span>);
+                            <span class="prelude-val">Some</span>(AuthAllowed::SecurityKey(challenge)) =&gt; {
+                                <span class="self">self</span>.state = LoginState::SecurityKey(challenge.clone().into())
                             }
-                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::SecurityKey</span>(<span class="ident">challenge</span>)) =&gt; {
-                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::SecurityKey</span>(<span class="ident">challenge</span>.<span class="ident">clone</span>().<span class="ident">into</span>())
+                            <span class="prelude-val">Some</span>(AuthAllowed::Passkey(challenge)) =&gt; {
+                                <span class="self">self</span>.state = LoginState::Passkey(challenge.clone().into())
                             }
-                            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Passkey</span>(<span class="ident">challenge</span>)) =&gt; {
-                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Passkey</span>(<span class="ident">challenge</span>.<span class="ident">clone</span>().<span class="ident">into</span>())
-                            }
-                            <span class="prelude-val">None</span> =&gt; {
-                                <span class="macro">console::error!</span>(<span class="string">&quot;invalid allowed mech idx&quot;</span>.<span class="ident">to_string</span>());
-                                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                                    <span class="ident">emsg</span>: <span class="string">&quot;Invalid Continue Index&quot;</span>.<span class="ident">to_string</span>(),
-                                    <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="macro">console::error!</span>(<span class="string">&quot;invalid allowed mech idx&quot;</span>.to_string());
+                                <span class="self">self</span>.state = LoginState::Error {
+                                    emsg: <span class="string">&quot;Invalid Continue Index&quot;</span>.to_string(),
+                                    kopid: <span class="prelude-val">None</span>,
                                 };
                             }
                         }
                     }
-                    <span class="kw">_</span> =&gt; {
-                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.<span class="ident">to_string</span>());
-                        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> {
-                            <span class="ident">emsg</span>: <span class="string">&quot;Invalid UI State Transition&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="macro">console::error!</span>(<span class="string">&quot;invalid state transition&quot;</span>.to_string());
+                        <span class="self">self</span>.state = LoginState::Error {
+                            emsg: <span class="string">&quot;Invalid UI State Transition&quot;</span>.to_string(),
+                            kopid: <span class="prelude-val">None</span>,
                         };
                     }
                 }
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::UnknownUser</span> =&gt; {
-                <span class="comment">// Clear any leftover input</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="macro">console::warn!</span>(<span class="string">&quot;Unknown user&quot;</span>.<span class="ident">to_string</span>());
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::UnknownUser</span>;
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">LoginAppMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="comment">// Clear any leftover input</span>
-                <span class="self">self</span>.<span class="ident">inputvalue</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="macro">console::error!</span>(<span class="macro">format!</span>(<span class="string">&quot;error -&gt; {:?}, {:?}&quot;</span>, <span class="ident">emsg</span>, <span class="ident">kopid</span>));
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">LoginState::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> };
-                <span class="bool-val">true</span>
-            }
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::UnknownUser =&gt; {
+                <span class="comment">// Clear any leftover input
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="macro">console::warn!</span>(<span class="string">&quot;Unknown user&quot;</span>.to_string());
+                <span class="self">self</span>.state = LoginState::UnknownUser;
+                <span class="bool-val">true
+            </span>}
+            LoginAppMsg::Error { emsg, kopid } =&gt; {
+                <span class="comment">// Clear any leftover input
+                </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="macro">console::error!</span>(<span class="macro">format!</span>(<span class="string">&quot;error -&gt; {:?}, {:?}&quot;</span>, emsg, kopid));
+                <span class="self">self</span>.state = LoginState::Error { emsg, kopid };
+                <span class="bool-val">true
+            </span>}
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;login::view&quot;</span>.<span class="ident">to_string</span>());
-        <span class="comment">// How do we add a top level theme?</span>
-        <span class="comment">/*
+    <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::view&quot;</span>.to_string());
+        <span class="comment">// How do we add a top level theme?
+        /*
         let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
             let w = win.inner_width().unwrap();
             let h = win.inner_height().unwrap();
@@ -1918,39 +1918,39 @@
             (0, 0)
         };
         let (width, height) = (width.to_string(), height.to_string());
-        */</span>
+        */
 
-        <span class="comment">// &lt;canvas id=&quot;confetti-canvas&quot; style=&quot;position:absolute&quot; width=width height=height&gt;&lt;/canvas&gt;</span>
+        // &lt;canvas id=&quot;confetti-canvas&quot; style=&quot;position:absolute&quot; width=width height=height&gt;&lt;/canvas&gt;
 
-        <span class="comment">// May need to set these classes?</span>
-        <span class="comment">// &lt;body class=&quot;html-body form-body&quot;&gt;</span>
-        <span class="comment">// TODO: add the domain_display_name here</span>
+        // May need to set these classes?
+        // &lt;body class=&quot;html-body form-body&quot;&gt;
+        // TODO: add the domain_display_name here
 
-        <span class="macro">html!</span> {
-        <span class="op">&lt;</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;flex-shrink-0 form-signin&quot;</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="ident">center</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/logo-square.svg&quot;</span> <span class="ident">alt</span><span class="op">=</span><span class="string">&quot;Kanidm&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;kanidm_logo&quot;</span><span class="op">/</span><span class="op">&gt;</span>
-                <span class="comment">// TODO: replace this with a call to domain info</span>
-                <span class="op">&lt;</span><span class="ident">h3</span><span class="op">&gt;</span>{ <span class="string">&quot;Kanidm&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h3</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">center</span><span class="op">&gt;</span>
-            { <span class="self">self</span>.<span class="ident">view_state</span>(<span class="ident">ctx</span>) }
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
-        { <span class="ident"><span class="kw">crate</span>::utils::do_footer</span>() }
-        <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+        </span><span class="macro">html! </span>{
+        &lt;&gt;
+        &lt;main class=<span class="string">&quot;flex-shrink-0 form-signin&quot;</span>&gt;
+            &lt;center&gt;
+                &lt;img src=<span class="string">&quot;/pkg/img/logo-square.svg&quot; </span>alt=<span class="string">&quot;Kanidm&quot; </span>class=<span class="string">&quot;kanidm_logo&quot;</span>/&gt;
+                <span class="comment">// TODO: replace this with a call to domain info
+                </span>&lt;h3&gt;{ <span class="string">&quot;Kanidm&quot; </span>}&lt;/h3&gt;
+            &lt;/center&gt;
+            { <span class="self">self</span>.view_state(ctx) }
+        &lt;/main&gt;
+        { <span class="kw">crate</span>::utils::do_footer() }
+        &lt;/&gt;
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">destroy</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;login::destroy&quot;</span>.<span class="ident">to_string</span>());
+    <span class="kw">fn </span>destroy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::destroy&quot;</span>.to_string());
         <span class="macro">remove_body_form_classes!</span>();
     }
 
-    <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;login::rendered&quot;</span>.<span class="ident">to_string</span>());
+    <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::rendered&quot;</span>.to_string());
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

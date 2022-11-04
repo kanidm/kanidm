@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/valueset/address.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>address.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/valueset/address.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>address.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -451,177 +451,177 @@
 <span id="451">451</span>
 <span id="452">452</span>
 <span id="453">453</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
-<span class="kw">use</span> <span class="ident">smolset::SmolSet</span>;
+<span class="kw">use </span>smolset::SmolSet;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue::DbValueAddressV1</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaAttribute</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::Address</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset</span>::{<span class="ident">DbValueSetV2</span>, <span class="ident">ValueSet</span>};
+<span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::DbValueAddressV1;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
+<span class="kw">use </span><span class="kw">crate</span>::value::Address;
+<span class="kw">use </span><span class="kw">crate</span>::valueset::{DbValueSetV2, ValueSet};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueSetAddress</span> {
-    <span class="ident">set</span>: <span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">Address</span>; <span class="number">1</span>]<span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ValueSetAddress {
+    set: SmolSet&lt;[Address; <span class="number">1</span>]&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetAddress</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">b</span>: <span class="ident">Address</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">SmolSet::new</span>();
-        <span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">b</span>);
-        <span class="ident">Box::new</span>(<span class="ident">ValueSetAddress</span> { <span class="ident">set</span> })
+<span class="kw">impl </span>ValueSetAddress {
+    <span class="kw">pub fn </span>new(b: Address) -&gt; Box&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>set = SmolSet::new();
+        set.insert(b);
+        Box::new(ValueSetAddress { set })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">b</span>: <span class="ident">Address</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">b</span>)
+    <span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, b: Address) -&gt; bool {
+        <span class="self">self</span>.set.insert(b)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbvs2</span>(<span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueAddressV1</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">data</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(
-                <span class="op">|</span><span class="ident">DbValueAddressV1</span> {
-                     <span class="ident">formatted</span>,
-                     <span class="ident">street_address</span>,
-                     <span class="ident">locality</span>,
-                     <span class="ident">region</span>,
-                     <span class="ident">postal_code</span>,
-                     <span class="ident">country</span>,
-                 }<span class="op">|</span> {
-                    <span class="ident">Address</span> {
-                        <span class="ident">formatted</span>,
-                        <span class="ident">street_address</span>,
-                        <span class="ident">locality</span>,
-                        <span class="ident">region</span>,
-                        <span class="ident">postal_code</span>,
-                        <span class="ident">country</span>,
+    <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;DbValueAddressV1&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set = data
+            .into_iter()
+            .map(
+                |DbValueAddressV1 {
+                     formatted,
+                     street_address,
+                     locality,
+                     region,
+                     postal_code,
+                     country,
+                 }| {
+                    Address {
+                        formatted,
+                        street_address,
+                        locality,
+                        region,
+                        postal_code,
+                        country,
                     }
                 },
             )
-            .<span class="ident">collect</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetAddress</span> { <span class="ident">set</span> }))
+            .collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetAddress { set }))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromIterator</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ValueSetAddress</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ValueSetAddress</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Address</span><span class="op">&gt;</span>,
+<span class="kw">impl </span>FromIterator&lt;Address&gt; <span class="kw">for </span><span class="prelude-ty">Option</span>&lt;Box&lt;ValueSetAddress&gt;&gt; {
+    <span class="kw">fn </span>from_iter&lt;T&gt;(iter: T) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;ValueSetAddress&gt;&gt;
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = Address&gt;,
     {
-        <span class="kw">let</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-        <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetAddress</span> { <span class="ident">set</span> }))
+        <span class="kw">let </span>set = iter.into_iter().collect();
+        <span class="prelude-val">Some</span>(Box::new(ValueSetAddress { set }))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetT</span> <span class="kw">for</span> <span class="ident">ValueSetAddress</span> {
-    <span class="kw">fn</span> <span class="ident">insert_checked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">Value::Address</span>(<span class="ident">u</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">u</span>)),
-            <span class="kw">_</span> =&gt; {
+<span class="kw">impl </span>ValueSetT <span class="kw">for </span>ValueSetAddress {
+    <span class="kw">fn </span>insert_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span>value {
+            Value::Address(u) =&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>.set.insert(u)),
+            <span class="kw">_ </span>=&gt; {
                 <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+                <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">clear</span>();
+    <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.set.clear();
     }
 
-    <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::Address</span>(<span class="kw">_</span>) =&gt; {
+    <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::Address(<span class="kw">_</span>) =&gt; {
                 <span class="macro">unreachable!</span>()
             }
-            <span class="kw">_</span> =&gt; {
+            <span class="kw">_ </span>=&gt; {
                 <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                <span class="bool-val">true</span>
-            }
+                <span class="bool-val">true
+            </span>}
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::Address</span>(<span class="kw">_</span>) =&gt; {
+    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::Address(<span class="kw">_</span>) =&gt; {
                 <span class="macro">unreachable!</span>()
             }
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>substring(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>lessthan(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.set.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">len</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">generate_idx_eq_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>generate_idx_eq_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt; {
         <span class="macro">unreachable!</span>();
-        <span class="comment">// self.set.iter().map(|b| b.to_string()).collect()</span>
-    }
+        <span class="comment">// self.set.iter().map(|b| b.to_string()).collect()
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SyntaxType</span> {
+    <span class="kw">fn </span>syntax(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SyntaxType {
         <span class="macro">unreachable!</span>();
     }
 
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_schema_attr</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">true</span>
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.set.iter().map(|a| a.formatted.clone()))
     }
 
-    <span class="kw">fn</span> <span class="ident">to_proto_string_clone_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">formatted</span>.<span class="ident">clone</span>()))
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_db_valueset_v2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DbValueSetV2</span> {
-        <span class="ident">DbValueSetV2::Address</span>(
-            <span class="self">self</span>.<span class="ident">set</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">DbValueAddressV1</span> {
-                    <span class="ident">formatted</span>: <span class="ident">a</span>.<span class="ident">formatted</span>.<span class="ident">clone</span>(),
-                    <span class="ident">street_address</span>: <span class="ident">a</span>.<span class="ident">street_address</span>.<span class="ident">clone</span>(),
-                    <span class="ident">locality</span>: <span class="ident">a</span>.<span class="ident">locality</span>.<span class="ident">clone</span>(),
-                    <span class="ident">region</span>: <span class="ident">a</span>.<span class="ident">region</span>.<span class="ident">clone</span>(),
-                    <span class="ident">postal_code</span>: <span class="ident">a</span>.<span class="ident">postal_code</span>.<span class="ident">clone</span>(),
-                    <span class="ident">country</span>: <span class="ident">a</span>.<span class="ident">country</span>.<span class="ident">clone</span>(),
+    <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
+        DbValueSetV2::Address(
+            <span class="self">self</span>.set
+                .iter()
+                .map(|a| DbValueAddressV1 {
+                    formatted: a.formatted.clone(),
+                    street_address: a.street_address.clone(),
+                    locality: a.locality.clone(),
+                    region: a.region.clone(),
+                    postal_code: a.postal_code.clone(),
+                    country: a.country.clone(),
                 })
-                .<span class="ident">collect</span>(),
+                .collect(),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">to_partialvalue_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(
-            <span class="self">self</span>.<span class="ident">set</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">PartialValue::Address</span>(<span class="ident">s</span>.<span class="ident">formatted</span>.<span class="ident">clone</span>())),
+    <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(
+            <span class="self">self</span>.set
+                .iter()
+                .map(|s| PartialValue::Address(s.formatted.clone())),
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">to_value_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Value::Address</span>))
+    <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.set.iter().cloned().map(Value::Address))
     }
 
-    <span class="kw">fn</span> <span class="ident">equal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">other</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_address_set</span>() {
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">set</span> <span class="op">==</span> <span class="ident">other</span>
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(other) = other.as_address_set() {
+            <span class="kw-2">&amp;</span><span class="self">self</span>.set == other
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="bool-val">false</span>
-        }
+            <span class="bool-val">false
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">b</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_address_set</span>() {
-            <span class="macro">mergesets!</span>(<span class="self">self</span>.<span class="ident">set</span>, <span class="ident">b</span>)
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(b) = other.as_address_set() {
+            <span class="macro">mergesets!</span>(<span class="self">self</span>.set, b)
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 
@@ -633,199 +633,199 @@
             None
         }
     }
-    */</span>
+    */
 
-    <span class="kw">fn</span> <span class="ident">as_address_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">Address</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">set</span>)
+    </span><span class="kw">fn </span>as_address_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[Address; <span class="number">1</span>]&gt;&gt; {
+        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.set)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueSetEmailAddress</span> {
-    <span class="ident">primary</span>: <span class="ident">String</span>,
-    <span class="ident">set</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>ValueSetEmailAddress {
+    primary: String,
+    set: BTreeSet&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetEmailAddress</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">primary</span>: <span class="ident">String</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
-        <span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">primary</span>.<span class="ident">clone</span>());
-        <span class="ident">Box::new</span>(<span class="ident">ValueSetEmailAddress</span> { <span class="ident">primary</span>, <span class="ident">set</span> })
+<span class="kw">impl </span>ValueSetEmailAddress {
+    <span class="kw">pub fn </span>new(primary: String) -&gt; Box&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>set = BTreeSet::new();
+        set.insert(primary.clone());
+        Box::new(ValueSetEmailAddress { primary, set })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">a</span>: <span class="ident">String</span>, <span class="ident">primary</span>: <span class="ident">bool</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="ident">primary</span> {
-            <span class="self">self</span>.<span class="ident">primary</span> <span class="op">=</span> <span class="ident">a</span>.<span class="ident">clone</span>();
+    <span class="kw">pub fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: String, primary: bool) -&gt; bool {
+        <span class="kw">if </span>primary {
+            <span class="self">self</span>.primary = a.clone();
         }
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">a</span>)
+        <span class="self">self</span>.set.insert(a)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbvs2</span>(<span class="ident">primary</span>: <span class="ident">String</span>, <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">set</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
+    <span class="kw">pub fn </span>from_dbvs2(primary: String, data: Vec&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set: BTreeSet&lt;<span class="kw">_</span>&gt; = data.into_iter().collect();
 
-        <span class="kw">if</span> <span class="ident">set</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">primary</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetEmailAddress</span> { <span class="ident">primary</span>, <span class="ident">set</span> }))
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+        <span class="kw">if </span>set.contains(<span class="kw-2">&amp;</span>primary) {
+            <span class="prelude-val">Ok</span>(Box::new(ValueSetEmailAddress { primary, set }))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 
-    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign</span>
-    <span class="comment">// types, and tuples are always foreign.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">iter</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ValueSetEmailAddress</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">String</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
+    <span class="comment">// We need to allow this, because rust doesn&#39;t allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    </span><span class="attribute">#[allow(clippy::should_implement_trait)]
+    </span><span class="kw">pub fn </span>from_iter&lt;T&gt;(iter: T) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;ValueSetEmailAddress&gt;&gt;
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = (String, bool)&gt;,
     {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">primary</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="kw">let</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">iter</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">p</span>)<span class="op">|</span> {
-                <span class="kw">if</span> <span class="ident">p</span> {
-                    <span class="ident">primary</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">a</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span><span class="kw-2">mut </span>primary = <span class="prelude-val">None</span>;
+        <span class="kw">let </span>set = iter
+            .into_iter()
+            .map(|(a, p)| {
+                <span class="kw">if </span>p {
+                    primary = <span class="prelude-val">Some</span>(a.clone());
                 }
-                <span class="ident">a</span>
+                a
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span> <span class="ident">primary</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ValueSetEmailAddress</span> { <span class="ident">primary</span>, <span class="ident">set</span> }))
-        } <span class="kw">else</span> {
-            <span class="ident">set</span>.<span class="ident">iter</span>()
-                .<span class="ident">next</span>()
-                .<span class="ident">cloned</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">primary</span><span class="op">|</span> <span class="ident">Box::new</span>(<span class="ident">ValueSetEmailAddress</span> { <span class="ident">primary</span>, <span class="ident">set</span> }))
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(primary) = primary {
+            <span class="prelude-val">Some</span>(Box::new(ValueSetEmailAddress { primary, set }))
+        } <span class="kw">else </span>{
+            set.iter()
+                .next()
+                .cloned()
+                .map(|primary| Box::new(ValueSetEmailAddress { primary, set }))
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ValueSetT</span> <span class="kw">for</span> <span class="ident">ValueSetEmailAddress</span> {
-    <span class="kw">fn</span> <span class="ident">insert_checked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">Value::EmailAddress</span>(<span class="ident">a</span>, <span class="ident">p</span>) =&gt; {
-                <span class="comment">// if the set was empty, we need to force update primary.</span>
-                <span class="kw">if</span> <span class="ident">p</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">is_empty</span>() {
-                    <span class="self">self</span>.<span class="ident">primary</span> <span class="op">=</span> <span class="ident">a</span>.<span class="ident">clone</span>();
+<span class="kw">impl </span>ValueSetT <span class="kw">for </span>ValueSetEmailAddress {
+    <span class="kw">fn </span>insert_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span>value {
+            Value::EmailAddress(a, p) =&gt; {
+                <span class="comment">// if the set was empty, we need to force update primary.
+                </span><span class="kw">if </span>p || <span class="self">self</span>.set.is_empty() {
+                    <span class="self">self</span>.primary = a.clone();
                 }
-                <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">a</span>))
+                <span class="prelude-val">Ok</span>(<span class="self">self</span>.set.insert(a))
             }
-            <span class="kw">_</span> =&gt; {
+            <span class="kw">_ </span>=&gt; {
                 <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+                <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">clear</span>();
+    <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.set.clear();
     }
 
-    <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::EmailAddress</span>(<span class="ident">a</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">remove</span>(<span class="ident">a</span>);
-                <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> <span class="op">==</span> <span class="ident">a</span> {
-                    <span class="comment">// if we can, inject another former address into primary.</span>
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">next</span>().<span class="ident">cloned</span>() {
-                        <span class="self">self</span>.<span class="ident">primary</span> <span class="op">=</span> <span class="ident">n</span>
+    <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::EmailAddress(a) =&gt; {
+                <span class="kw">let </span>r = <span class="self">self</span>.set.remove(a);
+                <span class="kw">if </span><span class="kw-2">&amp;</span><span class="self">self</span>.primary == a {
+                    <span class="comment">// if we can, inject another former address into primary.
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.set.iter().next().cloned() {
+                        <span class="self">self</span>.primary = n
                     }
                 }
-                <span class="ident">r</span>
+                r
             }
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">pv</span> {
-            <span class="ident">PartialValue::EmailAddress</span>(<span class="ident">a</span>) =&gt; <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">contains</span>(<span class="ident">a</span>),
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
+    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="kw">match </span>pv {
+            PartialValue::EmailAddress(a) =&gt; <span class="self">self</span>.set.contains(a),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>substring(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>lessthan(<span class="kw-2">&amp;</span><span class="self">self</span>, _pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.set.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span> {
-        <span class="bool-val">false</span>
+    <span class="kw">fn </span>generate_idx_eq_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt; {
+        <span class="self">self</span>.set.iter().cloned().collect()
     }
 
-    <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">len</span>()
+    <span class="kw">fn </span>syntax(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SyntaxType {
+        SyntaxType::EmailAddress
     }
 
-    <span class="kw">fn</span> <span class="ident">generate_idx_eq_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>()
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
+        <span class="self">self</span>.set.contains(<span class="kw-2">&amp;</span><span class="self">self</span>.primary)
+            &amp;&amp; <span class="self">self
+                </span>.set
+                .iter()
+                .all(|mail| validator::validate_email(mail.as_str()))
     }
 
-    <span class="kw">fn</span> <span class="ident">syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SyntaxType</span> {
-        <span class="ident">SyntaxType::EmailAddress</span>
+    <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.set.iter().cloned())
     }
 
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_schema_attr</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span>)
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>
-                .<span class="ident">set</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">all</span>(<span class="op">|</span><span class="ident">mail</span><span class="op">|</span> <span class="ident">validator::validate_email</span>(<span class="ident">mail</span>.<span class="ident">as_str</span>()))
+    <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
+        DbValueSetV2::EmailAddress(<span class="self">self</span>.primary.clone(), <span class="self">self</span>.set.iter().cloned().collect())
     }
 
-    <span class="kw">fn</span> <span class="ident">to_proto_string_clone_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>())
+    <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.set.iter().cloned().map(PartialValue::EmailAddress))
     }
 
-    <span class="kw">fn</span> <span class="ident">to_db_valueset_v2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DbValueSetV2</span> {
-        <span class="ident">DbValueSetV2::EmailAddress</span>(<span class="self">self</span>.<span class="ident">primary</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_partialvalue_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">PartialValue::EmailAddress</span>))
-    }
-
-    <span class="kw">fn</span> <span class="ident">to_value_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">a</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">primary</span>;
-            <span class="ident">Value::EmailAddress</span>(<span class="ident">a</span>, <span class="ident">p</span>)
+    <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
+        Box::new(<span class="self">self</span>.set.iter().cloned().map(|a| {
+            <span class="kw">let </span>p = a == <span class="self">self</span>.primary;
+            Value::EmailAddress(a, p)
         }))
     }
 
-    <span class="kw">fn</span> <span class="ident">equal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">p_b</span>, <span class="ident">set_b</span>)) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_emailaddress_set</span>() {
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">set</span> <span class="op">==</span> <span class="ident">set_b</span> <span class="op">&amp;&amp;</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> <span class="op">==</span> <span class="ident">p_b</span>
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((p_b, set_b)) = other.as_emailaddress_set() {
+            <span class="kw-2">&amp;</span><span class="self">self</span>.set == set_b &amp;&amp; <span class="kw-2">&amp;</span><span class="self">self</span>.primary == p_b
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="bool-val">false</span>
-        }
+            <span class="bool-val">false
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">_p</span>, <span class="ident">set_b</span>)) <span class="op">=</span> <span class="ident">other</span>.<span class="ident">as_emailaddress_set</span>() {
-            <span class="macro">mergesets!</span>(<span class="self">self</span>.<span class="ident">set</span>, <span class="ident">set_b</span>)
-        } <span class="kw">else</span> {
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((_p, set_b)) = other.as_emailaddress_set() {
+            <span class="macro">mergesets!</span>(<span class="self">self</span>.set, set_b)
+        } <span class="kw">else </span>{
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">as_emailaddress_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">is_empty</span>() {
-            <span class="prelude-val">None</span>
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">set</span>))
+    <span class="kw">fn </span>as_emailaddress_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>String, <span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;)&gt; {
+        <span class="kw">if </span><span class="self">self</span>.set.is_empty() {
+            <span class="prelude-val">None
+        </span>} <span class="kw">else </span>{
+            <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span><span class="self">self</span>.primary, <span class="kw-2">&amp;</span><span class="self">self</span>.set))
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">to_email_address_primary_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">set</span>.<span class="ident">is_empty</span>() {
-            <span class="prelude-val">None</span>
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">primary</span>.<span class="ident">as_str</span>())
+    <span class="kw">fn </span>to_email_address_primary_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="kw">if </span><span class="self">self</span>.set.is_empty() {
+            <span class="prelude-val">None
+        </span>} <span class="kw">else </span>{
+            <span class="prelude-val">Some</span>(<span class="self">self</span>.primary.as_str())
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">as_email_str_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">as_str</span>())))
+    <span class="kw">fn </span>as_email_str_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
+        <span class="prelude-val">Some</span>(Box::new(<span class="self">self</span>.set.iter().map(|s| s.as_str())))
     }
 }
 
@@ -835,74 +835,74 @@ pub struct ValueSetPhoneNumber {
     primary: String,
     set: BTreeSet&lt;String&gt;,
 }
-*/</span>
+*/
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::ValueSetEmailAddress</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value</span>::{<span class="ident">PartialValue</span>, <span class="ident">Value</span>};
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset</span>::{<span class="self">self</span>, <span class="ident">ValueSet</span>};
+</span><span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">super</span>::ValueSetEmailAddress;
+    <span class="kw">use </span><span class="kw">crate</span>::value::{PartialValue, Value};
+    <span class="kw">use </span><span class="kw">crate</span>::valueset::{<span class="self">self</span>, ValueSet};
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_valueset_emailaddress</span>() {
-        <span class="comment">// Can be created</span>
-        <span class="comment">//</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vs</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="ident">ValueSetEmailAddress::new</span>(<span class="string">&quot;claire@example.com&quot;</span>.<span class="ident">to_string</span>());
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_valueset_emailaddress() {
+        <span class="comment">// Can be created
+        //
+        </span><span class="kw">let </span><span class="kw-2">mut </span>vs: ValueSet = ValueSetEmailAddress::new(<span class="string">&quot;claire@example.com&quot;</span>.to_string());
 
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">to_email_address_primary_str</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;claire@example.com&quot;</span>));
+        <span class="macro">assert!</span>(vs.len() == <span class="number">1</span>);
+        <span class="macro">assert!</span>(vs.to_email_address_primary_str() == <span class="prelude-val">Some</span>(<span class="string">&quot;claire@example.com&quot;</span>));
 
-        <span class="comment">// Add another, still not primary.</span>
-        <span class="macro">assert!</span>(
-            <span class="ident">vs</span>.<span class="ident">insert_checked</span>(
-                <span class="ident">Value::new_email_address_s</span>(<span class="string">&quot;alice@example.com&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid Email&quot;</span>)
-            ) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+        <span class="comment">// Add another, still not primary.
+        </span><span class="macro">assert!</span>(
+            vs.insert_checked(
+                Value::new_email_address_s(<span class="string">&quot;alice@example.com&quot;</span>).expect(<span class="string">&quot;Invalid Email&quot;</span>)
+            ) == <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
         );
 
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">to_email_address_primary_str</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;claire@example.com&quot;</span>));
+        <span class="macro">assert!</span>(vs.len() == <span class="number">2</span>);
+        <span class="macro">assert!</span>(vs.to_email_address_primary_str() == <span class="prelude-val">Some</span>(<span class="string">&quot;claire@example.com&quot;</span>));
 
-        <span class="comment">// Update primary</span>
-        <span class="macro">assert!</span>(
-            <span class="ident">vs</span>.<span class="ident">insert_checked</span>(
-                <span class="ident">Value::new_email_address_primary_s</span>(<span class="string">&quot;primary@example.com&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid Email&quot;</span>)
-            ) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+        <span class="comment">// Update primary
+        </span><span class="macro">assert!</span>(
+            vs.insert_checked(
+                Value::new_email_address_primary_s(<span class="string">&quot;primary@example.com&quot;</span>).expect(<span class="string">&quot;Invalid Email&quot;</span>)
+            ) == <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
         );
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">to_email_address_primary_str</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;primary@example.com&quot;</span>));
+        <span class="macro">assert!</span>(vs.to_email_address_primary_str() == <span class="prelude-val">Some</span>(<span class="string">&quot;primary@example.com&quot;</span>));
 
-        <span class="comment">// Restore from dbv1, ensure correct primary</span>
-        <span class="kw">let</span> <span class="ident">vs2</span> <span class="op">=</span> <span class="ident">valueset::from_db_valueset_v2</span>(<span class="ident">vs</span>.<span class="ident">to_db_valueset_v2</span>())
-            .<span class="ident">expect</span>(<span class="string">&quot;Failed to construct vs2 from dbvalue&quot;</span>);
+        <span class="comment">// Restore from dbv1, ensure correct primary
+        </span><span class="kw">let </span>vs2 = valueset::from_db_valueset_v2(vs.to_db_valueset_v2())
+            .expect(<span class="string">&quot;Failed to construct vs2 from dbvalue&quot;</span>);
 
-        <span class="macro">assert!</span>(<span class="kw-2">&amp;</span><span class="ident">vs</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">vs2</span>);
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">to_email_address_primary_str</span>() <span class="op">==</span> <span class="ident">vs2</span>.<span class="ident">to_email_address_primary_str</span>());
+        <span class="macro">assert!</span>(<span class="kw-2">&amp;</span>vs == <span class="kw-2">&amp;</span>vs2);
+        <span class="macro">assert!</span>(vs.to_email_address_primary_str() == vs2.to_email_address_primary_str());
 
-        <span class="comment">// Remove primary, assert it&#39;s gone and that the &quot;first&quot; address is assigned.</span>
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">PartialValue::new_email_address_s</span>(<span class="string">&quot;primary@example.com&quot;</span>)));
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">to_email_address_primary_str</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;alice@example.com&quot;</span>));
+        <span class="comment">// Remove primary, assert it&#39;s gone and that the &quot;first&quot; address is assigned.
+        </span><span class="macro">assert!</span>(vs.remove(<span class="kw-2">&amp;</span>PartialValue::new_email_address_s(<span class="string">&quot;primary@example.com&quot;</span>)));
+        <span class="macro">assert!</span>(vs.len() == <span class="number">2</span>);
+        <span class="macro">assert!</span>(vs.to_email_address_primary_str() == <span class="prelude-val">Some</span>(<span class="string">&quot;alice@example.com&quot;</span>));
 
-        <span class="comment">// Restore from dbv1, alice persisted.</span>
-        <span class="kw">let</span> <span class="ident">vs3</span> <span class="op">=</span> <span class="ident">valueset::from_db_valueset_v2</span>(<span class="ident">vs</span>.<span class="ident">to_db_valueset_v2</span>())
-            .<span class="ident">expect</span>(<span class="string">&quot;Failed to construct vs2 from dbvalue&quot;</span>);
-        <span class="macro">assert!</span>(<span class="kw-2">&amp;</span><span class="ident">vs</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">vs3</span>);
-        <span class="macro">assert!</span>(<span class="ident">vs3</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-        <span class="macro">assert!</span>(<span class="ident">vs3</span>
-            .<span class="ident">as_emailaddress_set</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">_p</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">s</span>)
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">contains</span>(<span class="string">&quot;alice@example.com&quot;</span>));
-        <span class="macro">assert!</span>(<span class="ident">vs3</span>
-            .<span class="ident">as_emailaddress_set</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">_p</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">s</span>)
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">contains</span>(<span class="string">&quot;claire@example.com&quot;</span>));
+        <span class="comment">// Restore from dbv1, alice persisted.
+        </span><span class="kw">let </span>vs3 = valueset::from_db_valueset_v2(vs.to_db_valueset_v2())
+            .expect(<span class="string">&quot;Failed to construct vs2 from dbvalue&quot;</span>);
+        <span class="macro">assert!</span>(<span class="kw-2">&amp;</span>vs == <span class="kw-2">&amp;</span>vs3);
+        <span class="macro">assert!</span>(vs3.len() == <span class="number">2</span>);
+        <span class="macro">assert!</span>(vs3
+            .as_emailaddress_set()
+            .map(|(_p, s)| s)
+            .unwrap()
+            .contains(<span class="string">&quot;alice@example.com&quot;</span>));
+        <span class="macro">assert!</span>(vs3
+            .as_emailaddress_set()
+            .map(|(_p, s)| s)
+            .unwrap()
+            .contains(<span class="string">&quot;claire@example.com&quot;</span>));
 
-        <span class="comment">// If we clear, no primary.</span>
-        <span class="ident">vs</span>.<span class="ident">clear</span>();
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>);
-        <span class="macro">assert!</span>(<span class="ident">vs</span>.<span class="ident">to_email_address_primary_str</span>().<span class="ident">is_none</span>());
+        <span class="comment">// If we clear, no primary.
+        </span>vs.clear();
+        <span class="macro">assert!</span>(vs.len() == <span class="number">0</span>);
+        <span class="macro">assert!</span>(vs.to_email_address_primary_str().is_none());
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

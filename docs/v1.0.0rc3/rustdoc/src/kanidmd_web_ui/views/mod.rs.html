@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/views/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/views/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -462,469 +462,469 @@
 <span id="462">462</span>
 <span id="463">463</span>
 <span id="464">464</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">gloo::console</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1::UserAuthToken</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">wasm_bindgen</span>::{<span class="ident">JsCast</span>, <span class="ident">UnwrapThrowExt</span>};
-<span class="kw">use</span> <span class="ident">wasm_bindgen_futures::JsFuture</span>;
-<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestCredentials</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
-<span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>gloo::console;
+<span class="kw">use </span>kanidm_proto::v1::UserAuthToken;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>wasm_bindgen::{JsCast, UnwrapThrowExt};
+<span class="kw">use </span>wasm_bindgen_futures::JsFuture;
+<span class="kw">use </span>web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+<span class="kw">use </span>yew::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>yew_router::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::components</span>::{<span class="ident">admin_accounts</span>, <span class="ident">admin_groups</span>, <span class="ident">admin_oauth2</span>, <span class="ident">adminmenu</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::manager::Route</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">models</span>, <span class="ident">utils</span>};
+<span class="kw">use </span><span class="kw">crate</span>::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
+<span class="kw">use </span><span class="kw">crate</span>::error::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::manager::Route;
+<span class="kw">use crate</span>::{models, utils};
 
-<span class="kw">mod</span> <span class="ident">apps</span>;
-<span class="kw">mod</span> <span class="ident">components</span>;
-<span class="kw">mod</span> <span class="ident">profile</span>;
-<span class="kw">mod</span> <span class="ident">security</span>;
+<span class="kw">mod </span>apps;
+<span class="kw">mod </span>components;
+<span class="kw">mod </span>profile;
+<span class="kw">mod </span>security;
 
-<span class="kw">use</span> <span class="ident">apps::AppsApp</span>;
-<span class="kw">use</span> <span class="ident">profile::ProfileApp</span>;
-<span class="kw">use</span> <span class="ident">security::SecurityApp</span>;
+<span class="kw">use </span>apps::AppsApp;
+<span class="kw">use </span>profile::ProfileApp;
+<span class="kw">use </span>security::SecurityApp;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Routable</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ViewRoute</span> {
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/*&quot;</span>)]</span>
-    <span class="ident">Admin</span>,
+<span class="attribute">#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>ViewRoute {
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/*&quot;</span>)]
+    </span>Admin,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/apps&quot;</span>)]</span>
-    <span class="ident">Apps</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/apps&quot;</span>)]
+    </span>Apps,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/profile&quot;</span>)]</span>
-    <span class="ident">Profile</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/profile&quot;</span>)]
+    </span>Profile,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/security&quot;</span>)]</span>
-    <span class="ident">Security</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/security&quot;</span>)]
+    </span>Security,
 
-    <span class="attribute">#[<span class="ident">not_found</span>]</span>
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/404&quot;</span>)]</span>
-    <span class="ident">NotFound</span>,
+    <span class="attribute">#[not_found]
+    #[at(<span class="string">&quot;/ui/view/404&quot;</span>)]
+    </span>NotFound,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Routable</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AdminRoute</span> {
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/menu&quot;</span>)]</span>
-    <span class="ident">AdminMenu</span>,
+<span class="attribute">#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>AdminRoute {
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/menu&quot;</span>)]
+    </span>AdminMenu,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/groups&quot;</span>)]</span>
-    <span class="ident">AdminListGroups</span>,
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/accounts&quot;</span>)]</span>
-    <span class="ident">AdminListAccounts</span>,
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/oauth2&quot;</span>)]</span>
-    <span class="ident">AdminListOAuth2</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/groups&quot;</span>)]
+    </span>AdminListGroups,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/accounts&quot;</span>)]
+    </span>AdminListAccounts,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/oauth2&quot;</span>)]
+    </span>AdminListOAuth2,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/group/:uuid&quot;</span>)]</span>
-    <span class="ident">ViewGroup</span> { <span class="ident">uuid</span>: <span class="ident">String</span> },
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/person/:uuid&quot;</span>)]</span>
-    <span class="ident">ViewPerson</span> { <span class="ident">uuid</span>: <span class="ident">String</span> },
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/service_account/:uuid&quot;</span>)]</span>
-    <span class="ident">ViewServiceAccount</span> { <span class="ident">uuid</span>: <span class="ident">String</span> },
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/oauth2/:rs_name&quot;</span>)]</span>
-    <span class="ident">ViewOAuth2RP</span> { <span class="ident">rs_name</span>: <span class="ident">String</span> },
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/group/:uuid&quot;</span>)]
+    </span>ViewGroup { uuid: String },
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/person/:uuid&quot;</span>)]
+    </span>ViewPerson { uuid: String },
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/service_account/:uuid&quot;</span>)]
+    </span>ViewServiceAccount { uuid: String },
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/admin/oauth2/:rs_name&quot;</span>)]
+    </span>ViewOAuth2RP { rs_name: String },
 
-    <span class="attribute">#[<span class="ident">not_found</span>]</span>
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/admin/404&quot;</span>)]</span>
-    <span class="ident">NotFound</span>,
+    <span class="attribute">#[not_found]
+    #[at(<span class="string">&quot;/ui/view/admin/404&quot;</span>)]
+    </span>NotFound,
 }
 
-<span class="kw">enum</span> <span class="ident">State</span> {
-    <span class="ident">LoginRequired</span>,
-    <span class="ident">LoggingOut</span>,
-    <span class="ident">Verifying</span>,
-    <span class="ident">Authenticated</span>(<span class="ident">UserAuthToken</span>),
-    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+<span class="kw">enum </span>State {
+    LoginRequired,
+    LoggingOut,
+    Verifying,
+    Authenticated(UserAuthToken),
+    Error { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Properties</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ViewProps</span> {
-    <span class="kw">pub</span> <span class="ident">current_user_uat</span>: <span class="ident">UserAuthToken</span>,
+<span class="attribute">#[derive(PartialEq, Eq, Properties)]
+</span><span class="kw">pub struct </span>ViewProps {
+    <span class="kw">pub </span>current_user_uat: UserAuthToken,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ViewsApp</span> {
-    <span class="ident">state</span>: <span class="ident">State</span>,
+<span class="kw">pub struct </span>ViewsApp {
+    state: State,
 }
 
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ViewsMsg</span> {
-    <span class="ident">Verified</span>,
-    <span class="ident">ProfileInfoRecieved</span> { <span class="ident">uat</span>: <span class="ident">UserAuthToken</span> },
-    <span class="ident">Logout</span>,
-    <span class="ident">LogoutComplete</span>,
-    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+<span class="kw">pub enum </span>ViewsMsg {
+    Verified,
+    ProfileInfoRecieved { uat: UserAuthToken },
+    Logout,
+    LogoutComplete,
+    Error { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">FetchError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ViewsMsg</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">fe</span>: <span class="ident">FetchError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ViewsMsg::Error</span> {
-            <span class="ident">emsg</span>: <span class="ident">fe</span>.<span class="ident">as_string</span>(),
-            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>From&lt;FetchError&gt; <span class="kw">for </span>ViewsMsg {
+    <span class="kw">fn </span>from(fe: FetchError) -&gt; <span class="self">Self </span>{
+        ViewsMsg::Error {
+            emsg: fe.as_string(),
+            kopid: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Component</span> <span class="kw">for</span> <span class="ident">ViewsApp</span> {
-    <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">ViewsMsg</span>;
-    <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> ();
+<span class="kw">impl </span>Component <span class="kw">for </span>ViewsApp {
+    <span class="kw">type </span>Message = ViewsMsg;
+    <span class="kw">type </span>Properties = ();
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;views::create&quot;</span>);
+    <span class="kw">fn </span>create(ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::create&quot;</span>);
 
-        <span class="comment">// Ensure the token is valid before we proceed. Could be</span>
-        <span class="comment">// due to a session expiry or something else, but we want to make</span>
-        <span class="comment">// sure we are really authenticated before we proceed.</span>
+        <span class="comment">// Ensure the token is valid before we proceed. Could be
+        // due to a session expiry or something else, but we want to make
+        // sure we are really authenticated before we proceed.
 
-        <span class="comment">// Send off the validation event.</span>
-        <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-            <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::check_session_valid</span>().<span class="kw">await</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+        // Send off the validation event.
+        </span>ctx.link().send_future(<span class="kw">async </span>{
+            <span class="kw">match </span><span class="self">Self</span>::check_session_valid().<span class="kw">await </span>{
+                <span class="prelude-val">Ok</span>(v) =&gt; v,
+                <span class="prelude-val">Err</span>(v) =&gt; v.into(),
             }
         });
 
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Verifying</span>;
+        <span class="kw">let </span>state = State::Verifying;
 
-        <span class="ident">ViewsApp</span> { <span class="ident">state</span> }
+        ViewsApp { state }
     }
 
-    <span class="kw">fn</span> <span class="ident">changed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;views::changed&quot;</span>);
-        <span class="bool-val">false</span>
-    }
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::changed&quot;</span>);
+        <span class="bool-val">false
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;views::update&quot;</span>);
-        <span class="kw">match</span> <span class="ident">msg</span> {
-            <span class="ident">ViewsMsg::Verified</span> =&gt; {
-                <span class="comment">// Populate the user profile now we know their session is valid.</span>
-                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_user_data</span>().<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, msg: <span class="self">Self</span>::Message) -&gt; bool {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::update&quot;</span>);
+        <span class="kw">match </span>msg {
+            ViewsMsg::Verified =&gt; {
+                <span class="comment">// Populate the user profile now we know their session is valid.
+                </span>ctx.link().send_future(<span class="kw">async </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::fetch_user_data().<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
                 });
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">ViewsMsg::ProfileInfoRecieved</span> { <span class="ident">uat</span> } =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Authenticated</span>(<span class="ident">uat</span>);
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">ViewsMsg::Logout</span> =&gt; {
-                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
-                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_logout</span>().<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                <span class="bool-val">true
+            </span>}
+            ViewsMsg::ProfileInfoRecieved { uat } =&gt; {
+                <span class="self">self</span>.state = State::Authenticated(uat);
+                <span class="bool-val">true
+            </span>}
+            ViewsMsg::Logout =&gt; {
+                ctx.link().send_future(<span class="kw">async </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::fetch_logout().<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
                 });
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::LoggingOut</span>;
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">ViewsMsg::LogoutComplete</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::LoginRequired</span>;
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">ViewsMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> };
-                <span class="bool-val">true</span>
-            }
+                <span class="self">self</span>.state = State::LoggingOut;
+                <span class="bool-val">true
+            </span>}
+            ViewsMsg::LogoutComplete =&gt; {
+                <span class="self">self</span>.state = State::LoginRequired;
+                <span class="bool-val">true
+            </span>}
+            ViewsMsg::Error { emsg, kopid } =&gt; {
+                <span class="self">self</span>.state = State::Error { emsg, kopid };
+                <span class="bool-val">true
+            </span>}
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;views::rendered&quot;</span>);
+    <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::rendered&quot;</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">State::LoginRequired</span> =&gt; {
-                <span class="comment">// Where are we?</span>
-                <span class="kw">let</span> <span class="ident">loc</span> <span class="op">=</span> <span class="ident">ctx</span>
-                    .<span class="ident">link</span>()
-                    .<span class="ident">history</span>()
-                    .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to read history&quot;</span>)
-                    .<span class="ident">location</span>()
-                    .<span class="ident">route</span>()
-                    .<span class="ident">expect_throw</span>(<span class="string">&quot;invalid route&quot;</span>);
+    <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+            State::LoginRequired =&gt; {
+                <span class="comment">// Where are we?
+                </span><span class="kw">let </span>loc = ctx
+                    .link()
+                    .history()
+                    .expect_throw(<span class="string">&quot;failed to read history&quot;</span>)
+                    .location()
+                    .route()
+                    .expect_throw(<span class="string">&quot;invalid route&quot;</span>);
 
-                <span class="ident">models::push_return_location</span>(<span class="ident">models::Location::Views</span>(<span class="ident">loc</span>));
+                models::push_return_location(models::Location::Views(loc));
 
-                <span class="ident">ctx</span>.<span class="ident">link</span>()
-                    .<span class="ident">history</span>()
-                    .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to read history&quot;</span>)
-                    .<span class="ident">push</span>(<span class="ident">Route::Login</span>);
-                <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">div</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span> }
+                ctx.link()
+                    .history()
+                    .expect_throw(<span class="string">&quot;failed to read history&quot;</span>)
+                    .push(Route::Login);
+                <span class="macro">html! </span>{ &lt;div&gt;&lt;/div&gt; }
             }
-            <span class="ident">State::LoggingOut</span> <span class="op">|</span> <span class="ident">State::Verifying</span> =&gt; {
-                <span class="macro">html!</span> {
-                  <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center form-signin h-100&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;vert-center&quot;</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;spinner-border text-dark&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;status&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;visually-hidden&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Loading...&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
+            State::LoggingOut | State::Verifying =&gt; {
+                <span class="macro">html! </span>{
+                  &lt;main class=<span class="string">&quot;text-center form-signin h-100&quot;</span>&gt;
+                    &lt;div class=<span class="string">&quot;vert-center&quot;</span>&gt;
+                      &lt;div class=<span class="string">&quot;spinner-border text-dark&quot; </span>role=<span class="string">&quot;status&quot;</span>&gt;
+                        &lt;span class=<span class="string">&quot;visually-hidden&quot;</span>&gt;{ <span class="string">&quot;Loading...&quot; </span>}&lt;/span&gt;
+                      &lt;/div&gt;
+                    &lt;/div&gt;
+                  &lt;/main&gt;
                 }
             }
-            <span class="ident">State::Authenticated</span>(<span class="ident">uat</span>) =&gt; <span class="self">self</span>.<span class="ident">view_authenticated</span>(<span class="ident">ctx</span>, <span class="ident">uat</span>),
-            <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="macro">html!</span> {
-                  <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-danger&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;An Error Occured 🥺&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="ident">emsg</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+            State::Authenticated(uat) =&gt; <span class="self">self</span>.view_authenticated(ctx, uat),
+            State::Error { emsg, kopid } =&gt; {
+                <span class="macro">html! </span>{
+                  &lt;main class=<span class="string">&quot;form-signin&quot;</span>&gt;
+                    &lt;div class=<span class="string">&quot;alert alert-danger&quot; </span>role=<span class="string">&quot;alert&quot;</span>&gt;
+                      &lt;h2&gt;{ <span class="string">&quot;An Error Occured 🥺&quot; </span>}&lt;/h2&gt;
+                    &lt;p&gt;{ emsg.to_string() }&lt;/p&gt;
+                    &lt;p&gt;
                         {
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opid</span>) <span class="op">=</span> <span class="ident">kopid</span>.<span class="ident">as_ref</span>() {
-                                <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, <span class="ident">opid</span>)
-                            } <span class="kw">else</span> {
-                                <span class="string">&quot;Error occurred client-side.&quot;</span>.<span class="ident">to_string</span>()
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>(opid) = kopid.as_ref() {
+                                <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, opid)
+                            } <span class="kw">else </span>{
+                                <span class="string">&quot;Error occurred client-side.&quot;</span>.to_string()
                             }
                         }
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                    &lt;/p&gt;
+                    &lt;/div&gt;
 
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
+                  &lt;/main&gt;
                 }
             }
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ViewsApp</span> {
-    <span class="doccomment">/// The base page for the user dashboard</span>
-    <span class="kw">fn</span> <span class="ident">view_authenticated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">let</span> <span class="ident">current_user_uat</span> <span class="op">=</span> <span class="ident">uat</span>.<span class="ident">clone</span>();
+<span class="kw">impl </span>ViewsApp {
+    <span class="doccomment">/// The base page for the user dashboard
+    </span><span class="kw">fn </span>view_authenticated(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, uat: <span class="kw-2">&amp;</span>UserAuthToken) -&gt; Html {
+        <span class="kw">let </span>current_user_uat = uat.clone();
 
-        <span class="comment">// WARN set dash-body against body here?</span>
-        <span class="macro">html!</span> {
-          <span class="op">&lt;</span><span class="op">&gt;</span>
-          <span class="op">&lt;</span><span class="ident">nav</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar navbar-expand-md navbar-dark bg-dark mb-4&quot;</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container-fluid&quot;</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;navbar-brand navbar-dark&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">ViewRoute::Apps</span>}<span class="op">&gt;</span>
+        <span class="comment">// WARN set dash-body against body here?
+        </span><span class="macro">html! </span>{
+          &lt;&gt;
+          &lt;nav class=<span class="string">&quot;navbar navbar-expand-md navbar-dark bg-dark mb-4&quot;</span>&gt;
+              &lt;div class=<span class="string">&quot;container-fluid&quot;</span>&gt;
+              &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;navbar-brand navbar-dark&quot; </span>to={ViewRoute::Apps}&gt;
                 {<span class="string">&quot;Kanidm&quot;</span>}
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-toggler bg-light&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">toggle</span><span class="op">=</span><span class="string">&quot;collapse&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">target</span><span class="op">=</span><span class="string">&quot;#navbarCollapse&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">controls</span><span class="op">=</span><span class="string">&quot;navbarCollapse&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">expanded</span><span class="op">=</span><span class="string">&quot;false&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">label</span><span class="op">=</span><span class="string">&quot;Toggle navigation&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/favicon.png&quot;</span> <span class="op">/</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;collapse navbar-collapse&quot;</span> <span class="ident">id</span><span class="op">=</span><span class="string">&quot;navbarCollapse&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">ul</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-nav me-auto mb-2 mb-md-0&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;mb-1&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;nav-link&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">ViewRoute::Apps</span>}<span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">data</span><span class="op">-</span><span class="ident">feather</span><span class="op">=</span><span class="string">&quot;file&quot;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
-                    { <span class="string">&quot;Apps&quot;</span> }
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+                &lt;/Link&lt;ViewRoute&gt;&gt;
+                &lt;button class=<span class="string">&quot;navbar-toggler bg-light&quot; </span><span class="kw">type</span>=<span class="string">&quot;button&quot; </span>data-bs-toggle=<span class="string">&quot;collapse&quot; </span>data-bs-target=<span class="string">&quot;#navbarCollapse&quot; </span>aria-controls=<span class="string">&quot;navbarCollapse&quot; </span>aria-expanded=<span class="string">&quot;false&quot; </span>aria-label=<span class="string">&quot;Toggle navigation&quot;</span>&gt;
+                  &lt;img src=<span class="string">&quot;/pkg/img/favicon.png&quot; </span>/&gt;
+                &lt;/button&gt;
+                &lt;div class=<span class="string">&quot;collapse navbar-collapse&quot; </span>id=<span class="string">&quot;navbarCollapse&quot;</span>&gt;
+                  &lt;ul class=<span class="string">&quot;navbar-nav me-auto mb-2 mb-md-0&quot;</span>&gt;
+                  &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                  &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Apps}&gt;
+                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                    { <span class="string">&quot;Apps&quot; </span>}
+                  &lt;/Link&lt;ViewRoute&gt;&gt;
+                &lt;/li&gt;
 
-                <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;mb-1&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;nav-link&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">ViewRoute::Profile</span>}<span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">data</span><span class="op">-</span><span class="ident">feather</span><span class="op">=</span><span class="string">&quot;file&quot;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
-                    { <span class="string">&quot;Profile&quot;</span> }
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
+                &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                  &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Profile}&gt;
+                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                    { <span class="string">&quot;Profile&quot; </span>}
+                  &lt;/Link&lt;ViewRoute&gt;&gt;
+                &lt;/li&gt;
 
-                <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;mb-1&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;nav-link&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">ViewRoute::Security</span>}<span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">data</span><span class="op">-</span><span class="ident">feather</span><span class="op">=</span><span class="string">&quot;file&quot;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
-                    { <span class="string">&quot;Security&quot;</span> }
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
-                <span class="comment">// TODO: the admin link should only show up if you&#39;re an admin</span>
-                <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;mb-1&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span> <span class="ident">classes</span><span class="op">=</span><span class="string">&quot;nav-link&quot;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">AdminRoute::AdminMenu</span>}<span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">data</span><span class="op">-</span><span class="ident">feather</span><span class="op">=</span><span class="string">&quot;file&quot;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
-                    { <span class="string">&quot;Admin&quot;</span> }
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;mb-1&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">a</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;nav-link&quot;</span> <span class="ident">href</span><span class="op">=</span><span class="string">&quot;#&quot;</span>
-                    <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">toggle</span><span class="op">=</span><span class="string">&quot;modal&quot;</span>
-                    <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">target</span><span class="op">=</span>{<span class="macro">format!</span>(<span class="string">&quot;#{}&quot;</span>, <span class="ident"><span class="kw">crate</span>::constants::ID_SIGNOUTMODAL</span>)}
-                    <span class="op">&gt;</span>{<span class="string">&quot;Sign out&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">a</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">ul</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">form</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;d-flex&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">input</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-control me-2&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;search&quot;</span> <span class="ident">placeholder</span><span class="op">=</span><span class="string">&quot;Search&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">label</span><span class="op">=</span><span class="string">&quot;Search&quot;</span> <span class="op">/</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-outline-light&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;Search&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">nav</span><span class="op">&gt;</span>
-        <span class="comment">// sign out modal dialogue box</span>
-        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;modal&quot;</span> <span class="ident">tabindex</span><span class="op">=</span><span class="string">&quot;-1&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;dialog&quot;</span> <span class="ident">id</span><span class="op">=</span>{<span class="ident"><span class="kw">crate</span>::constants::ID_SIGNOUTMODAL</span>}<span class="op">&gt;</span>
-          <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;modal-dialog&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;document&quot;</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;modal-content&quot;</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;modal-header&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">h5</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;modal-title&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;Confirm Sign out&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">h5</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;modal-body text-center&quot;</span><span class="op">&gt;</span>
-                {<span class="string">&quot;Are you sure you&#39;d like to log out?&quot;</span>}<span class="op">&lt;</span><span class="ident">br</span> <span class="op">/</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/kani-waving.svg&quot;</span> <span class="ident">alt</span><span class="op">=</span><span class="string">&quot;Kani waving goodbye&quot;</span> <span class="op">/</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;modal-footer&quot;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-success&quot;</span>
-                  <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">toggle</span><span class="op">=</span><span class="string">&quot;modal&quot;</span>
-                  <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">target</span><span class="op">=</span>{<span class="macro">format!</span>(<span class="string">&quot;#{}&quot;</span>, <span class="ident"><span class="kw">crate</span>::constants::ID_SIGNOUTMODAL</span>)}
-                  <span class="ident">onclick</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ViewsMsg::Logout</span>) }<span class="op">&gt;</span>{ <span class="string">&quot;Sign out&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">button</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;btn btn-secondary&quot;</span>
-                  <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">dismiss</span><span class="op">=</span><span class="string">&quot;modal&quot;</span>
-                  <span class="op">&gt;</span>{<span class="string">&quot;Cancel&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-          <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;p-3 x-auto&quot;</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">Switch</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">render</span><span class="op">=</span>{ <span class="ident">Switch::render</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">route</span>: <span class="kw-2">&amp;</span><span class="ident">ViewRoute</span><span class="op">|</span> {
-                    <span class="comment">// safety - can&#39;t panic because to get to this location we MUST be authenticated!</span>
-                    <span class="kw">match</span> <span class="ident">route</span> {
-                        <span class="ident">ViewRoute::Admin</span> =&gt; <span class="macro">html!</span>{
-                            <span class="op">&lt;</span><span class="ident">Switch</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span> <span class="ident">render</span><span class="op">=</span>{ <span class="ident">Switch::render</span>(<span class="ident">admin_routes</span>) } <span class="op">/</span><span class="op">&gt;</span>
+                &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                  &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Security}&gt;
+                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                    { <span class="string">&quot;Security&quot; </span>}
+                  &lt;/Link&lt;ViewRoute&gt;&gt;
+                &lt;/li&gt;
+                <span class="comment">// TODO: the admin link should only show up if you&#39;re an admin
+                </span>&lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                  &lt;Link&lt;AdminRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={AdminRoute::AdminMenu}&gt;
+                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                    { <span class="string">&quot;Admin&quot; </span>}
+                  &lt;/Link&lt;AdminRoute&gt;&gt;
+                &lt;/li&gt;
+                &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                  &lt;a class=<span class="string">&quot;nav-link&quot; </span>href=<span class="string">&quot;#&quot;
+                    </span>data-bs-toggle=<span class="string">&quot;modal&quot;
+                    </span>data-bs-target={<span class="macro">format!</span>(<span class="string">&quot;#{}&quot;</span>, <span class="kw">crate</span>::constants::ID_SIGNOUTMODAL)}
+                    &gt;{<span class="string">&quot;Sign out&quot;</span>}&lt;/a&gt;
+                &lt;/li&gt;
+                  &lt;/ul&gt;
+                  &lt;form class=<span class="string">&quot;d-flex&quot;</span>&gt;
+                    &lt;input class=<span class="string">&quot;form-control me-2&quot; </span><span class="kw">type</span>=<span class="string">&quot;search&quot; </span>placeholder=<span class="string">&quot;Search&quot; </span>aria-label=<span class="string">&quot;Search&quot; </span>/&gt;
+                    &lt;button class=<span class="string">&quot;btn btn-outline-light&quot; </span><span class="kw">type</span>=<span class="string">&quot;submit&quot;</span>&gt;{<span class="string">&quot;Search&quot;</span>}&lt;/button&gt;
+                  &lt;/form&gt;
+                &lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/nav&gt;
+        <span class="comment">// sign out modal dialogue box
+        </span>&lt;div class=<span class="string">&quot;modal&quot; </span>tabindex=<span class="string">&quot;-1&quot; </span>role=<span class="string">&quot;dialog&quot; </span>id={<span class="kw">crate</span>::constants::ID_SIGNOUTMODAL}&gt;
+          &lt;div class=<span class="string">&quot;modal-dialog&quot; </span>role=<span class="string">&quot;document&quot;</span>&gt;
+            &lt;div class=<span class="string">&quot;modal-content&quot;</span>&gt;
+              &lt;div class=<span class="string">&quot;modal-header&quot;</span>&gt;
+                &lt;h5 class=<span class="string">&quot;modal-title&quot;</span>&gt;{<span class="string">&quot;Confirm Sign out&quot;</span>}&lt;/h5&gt;
+              &lt;/div&gt;
+              &lt;div class=<span class="string">&quot;modal-body text-center&quot;</span>&gt;
+                {<span class="string">&quot;Are you sure you&#39;d like to log out?&quot;</span>}&lt;br /&gt;
+                &lt;img src=<span class="string">&quot;/pkg/img/kani-waving.svg&quot; </span>alt=<span class="string">&quot;Kani waving goodbye&quot; </span>/&gt;
+              &lt;/div&gt;
+              &lt;div class=<span class="string">&quot;modal-footer&quot;</span>&gt;
+                &lt;button <span class="kw">type</span>=<span class="string">&quot;button&quot; </span>class=<span class="string">&quot;btn btn-success&quot;
+                  </span>data-bs-toggle=<span class="string">&quot;modal&quot;
+                  </span>data-bs-target={<span class="macro">format!</span>(<span class="string">&quot;#{}&quot;</span>, <span class="kw">crate</span>::constants::ID_SIGNOUTMODAL)}
+                  onclick={ ctx.link().callback(|<span class="kw">_</span>| ViewsMsg::Logout) }&gt;{ <span class="string">&quot;Sign out&quot; </span>}&lt;/button&gt;
+                &lt;button <span class="kw">type</span>=<span class="string">&quot;button&quot; </span>class=<span class="string">&quot;btn btn-secondary&quot;
+                  </span>data-bs-dismiss=<span class="string">&quot;modal&quot;
+                  </span>&gt;{<span class="string">&quot;Cancel&quot;</span>}&lt;/button&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;main class=<span class="string">&quot;p-3 x-auto&quot;</span>&gt;
+              &lt;Switch&lt;ViewRoute&gt; render={ Switch::render(<span class="kw">move </span>|route: <span class="kw-2">&amp;</span>ViewRoute| {
+                    <span class="comment">// safety - can&#39;t panic because to get to this location we MUST be authenticated!
+                    </span><span class="kw">match </span>route {
+                        ViewRoute::Admin =&gt; <span class="macro">html!</span>{
+                            &lt;Switch&lt;AdminRoute&gt; render={ Switch::render(admin_routes) } /&gt;
                         },
-                        <span class="ident">ViewRoute::Apps</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">AppsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
-                        <span class="ident">ViewRoute::Profile</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">ProfileApp</span> <span class="ident">current_user_uat</span><span class="op">=</span>{ <span class="ident">current_user_uat</span>.<span class="ident">clone</span>() } <span class="op">/</span><span class="op">&gt;</span> },
-                        <span class="ident">ViewRoute::Security</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">SecurityApp</span> <span class="ident">current_user_uat</span><span class="op">=</span>{ <span class="ident">current_user_uat</span>.<span class="ident">clone</span>() } <span class="op">/</span><span class="op">&gt;</span> },
-                        <span class="ident">ViewRoute::NotFound</span> =&gt; <span class="macro">html!</span> {
-                            <span class="op">&lt;</span><span class="ident">Redirect</span><span class="op">&lt;</span><span class="ident">Route</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">Route::NotFound</span>}<span class="op">/</span><span class="op">&gt;</span>
+                        ViewRoute::Apps =&gt; <span class="macro">html! </span>{ &lt;AppsApp /&gt; },
+                        ViewRoute::Profile =&gt; <span class="macro">html! </span>{ &lt;ProfileApp current_user_uat={ current_user_uat.clone() } /&gt; },
+                        ViewRoute::Security =&gt; <span class="macro">html! </span>{ &lt;SecurityApp current_user_uat={ current_user_uat.clone() } /&gt; },
+                        ViewRoute::NotFound =&gt; <span class="macro">html! </span>{
+                            &lt;Redirect&lt;Route&gt; to={Route::NotFound}/&gt;
                         },
                     }
-              })} <span class="op">/</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+              })} /&gt;
+        &lt;/main&gt;
+        &lt;/&gt;
           }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_session_valid</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ViewsMsg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
-        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;GET&quot;</span>);
-        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
-        <span class="ident">opts</span>.<span class="ident">credentials</span>(<span class="ident">RequestCredentials::SameOrigin</span>);
+    <span class="kw">async fn </span>check_session_valid() -&gt; <span class="prelude-ty">Result</span>&lt;ViewsMsg, FetchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>opts = RequestInit::new();
+        opts.method(<span class="string">&quot;GET&quot;</span>);
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>request = Request::new_with_str_and_init(<span class="string">&quot;/v1/auth/valid&quot;</span>, <span class="kw-2">&amp;</span>opts)<span class="question-mark">?</span>;
 
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        request
+            .headers()
+            .set(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .expect_throw(<span class="string">&quot;failed to set header&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
-        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
-        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+        <span class="kw">let </span>window = utils::window();
+        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>resp: Response = resp_value.dyn_into().expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
+        <span class="kw">let </span>status = resp.status();
 
-        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::Verified</span>)
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">401</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::LogoutComplete</span>)
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
-            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
-            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+        <span class="kw">if </span>status == <span class="number">200 </span>{
+            <span class="prelude-val">Ok</span>(ViewsMsg::Verified)
+        } <span class="kw">else if </span>status == <span class="number">401 </span>{
+            <span class="prelude-val">Ok</span>(ViewsMsg::LogoutComplete)
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>headers = resp.headers();
+            <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
+            <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="prelude-val">Ok</span>(ViewsMsg::Error { emsg, kopid })
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_user_data</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ViewsMsg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
-        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;GET&quot;</span>);
-        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
-        <span class="ident">opts</span>.<span class="ident">credentials</span>(<span class="ident">RequestCredentials::SameOrigin</span>);
+    <span class="kw">async fn </span>fetch_user_data() -&gt; <span class="prelude-ty">Result</span>&lt;ViewsMsg, FetchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>opts = RequestInit::new();
+        opts.method(<span class="string">&quot;GET&quot;</span>);
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/self/_uat&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>request = Request::new_with_str_and_init(<span class="string">&quot;/v1/self/_uat&quot;</span>, <span class="kw-2">&amp;</span>opts)<span class="question-mark">?</span>;
 
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        request
+            .headers()
+            .set(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .expect_throw(<span class="string">&quot;failed to set header&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
-        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
-        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+        <span class="kw">let </span>window = utils::window();
+        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>resp: Response = resp_value.dyn_into().expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
+        <span class="kw">let </span>status = resp.status();
 
-        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
-            <span class="kw">let</span> <span class="ident">jsval</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">json</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">uat</span>: <span class="ident">UserAuthToken</span> <span class="op">=</span> <span class="ident">serde_wasm_bindgen::from_value</span>(<span class="ident">jsval</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">e_msg</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;serde error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="macro">console::error!</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
+        <span class="kw">if </span>status == <span class="number">200 </span>{
+            <span class="kw">let </span>jsval = JsFuture::from(resp.json()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>uat: UserAuthToken = serde_wasm_bindgen::from_value(jsval)
+                .map_err(|e| {
+                    <span class="kw">let </span>e_msg = <span class="macro">format!</span>(<span class="string">&quot;serde error -&gt; {:?}&quot;</span>, e);
+                    <span class="macro">console::error!</span>(e_msg.as_str());
                 })
-                .<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
+                .expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
 
-            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::ProfileInfoRecieved</span> { <span class="ident">uat</span> })
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
-            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
-            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+            <span class="prelude-val">Ok</span>(ViewsMsg::ProfileInfoRecieved { uat })
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>headers = resp.headers();
+            <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
+            <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="prelude-val">Ok</span>(ViewsMsg::Error { emsg, kopid })
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_logout</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ViewsMsg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
-        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;GET&quot;</span>);
-        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
-        <span class="ident">opts</span>.<span class="ident">credentials</span>(<span class="ident">RequestCredentials::SameOrigin</span>);
+    <span class="kw">async fn </span>fetch_logout() -&gt; <span class="prelude-ty">Result</span>&lt;ViewsMsg, FetchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>opts = RequestInit::new();
+        opts.method(<span class="string">&quot;GET&quot;</span>);
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/logout&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>request = Request::new_with_str_and_init(<span class="string">&quot;/v1/logout&quot;</span>, <span class="kw-2">&amp;</span>opts)<span class="question-mark">?</span>;
 
-        <span class="ident">request</span>
-            .<span class="ident">headers</span>()
-            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        request
+            .headers()
+            .set(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .expect_throw(<span class="string">&quot;failed to set header&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
-        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
-        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+        <span class="kw">let </span>window = utils::window();
+        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>resp: Response = resp_value.dyn_into().expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
+        <span class="kw">let </span>status = resp.status();
 
-        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::LogoutComplete</span>)
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
-            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
-            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+        <span class="kw">if </span>status == <span class="number">200 </span>{
+            <span class="prelude-val">Ok</span>(ViewsMsg::LogoutComplete)
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>headers = resp.headers();
+            <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
+            <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="prelude-val">Ok</span>(ViewsMsg::Error { emsg, kopid })
         }
     }
 }
 
-<span class="kw">fn</span> <span class="ident">admin_routes</span>(<span class="ident">route</span>: <span class="kw-2">&amp;</span><span class="ident">AdminRoute</span>) -&gt; <span class="ident">Html</span> {
-    <span class="kw">match</span> <span class="ident">route</span> {
-        <span class="ident">AdminRoute::AdminMenu</span> =&gt; <span class="macro">html!</span> {
-          <span class="op">&lt;</span><span class="ident">adminmenu::AdminMenu</span> <span class="op">/</span><span class="op">&gt;</span>
+<span class="kw">fn </span>admin_routes(route: <span class="kw-2">&amp;</span>AdminRoute) -&gt; Html {
+    <span class="kw">match </span>route {
+        AdminRoute::AdminMenu =&gt; <span class="macro">html! </span>{
+          &lt;adminmenu::AdminMenu /&gt;
         },
-        <span class="ident">AdminRoute::AdminListAccounts</span> =&gt; <span class="macro">html!</span>(
-          <span class="op">&lt;</span><span class="ident">admin_accounts::AdminListAccounts</span> <span class="op">/</span><span class="op">&gt;</span>
+        AdminRoute::AdminListAccounts =&gt; <span class="macro">html!</span>(
+          &lt;admin_accounts::AdminListAccounts /&gt;
         ),
-        <span class="ident">AdminRoute::AdminListGroups</span> =&gt; <span class="macro">html!</span>(
-          <span class="op">&lt;</span><span class="ident">admin_groups::AdminListGroups</span> <span class="op">/</span><span class="op">&gt;</span>
+        AdminRoute::AdminListGroups =&gt; <span class="macro">html!</span>(
+          &lt;admin_groups::AdminListGroups /&gt;
         ),
-        <span class="ident">AdminRoute::AdminListOAuth2</span> =&gt; <span class="macro">html!</span>(
-          <span class="op">&lt;</span><span class="ident">admin_oauth2::AdminListOAuth2</span> <span class="op">/</span><span class="op">&gt;</span>
+        AdminRoute::AdminListOAuth2 =&gt; <span class="macro">html!</span>(
+          &lt;admin_oauth2::AdminListOAuth2 /&gt;
         ),
-        <span class="ident">AdminRoute::NotFound</span> =&gt; <span class="macro">html!</span> (
-          <span class="op">&lt;</span><span class="ident">Redirect</span><span class="op">&lt;</span><span class="ident">Route</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">Route::NotFound</span>}<span class="op">/</span><span class="op">&gt;</span>
+        AdminRoute::NotFound =&gt; <span class="macro">html! </span>(
+          &lt;Redirect&lt;Route&gt; to={Route::NotFound}/&gt;
         ),
-        <span class="ident">AdminRoute::ViewGroup</span> { <span class="ident">uuid</span> } =&gt; {
-            <span class="macro">html!</span>(<span class="op">&lt;</span><span class="ident">admin_groups::AdminViewGroup</span> <span class="ident">uuid</span><span class="op">=</span>{<span class="ident">uuid</span>.<span class="ident">clone</span>()} <span class="op">/</span><span class="op">&gt;</span>)
+        AdminRoute::ViewGroup { uuid } =&gt; {
+            <span class="macro">html!</span>(&lt;admin_groups::AdminViewGroup uuid={uuid.clone()} /&gt;)
         }
-        <span class="ident">AdminRoute::ViewPerson</span> { <span class="ident">uuid</span> } =&gt; <span class="macro">html!</span>(
-          <span class="op">&lt;</span><span class="ident">admin_accounts::AdminViewPerson</span> <span class="ident">uuid</span><span class="op">=</span>{<span class="ident">uuid</span>.<span class="ident">clone</span>()} <span class="op">/</span><span class="op">&gt;</span>
+        AdminRoute::ViewPerson { uuid } =&gt; <span class="macro">html!</span>(
+          &lt;admin_accounts::AdminViewPerson uuid={uuid.clone()} /&gt;
         ),
-        <span class="ident">AdminRoute::ViewServiceAccount</span> { <span class="ident">uuid</span> } =&gt; <span class="macro">html!</span>(
-          <span class="op">&lt;</span><span class="ident">admin_accounts::AdminViewServiceAccount</span> <span class="ident">uuid</span><span class="op">=</span>{<span class="ident">uuid</span>.<span class="ident">clone</span>()} <span class="op">/</span><span class="op">&gt;</span>
+        AdminRoute::ViewServiceAccount { uuid } =&gt; <span class="macro">html!</span>(
+          &lt;admin_accounts::AdminViewServiceAccount uuid={uuid.clone()} /&gt;
         ),
-        <span class="ident">AdminRoute::ViewOAuth2RP</span> { <span class="ident">rs_name</span> } =&gt; <span class="macro">html!</span> {
-          <span class="op">&lt;</span><span class="ident">admin_oauth2::AdminViewOAuth2</span> <span class="ident">rs_name</span><span class="op">=</span>{<span class="ident">rs_name</span>.<span class="ident">clone</span>()} <span class="op">/</span><span class="op">&gt;</span>
+        AdminRoute::ViewOAuth2RP { rs_name } =&gt; <span class="macro">html! </span>{
+          &lt;admin_oauth2::AdminViewOAuth2 rs_name={rs_name.clone()} /&gt;
         },
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

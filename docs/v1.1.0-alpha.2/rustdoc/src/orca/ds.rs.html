@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/ds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/ds.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -414,421 +414,421 @@
 <span id="414">414</span>
 <span id="415">415</span>
 <span id="416">416</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
+<span class="kw">use </span>std::time::{Duration, Instant};
 
-<span class="kw">use</span> <span class="ident">ldap3_proto::proto</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>ldap3_proto::proto::<span class="kw-2">*</span>;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::data</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap</span>::{<span class="ident">LdapClient</span>, <span class="ident">LdapSchema</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::profile::DsConfig</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TargetServer</span>, <span class="ident">TargetServerBuilder</span>};
+<span class="kw">use </span><span class="kw">crate</span>::data::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::ldap::{LdapClient, LdapSchema};
+<span class="kw">use </span><span class="kw">crate</span>::profile::DsConfig;
+<span class="kw">use crate</span>::{TargetServer, TargetServerBuilder};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DirectoryServer</span> {
-    <span class="ident">ldap</span>: <span class="ident">LdapClient</span>,
-    <span class="ident">dm_pw</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>DirectoryServer {
+    ldap: LdapClient,
+    dm_pw: String,
 }
 
-<span class="kw">impl</span> <span class="ident">DirectoryServer</span> {
-    <span class="kw">fn</span> <span class="ident">construct</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">dm_pw</span>: <span class="ident">String</span>, <span class="ident">basedn</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ldap</span> <span class="op">=</span> <span class="ident">LdapClient::new</span>(<span class="ident">uri</span>, <span class="ident">basedn</span>, <span class="ident">LdapSchema::Rfc2307bis</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>DirectoryServer {
+    <span class="kw">fn </span>construct(uri: String, dm_pw: String, basedn: String) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt; {
+        <span class="kw">let </span>ldap = LdapClient::new(uri, basedn, LdapSchema::Rfc2307bis)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">DirectoryServer</span> { <span class="ident">ldap</span>, <span class="ident">dm_pw</span> })
+        <span class="prelude-val">Ok</span>(DirectoryServer { ldap, dm_pw })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">dm_pw</span>: <span class="ident">String</span>, <span class="ident">basedn</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::construct</span>(<span class="ident">uri</span>, <span class="ident">dm_pw</span>, <span class="ident">basedn</span>).<span class="ident">map</span>(<span class="ident">TargetServer::DirSrv</span>)
+    <span class="kw">pub fn </span>build(uri: String, dm_pw: String, basedn: String) -&gt; <span class="prelude-ty">Result</span>&lt;TargetServer, ()&gt; {
+        <span class="self">Self</span>::construct(uri, dm_pw, basedn).map(TargetServer::DirSrv)
     }
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_ret_no_self</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">lconfig</span>: <span class="kw-2">&amp;</span><span class="ident">DsConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::construct</span>(
-            <span class="ident">lconfig</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(),
-            <span class="ident">lconfig</span>.<span class="ident">dm_pw</span>.<span class="ident">clone</span>(),
-            <span class="ident">lconfig</span>.<span class="ident">base_dn</span>.<span class="ident">clone</span>(),
+    <span class="attribute">#[allow(clippy::new_ret_no_self)]
+    </span><span class="kw">pub fn </span>new(lconfig: <span class="kw-2">&amp;</span>DsConfig) -&gt; <span class="prelude-ty">Result</span>&lt;TargetServer, ()&gt; {
+        <span class="self">Self</span>::construct(
+            lconfig.uri.clone(),
+            lconfig.dm_pw.clone(),
+            lconfig.base_dn.clone(),
         )
-        .<span class="ident">map</span>(<span class="ident">TargetServer::DirSrv</span>)
+        .map(TargetServer::DirSrv)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;Directory Server Connection: {}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">uri</span>)
+    <span class="kw">pub fn </span>info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;Directory Server Connection: {}&quot;</span>, <span class="self">self</span>.ldap.uri)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">TargetServerBuilder</span> {
-        <span class="ident">TargetServerBuilder::DirSrv</span>(
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">dm_pw</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>.<span class="ident">clone</span>(),
+    <span class="kw">pub fn </span>builder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TargetServerBuilder {
+        TargetServerBuilder::DirSrv(
+            <span class="self">self</span>.ldap.uri.clone(),
+            <span class="self">self</span>.dm_pw.clone(),
+            <span class="self">self</span>.ldap.basedn.clone(),
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">open_dm_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dm_pw</span>).<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>open_admin_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="self">self</span>.ldap.open_dm_connection(<span class="kw-2">&amp;</span><span class="self">self</span>.dm_pw).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// We might hit admin limits depending on the dataset size, so we probably</span>
-        <span class="comment">// need to do this iteratively eventually. Or just change the limits ...</span>
+    <span class="kw">pub async fn </span>setup_admin_delete_uuids(<span class="kw-2">&amp;</span><span class="self">self</span>, targets: <span class="kw-2">&amp;</span>[Uuid]) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// We might hit admin limits depending on the dataset size, so we probably
+        // need to do this iteratively eventually. Or just change the limits ...
 
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">LdapFilter::Or</span>(
-            <span class="ident">targets</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">u</span>.<span class="ident">to_string</span>()))
-                .<span class="ident">collect</span>(),
+        </span><span class="kw">let </span>filter = LdapFilter::Or(
+            targets
+                .iter()
+                .map(|u| LdapFilter::Equality(<span class="string">&quot;cn&quot;</span>.to_string(), u.to_string()))
+                .collect(),
         );
 
         <span class="macro">print!</span>(<span class="string">&quot;(|&quot;</span>);
-        <span class="kw">for</span> <span class="ident">u</span> <span class="kw">in</span> <span class="ident">targets</span>.<span class="ident">iter</span>() {
-            <span class="macro">print!</span>(<span class="string">&quot;(cn={})&quot;</span>, <span class="ident">u</span>);
+        <span class="kw">for </span>u <span class="kw">in </span>targets.iter() {
+            <span class="macro">print!</span>(<span class="string">&quot;(cn={})&quot;</span>, u);
         }
         <span class="macro">println!</span>(<span class="string">&quot;)&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">search</span>(<span class="ident">filter</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>res = <span class="self">self</span>.ldap.search(filter).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">for</span> <span class="ident">ent</span> <span class="kw">in</span> <span class="ident">res</span>.<span class="ident">iter</span>() {
-            <span class="macro">debug!</span>(<span class="string">&quot;Deleting ... {}&quot;</span>, <span class="ident">ent</span>.<span class="ident">dn</span>);
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">delete</span>(<span class="ident">ent</span>.<span class="ident">dn</span>.<span class="ident">clone</span>()).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">for </span>ent <span class="kw">in </span>res.iter() {
+            <span class="macro">debug!</span>(<span class="string">&quot;Deleting ... {}&quot;</span>, ent.dn);
+            <span class="self">self</span>.ldap.delete(ent.dn.clone()).<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_precreate_entities</span>(
+    <span class="kw">pub async fn </span>setup_admin_precreate_entities(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">targets</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// Check if ou=people and ou=group exist</span>
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">ldap</span>
-            .<span class="ident">search</span>(<span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;ou&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;people&quot;</span>.<span class="ident">to_string</span>()))
+        targets: <span class="kw-2">&amp;</span>HashSet&lt;Uuid&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// Check if ou=people and ou=group exist
+        </span><span class="kw">let </span>res = <span class="self">self
+            </span>.ldap
+            .search(LdapFilter::Equality(<span class="string">&quot;ou&quot;</span>.to_string(), <span class="string">&quot;people&quot;</span>.to_string()))
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_empty</span>() {
-            <span class="comment">// Doesn&#39;t exist</span>
-            <span class="macro">info!</span>(<span class="string">&quot;Creating ou=people&quot;</span>);
-            <span class="kw">let</span> <span class="ident">ou_people</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
-                <span class="ident">dn</span>: <span class="macro">format!</span>(<span class="string">&quot;ou=people,{}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-                <span class="ident">attributes</span>: <span class="macro">vec!</span>[
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;objectClass&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;organizationalUnit&quot;</span>.<span class="ident">to_string</span>()],
+        <span class="kw">if </span>res.is_empty() {
+            <span class="comment">// Doesn&#39;t exist
+            </span><span class="macro">info!</span>(<span class="string">&quot;Creating ou=people&quot;</span>);
+            <span class="kw">let </span>ou_people = LdapAddRequest {
+                dn: <span class="macro">format!</span>(<span class="string">&quot;ou=people,{}&quot;</span>, <span class="self">self</span>.ldap.basedn),
+                attributes: <span class="macro">vec!</span>[
+                    LdapAttribute {
+                        atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;organizationalUnit&quot;</span>.to_string()],
                     },
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;ou&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;people&quot;</span>.<span class="ident">to_string</span>()],
+                    LdapAttribute {
+                        atype: <span class="string">&quot;ou&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;people&quot;</span>.to_string()],
                     },
                 ],
             };
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">add</span>(<span class="ident">ou_people</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.ldap.add(ou_people).<span class="kw">await</span><span class="question-mark">?</span>;
         }
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">ldap</span>
-            .<span class="ident">search</span>(<span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;ou&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;groups&quot;</span>.<span class="ident">to_string</span>()))
+        <span class="kw">let </span>res = <span class="self">self
+            </span>.ldap
+            .search(LdapFilter::Equality(<span class="string">&quot;ou&quot;</span>.to_string(), <span class="string">&quot;groups&quot;</span>.to_string()))
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_empty</span>() {
-            <span class="comment">// Doesn&#39;t exist</span>
-            <span class="macro">info!</span>(<span class="string">&quot;Creating ou=groups&quot;</span>);
-            <span class="kw">let</span> <span class="ident">ou_groups</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
-                <span class="ident">dn</span>: <span class="macro">format!</span>(<span class="string">&quot;ou=groups,{}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-                <span class="ident">attributes</span>: <span class="macro">vec!</span>[
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;objectClass&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;organizationalUnit&quot;</span>.<span class="ident">to_string</span>()],
+        <span class="kw">if </span>res.is_empty() {
+            <span class="comment">// Doesn&#39;t exist
+            </span><span class="macro">info!</span>(<span class="string">&quot;Creating ou=groups&quot;</span>);
+            <span class="kw">let </span>ou_groups = LdapAddRequest {
+                dn: <span class="macro">format!</span>(<span class="string">&quot;ou=groups,{}&quot;</span>, <span class="self">self</span>.ldap.basedn),
+                attributes: <span class="macro">vec!</span>[
+                    LdapAttribute {
+                        atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;organizationalUnit&quot;</span>.to_string()],
                     },
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;ou&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;groups&quot;</span>.<span class="ident">to_string</span>()],
+                    LdapAttribute {
+                        atype: <span class="string">&quot;ou&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;groups&quot;</span>.to_string()],
                     },
                 ],
             };
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">add</span>(<span class="ident">ou_groups</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.ldap.add(ou_groups).<span class="kw">await</span><span class="question-mark">?</span>;
         }
 
-        <span class="comment">// Now go and create the rest.</span>
-        <span class="comment">// We stick ACI&#39;s on the rootdse, so we can clear them and reset them easier.</span>
-        <span class="kw">for</span> <span class="ident">u</span> <span class="kw">in</span> <span class="ident">targets</span> {
-            <span class="comment">// does it already exist?</span>
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">ldap</span>
-                .<span class="ident">search</span>(<span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">u</span>.<span class="ident">to_string</span>()))
+        <span class="comment">// Now go and create the rest.
+        // We stick ACI&#39;s on the rootdse, so we can clear them and reset them easier.
+        </span><span class="kw">for </span>u <span class="kw">in </span>targets {
+            <span class="comment">// does it already exist?
+            </span><span class="kw">let </span>res = <span class="self">self
+                </span>.ldap
+                .search(LdapFilter::Equality(<span class="string">&quot;cn&quot;</span>.to_string(), u.to_string()))
                 .<span class="kw">await</span><span class="question-mark">?</span>;
 
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">if </span>!res.is_empty() {
                 <span class="kw">continue</span>;
             }
 
-            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">dn</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>);
-            <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
-                        <span class="ident">dn</span>,
-                        <span class="ident">attributes</span>: <span class="macro">vec!</span>[
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;objectClass&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[
-                                    <span class="string">&quot;top&quot;</span>.<span class="ident">to_string</span>(),
-                                    <span class="string">&quot;nsPerson&quot;</span>.<span class="ident">to_string</span>(),
-                                    <span class="string">&quot;nsAccount&quot;</span>.<span class="ident">to_string</span>(),
-                                    <span class="string">&quot;nsOrgPerson&quot;</span>.<span class="ident">to_string</span>(),
-                                    <span class="string">&quot;posixAccount&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="kw">let </span>e = all_entities.get(u).unwrap();
+            <span class="kw">let </span>dn = e.get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn);
+            <span class="kw">match </span>e {
+                Entity::Account(a) =&gt; {
+                    <span class="kw">let </span>account = LdapAddRequest {
+                        dn,
+                        attributes: <span class="macro">vec!</span>[
+                            LdapAttribute {
+                                atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[
+                                    <span class="string">&quot;top&quot;</span>.to_string(),
+                                    <span class="string">&quot;nsPerson&quot;</span>.to_string(),
+                                    <span class="string">&quot;nsAccount&quot;</span>.to_string(),
+                                    <span class="string">&quot;nsOrgPerson&quot;</span>.to_string(),
+                                    <span class="string">&quot;posixAccount&quot;</span>.to_string(),
                                 ],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="ident">a</span>.<span class="ident">uuid</span>.<span class="ident">to_string</span>()],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;cn&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[a.uuid.to_string()],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;uid&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="ident">a</span>.<span class="ident">name</span>.<span class="ident">clone</span>()],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;uid&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[a.name.clone()],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;displayName&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="ident">a</span>.<span class="ident">display_name</span>.<span class="ident">clone</span>()],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;displayName&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[a.display_name.clone()],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;userPassword&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="ident">a</span>.<span class="ident">password</span>.<span class="ident">clone</span>()],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;userPassword&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[a.password.clone()],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;homeDirectory&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;/home/{}&quot;</span>, <span class="ident">a</span>.<span class="ident">uuid</span>)],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;homeDirectory&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;/home/{}&quot;</span>, a.uuid)],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;uidNumber&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.<span class="ident">to_string</span>()],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;uidNumber&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.to_string()],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;gidNumber&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.<span class="ident">to_string</span>()],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;gidNumber&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.to_string()],
                             },
                         ],
                     };
-                    <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">add</span>(<span class="ident">account</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+                    <span class="self">self</span>.ldap.add(account).<span class="kw">await</span><span class="question-mark">?</span>;
                 }
-                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
-                        <span class="ident">dn</span>,
-                        <span class="ident">attributes</span>: <span class="macro">vec!</span>[
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;objectClass&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;groupOfNames&quot;</span>.<span class="ident">to_string</span>()],
+                Entity::Group(g) =&gt; {
+                    <span class="kw">let </span>group = LdapAddRequest {
+                        dn,
+                        attributes: <span class="macro">vec!</span>[
+                            LdapAttribute {
+                                atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;groupOfNames&quot;</span>.to_string()],
                             },
-                            <span class="ident">LdapAttribute</span> {
-                                <span class="ident">atype</span>: <span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(),
-                                <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="ident">g</span>.<span class="ident">uuid</span>.<span class="ident">to_string</span>(), <span class="ident">g</span>.<span class="ident">name</span>.<span class="ident">clone</span>()],
+                            LdapAttribute {
+                                atype: <span class="string">&quot;cn&quot;</span>.to_string(),
+                                vals: <span class="macro">vec!</span>[g.uuid.to_string(), g.name.clone()],
                             },
                         ],
                     };
-                    <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">add</span>(<span class="ident">group</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+                    <span class="self">self</span>.ldap.add(group).<span class="kw">await</span><span class="question-mark">?</span>;
                 }
             }
         }
 
-        <span class="comment">// Add all the members.</span>
-        <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="ident">targets</span>.<span class="ident">iter</span>().<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>();
-            <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">g</span>),
-                <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+        <span class="comment">// Add all the members.
+        </span><span class="kw">for </span>g <span class="kw">in </span>targets.iter().filter_map(|u| {
+            <span class="kw">let </span>e = all_entities.get(u).unwrap();
+            <span class="kw">match </span>e {
+                Entity::Group(g) =&gt; <span class="prelude-val">Some</span>(g),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             }
         }) {
-            <span class="comment">// List of dns</span>
-            <span class="kw">let</span> <span class="ident">vals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">g</span>
-                .<span class="ident">members</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> {
-                    <span class="ident">all_entities</span>
-                        .<span class="ident">get</span>(<span class="ident">id</span>)
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>)
+            <span class="comment">// List of dns
+            </span><span class="kw">let </span>vals: Vec&lt;<span class="kw">_</span>&gt; = g
+                .members
+                .iter()
+                .map(|id| {
+                    all_entities
+                        .get(id)
+                        .unwrap()
+                        .get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn)
                 })
-                .<span class="ident">collect</span>();
+                .collect();
 
-            <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">LdapModifyRequest</span> {
-                <span class="ident">dn</span>: <span class="ident">g</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-                <span class="ident">changes</span>: <span class="macro">vec!</span>[<span class="ident">LdapModify</span> {
-                    <span class="ident">operation</span>: <span class="ident">LdapModifyType::Replace</span>,
-                    <span class="ident">modification</span>: <span class="ident">LdapPartialAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;member&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>,
+            <span class="kw">let </span>req = LdapModifyRequest {
+                dn: g.get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn),
+                changes: <span class="macro">vec!</span>[LdapModify {
+                    operation: LdapModifyType::Replace,
+                    modification: LdapPartialAttribute {
+                        atype: <span class="string">&quot;member&quot;</span>.to_string(),
+                        vals,
                     },
                 }],
             };
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">modify</span>(<span class="ident">req</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.ldap.modify(req).<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_access_controls</span>(
+    <span class="kw">pub async fn </span>setup_access_controls(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">access</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityType</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="comment">// Create top level priv groups</span>
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">ldap</span>
-            .<span class="ident">search</span>(<span class="ident">LdapFilter::Equality</span>(
-                <span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="string">&quot;priv_account_manage&quot;</span>.<span class="ident">to_string</span>(),
+        access: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Vec&lt;EntityType&gt;&gt;,
+        all_entities: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, Entity&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="comment">// Create top level priv groups
+        </span><span class="kw">let </span>res = <span class="self">self
+            </span>.ldap
+            .search(LdapFilter::Equality(
+                <span class="string">&quot;cn&quot;</span>.to_string(),
+                <span class="string">&quot;priv_account_manage&quot;</span>.to_string(),
             ))
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_empty</span>() {
-            <span class="comment">// Doesn&#39;t exist</span>
-            <span class="macro">info!</span>(<span class="string">&quot;Creating cn=priv_account_manage&quot;</span>);
-            <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
-                <span class="ident">dn</span>: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_account_manage,{}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-                <span class="ident">attributes</span>: <span class="macro">vec!</span>[
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;objectClass&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;groupOfNames&quot;</span>.<span class="ident">to_string</span>()],
+        <span class="kw">if </span>res.is_empty() {
+            <span class="comment">// Doesn&#39;t exist
+            </span><span class="macro">info!</span>(<span class="string">&quot;Creating cn=priv_account_manage&quot;</span>);
+            <span class="kw">let </span>group = LdapAddRequest {
+                dn: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_account_manage,{}&quot;</span>, <span class="self">self</span>.ldap.basedn),
+                attributes: <span class="macro">vec!</span>[
+                    LdapAttribute {
+                        atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;groupOfNames&quot;</span>.to_string()],
                     },
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;priv_account_manage&quot;</span>.<span class="ident">to_string</span>()],
+                    LdapAttribute {
+                        atype: <span class="string">&quot;cn&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;priv_account_manage&quot;</span>.to_string()],
                     },
                 ],
             };
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">add</span>(<span class="ident">group</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.ldap.add(group).<span class="kw">await</span><span class="question-mark">?</span>;
         }
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">ldap</span>
-            .<span class="ident">search</span>(<span class="ident">LdapFilter::Equality</span>(
-                <span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="string">&quot;priv_group_manage&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="kw">let </span>res = <span class="self">self
+            </span>.ldap
+            .search(LdapFilter::Equality(
+                <span class="string">&quot;cn&quot;</span>.to_string(),
+                <span class="string">&quot;priv_group_manage&quot;</span>.to_string(),
             ))
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_empty</span>() {
-            <span class="comment">// Doesn&#39;t exist</span>
-            <span class="macro">info!</span>(<span class="string">&quot;Creating cn=priv_group_manage&quot;</span>);
-            <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
-                <span class="ident">dn</span>: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_group_manage,{}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-                <span class="ident">attributes</span>: <span class="macro">vec!</span>[
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;objectClass&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;groupOfNames&quot;</span>.<span class="ident">to_string</span>()],
+        <span class="kw">if </span>res.is_empty() {
+            <span class="comment">// Doesn&#39;t exist
+            </span><span class="macro">info!</span>(<span class="string">&quot;Creating cn=priv_group_manage&quot;</span>);
+            <span class="kw">let </span>group = LdapAddRequest {
+                dn: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_group_manage,{}&quot;</span>, <span class="self">self</span>.ldap.basedn),
+                attributes: <span class="macro">vec!</span>[
+                    LdapAttribute {
+                        atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;groupOfNames&quot;</span>.to_string()],
                     },
-                    <span class="ident">LdapAttribute</span> {
-                        <span class="ident">atype</span>: <span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;priv_group_manage&quot;</span>.<span class="ident">to_string</span>()],
+                    LdapAttribute {
+                        atype: <span class="string">&quot;cn&quot;</span>.to_string(),
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;priv_group_manage&quot;</span>.to_string()],
                     },
                 ],
             };
-            <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">add</span>(<span class="ident">group</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="self">self</span>.ldap.add(group).<span class="kw">await</span><span class="question-mark">?</span>;
         }
 
-        <span class="comment">// Add the acis with mod replace.</span>
-        <span class="kw">let</span> <span class="ident">acimod</span> <span class="op">=</span> <span class="ident">LdapModifyRequest</span> {
-                <span class="ident">dn</span>: <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>.<span class="ident">clone</span>(),
-                <span class="ident">changes</span>: <span class="macro">vec!</span>[
-                    <span class="ident">LdapModify</span> {
-                        <span class="ident">operation</span>: <span class="ident">LdapModifyType::Replace</span>,
-                        <span class="ident">modification</span>: <span class="ident">LdapPartialAttribute</span> {
-                            <span class="ident">atype</span>: <span class="string">&quot;aci&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="ident">vals</span>: <span class="macro">vec!</span>[
-                                <span class="string">r#&quot;(targetattr=&quot;dc || description || objectClass&quot;)(targetfilter=&quot;(objectClass=domain)&quot;)(version 3.0; acl &quot;Enable anyone domain read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.<span class="ident">to_string</span>(),
+        <span class="comment">// Add the acis with mod replace.
+        </span><span class="kw">let </span>acimod = LdapModifyRequest {
+                dn: <span class="self">self</span>.ldap.basedn.clone(),
+                changes: <span class="macro">vec!</span>[
+                    LdapModify {
+                        operation: LdapModifyType::Replace,
+                        modification: LdapPartialAttribute {
+                            atype: <span class="string">&quot;aci&quot;</span>.to_string(),
+                            vals: <span class="macro">vec!</span>[
+                                <span class="string">r#&quot;(targetattr=&quot;dc || description || objectClass&quot;)(targetfilter=&quot;(objectClass=domain)&quot;)(version 3.0; acl &quot;Enable anyone domain read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
 
-                                <span class="string">r#&quot;(targetattr=&quot;ou || objectClass&quot;)(targetfilter=&quot;(objectClass=organizationalUnit)&quot;)(version 3.0; acl &quot;Enable anyone ou read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.<span class="ident">to_string</span>(),
-                                <span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || nsUniqueId || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable anyone group read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.<span class="ident">to_string</span>(),
-                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable group_admin to manage groups&quot;; allow (write,add, delete)(groupdn=&quot;ldap:///cn=priv_group_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-                                <span class="string">r#&quot;(targetattr=&quot;objectClass || description || nsUniqueId || uid || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || nsSshPublicKey || nsAccountLock || userCertificate&quot;)(targetfilter=&quot;(objectClass=posixaccount)&quot;)(version 3.0; acl &quot;Enable anyone user read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.<span class="ident">to_string</span>(),
-                                <span class="string">r#&quot;(targetattr=&quot;displayName || legalName || userPassword || nsSshPublicKey&quot;)(version 3.0; acl &quot;Enable self partial modify&quot;; allow (write)(userdn=&quot;ldap:///self&quot;);)&quot;#</span>.<span class="ident">to_string</span>(),
-                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;uid || description || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || legalName || telephoneNumber || mobile&quot;)(targetfilter=&quot;(&amp;(objectClass=nsPerson)(objectClass=nsAccount))&quot;)(version 3.0; acl &quot;Enable user admin create&quot;; allow (write, add, delete, read)(groupdn=&quot;ldap:///cn=priv_account_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
+                                <span class="string">r#&quot;(targetattr=&quot;ou || objectClass&quot;)(targetfilter=&quot;(objectClass=organizationalUnit)&quot;)(version 3.0; acl &quot;Enable anyone ou read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
+                                <span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || nsUniqueId || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable anyone group read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
+                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable group_admin to manage groups&quot;; allow (write,add, delete)(groupdn=&quot;ldap:///cn=priv_group_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.ldap.basedn),
+                                <span class="string">r#&quot;(targetattr=&quot;objectClass || description || nsUniqueId || uid || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || nsSshPublicKey || nsAccountLock || userCertificate&quot;)(targetfilter=&quot;(objectClass=posixaccount)&quot;)(version 3.0; acl &quot;Enable anyone user read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
+                                <span class="string">r#&quot;(targetattr=&quot;displayName || legalName || userPassword || nsSshPublicKey&quot;)(version 3.0; acl &quot;Enable self partial modify&quot;; allow (write)(userdn=&quot;ldap:///self&quot;);)&quot;#</span>.to_string(),
+                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;uid || description || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || legalName || telephoneNumber || mobile&quot;)(targetfilter=&quot;(&amp;(objectClass=nsPerson)(objectClass=nsAccount))&quot;)(version 3.0; acl &quot;Enable user admin create&quot;; allow (write, add, delete, read)(groupdn=&quot;ldap:///cn=priv_account_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.ldap.basedn),
                             ]
                         }
                     }
                 ]
             };
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">modify</span>(<span class="ident">acimod</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.ldap.modify(acimod).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="comment">// Add members as needed.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">priv_account</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">priv_group</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="comment">// Add members as needed.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>priv_account = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>priv_group = Vec::new();
 
-        <span class="kw">for</span> (<span class="ident">id</span>, <span class="ident">list</span>) <span class="kw">in</span> <span class="ident">access</span>.<span class="ident">iter</span>() {
-            <span class="comment">// get the users name.</span>
-            <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">unwrap</span>();
+        <span class="kw">for </span>(id, list) <span class="kw">in </span>access.iter() {
+            <span class="comment">// get the users name.
+            </span><span class="kw">let </span>account = all_entities.get(id).unwrap();
 
-            <span class="kw">let</span> <span class="ident">need_account</span> <span class="op">=</span> <span class="ident">list</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">EntityType::Account</span>(<span class="kw">_</span>)))
-                .<span class="ident">count</span>()
-                <span class="op">==</span> <span class="number">0</span>;
-            <span class="kw">let</span> <span class="ident">need_group</span> <span class="op">=</span> <span class="ident">list</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">EntityType::Group</span>(<span class="kw">_</span>)))
-                .<span class="ident">count</span>()
-                <span class="op">==</span> <span class="number">0</span>;
+            <span class="kw">let </span>need_account = list
+                .iter()
+                .filter(|v| <span class="macro">matches!</span>(v, EntityType::Account(<span class="kw">_</span>)))
+                .count()
+                == <span class="number">0</span>;
+            <span class="kw">let </span>need_group = list
+                .iter()
+                .filter(|v| <span class="macro">matches!</span>(v, EntityType::Group(<span class="kw">_</span>)))
+                .count()
+                == <span class="number">0</span>;
 
-            <span class="kw">if</span> <span class="ident">need_account</span> {
-                <span class="ident">priv_account</span>.<span class="ident">push</span>(<span class="ident">account</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>))
+            <span class="kw">if </span>need_account {
+                priv_account.push(account.get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn))
             }
-            <span class="kw">if</span> <span class="ident">need_group</span> {
-                <span class="ident">priv_group</span>.<span class="ident">push</span>(<span class="ident">account</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>))
+            <span class="kw">if </span>need_group {
+                priv_group.push(account.get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn))
             }
         }
 
-        <span class="comment">// Sort and dedup</span>
-        <span class="ident">priv_account</span>.<span class="ident">sort_unstable</span>();
-        <span class="ident">priv_group</span>.<span class="ident">sort_unstable</span>();
-        <span class="ident">priv_account</span>.<span class="ident">dedup</span>();
-        <span class="ident">priv_group</span>.<span class="ident">dedup</span>();
-        <span class="comment">// Do the mod in one pass.</span>
-        <span class="macro">info!</span>(<span class="string">&quot;Setting up cn=priv_group_manage&quot;</span>);
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">LdapModifyRequest</span> {
-            <span class="ident">dn</span>: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_group_manage,{}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-            <span class="ident">changes</span>: <span class="macro">vec!</span>[<span class="ident">LdapModify</span> {
-                <span class="ident">operation</span>: <span class="ident">LdapModifyType::Delete</span>,
-                <span class="ident">modification</span>: <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;member&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="ident">priv_group</span>,
+        <span class="comment">// Sort and dedup
+        </span>priv_account.sort_unstable();
+        priv_group.sort_unstable();
+        priv_account.dedup();
+        priv_group.dedup();
+        <span class="comment">// Do the mod in one pass.
+        </span><span class="macro">info!</span>(<span class="string">&quot;Setting up cn=priv_group_manage&quot;</span>);
+        <span class="kw">let </span>req = LdapModifyRequest {
+            dn: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_group_manage,{}&quot;</span>, <span class="self">self</span>.ldap.basedn),
+            changes: <span class="macro">vec!</span>[LdapModify {
+                operation: LdapModifyType::Delete,
+                modification: LdapPartialAttribute {
+                    atype: <span class="string">&quot;member&quot;</span>.to_string(),
+                    vals: priv_group,
                 },
             }],
         };
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">modify</span>(<span class="ident">req</span>).<span class="kw">await</span>;
+        <span class="kw">let _ </span>= <span class="self">self</span>.ldap.modify(req).<span class="kw">await</span>;
 
         <span class="macro">info!</span>(<span class="string">&quot;Setting up cn=priv_account_manage&quot;</span>);
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">LdapModifyRequest</span> {
-            <span class="ident">dn</span>: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_account_manage,{}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>),
-            <span class="ident">changes</span>: <span class="macro">vec!</span>[<span class="ident">LdapModify</span> {
-                <span class="ident">operation</span>: <span class="ident">LdapModifyType::Delete</span>,
-                <span class="ident">modification</span>: <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;member&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="ident">priv_account</span>,
+        <span class="kw">let </span>req = LdapModifyRequest {
+            dn: <span class="macro">format!</span>(<span class="string">&quot;cn=priv_account_manage,{}&quot;</span>, <span class="self">self</span>.ldap.basedn),
+            changes: <span class="macro">vec!</span>[LdapModify {
+                operation: LdapModifyType::Delete,
+                modification: LdapPartialAttribute {
+                    atype: <span class="string">&quot;member&quot;</span>.to_string(),
+                    vals: priv_account,
                 },
             }],
         };
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">modify</span>(<span class="ident">req</span>).<span class="kw">await</span>;
+        <span class="kw">let _ </span>= <span class="self">self</span>.ldap.modify(req).<span class="kw">await</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_user_connection</span>(
+    <span class="kw">pub async fn </span>open_user_connection(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>
+        test_start: Instant,
+        name: <span class="kw-2">&amp;</span>str,
+        pw: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration), ()&gt; {
+        <span class="self">self</span>.ldap.open_user_connection(test_start, name, pw).<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>close_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.ldap.close_connection().<span class="kw">await</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(
+    <span class="kw">pub async fn </span>search(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">search_name</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>
-    }
+        test_start: Instant,
+        ids: <span class="kw-2">&amp;</span>[String],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration, usize), ()&gt; {
+        <span class="self">self</span>.ldap.search_name(test_start, ids).<span class="kw">await
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

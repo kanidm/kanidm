@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/https/manifest.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>manifest.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_core/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/https/manifest.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>manifest.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_core/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -156,163 +156,163 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="doccomment">///! Builds a Progressive Web App Manifest page.</span>
-<span class="comment">// Thanks to the webmanifest crate for a lot of this code</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::https</span>::{<span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
+<span class="doccomment">///! Builds a Progressive Web App Manifest page.
+</span><span class="comment">// Thanks to the webmanifest crate for a lot of this code
+</span><span class="kw">use </span><span class="kw">crate</span>::https::{AppState, RequestExtensions};
 
-<span class="doccomment">/// The MIME type for `.webmanifest` files.</span>
-<span class="kw">const</span> <span class="ident">MIME_TYPE_MANIFEST</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;application/manifest+json;charset=utf-8&quot;</span>;
+<span class="doccomment">/// The MIME type for `.webmanifest` files.
+</span><span class="kw">const </span>MIME_TYPE_MANIFEST: <span class="kw-2">&amp;</span>str = <span class="string">&quot;application/manifest+json;charset=utf-8&quot;</span>;
 
-<span class="doccomment">/// Create a new manifest builder.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Manifest</span><span class="op">&lt;</span><span class="lifetime">&#39;s</span><span class="op">&gt;</span> {
-    <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span>,
-    <span class="ident">short_name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span>,
-    <span class="ident">start_url</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;display&quot;</span>)]</span>
-    <span class="ident">display_mode</span>: <span class="ident">DisplayMode</span>,
-    <span class="ident">background_color</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">description</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;dir&quot;</span>)]</span>
-    <span class="ident">direction</span>: <span class="ident">Direction</span>,
-    <span class="comment">// direction: Option&lt;Direction&gt;,</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">orientation</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="comment">// orientation: Option&lt;Orientation&gt;,</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">lang</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">scope</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span><span class="op">&gt;</span>,
-    <span class="comment">// #[serde(skip_serializing_if = &quot;Option::is_none&quot;)]</span>
-    <span class="ident">theme_color</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s</span> <span class="ident">str</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">prefer_related_applications</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
-    <span class="comment">// #[serde(borrow)]</span>
-    <span class="comment">// #[serde(skip_serializing_if = &quot;Option::is_none&quot;)]</span>
-    <span class="ident">icons</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ManifestIcon</span><span class="op">&gt;</span>,
-    <span class="comment">// icons: Vec&lt;Icon&lt;&#39;i&gt;&gt;,</span>
-    <span class="comment">// #[serde(borrow)]</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">related_applications</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// related_applications: Vec&lt;Related&lt;&#39;r&gt;&gt;,</span>
+<span class="doccomment">/// Create a new manifest builder.
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Manifest&lt;<span class="lifetime">&#39;s</span>&gt; {
+    name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str,
+    short_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str,
+    start_url: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;display&quot;</span>)]
+    </span>display_mode: DisplayMode,
+    background_color: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>description: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str&gt;,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;dir&quot;</span>)]
+    </span>direction: Direction,
+    <span class="comment">// direction: Option&lt;Direction&gt;,
+    </span><span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>orientation: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="comment">// orientation: Option&lt;Orientation&gt;,
+    </span><span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>lang: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str&gt;,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>scope: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str&gt;,
+    <span class="comment">// #[serde(skip_serializing_if = &quot;Option::is_none&quot;)]
+    </span>theme_color: <span class="kw-2">&amp;</span><span class="lifetime">&#39;s </span>str,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>prefer_related_applications: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="comment">// #[serde(borrow)]
+    // #[serde(skip_serializing_if = &quot;Option::is_none&quot;)]
+    </span>icons: Vec&lt;ManifestIcon&gt;,
+    <span class="comment">// icons: Vec&lt;Icon&lt;&#39;i&gt;&gt;,
+    // #[serde(borrow)]
+    </span><span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>related_applications: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="comment">// related_applications: Vec&lt;Related&lt;&#39;r&gt;&gt;,
+</span>}
+
+<span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">struct </span>ManifestIcon {
+    src: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;type&quot;</span>)]
+    </span>mime_type: String,
+    sizes: String,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>purpose: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">struct</span> <span class="ident">ManifestIcon</span> {
-    <span class="ident">src</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;type&quot;</span>)]</span>
-    <span class="ident">mime_type</span>: <span class="ident">String</span>,
-    <span class="ident">sizes</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">purpose</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">enum </span>Direction {
+    <span class="doccomment">/// left-to-right
+    </span><span class="attribute">#[serde(rename = <span class="string">&quot;ltr&quot;</span>)]
+    </span>Ltr,
+    <span class="doccomment">/// right-to-left
+    </span><span class="attribute">#[serde(rename = <span class="string">&quot;rtl&quot;</span>)]
+    </span>Rtl,
+    <span class="doccomment">/// Hints to the browser to use the [Unicode bidirectional
+    /// algorithm](https://developer.mozilla.org/en-US/docs/Web/Localization/Unicode_Bidirectional_Text_Algorithm)
+    /// to make a best guess about the text&#39;s direction.
+    </span><span class="attribute">#[serde(rename = <span class="string">&quot;auto&quot;</span>)]
+    </span>Auto,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">enum</span> <span class="ident">Direction</span> {
-    <span class="doccomment">/// left-to-right</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;ltr&quot;</span>)]</span>
-    <span class="ident">Ltr</span>,
-    <span class="doccomment">/// right-to-left</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;rtl&quot;</span>)]</span>
-    <span class="ident">Rtl</span>,
-    <span class="doccomment">/// Hints to the browser to use the [Unicode bidirectional</span>
-    <span class="doccomment">/// algorithm](https://developer.mozilla.org/en-US/docs/Web/Localization/Unicode_Bidirectional_Text_Algorithm)</span>
-    <span class="doccomment">/// to make a best guess about the text&#39;s direction.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;auto&quot;</span>)]</span>
-    <span class="ident">Auto</span>,
+<span class="doccomment">/// Display modes from the Web app manifest definition
+///
+/// Ref: &lt;https://developer.mozilla.org/en-US/docs/Web/Manifest/display&gt;
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">enum </span>DisplayMode {
+    <span class="doccomment">/// All of the available display area is used and no user agent chrome is
+    /// shown.
+    </span><span class="attribute">#[serde(rename = <span class="string">&quot;full-screen&quot;</span>)]
+    </span>FullScreen,
+    <span class="doccomment">/// The application will look and feel like a standalone application. This can
+    /// include the application having a different window, its own icon in the
+    /// application launcher, etc. In this mode, the user agent will exclude UI
+    /// elements for controlling navigation, but can include other UI elements
+    /// such as a status bar.
+    </span><span class="attribute">#[serde(rename = <span class="string">&quot;standalone&quot;</span>)]
+    </span>Standalone,
+    <span class="doccomment">/// The application will look and feel like a standalone application, but will
+    /// have a minimal set of UI elements for controlling navigation. The elements
+    /// will vary by browser.
+    </span><span class="attribute">#[serde(rename = <span class="string">&quot;minimal-ui&quot;</span>)]
+    </span>MinimalUi,
+    <span class="doccomment">/// The application opens in a conventional browser tab or new window,
+    /// depending on the browser and platform. This is the default.
+    </span><span class="attribute">#[serde(rename = <span class="string">&quot;browser&quot;</span>)]
+    </span>Browser,
 }
 
-<span class="doccomment">/// Display modes from the Web app manifest definition</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Ref: &lt;https://developer.mozilla.org/en-US/docs/Web/Manifest/display&gt;</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">enum</span> <span class="ident">DisplayMode</span> {
-    <span class="doccomment">/// All of the available display area is used and no user agent chrome is</span>
-    <span class="doccomment">/// shown.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;full-screen&quot;</span>)]</span>
-    <span class="ident">FullScreen</span>,
-    <span class="doccomment">/// The application will look and feel like a standalone application. This can</span>
-    <span class="doccomment">/// include the application having a different window, its own icon in the</span>
-    <span class="doccomment">/// application launcher, etc. In this mode, the user agent will exclude UI</span>
-    <span class="doccomment">/// elements for controlling navigation, but can include other UI elements</span>
-    <span class="doccomment">/// such as a status bar.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;standalone&quot;</span>)]</span>
-    <span class="ident">Standalone</span>,
-    <span class="doccomment">/// The application will look and feel like a standalone application, but will</span>
-    <span class="doccomment">/// have a minimal set of UI elements for controlling navigation. The elements</span>
-    <span class="doccomment">/// will vary by browser.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;minimal-ui&quot;</span>)]</span>
-    <span class="ident">MinimalUi</span>,
-    <span class="doccomment">/// The application opens in a conventional browser tab or new window,</span>
-    <span class="doccomment">/// depending on the browser and platform. This is the default.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;browser&quot;</span>)]</span>
-    <span class="ident">Browser</span>,
-}
+<span class="doccomment">/// Generates a manifest.json file for progressive web app usag
+</span><span class="kw">pub async fn </span>manifest(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">200</span>);
+    <span class="kw">let </span>(eventid, <span class="kw">_</span>) = req.new_eventid();
+    <span class="kw">let </span>domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).<span class="kw">await</span>;
 
-<span class="doccomment">/// Generates a manifest.json file for progressive web app usag</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manifest</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
-    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
-    <span class="kw">let</span> <span class="ident">domain_display_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">qe_r_ref</span>.<span class="ident">get_domain_display_name</span>(<span class="ident">eventid</span>).<span class="kw">await</span>;
-
-    <span class="kw">let</span> <span class="ident">icons</span> <span class="op">=</span> <span class="macro">vec!</span>[
-        <span class="ident">ManifestIcon</span> {
-            <span class="ident">sizes</span>: <span class="ident">String::from</span>(<span class="string">&quot;512x512&quot;</span>),
-            <span class="ident">src</span>: <span class="ident">String::from</span>(<span class="string">&quot;/pkg/img/logo-square.svg&quot;</span>),
-            <span class="ident">mime_type</span>: <span class="ident">String::from</span>(<span class="string">&quot;image/svg+xml&quot;</span>),
-            <span class="ident">purpose</span>: <span class="prelude-val">None</span>,
+    <span class="kw">let </span>icons = <span class="macro">vec!</span>[
+        ManifestIcon {
+            sizes: String::from(<span class="string">&quot;512x512&quot;</span>),
+            src: String::from(<span class="string">&quot;/pkg/img/logo-square.svg&quot;</span>),
+            mime_type: String::from(<span class="string">&quot;image/svg+xml&quot;</span>),
+            purpose: <span class="prelude-val">None</span>,
         },
-        <span class="ident">ManifestIcon</span> {
-            <span class="ident">sizes</span>: <span class="ident">String::from</span>(<span class="string">&quot;512x512&quot;</span>),
-            <span class="ident">src</span>: <span class="ident">String::from</span>(<span class="string">&quot;/pkg/img/logo-512.png&quot;</span>),
-            <span class="ident">mime_type</span>: <span class="ident">String::from</span>(<span class="string">&quot;image/png&quot;</span>),
-            <span class="ident">purpose</span>: <span class="prelude-val">Some</span>(<span class="ident">String::from</span>(<span class="string">&quot;maskable&quot;</span>)),
+        ManifestIcon {
+            sizes: String::from(<span class="string">&quot;512x512&quot;</span>),
+            src: String::from(<span class="string">&quot;/pkg/img/logo-512.png&quot;</span>),
+            mime_type: String::from(<span class="string">&quot;image/png&quot;</span>),
+            purpose: <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;maskable&quot;</span>)),
         },
-        <span class="ident">ManifestIcon</span> {
-            <span class="ident">sizes</span>: <span class="ident">String::from</span>(<span class="string">&quot;192x192&quot;</span>),
-            <span class="ident">src</span>: <span class="ident">String::from</span>(<span class="string">&quot;/pkg/img/logo-192.png&quot;</span>),
-            <span class="ident">mime_type</span>: <span class="ident">String::from</span>(<span class="string">&quot;image/png&quot;</span>),
-            <span class="ident">purpose</span>: <span class="prelude-val">Some</span>(<span class="ident">String::from</span>(<span class="string">&quot;maskable&quot;</span>)),
+        ManifestIcon {
+            sizes: String::from(<span class="string">&quot;192x192&quot;</span>),
+            src: String::from(<span class="string">&quot;/pkg/img/logo-192.png&quot;</span>),
+            mime_type: String::from(<span class="string">&quot;image/png&quot;</span>),
+            purpose: <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;maskable&quot;</span>)),
         },
-        <span class="ident">ManifestIcon</span> {
-            <span class="ident">sizes</span>: <span class="ident">String::from</span>(<span class="string">&quot;256x156&quot;</span>),
-            <span class="ident">src</span>: <span class="ident">String::from</span>(<span class="string">&quot;/pkg/img/logo-256.png&quot;</span>),
-            <span class="ident">mime_type</span>: <span class="ident">String::from</span>(<span class="string">&quot;image/png&quot;</span>),
-            <span class="ident">purpose</span>: <span class="prelude-val">Some</span>(<span class="ident">String::from</span>(<span class="string">&quot;maskable&quot;</span>)),
+        ManifestIcon {
+            sizes: String::from(<span class="string">&quot;256x156&quot;</span>),
+            src: String::from(<span class="string">&quot;/pkg/img/logo-256.png&quot;</span>),
+            mime_type: String::from(<span class="string">&quot;image/png&quot;</span>),
+            purpose: <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;maskable&quot;</span>)),
         },
     ];
 
-    <span class="kw">let</span> <span class="ident">start_url</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">req</span>.<span class="ident">host</span>() {
-        <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;https://{}/&quot;</span>, <span class="ident">value</span>).<span class="ident">clone</span>(),
-        <span class="prelude-val">None</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;/&quot;</span>),
+    <span class="kw">let </span>start_url = <span class="kw">match </span>req.host() {
+        <span class="prelude-val">Some</span>(value) =&gt; <span class="macro">format!</span>(<span class="string">&quot;https://{}/&quot;</span>, value).clone(),
+        <span class="prelude-val">None </span>=&gt; String::from(<span class="string">&quot;/&quot;</span>),
     };
 
-    <span class="kw">let</span> <span class="ident">manifest_struct</span> <span class="op">=</span> <span class="ident">Manifest</span> {
-        <span class="ident">short_name</span>: <span class="string">&quot;Kanidm&quot;</span>,
-        <span class="ident">name</span>: <span class="ident">domain_display_name</span>.<span class="ident">as_str</span>(),
-        <span class="ident">start_url</span>: <span class="ident">start_url</span>.<span class="ident">as_str</span>(),
-        <span class="ident">display_mode</span>: <span class="ident">DisplayMode::MinimalUi</span>,
-        <span class="ident">description</span>: <span class="prelude-val">None</span>,
-        <span class="ident">orientation</span>: <span class="prelude-val">None</span>,
-        <span class="ident">lang</span>: <span class="prelude-val">Some</span>(<span class="string">&quot;en&quot;</span>),
-        <span class="ident">theme_color</span>: <span class="string">&quot;white&quot;</span>,
-        <span class="ident">background_color</span>: <span class="string">&quot;white&quot;</span>,
-        <span class="ident">direction</span>: <span class="ident">Direction::Auto</span>,
-        <span class="ident">scope</span>: <span class="prelude-val">None</span>,
-        <span class="ident">prefer_related_applications</span>: <span class="prelude-val">None</span>,
-        <span class="ident">icons</span>,
-        <span class="ident">related_applications</span>: <span class="prelude-val">None</span>,
+    <span class="kw">let </span>manifest_struct = Manifest {
+        short_name: <span class="string">&quot;Kanidm&quot;</span>,
+        name: domain_display_name.as_str(),
+        start_url: start_url.as_str(),
+        display_mode: DisplayMode::MinimalUi,
+        description: <span class="prelude-val">None</span>,
+        orientation: <span class="prelude-val">None</span>,
+        lang: <span class="prelude-val">Some</span>(<span class="string">&quot;en&quot;</span>),
+        theme_color: <span class="string">&quot;white&quot;</span>,
+        background_color: <span class="string">&quot;white&quot;</span>,
+        direction: Direction::Auto,
+        scope: <span class="prelude-val">None</span>,
+        prefer_related_applications: <span class="prelude-val">None</span>,
+        icons,
+        related_applications: <span class="prelude-val">None</span>,
     };
 
-    <span class="kw">let</span> <span class="ident">manifest_string</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">manifest_struct</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>manifest_string = serde_json::to_string_pretty(<span class="kw-2">&amp;</span>manifest_struct)<span class="question-mark">?</span>;
 
-    <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="ident">MIME_TYPE_MANIFEST</span>);
-    <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">manifest_string</span>);
+    res.set_content_type(MIME_TYPE_MANIFEST);
+    res.set_body(manifest_string);
 
-    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+    <span class="prelude-val">Ok</span>(res)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

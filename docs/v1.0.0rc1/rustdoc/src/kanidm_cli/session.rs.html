@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/session.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>session.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cli/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/session.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>session.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cli/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -521,528 +521,528 @@
 <span id="521">521</span>
 <span id="522">522</span>
 <span id="523">523</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-<span class="kw">use</span> <span class="ident">std::fs</span>::{<span class="ident">create_dir</span>, <span class="ident">File</span>};
-<span class="kw">use</span> <span class="ident">std::io</span>::{<span class="self">self</span>, <span class="ident">BufReader</span>, <span class="ident">BufWriter</span>, <span class="ident">ErrorKind</span>, <span class="ident">Write</span>};
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::fs::{create_dir, File};
+<span class="kw">use </span>std::io::{<span class="self">self</span>, BufReader, BufWriter, ErrorKind, Write};
+<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use</span> <span class="ident">compact_jwt::JwsUnverified</span>;
-<span class="kw">use</span> <span class="ident">dialoguer::theme::ColorfulTheme</span>;
-<span class="kw">use</span> <span class="ident">dialoguer::Select</span>;
-<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClient</span>};
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span>, <span class="ident">UserAuthToken</span>};
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">libc::umask</span>;
-<span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::prelude::RequestChallengeResponse</span>;
-<span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::u2fhid::U2FHid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::WebauthnAuthenticator</span>;
+<span class="kw">use </span>compact_jwt::JwsUnverified;
+<span class="kw">use </span>dialoguer::theme::ColorfulTheme;
+<span class="kw">use </span>dialoguer::Select;
+<span class="kw">use </span>kanidm_client::{ClientError, KanidmClient};
+<span class="kw">use </span>kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
+<span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">use </span>libc::umask;
+<span class="kw">use </span>webauthn_authenticator_rs::prelude::RequestChallengeResponse;
+<span class="kw">use </span>webauthn_authenticator_rs::u2fhid::U2FHid;
+<span class="kw">use </span>webauthn_authenticator_rs::WebauthnAuthenticator;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::common::prompt_for_username_get_username</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">LoginOpt</span>, <span class="ident">LogoutOpt</span>, <span class="ident">SessionOpt</span>};
+<span class="kw">use </span><span class="kw">crate</span>::common::prompt_for_username_get_username;
+<span class="kw">use crate</span>::{LoginOpt, LogoutOpt, SessionOpt};
 
-<span class="kw">static</span> <span class="ident">TOKEN_DIR</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;~/.cache&quot;</span>;
-<span class="kw">static</span> <span class="ident">TOKEN_PATH</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;~/.cache/kanidm_tokens&quot;</span>;
+<span class="kw">static </span>TOKEN_DIR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;~/.cache&quot;</span>;
+<span class="kw">static </span>TOKEN_PATH: <span class="kw-2">&amp;</span>str = <span class="string">&quot;~/.cache/kanidm_tokens&quot;</span>;
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::result_unit_err</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_tokens</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">String</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">token_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">shellexpand::tilde</span>(<span class="ident">TOKEN_PATH</span>).<span class="ident">into_owned</span>());
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">token_path</span>.<span class="ident">exists</span>() {
+<span class="attribute">#[allow(clippy::result_unit_err)]
+</span><span class="kw">pub fn </span>read_tokens() -&gt; <span class="prelude-ty">Result</span>&lt;BTreeMap&lt;String, String&gt;, ()&gt; {
+    <span class="kw">let </span>token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
+    <span class="kw">if </span>!token_path.exists() {
         <span class="macro">debug!</span>(
             <span class="string">&quot;Token cache file path {:?} does not exist, returning an empty token store.&quot;</span>,
-            <span class="ident">TOKEN_PATH</span>
+            TOKEN_PATH
         );
-        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">BTreeMap::new</span>());
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeMap::new());
     }
 
-    <span class="macro">debug!</span>(<span class="string">&quot;Attempting to read tokens from {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">token_path</span>);
-    <span class="comment">// If the file does not exist, return Ok&lt;map&gt;</span>
-    <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::open</span>(<span class="kw-2">&amp;</span><span class="ident">token_path</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">kind</span>() {
-                <span class="ident">ErrorKind::PermissionDenied</span> =&gt; {
-                    <span class="comment">// we bail here because you won&#39;t be able to write them back...</span>
-                    <span class="macro">error!</span>(
+    <span class="macro">debug!</span>(<span class="string">&quot;Attempting to read tokens from {:?}&quot;</span>, <span class="kw-2">&amp;</span>token_path);
+    <span class="comment">// If the file does not exist, return Ok&lt;map&gt;
+    </span><span class="kw">let </span>file = <span class="kw">match </span>File::open(<span class="kw-2">&amp;</span>token_path) {
+        <span class="prelude-val">Ok</span>(f) =&gt; f,
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="kw">match </span>e.kind() {
+                ErrorKind::PermissionDenied =&gt; {
+                    <span class="comment">// we bail here because you won&#39;t be able to write them back...
+                    </span><span class="macro">error!</span>(
                         <span class="string">&quot;Permission denied reading token store file {:?}&quot;</span>,
-                        <span class="kw-2">&amp;</span><span class="ident">token_path</span>
+                        <span class="kw-2">&amp;</span>token_path
                     );
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
-                <span class="comment">// other errors are OK to continue past</span>
-                <span class="kw">_</span> =&gt; {
+                <span class="comment">// other errors are OK to continue past
+                </span><span class="kw">_ </span>=&gt; {
                     <span class="macro">warn!</span>(
                         <span class="string">&quot;Cannot read tokens from {} due to error: {:?} ... continuing.&quot;</span>,
-                        <span class="ident">TOKEN_PATH</span>, <span class="ident">e</span>
+                        TOKEN_PATH, e
                     );
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">BTreeMap::new</span>());
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeMap::new());
                 }
             };
         }
     };
-    <span class="kw">let</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">BufReader::new</span>(<span class="ident">file</span>);
+    <span class="kw">let </span>reader = BufReader::new(file);
 
-    <span class="comment">// Else try to read</span>
-    <span class="ident">serde_json::from_reader</span>(<span class="ident">reader</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+    <span class="comment">// Else try to read
+    </span>serde_json::from_reader(reader).map_err(|e| {
         <span class="macro">error!</span>(
             <span class="string">&quot;JSON/IO error reading tokens from {:?} -&gt; {:?}&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">token_path</span>, <span class="ident">e</span>
+            <span class="kw-2">&amp;</span>token_path, e
         );
     })
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::result_unit_err</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_tokens</span>(<span class="ident">tokens</span>: <span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">token_dir</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">shellexpand::tilde</span>(<span class="ident">TOKEN_DIR</span>).<span class="ident">into_owned</span>());
-    <span class="kw">let</span> <span class="ident">token_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">shellexpand::tilde</span>(<span class="ident">TOKEN_PATH</span>).<span class="ident">into_owned</span>());
+<span class="attribute">#[allow(clippy::result_unit_err)]
+</span><span class="kw">pub fn </span>write_tokens(tokens: <span class="kw-2">&amp;</span>BTreeMap&lt;String, String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    <span class="kw">let </span>token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
+    <span class="kw">let </span>token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
 
-    <span class="ident">token_dir</span>
-        .<span class="ident">parent</span>()
-        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+    token_dir
+        .parent()
+        .ok_or_else(|| {
             <span class="macro">error!</span>(
                 <span class="string">&quot;Parent directory to {} is invalid (root directory?).&quot;</span>,
-                <span class="ident">TOKEN_DIR</span>
+                TOKEN_DIR
             );
         })
-        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">parent_dir</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">parent_dir</span>.<span class="ident">exists</span>() {
+        .and_then(|parent_dir| {
+            <span class="kw">if </span>parent_dir.exists() {
                 <span class="prelude-val">Ok</span>(())
-            } <span class="kw">else</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Parent directory to {} does not exist.&quot;</span>, <span class="ident">TOKEN_DIR</span>);
+            } <span class="kw">else </span>{
+                <span class="macro">error!</span>(<span class="string">&quot;Parent directory to {} does not exist.&quot;</span>, TOKEN_DIR);
                 <span class="prelude-val">Err</span>(())
             }
         })<span class="question-mark">?</span>;
 
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">token_dir</span>.<span class="ident">exists</span>() {
-        <span class="ident">create_dir</span>(<span class="ident">token_dir</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to create directory - {} {:?}&quot;</span>, <span class="ident">TOKEN_DIR</span>, <span class="ident">e</span>);
+    <span class="kw">if </span>!token_dir.exists() {
+        create_dir(token_dir).map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Unable to create directory - {} {:?}&quot;</span>, TOKEN_DIR, e);
         })<span class="question-mark">?</span>;
     }
 
-    <span class="comment">// Take away group/everyone read/write</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
-    <span class="kw">let</span> <span class="ident">before</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="number">0o177</span>) };
+    <span class="comment">// Take away group/everyone read/write
+    </span><span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+    </span><span class="kw">let </span>before = <span class="kw">unsafe </span>{ umask(<span class="number">0o177</span>) };
 
-    <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="ident">File::create</span>(<span class="kw-2">&amp;</span><span class="ident">token_path</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="ident">before</span>) };
-        <span class="macro">error!</span>(<span class="string">&quot;Can not write to {} -&gt; {:?}&quot;</span>, <span class="ident">TOKEN_PATH</span>, <span class="ident">e</span>);
+    <span class="kw">let </span>file = File::create(<span class="kw-2">&amp;</span>token_path).map_err(|e| {
+        <span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+        </span><span class="kw">let _ </span>= <span class="kw">unsafe </span>{ umask(before) };
+        <span class="macro">error!</span>(<span class="string">&quot;Can not write to {} -&gt; {:?}&quot;</span>, TOKEN_PATH, e);
     })<span class="question-mark">?</span>;
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
-    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="ident">before</span>) };
+    <span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+    </span><span class="kw">let _ </span>= <span class="kw">unsafe </span>{ umask(before) };
 
-    <span class="kw">let</span> <span class="ident">writer</span> <span class="op">=</span> <span class="ident">BufWriter::new</span>(<span class="ident">file</span>);
-    <span class="ident">serde_json::to_writer_pretty</span>(<span class="ident">writer</span>, <span class="ident">tokens</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+    <span class="kw">let </span>writer = BufWriter::new(file);
+    serde_json::to_writer_pretty(writer, tokens).map_err(|e| {
         <span class="macro">error!</span>(
             <span class="string">&quot;JSON/IO error writing tokens to file {:?} -&gt; {:?}&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">token_path</span>, <span class="ident">e</span>
+            <span class="kw-2">&amp;</span>token_path, e
         );
     })
 }
 
-<span class="doccomment">/// An interactive dialog to choose from given options</span>
-<span class="kw">fn</span> <span class="ident">get_index_choice_dialoguer</span>(<span class="ident">msg</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">options</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>]) -&gt; <span class="ident">usize</span> {
-    <span class="kw">let</span> <span class="ident">user_select</span> <span class="op">=</span> <span class="ident">Select::with_theme</span>(<span class="kw-2">&amp;</span><span class="ident">ColorfulTheme::default</span>())
-        .<span class="ident">with_prompt</span>(<span class="ident">msg</span>)
-        .<span class="ident">default</span>(<span class="number">0</span>)
-        .<span class="ident">items</span>(<span class="ident">options</span>)
-        .<span class="ident">interact</span>();
+<span class="doccomment">/// An interactive dialog to choose from given options
+</span><span class="kw">fn </span>get_index_choice_dialoguer(msg: <span class="kw-2">&amp;</span>str, options: <span class="kw-2">&amp;</span>[String]) -&gt; usize {
+    <span class="kw">let </span>user_select = Select::with_theme(<span class="kw-2">&amp;</span>ColorfulTheme::default())
+        .with_prompt(msg)
+        .default(<span class="number">0</span>)
+        .items(options)
+        .interact();
 
-    <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">user_select</span> {
-        <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to handle user input: {:?}&quot;</span>, <span class="ident">error</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+    <span class="kw">let </span>selection = <span class="kw">match </span>user_select {
+        <span class="prelude-val">Err</span>(error) =&gt; {
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to handle user input: {:?}&quot;</span>, error);
+            std::process::exit(<span class="number">1</span>);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
+        <span class="prelude-val">Ok</span>(value) =&gt; value,
     };
-    <span class="macro">debug!</span>(<span class="string">&quot;Index of the chosen menu item: {:?}&quot;</span>, <span class="ident">selection</span>);
+    <span class="macro">debug!</span>(<span class="string">&quot;Index of the chosen menu item: {:?}&quot;</span>, selection);
 
-    <span class="ident">selection</span>
+    selection
 }
 
-<span class="kw">impl</span> <span class="ident">LoginOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">debug</span>
+<span class="kw">impl </span>LoginOpt {
+    <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.copt.debug
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter password: &quot;</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to create password prompt -- {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+    <span class="kw">async fn </span>do_password(<span class="kw-2">&amp;</span><span class="self">self</span>, client: <span class="kw-2">&amp;mut </span>KanidmClient) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
+        <span class="kw">let </span>password = rpassword::prompt_password(<span class="string">&quot;Enter password: &quot;</span>).unwrap_or_else(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to create password prompt -- {:?}&quot;</span>, e);
+            std::process::exit(<span class="number">1</span>);
         });
-        <span class="ident">client</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>.<span class="ident">as_str</span>()).<span class="kw">await</span>
-    }
+        client.auth_step_password(password.as_str()).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_backup_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async fn </span>do_backup_code(<span class="kw-2">&amp;</span><span class="self">self</span>, client: <span class="kw-2">&amp;mut </span>KanidmClient) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
         <span class="macro">print!</span>(<span class="string">&quot;Enter Backup Code: &quot;</span>);
-        <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.</span>
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
-        <span class="ident">io::stdout</span>().<span class="ident">flush</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">backup_code</span> <span class="op">=</span> <span class="ident">String::new</span>();
-        <span class="kw">loop</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdin</span>().<span class="ident">read_line</span>(<span class="kw-2">&amp;mut</span> <span class="ident">backup_code</span>) {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::SystemError</span>);
+        <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.
+        </span><span class="attribute">#[allow(clippy::unwrap_used)]
+        </span>io::stdout().flush().unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>backup_code = String::new();
+        <span class="kw">loop </span>{
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = io::stdin().read_line(<span class="kw-2">&amp;mut </span>backup_code) {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ClientError::SystemError);
             };
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">backup_code</span>.<span class="ident">trim</span>().<span class="ident">is_empty</span>() {
+            <span class="kw">if </span>!backup_code.trim().is_empty() {
                 <span class="kw">break</span>;
             };
         }
-        <span class="ident">client</span>.<span class="ident">auth_step_backup_code</span>(<span class="ident">backup_code</span>.<span class="ident">trim</span>()).<span class="kw">await</span>
-    }
+        client.auth_step_backup_code(backup_code.trim()).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">totp</span> <span class="op">=</span> <span class="kw">loop</span> {
+    <span class="kw">async fn </span>do_totp(<span class="kw-2">&amp;</span><span class="self">self</span>, client: <span class="kw-2">&amp;mut </span>KanidmClient) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
+        <span class="kw">let </span>totp = <span class="kw">loop </span>{
             <span class="macro">print!</span>(<span class="string">&quot;Enter TOTP: &quot;</span>);
-            <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdout</span>().<span class="ident">flush</span>() {
-                <span class="macro">error!</span>(<span class="string">&quot;Somehow we failed to flush stdout: {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = io::stdout().flush() {
+                <span class="macro">error!</span>(<span class="string">&quot;Somehow we failed to flush stdout: {:?}&quot;</span>, e);
             };
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">String::new</span>();
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdin</span>().<span class="ident">read_line</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buffer</span>) {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::SystemError</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>buffer = String::new();
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = io::stdin().read_line(<span class="kw-2">&amp;mut </span>buffer) {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ClientError::SystemError);
             };
 
-            <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">buffer</span>.<span class="ident">trim</span>();
-            <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>() {
-                <span class="prelude-val">Ok</span>(<span class="ident">i</span>) =&gt; <span class="kw">break</span> <span class="ident">i</span>,
+            <span class="kw">let </span>response = buffer.trim();
+            <span class="kw">match </span>response.parse::&lt;u32&gt;() {
+                <span class="prelude-val">Ok</span>(i) =&gt; <span class="kw">break </span>i,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Invalid Number&quot;</span>),
             };
         };
-        <span class="ident">client</span>.<span class="ident">auth_step_totp</span>(<span class="ident">totp</span>).<span class="kw">await</span>
-    }
+        client.auth_step_totp(totp).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_passkey</span>(
+    <span class="kw">async fn </span>do_passkey(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>,
-        <span class="ident">pkr</span>: <span class="ident">RequestChallengeResponse</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FHid::new</span>());
+        client: <span class="kw-2">&amp;mut </span>KanidmClient,
+        pkr: RequestChallengeResponse,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>wa = WebauthnAuthenticator::new(U2FHid::new());
         <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">wa</span>
-            .<span class="ident">do_authentication</span>(<span class="ident">client</span>.<span class="ident">get_origin</span>().<span class="ident">clone</span>(), <span class="ident">pkr</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        <span class="kw">let </span>auth = wa
+            .do_authentication(client.get_origin().clone(), pkr)
+            .unwrap_or_else(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, e);
+                std::process::exit(<span class="number">1</span>);
             });
 
-        <span class="ident">client</span>.<span class="ident">auth_step_passkey_complete</span>(<span class="ident">auth</span>).<span class="kw">await</span>
-    }
+        client.auth_step_passkey_complete(auth).<span class="kw">await
+    </span>}
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_securitykey</span>(
+    <span class="kw">async fn </span>do_securitykey(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>,
-        <span class="ident">pkr</span>: <span class="ident">RequestChallengeResponse</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FHid::new</span>());
+        client: <span class="kw-2">&amp;mut </span>KanidmClient,
+        pkr: RequestChallengeResponse,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>wa = WebauthnAuthenticator::new(U2FHid::new());
         <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
-        <span class="kw">let</span> <span class="ident">auth</span> <span class="op">=</span> <span class="ident">wa</span>
-            .<span class="ident">do_authentication</span>(<span class="ident">client</span>.<span class="ident">get_origin</span>().<span class="ident">clone</span>(), <span class="ident">pkr</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        <span class="kw">let </span>auth = wa
+            .do_authentication(client.get_origin().clone(), pkr)
+            .unwrap_or_else(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, e);
+                std::process::exit(<span class="number">1</span>);
             });
 
-        <span class="ident">client</span>.<span class="ident">auth_step_securitykey_complete</span>(<span class="ident">auth</span>).<span class="kw">await</span>
-    }
+        client.auth_step_securitykey_complete(auth).<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">client</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">to_unauth_client</span>();
+    <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let </span><span class="kw-2">mut </span>client = <span class="self">self</span>.copt.to_unauth_client();
 
-        <span class="comment">// TODO: remove this anon, nobody should do default anonymous</span>
-        <span class="kw">let</span> <span class="ident">username</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">username</span>.<span class="ident">as_deref</span>().<span class="ident">unwrap_or</span>(<span class="string">&quot;anonymous&quot;</span>);
+        <span class="comment">// TODO: remove this anon, nobody should do default anonymous
+        </span><span class="kw">let </span>username = <span class="self">self</span>.copt.username.as_deref().unwrap_or(<span class="string">&quot;anonymous&quot;</span>);
 
-        <span class="comment">// What auth mechanisms exist?</span>
-        <span class="kw">let</span> <span class="ident">mechs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">client</span>
-            .<span class="ident">auth_step_init</span>(<span class="ident">username</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Error during authentication init phase: {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        <span class="comment">// What auth mechanisms exist?
+        </span><span class="kw">let </span>mechs: Vec&lt;<span class="kw">_</span>&gt; = client
+            .auth_step_init(username)
+            .<span class="kw">await
+            </span>.unwrap_or_else(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Error during authentication init phase: {:?}&quot;</span>, e);
+                std::process::exit(<span class="number">1</span>);
             })
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">collect</span>();
+            .into_iter()
+            .collect();
 
-        <span class="kw">let</span> <span class="ident">mech</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mechs</span>.<span class="ident">len</span>() {
-            <span class="number">0</span> =&gt; {
+        <span class="kw">let </span>mech = <span class="kw">match </span>mechs.len() {
+            <span class="number">0 </span>=&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Error during authentication init phase: Server offered no authentication mechanisms&quot;</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                std::process::exit(<span class="number">1</span>);
             }
-            <span class="number">1</span> =&gt;
+            <span class="number">1 </span>=&gt;
             {
-                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                <span class="ident">mechs</span>
-                    .<span class="ident">get</span>(<span class="number">0</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
+                <span class="attribute">#[allow(clippy::expect_used)]
+                </span>mechs
+                    .get(<span class="number">0</span>)
+                    .expect(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
             }
-            <span class="kw">_</span> =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-                <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">mechs</span>.<span class="ident">iter</span>() {
-                    <span class="ident">options</span>.<span class="ident">push</span>(<span class="ident">val</span>.<span class="ident">to_string</span>());
+            <span class="kw">_ </span>=&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>options = Vec::new();
+                <span class="kw">for </span>val <span class="kw">in </span>mechs.iter() {
+                    options.push(val.to_string());
                 }
-                <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="string">&quot;Please choose how you want to authenticate:&quot;</span>;
-                <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="ident">get_index_choice_dialoguer</span>(<span class="ident">msg</span>, <span class="kw-2">&amp;</span><span class="ident">options</span>);
+                <span class="kw">let </span>msg = <span class="string">&quot;Please choose how you want to authenticate:&quot;</span>;
+                <span class="kw">let </span>selection = get_index_choice_dialoguer(msg, <span class="kw-2">&amp;</span>options);
 
-                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                <span class="ident">mechs</span>
-                    .<span class="ident">get</span>(<span class="ident">selection</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
+                <span class="attribute">#[allow(clippy::expect_used)]
+                </span>mechs
+                    .get(selection <span class="kw">as </span>usize)
+                    .expect(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
             }
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">allowed</span> <span class="op">=</span> <span class="ident">client</span>
-            .<span class="ident">auth_step_begin</span>((<span class="kw-2">*</span><span class="ident">mech</span>).<span class="ident">clone</span>())
-            .<span class="kw">await</span>
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Error during authentication begin phase: {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>allowed = client
+            .auth_step_begin((<span class="kw-2">*</span>mech).clone())
+            .<span class="kw">await
+            </span>.unwrap_or_else(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Error during authentication begin phase: {:?}&quot;</span>, e);
+                std::process::exit(<span class="number">1</span>);
             });
 
-        <span class="comment">// We now have the first auth state, so we can proceed until complete.</span>
-        <span class="kw">loop</span> {
-            <span class="macro">debug!</span>(<span class="string">&quot;Allowed mechanisms -&gt; {:?}&quot;</span>, <span class="ident">allowed</span>);
-            <span class="comment">// What auth can proceed?</span>
-            <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">allowed</span>.<span class="ident">len</span>() {
-                <span class="number">0</span> =&gt; {
+        <span class="comment">// We now have the first auth state, so we can proceed until complete.
+        </span><span class="kw">loop </span>{
+            <span class="macro">debug!</span>(<span class="string">&quot;Allowed mechanisms -&gt; {:?}&quot;</span>, allowed);
+            <span class="comment">// What auth can proceed?
+            </span><span class="kw">let </span>choice = <span class="kw">match </span>allowed.len() {
+                <span class="number">0 </span>=&gt; {
                     <span class="macro">error!</span>(
-                        <span class="string">&quot;Error during authentication phase: Server offered no method to proceed&quot;</span>
-                    );
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                        <span class="string">&quot;Error during authentication phase: Server offered no method to proceed&quot;
+                    </span>);
+                    std::process::exit(<span class="number">1</span>);
                 }
-                <span class="number">1</span> =&gt;
+                <span class="number">1 </span>=&gt;
                 {
-                    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                    <span class="ident">allowed</span>
-                        .<span class="ident">get</span>(<span class="number">0</span>)
-                        .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
+                    <span class="attribute">#[allow(clippy::expect_used)]
+                    </span>allowed
+                        .get(<span class="number">0</span>)
+                        .expect(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
                 }
-                <span class="kw">_</span> =&gt; {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-                    <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">allowed</span>.<span class="ident">iter</span>() {
-                        <span class="ident">options</span>.<span class="ident">push</span>(<span class="ident">val</span>.<span class="ident">to_string</span>());
+                <span class="kw">_ </span>=&gt; {
+                    <span class="kw">let </span><span class="kw-2">mut </span>options = Vec::new();
+                    <span class="kw">for </span>val <span class="kw">in </span>allowed.iter() {
+                        options.push(val.to_string());
                     }
-                    <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="string">&quot;Please choose what credential to provide:&quot;</span>;
-                    <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="ident">get_index_choice_dialoguer</span>(<span class="ident">msg</span>, <span class="kw-2">&amp;</span><span class="ident">options</span>);
+                    <span class="kw">let </span>msg = <span class="string">&quot;Please choose what credential to provide:&quot;</span>;
+                    <span class="kw">let </span>selection = get_index_choice_dialoguer(msg, <span class="kw-2">&amp;</span>options);
 
-                    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                    <span class="ident">allowed</span>
-                        .<span class="ident">get</span>(<span class="ident">selection</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                        .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
+                    <span class="attribute">#[allow(clippy::expect_used)]
+                    </span>allowed
+                        .get(selection <span class="kw">as </span>usize)
+                        .expect(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
                 }
             };
 
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">choice</span> {
-                <span class="ident">AuthAllowed::Anonymous</span> =&gt; <span class="ident">client</span>.<span class="ident">auth_step_anonymous</span>().<span class="kw">await</span>,
-                <span class="ident">AuthAllowed::Password</span> =&gt; <span class="self">self</span>.<span class="ident">do_password</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
-                <span class="ident">AuthAllowed::BackupCode</span> =&gt; <span class="self">self</span>.<span class="ident">do_backup_code</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
-                <span class="ident">AuthAllowed::Totp</span> =&gt; <span class="self">self</span>.<span class="ident">do_totp</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
-                <span class="ident">AuthAllowed::Passkey</span>(<span class="ident">chal</span>) =&gt; <span class="self">self</span>.<span class="ident">do_passkey</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()).<span class="kw">await</span>,
-                <span class="ident">AuthAllowed::SecurityKey</span>(<span class="ident">chal</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">do_securitykey</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()).<span class="kw">await</span>
-                }
+            <span class="kw">let </span>res = <span class="kw">match </span>choice {
+                AuthAllowed::Anonymous =&gt; client.auth_step_anonymous().<span class="kw">await</span>,
+                AuthAllowed::Password =&gt; <span class="self">self</span>.do_password(<span class="kw-2">&amp;mut </span>client).<span class="kw">await</span>,
+                AuthAllowed::BackupCode =&gt; <span class="self">self</span>.do_backup_code(<span class="kw-2">&amp;mut </span>client).<span class="kw">await</span>,
+                AuthAllowed::Totp =&gt; <span class="self">self</span>.do_totp(<span class="kw-2">&amp;mut </span>client).<span class="kw">await</span>,
+                AuthAllowed::Passkey(chal) =&gt; <span class="self">self</span>.do_passkey(<span class="kw-2">&amp;mut </span>client, chal.clone()).<span class="kw">await</span>,
+                AuthAllowed::SecurityKey(chal) =&gt; {
+                    <span class="self">self</span>.do_securitykey(<span class="kw-2">&amp;mut </span>client, chal.clone()).<span class="kw">await
+                </span>}
             };
 
-            <span class="comment">// Now update state.</span>
-            <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">res</span>
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error in authentication phase: {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            <span class="comment">// Now update state.
+            </span><span class="kw">let </span>state = res
+                .unwrap_or_else(|e| {
+                    <span class="macro">error!</span>(<span class="string">&quot;Error in authentication phase: {:?}&quot;</span>, e);
+                    std::process::exit(<span class="number">1</span>);
                 })
-                .<span class="ident">state</span>;
+                .state;
 
-            <span class="comment">// What auth state are we in?</span>
-            <span class="ident">allowed</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">state</span> {
-                <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) =&gt; <span class="ident">allowed</span>.<span class="ident">to_vec</span>(),
-                <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) =&gt; <span class="kw">break</span>,
-                <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;Authentication Denied: {:?}&quot;</span>, <span class="ident">reason</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            <span class="comment">// What auth state are we in?
+            </span>allowed = <span class="kw">match </span><span class="kw-2">&amp;</span>state {
+                AuthState::Continue(allowed) =&gt; allowed.to_vec(),
+                AuthState::Success(_token) =&gt; <span class="kw">break</span>,
+                AuthState::Denied(reason) =&gt; {
+                    <span class="macro">error!</span>(<span class="string">&quot;Authentication Denied: {:?}&quot;</span>, reason);
+                    std::process::exit(<span class="number">1</span>);
                 }
-                <span class="kw">_</span> =&gt; {
+                <span class="kw">_ </span>=&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Error in authentication phase: invalid authstate&quot;</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                    std::process::exit(<span class="number">1</span>);
                 }
             };
-            <span class="comment">// Loop again.</span>
-        }
+            <span class="comment">// Loop again.
+        </span>}
 
-        <span class="comment">// Read the current tokens</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident">read_tokens</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="comment">// Read the current tokens
+        </span><span class="kw">let </span><span class="kw-2">mut </span>tokens = read_tokens().unwrap_or_else(|<span class="kw">_</span>| {
             <span class="macro">error!</span>(<span class="string">&quot;Error retrieving authentication token store&quot;</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            std::process::exit(<span class="number">1</span>);
         });
-        <span class="comment">// Add our new one</span>
-        <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">get_token</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; <span class="ident">tokens</span>.<span class="ident">insert</span>(<span class="ident">username</span>.<span class="ident">to_string</span>(), <span class="ident">t</span>),
-            <span class="prelude-val">None</span> =&gt; {
+        <span class="comment">// Add our new one
+        </span><span class="kw">match </span>client.get_token().<span class="kw">await </span>{
+            <span class="prelude-val">Some</span>(t) =&gt; tokens.insert(username.to_string(), t),
+            <span class="prelude-val">None </span>=&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Error retrieving client session&quot;</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                std::process::exit(<span class="number">1</span>);
             }
         };
 
-        <span class="comment">// write them out.</span>
-        <span class="kw">if</span> <span class="ident">write_tokens</span>(<span class="kw-2">&amp;</span><span class="ident">tokens</span>).<span class="ident">is_err</span>() {
+        <span class="comment">// write them out.
+        </span><span class="kw">if </span>write_tokens(<span class="kw-2">&amp;</span>tokens).is_err() {
             <span class="macro">error!</span>(<span class="string">&quot;Error persisting authentication token store&quot;</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            std::process::exit(<span class="number">1</span>);
         };
 
-        <span class="comment">// Success!</span>
-        <span class="macro">println!</span>(<span class="string">&quot;Login Success for {}&quot;</span>, <span class="ident">username</span>);
+        <span class="comment">// Success!
+        </span><span class="macro">println!</span>(<span class="string">&quot;Login Success for {}&quot;</span>, username);
     }
 }
 
-<span class="kw">impl</span> <span class="ident">LogoutOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">debug</span>
+<span class="kw">impl </span>LogoutOpt {
+    <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.copt.debug
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let</span> <span class="ident">username</span>: <span class="ident">String</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">local_only</span> {
-            <span class="comment">// For now we just remove this from the token store.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">_tmp_username</span> <span class="op">=</span> <span class="ident">String::new</span>();
-            <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">username</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">clone</span>(),
-                <span class="prelude-val">None</span> =&gt; <span class="kw">match</span> <span class="ident">prompt_for_username_get_username</span>() {
-                    <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">msg</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">msg</span>);
-                        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+    <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let </span>username: String = <span class="kw">if </span><span class="self">self</span>.local_only {
+            <span class="comment">// For now we just remove this from the token store.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>_tmp_username = String::new();
+            <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.copt.username {
+                <span class="prelude-val">Some</span>(value) =&gt; value.clone(),
+                <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>prompt_for_username_get_username() {
+                    <span class="prelude-val">Ok</span>(value) =&gt; value,
+                    <span class="prelude-val">Err</span>(msg) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, msg);
+                        std::process::exit(<span class="number">1</span>);
                     }
                 },
             }
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-            <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">get_token</span>().<span class="kw">await</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; <span class="ident">t</span>,
-                <span class="prelude-val">None</span> =&gt; {
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>client = <span class="self">self</span>.copt.to_client().<span class="kw">await</span>;
+            <span class="kw">let </span>token = <span class="kw">match </span>client.get_token().<span class="kw">await </span>{
+                <span class="prelude-val">Some</span>(t) =&gt; t,
+                <span class="prelude-val">None </span>=&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Client token store is empty/corrupt&quot;</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                    std::process::exit(<span class="number">1</span>);
                 }
             };
-            <span class="comment">// Parse it for the username.</span>
+            <span class="comment">// Parse it for the username.
 
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">logout</span>().<span class="kw">await</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to logout - {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client.logout().<span class="kw">await </span>{
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to logout - {:?}&quot;</span>, e);
+                std::process::exit(<span class="number">1</span>);
             }
 
-            <span class="comment">// Server acked the logout, lets proceed with the local cleanup now.</span>
-            <span class="kw">let</span> <span class="ident">jwtu</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">JwsUnverified::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to parse token from str&quot;</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            <span class="comment">// Server acked the logout, lets proceed with the local cleanup now.
+            </span><span class="kw">let </span>jwtu = <span class="kw">match </span>JwsUnverified::from_str(<span class="kw-2">&amp;</span>token) {
+                <span class="prelude-val">Ok</span>(value) =&gt; value,
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Unable to parse token from str&quot;</span>);
+                    std::process::exit(<span class="number">1</span>);
                 }
             };
 
-            <span class="kw">let</span> <span class="ident">uat</span>: <span class="ident">UserAuthToken</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">jwtu</span>.<span class="ident">validate_embeded</span>() {
-                <span class="prelude-val">Ok</span>(<span class="ident">jwt</span>) =&gt; <span class="ident">jwt</span>.<span class="ident">into_inner</span>(),
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to verify token signature, may be corrupt&quot;</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            <span class="kw">let </span>uat: UserAuthToken = <span class="kw">match </span>jwtu.validate_embeded() {
+                <span class="prelude-val">Ok</span>(jwt) =&gt; jwt.into_inner(),
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Unable to verify token signature, may be corrupt&quot;</span>);
+                    std::process::exit(<span class="number">1</span>);
                 }
             };
 
-            <span class="ident">uat</span>.<span class="ident">name</span>().<span class="ident">to_string</span>()
+            uat.name().to_string()
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident">read_tokens</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="kw">let </span><span class="kw-2">mut </span>tokens = read_tokens().unwrap_or_else(|<span class="kw">_</span>| {
             <span class="macro">error!</span>(<span class="string">&quot;Error retrieving authentication token store&quot;</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            std::process::exit(<span class="number">1</span>);
         });
 
-        <span class="comment">// Remove our old one</span>
-        <span class="kw">if</span> <span class="ident">tokens</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">username</span>).<span class="ident">is_some</span>() {
-            <span class="comment">// write them out.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">_e</span>) <span class="op">=</span> <span class="ident">write_tokens</span>(<span class="kw-2">&amp;</span><span class="ident">tokens</span>) {
+        <span class="comment">// Remove our old one
+        </span><span class="kw">if </span>tokens.remove(<span class="kw-2">&amp;</span>username).is_some() {
+            <span class="comment">// write them out.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(_e) = write_tokens(<span class="kw-2">&amp;</span>tokens) {
                 <span class="macro">error!</span>(<span class="string">&quot;Error persisting authentication token store&quot;</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                std::process::exit(<span class="number">1</span>);
             };
-            <span class="macro">println!</span>(<span class="string">&quot;Removed session for {}&quot;</span>, <span class="ident">username</span>);
-        } <span class="kw">else</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;No sessions for {}&quot;</span>, <span class="ident">username</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;Removed session for {}&quot;</span>, username);
+        } <span class="kw">else </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;No sessions for {}&quot;</span>, username);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">SessionOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">SessionOpt::List</span>(<span class="ident">dopt</span>) <span class="op">|</span> <span class="ident">SessionOpt::Cleanup</span>(<span class="ident">dopt</span>) =&gt; <span class="ident">dopt</span>.<span class="ident">debug</span>,
+<span class="kw">impl </span>SessionOpt {
+    <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            SessionOpt::List(dopt) | SessionOpt::Cleanup(dopt) =&gt; dopt.debug,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">read_valid_tokens</span>() -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, (<span class="ident">String</span>, <span class="ident">UserAuthToken</span>)<span class="op">&gt;</span> {
-        <span class="ident">read_tokens</span>()
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+    <span class="kw">fn </span>read_valid_tokens() -&gt; BTreeMap&lt;String, (String, UserAuthToken)&gt; {
+        read_tokens()
+            .unwrap_or_else(|<span class="kw">_</span>| {
                 <span class="macro">error!</span>(<span class="string">&quot;Error retrieving authentication token store&quot;</span>);
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                std::process::exit(<span class="number">1</span>);
             })
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">t</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">jwtu</span> <span class="op">=</span> <span class="ident">JwsUnverified::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to parse token from str&quot;</span>);
+            .into_iter()
+            .filter_map(|(u, t)| {
+                <span class="kw">let </span>jwtu = JwsUnverified::from_str(<span class="kw-2">&amp;</span>t)
+                    .map_err(|e| {
+                        <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Unable to parse token from str&quot;</span>);
                     })
-                    .<span class="ident">ok</span>()<span class="question-mark">?</span>;
+                    .ok()<span class="question-mark">?</span>;
 
-                <span class="ident">jwtu</span>.<span class="ident">validate_embeded</span>()
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to verify token signature, may be corrupt&quot;</span>);
+                jwtu.validate_embeded()
+                    .map_err(|e| {
+                        <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Unable to verify token signature, may be corrupt&quot;</span>);
                     })
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">jwt</span><span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">jwt</span>.<span class="ident">into_inner</span>();
-                        (<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">uat</span>))
+                    .map(|jwt| {
+                        <span class="kw">let </span>uat = jwt.into_inner();
+                        (u, (t, uat))
                     })
-                    .<span class="ident">ok</span>()
+                    .ok()
             })
-            .<span class="ident">collect</span>()
+            .collect()
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">SessionOpt::List</span>(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::read_valid_tokens</span>();
-                <span class="kw">for</span> (<span class="kw">_</span>, <span class="ident">uat</span>) <span class="kw">in</span> <span class="ident">tokens</span>.<span class="ident">values</span>() {
+    <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self </span>{
+            SessionOpt::List(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>tokens = <span class="self">Self</span>::read_valid_tokens();
+                <span class="kw">for </span>(<span class="kw">_</span>, uat) <span class="kw">in </span>tokens.values() {
                     <span class="macro">println!</span>(<span class="string">&quot;---&quot;</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">uat</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, uat);
                 }
             }
-            <span class="ident">SessionOpt::Cleanup</span>(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::read_valid_tokens</span>();
-                <span class="kw">let</span> <span class="ident">start_len</span> <span class="op">=</span> <span class="ident">tokens</span>.<span class="ident">len</span>();
+            SessionOpt::Cleanup(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>tokens = <span class="self">Self</span>::read_valid_tokens();
+                <span class="kw">let </span>start_len = tokens.len();
 
-                <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">time::OffsetDateTime::now_utc</span>();
+                <span class="kw">let </span>now = time::OffsetDateTime::now_utc();
 
-                <span class="kw">let</span> <span class="ident">tokens</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">tokens</span>
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">uat</span>))<span class="op">|</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exp</span>) <span class="op">=</span> <span class="ident">uat</span>.<span class="ident">expiry</span> {
-                            <span class="kw">if</span> <span class="ident">now</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exp</span> {
-                                <span class="comment">//Expired</span>
-                                <span class="prelude-val">None</span>
-                            } <span class="kw">else</span> {
-                                <span class="prelude-val">Some</span>((<span class="ident">u</span>, <span class="ident">t</span>))
+                <span class="kw">let </span>tokens: BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = tokens
+                    .into_iter()
+                    .filter_map(|(u, (t, uat))| {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(exp) = uat.expiry {
+                            <span class="kw">if </span>now &gt;= exp {
+                                <span class="comment">//Expired
+                                </span><span class="prelude-val">None
+                            </span>} <span class="kw">else </span>{
+                                <span class="prelude-val">Some</span>((u, t))
                             }
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">Some</span>((<span class="ident">u</span>, <span class="ident">t</span>))
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">Some</span>((u, t))
                         }
                     })
-                    .<span class="ident">collect</span>();
+                    .collect();
 
-                <span class="kw">let</span> <span class="ident">end_len</span> <span class="op">=</span> <span class="ident">tokens</span>.<span class="ident">len</span>();
+                <span class="kw">let </span>end_len = tokens.len();
 
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">_e</span>) <span class="op">=</span> <span class="ident">write_tokens</span>(<span class="kw-2">&amp;</span><span class="ident">tokens</span>) {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(_e) = write_tokens(<span class="kw-2">&amp;</span>tokens) {
                     <span class="macro">error!</span>(<span class="string">&quot;Error persisting authentication token store&quot;</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                    std::process::exit(<span class="number">1</span>);
                 };
 
-                <span class="macro">println!</span>(<span class="string">&quot;Removed {} sessions&quot;</span>, <span class="ident">start_len</span> <span class="op">-</span> <span class="ident">end_len</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;Removed {} sessions&quot;</span>, start_len - end_len);
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

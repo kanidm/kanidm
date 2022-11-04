@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/person.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>person.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cli/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/person.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>person.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cli/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1113,593 +1113,593 @@
 <span id="1113">1113</span>
 <span id="1114">1114</span>
 <span id="1115">1115</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="self">self</span>, <span class="ident">Debug</span>};
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::fmt::{<span class="self">self</span>, Debug};
+<span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use</span> <span class="ident">dialoguer::theme::ColorfulTheme</span>;
-<span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">Confirm</span>, <span class="ident">Input</span>, <span class="ident">Password</span>, <span class="ident">Select</span>};
-<span class="kw">use</span> <span class="ident">kanidm_client::ClientError::Http</span> <span class="kw">as</span> <span class="ident">ClientErrorHttp</span>;
-<span class="kw">use</span> <span class="ident">kanidm_client::KanidmClient</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::messages</span>::{<span class="ident">AccountChangeMessage</span>, <span class="ident">ConsoleOutputMode</span>, <span class="ident">MessageStatus</span>};
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError::PasswordQuality</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">CUIntentToken</span>, <span class="ident">CURegState</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>, <span class="ident">TotpSecret</span>};
-<span class="kw">use</span> <span class="ident">qrcode::render::unicode</span>;
-<span class="kw">use</span> <span class="ident">qrcode::QrCode</span>;
-<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
-<span class="kw">use</span> <span class="ident">url::Url</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::u2fhid::U2FHid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_authenticator_rs::WebauthnAuthenticator</span>;
+<span class="kw">use </span>dialoguer::theme::ColorfulTheme;
+<span class="kw">use </span>dialoguer::{Confirm, Input, Password, Select};
+<span class="kw">use </span>kanidm_client::ClientError::Http <span class="kw">as </span>ClientErrorHttp;
+<span class="kw">use </span>kanidm_client::KanidmClient;
+<span class="kw">use </span>kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
+<span class="kw">use </span>kanidm_proto::v1::OperationError::PasswordQuality;
+<span class="kw">use </span>kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
+<span class="kw">use </span>qrcode::render::unicode;
+<span class="kw">use </span>qrcode::QrCode;
+<span class="kw">use </span>time::OffsetDateTime;
+<span class="kw">use </span>url::Url;
+<span class="kw">use </span>uuid::Uuid;
+<span class="kw">use </span>webauthn_authenticator_rs::u2fhid::U2FHid;
+<span class="kw">use </span>webauthn_authenticator_rs::WebauthnAuthenticator;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">password_prompt</span>, <span class="ident">AccountCredential</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>, <span class="ident">AccountUserAuthToken</span>,
-    <span class="ident">AccountValidity</span>, <span class="ident">PersonOpt</span>, <span class="ident">PersonPosix</span>,
+<span class="kw">use crate</span>::{
+    password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken,
+    AccountValidity, PersonOpt, PersonPosix,
 };
 
-<span class="kw">impl</span> <span class="ident">PersonOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">PersonOpt::Credential</span> { <span class="ident">commands</span> } =&gt; <span class="ident">commands</span>.<span class="ident">debug</span>(),
-            <span class="ident">PersonOpt::Radius</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountRadius::Show</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountRadius::Generate</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountRadius::DeleteSecret</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+<span class="kw">impl </span>PersonOpt {
+    <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            PersonOpt::Credential { commands } =&gt; commands.debug(),
+            PersonOpt::Radius { commands } =&gt; <span class="kw">match </span>commands {
+                AccountRadius::Show(aro) =&gt; aro.copt.debug,
+                AccountRadius::Generate(aro) =&gt; aro.copt.debug,
+                AccountRadius::DeleteSecret(aro) =&gt; aro.copt.debug,
             },
-            <span class="ident">PersonOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">PersonPosix::Show</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">PersonPosix::Set</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">PersonPosix::SetPassword</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            PersonOpt::Posix { commands } =&gt; <span class="kw">match </span>commands {
+                PersonPosix::Show(apo) =&gt; apo.copt.debug,
+                PersonPosix::Set(apo) =&gt; apo.copt.debug,
+                PersonPosix::SetPassword(apo) =&gt; apo.copt.debug,
             },
-            <span class="ident">PersonOpt::Session</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountUserAuthToken::Status</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountUserAuthToken::Destroy</span> { <span class="ident">copt</span>, .. } =&gt; <span class="ident">copt</span>.<span class="ident">debug</span>,
+            PersonOpt::Session { commands } =&gt; <span class="kw">match </span>commands {
+                AccountUserAuthToken::Status(apo) =&gt; apo.copt.debug,
+                AccountUserAuthToken::Destroy { copt, .. } =&gt; copt.debug,
             },
-            <span class="ident">PersonOpt::Ssh</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountSsh::List</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountSsh::Add</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountSsh::Delete</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            PersonOpt::Ssh { commands } =&gt; <span class="kw">match </span>commands {
+                AccountSsh::List(ano) =&gt; ano.copt.debug,
+                AccountSsh::Add(ano) =&gt; ano.copt.debug,
+                AccountSsh::Delete(ano) =&gt; ano.copt.debug,
             },
-            <span class="ident">PersonOpt::List</span>(<span class="ident">copt</span>) =&gt; <span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">PersonOpt::Get</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">PersonOpt::Update</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">PersonOpt::Delete</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">PersonOpt::Create</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">PersonOpt::Validity</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountValidity::Show</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountValidity::ExpireAt</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-                <span class="ident">AccountValidity::BeginFrom</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            PersonOpt::List(copt) =&gt; copt.debug,
+            PersonOpt::Get(aopt) =&gt; aopt.copt.debug,
+            PersonOpt::Update(aopt) =&gt; aopt.copt.debug,
+            PersonOpt::Delete(aopt) =&gt; aopt.copt.debug,
+            PersonOpt::Create(aopt) =&gt; aopt.copt.debug,
+            PersonOpt::Validity { commands } =&gt; <span class="kw">match </span>commands {
+                AccountValidity::Show(ano) =&gt; ano.copt.debug,
+                AccountValidity::ExpireAt(ano) =&gt; ano.copt.debug,
+                AccountValidity::BeginFrom(ano) =&gt; ano.copt.debug,
             },
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="comment">// id/cred/primary/set</span>
-            <span class="ident">PersonOpt::Credential</span> { <span class="ident">commands</span> } =&gt; <span class="ident">commands</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
-            <span class="ident">PersonOpt::Radius</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountRadius::Show</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+    <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="comment">// id/cred/primary/set
+            </span>PersonOpt::Credential { commands } =&gt; commands.exec().<span class="kw">await</span>,
+            PersonOpt::Radius { commands } =&gt; <span class="kw">match </span>commands {
+                AccountRadius::Show(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
 
-                    <span class="kw">let</span> <span class="ident">rcred</span> <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_radius_credential_get</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
+                    <span class="kw">let </span>rcred = client
+                        .idm_account_radius_credential_get(aopt.aopts.account_id.as_str())
                         .<span class="kw">await</span>;
 
-                    <span class="kw">match</span> <span class="ident">rcred</span> {
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">s</span>)) =&gt; <span class="macro">println!</span>(
+                    <span class="kw">match </span>rcred {
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(s)) =&gt; <span class="macro">println!</span>(
                             <span class="string">&quot;RADIUS secret for {}: {}&quot;</span>,
-                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
-                            <span class="ident">s</span>,
+                            aopt.aopts.account_id.as_str(),
+                            s,
                         ),
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(
                             <span class="string">&quot;No RADIUS secret set for user {}&quot;</span>,
-                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                            aopt.aopts.account_id.as_str(),
                         ),
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         }
                     }
                 }
-                <span class="ident">AccountRadius::Generate</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_radius_credential_regenerate</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                AccountRadius::Generate(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_account_radius_credential_regenerate(aopt.aopts.account_id.as_str())
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                     }
                 }
-                <span class="ident">AccountRadius::DeleteSecret</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modmessage</span> <span class="op">=</span> <span class="ident">AccountChangeMessage</span> {
-                        <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode::Text</span>,
-                        <span class="ident">action</span>: <span class="string">&quot;radius account_delete&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">result</span>: <span class="string">&quot;deleted&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">src_user</span>: <span class="ident">aopt</span>
-                            .<span class="ident">copt</span>
-                            .<span class="ident">username</span>
-                            .<span class="ident">to_owned</span>()
-                            .<span class="ident">unwrap_or</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">client</span>.<span class="ident">whoami</span>().<span class="kw">await</span>)),
-                        <span class="ident">dest_user</span>: <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">status</span>: <span class="ident">MessageStatus::Success</span>,
+                AccountRadius::DeleteSecret(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span><span class="kw-2">mut </span>modmessage = AccountChangeMessage {
+                        output_mode: ConsoleOutputMode::Text,
+                        action: <span class="string">&quot;radius account_delete&quot;</span>.to_string(),
+                        result: <span class="string">&quot;deleted&quot;</span>.to_string(),
+                        src_user: aopt
+                            .copt
+                            .username
+                            .to_owned()
+                            .unwrap_or(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, client.whoami().<span class="kw">await</span>)),
+                        dest_user: aopt.aopts.account_id.to_string(),
+                        status: MessageStatus::Success,
                     };
-                    <span class="kw">match</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_radius_credential_delete</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                        .<span class="kw">await</span>
-                    {
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="ident">modmessage</span>.<span class="ident">status</span> <span class="op">=</span> <span class="ident">MessageStatus::Failure</span>;
-                            <span class="ident">modmessage</span>.<span class="ident">result</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                            <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                    <span class="kw">match </span>client
+                        .idm_account_radius_credential_delete(aopt.aopts.account_id.as_str())
+                        .<span class="kw">await
+                    </span>{
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            modmessage.status = MessageStatus::Failure;
+                            modmessage.result = <span class="macro">format!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
+                            <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, modmessage);
                         }
-                        <span class="prelude-val">Ok</span>(<span class="ident">result</span>) =&gt; {
-                            <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">result</span>);
-                            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                        <span class="prelude-val">Ok</span>(result) =&gt; {
+                            <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, result);
+                            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, modmessage);
                         }
                     };
                 }
-            }, <span class="comment">// end PersonOpt::Radius</span>
-            <span class="ident">PersonOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">PersonPosix::Show</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">match</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_unix_token_get</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                        .<span class="kw">await</span>
-                    {
-                        <span class="prelude-val">Ok</span>(<span class="ident">token</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">token</span>),
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            }, <span class="comment">// end PersonOpt::Radius
+            </span>PersonOpt::Posix { commands } =&gt; <span class="kw">match </span>commands {
+                PersonPosix::Show(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">match </span>client
+                        .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
+                        .<span class="kw">await
+                    </span>{
+                        <span class="prelude-val">Ok</span>(token) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, token),
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         }
                     }
                 }
-                <span class="ident">PersonPosix::Set</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_person_account_unix_extend</span>(
-                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
-                            <span class="ident">aopt</span>.<span class="ident">gidnumber</span>,
-                            <span class="ident">aopt</span>.<span class="ident">shell</span>.<span class="ident">as_deref</span>(),
+                PersonPosix::Set(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_person_account_unix_extend(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.gidnumber,
+                            aopt.shell.as_deref(),
                         )
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                     }
                 }
-                <span class="ident">PersonPosix::SetPassword</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">password_prompt</span>(<span class="string">&quot;Enter new posix (sudo) password: &quot;</span>) {
-                        <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">None</span> =&gt; {
+                PersonPosix::SetPassword(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>password = <span class="kw">match </span>password_prompt(<span class="string">&quot;Enter new posix (sudo) password: &quot;</span>) {
+                        <span class="prelude-val">Some</span>(v) =&gt; v,
+                        <span class="prelude-val">None </span>=&gt; {
                             <span class="macro">println!</span>(<span class="string">&quot;Passwords do not match&quot;</span>);
                             <span class="kw">return</span>;
                         }
                     };
 
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_person_account_unix_cred_put</span>(
-                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
-                            <span class="ident">password</span>.<span class="ident">as_str</span>(),
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_person_account_unix_cred_put(
+                            aopt.aopts.account_id.as_str(),
+                            password.as_str(),
                         )
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                     }
                 }
-            }, <span class="comment">// end PersonOpt::Posix</span>
-            <span class="ident">PersonOpt::Session</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountUserAuthToken::Status</span>(<span class="ident">apo</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">match</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_list_user_auth_token</span>(<span class="ident">apo</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                        .<span class="kw">await</span>
-                    {
-                        <span class="prelude-val">Ok</span>(<span class="ident">tokens</span>) =&gt; {
-                            <span class="kw">if</span> <span class="ident">tokens</span>.<span class="ident">is_empty</span>() {
+            }, <span class="comment">// end PersonOpt::Posix
+            </span>PersonOpt::Session { commands } =&gt; <span class="kw">match </span>commands {
+                AccountUserAuthToken::Status(apo) =&gt; {
+                    <span class="kw">let </span>client = apo.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">match </span>client
+                        .idm_account_list_user_auth_token(apo.aopts.account_id.as_str())
+                        .<span class="kw">await
+                    </span>{
+                        <span class="prelude-val">Ok</span>(tokens) =&gt; {
+                            <span class="kw">if </span>tokens.is_empty() {
                                 <span class="macro">println!</span>(<span class="string">&quot;No sessions exist&quot;</span>);
-                            } <span class="kw">else</span> {
-                                <span class="kw">for</span> <span class="ident">token</span> <span class="kw">in</span> <span class="ident">tokens</span> {
-                                    <span class="macro">println!</span>(<span class="string">&quot;token: {}&quot;</span>, <span class="ident">token</span>);
+                            } <span class="kw">else </span>{
+                                <span class="kw">for </span>token <span class="kw">in </span>tokens {
+                                    <span class="macro">println!</span>(<span class="string">&quot;token: {}&quot;</span>, token);
                                 }
                             }
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error listing sessions -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error listing sessions -&gt; {:?}&quot;</span>, e);
                         }
                     }
                 }
-                <span class="ident">AccountUserAuthToken::Destroy</span> {
-                    <span class="ident">aopts</span>,
-                    <span class="ident">copt</span>,
-                    <span class="ident">session_id</span>,
+                AccountUserAuthToken::Destroy {
+                    aopts,
+                    copt,
+                    session_id,
                 } =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">match</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_destroy_user_auth_token</span>(<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(), <span class="kw-2">*</span><span class="ident">session_id</span>)
-                        .<span class="kw">await</span>
-                    {
+                    <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">match </span>client
+                        .idm_account_destroy_user_auth_token(aopts.account_id.as_str(), <span class="kw-2">*</span>session_id)
+                        .<span class="kw">await
+                    </span>{
                         <span class="prelude-val">Ok</span>(()) =&gt; {
                             <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>);
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error destroying account session -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error destroying account session -&gt; {:?}&quot;</span>, e);
                         }
                     }
                 }
-            }, <span class="comment">// End PersonOpt::Session</span>
-            <span class="ident">PersonOpt::Ssh</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountSsh::List</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+            }, <span class="comment">// End PersonOpt::Session
+            </span>PersonOpt::Ssh { commands } =&gt; <span class="kw">match </span>commands {
+                AccountSsh::List(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
 
-                    <span class="kw">match</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_get_ssh_pubkeys</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                        .<span class="kw">await</span>
-                    {
-                        <span class="prelude-val">Ok</span>(<span class="ident">pkeys</span>) =&gt; <span class="ident">pkeys</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">pkey</span><span class="op">|</span> <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">pkey</span>)),
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="kw">match </span>client
+                        .idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str())
+                        .<span class="kw">await
+                    </span>{
+                        <span class="prelude-val">Ok</span>(pkeys) =&gt; pkeys.iter().for_each(|pkey| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, pkey)),
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         }
                     }
                 }
-                <span class="ident">AccountSsh::Add</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_person_account_post_ssh_pubkey</span>(
-                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
-                            <span class="ident">aopt</span>.<span class="ident">tag</span>.<span class="ident">as_str</span>(),
-                            <span class="ident">aopt</span>.<span class="ident">pubkey</span>.<span class="ident">as_str</span>(),
+                AccountSsh::Add(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_person_account_post_ssh_pubkey(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.tag.as_str(),
+                            aopt.pubkey.as_str(),
                         )
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                     }
                 }
-                <span class="ident">AccountSsh::Delete</span>(<span class="ident">aopt</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_person_account_delete_ssh_pubkey</span>(
-                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
-                            <span class="ident">aopt</span>.<span class="ident">tag</span>.<span class="ident">as_str</span>(),
+                AccountSsh::Delete(aopt) =&gt; {
+                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_person_account_delete_ssh_pubkey(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.tag.as_str(),
                         )
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                     }
                 }
-            }, <span class="comment">// end PersonOpt::Ssh</span>
-            <span class="ident">PersonOpt::List</span>(<span class="ident">copt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_person_account_list</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">ent</span><span class="op">|</span> <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">ent</span>)),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+            }, <span class="comment">// end PersonOpt::Ssh
+            </span>PersonOpt::List(copt) =&gt; {
+                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">match </span>client.idm_person_account_list().<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|ent| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, ent)),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
-            <span class="ident">PersonOpt::Update</span>(<span class="ident">aopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_person_account_update</span>(
-                        <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
-                        <span class="ident">aopt</span>.<span class="ident">newname</span>.<span class="ident">as_deref</span>(),
-                        <span class="ident">aopt</span>.<span class="ident">displayname</span>.<span class="ident">as_deref</span>(),
-                        <span class="ident">aopt</span>.<span class="ident">legalname</span>.<span class="ident">as_deref</span>(),
-                        <span class="ident">aopt</span>.<span class="ident">mail</span>.<span class="ident">as_deref</span>(),
+            PersonOpt::Update(aopt) =&gt; {
+                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">match </span>client
+                    .idm_person_account_update(
+                        aopt.aopts.account_id.as_str(),
+                        aopt.newname.as_deref(),
+                        aopt.displayname.as_deref(),
+                        aopt.legalname.as_deref(),
+                        aopt.mail.as_deref(),
                     )
-                    .<span class="kw">await</span>
-                {
+                    .<span class="kw">await
+                </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
-            <span class="ident">PersonOpt::Get</span>(<span class="ident">aopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_person_account_get</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">e</span>)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>),
+            PersonOpt::Get(aopt) =&gt; {
+                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">match </span>client
+                    .idm_person_account_get(aopt.aopts.account_id.as_str())
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e),
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;No matching entries&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
-            <span class="ident">PersonOpt::Delete</span>(<span class="ident">aopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modmessage</span> <span class="op">=</span> <span class="ident">AccountChangeMessage</span> {
-                    <span class="ident">output_mode</span>: <span class="ident">ConsoleOutputMode::Text</span>,
-                    <span class="ident">action</span>: <span class="string">&quot;account delete&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">result</span>: <span class="string">&quot;deleted&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">src_user</span>: <span class="ident">aopt</span>
-                        .<span class="ident">copt</span>
-                        .<span class="ident">username</span>
-                        .<span class="ident">to_owned</span>()
-                        .<span class="ident">unwrap_or</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">client</span>.<span class="ident">whoami</span>().<span class="kw">await</span>)),
-                    <span class="ident">dest_user</span>: <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">status</span>: <span class="ident">MessageStatus::Success</span>,
+            PersonOpt::Delete(aopt) =&gt; {
+                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>modmessage = AccountChangeMessage {
+                    output_mode: ConsoleOutputMode::Text,
+                    action: <span class="string">&quot;account delete&quot;</span>.to_string(),
+                    result: <span class="string">&quot;deleted&quot;</span>.to_string(),
+                    src_user: aopt
+                        .copt
+                        .username
+                        .to_owned()
+                        .unwrap_or(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, client.whoami().<span class="kw">await</span>)),
+                    dest_user: aopt.aopts.account_id.to_string(),
+                    status: MessageStatus::Success,
                 };
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_person_account_delete</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="ident">modmessage</span>.<span class="ident">result</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">modmessage</span>.<span class="ident">status</span> <span class="op">=</span> <span class="ident">MessageStatus::Failure</span>;
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                <span class="kw">match </span>client
+                    .idm_person_account_delete(aopt.aopts.account_id.as_str())
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        modmessage.result = <span class="macro">format!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
+                        modmessage.status = MessageStatus::Failure;
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, modmessage);
                     }
-                    <span class="prelude-val">Ok</span>(<span class="ident">result</span>) =&gt; {
-                        <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">result</span>);
-                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">modmessage</span>);
+                    <span class="prelude-val">Ok</span>(result) =&gt; {
+                        <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, result);
+                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, modmessage);
                     }
                 };
             }
-            <span class="ident">PersonOpt::Create</span>(<span class="ident">acopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">acopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                    .<span class="ident">idm_person_account_create</span>(
-                        <span class="ident">acopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
-                        <span class="ident">acopt</span>.<span class="ident">display_name</span>.<span class="ident">as_str</span>(),
+            PersonOpt::Create(acopt) =&gt; {
+                <span class="kw">let </span>client = acopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                    .idm_person_account_create(
+                        acopt.aopts.account_id.as_str(),
+                        acopt.display_name.as_str(),
                     )
-                    .<span class="kw">await</span>
-                {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>)
+                    .<span class="kw">await
+                </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e)
                 }
             }
-            <span class="ident">PersonOpt::Validity</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
-                <span class="ident">AccountValidity::Show</span>(<span class="ident">ano</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+            PersonOpt::Validity { commands } =&gt; <span class="kw">match </span>commands {
+                AccountValidity::Show(ano) =&gt; {
+                    <span class="kw">let </span>client = ano.copt.to_client().<span class="kw">await</span>;
 
-                    <span class="macro">println!</span>(<span class="string">&quot;user: {}&quot;</span>, <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>());
-                    <span class="kw">let</span> <span class="ident">ex</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">client</span>
-                        .<span class="ident">idm_person_account_get_attr</span>(
-                            <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                    <span class="macro">println!</span>(<span class="string">&quot;user: {}&quot;</span>, ano.aopts.account_id.as_str());
+                    <span class="kw">let </span>ex = <span class="kw">match </span>client
+                        .idm_person_account_get_attr(
+                            ano.aopts.account_id.as_str(),
                             <span class="string">&quot;account_expire&quot;</span>,
                         )
-                        .<span class="kw">await</span>
-                    {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        .<span class="kw">await
+                    </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                             <span class="kw">return</span>;
                         }
                     };
 
-                    <span class="kw">let</span> <span class="ident">vf</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">client</span>
-                        .<span class="ident">idm_person_account_get_attr</span>(
-                            <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                    <span class="kw">let </span>vf = <span class="kw">match </span>client
+                        .idm_person_account_get_attr(
+                            ano.aopts.account_id.as_str(),
                             <span class="string">&quot;account_valid_from&quot;</span>,
                         )
-                        .<span class="kw">await</span>
-                    {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        .<span class="kw">await
+                    </span>{
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                             <span class="kw">return</span>;
                         }
                     };
 
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>) <span class="op">=</span> <span class="ident">vf</span> {
-                        <span class="comment">// Convert the time to local timezone.</span>
-                        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">OffsetDateTime::parse</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>[<span class="number">0</span>], <span class="ident">time::Format::Rfc3339</span>)
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">odt</span><span class="op">|</span> {
-                                <span class="ident">odt</span>.<span class="ident">to_offset</span>(
-                                    <span class="ident">time::UtcOffset::try_current_local_offset</span>()
-                                        .<span class="ident">unwrap_or</span>(<span class="ident">time::UtcOffset::UTC</span>),
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = vf {
+                        <span class="comment">// Convert the time to local timezone.
+                        </span><span class="kw">let </span>t = OffsetDateTime::parse(<span class="kw-2">&amp;</span>t[<span class="number">0</span>], time::Format::Rfc3339)
+                            .map(|odt| {
+                                odt.to_offset(
+                                    time::UtcOffset::try_current_local_offset()
+                                        .unwrap_or(time::UtcOffset::UTC),
                                 )
-                                .<span class="ident">format</span>(<span class="ident">time::Format::Rfc3339</span>)
+                                .format(time::Format::Rfc3339)
                             })
-                            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;invalid timestamp&quot;</span>.<span class="ident">to_string</span>());
+                            .unwrap_or_else(|<span class="kw">_</span>| <span class="string">&quot;invalid timestamp&quot;</span>.to_string());
 
-                        <span class="macro">println!</span>(<span class="string">&quot;valid after: {}&quot;</span>, <span class="ident">t</span>);
-                    } <span class="kw">else</span> {
+                        <span class="macro">println!</span>(<span class="string">&quot;valid after: {}&quot;</span>, t);
+                    } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;valid after: any time&quot;</span>);
                     }
 
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>) <span class="op">=</span> <span class="ident">ex</span> {
-                        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">OffsetDateTime::parse</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>[<span class="number">0</span>], <span class="ident">time::Format::Rfc3339</span>)
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">odt</span><span class="op">|</span> {
-                                <span class="ident">odt</span>.<span class="ident">to_offset</span>(
-                                    <span class="ident">time::UtcOffset::try_current_local_offset</span>()
-                                        .<span class="ident">unwrap_or</span>(<span class="ident">time::UtcOffset::UTC</span>),
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = ex {
+                        <span class="kw">let </span>t = OffsetDateTime::parse(<span class="kw-2">&amp;</span>t[<span class="number">0</span>], time::Format::Rfc3339)
+                            .map(|odt| {
+                                odt.to_offset(
+                                    time::UtcOffset::try_current_local_offset()
+                                        .unwrap_or(time::UtcOffset::UTC),
                                 )
-                                .<span class="ident">format</span>(<span class="ident">time::Format::Rfc3339</span>)
+                                .format(time::Format::Rfc3339)
                             })
-                            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;invalid timestamp&quot;</span>.<span class="ident">to_string</span>());
-                        <span class="macro">println!</span>(<span class="string">&quot;expire: {}&quot;</span>, <span class="ident">t</span>);
-                    } <span class="kw">else</span> {
+                            .unwrap_or_else(|<span class="kw">_</span>| <span class="string">&quot;invalid timestamp&quot;</span>.to_string());
+                        <span class="macro">println!</span>(<span class="string">&quot;expire: {}&quot;</span>, t);
+                    } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;expire: never&quot;</span>);
                     }
                 }
-                <span class="ident">AccountValidity::ExpireAt</span>(<span class="ident">ano</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">ano</span>.<span class="ident">datetime</span>.<span class="ident">as_str</span>(), <span class="string">&quot;never&quot;</span> <span class="op">|</span> <span class="string">&quot;clear&quot;</span>) {
-                        <span class="comment">// Unset the value</span>
-                        <span class="kw">match</span> <span class="ident">client</span>
-                            .<span class="ident">idm_person_account_purge_attr</span>(
-                                <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                AccountValidity::ExpireAt(ano) =&gt; {
+                    <span class="kw">let </span>client = ano.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">if </span><span class="macro">matches!</span>(ano.datetime.as_str(), <span class="string">&quot;never&quot; </span>| <span class="string">&quot;clear&quot;</span>) {
+                        <span class="comment">// Unset the value
+                        </span><span class="kw">match </span>client
+                            .idm_person_account_purge_attr(
+                                ano.aopts.account_id.as_str(),
                                 <span class="string">&quot;account_expire&quot;</span>,
                             )
-                            .<span class="kw">await</span>
-                        {
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
-                            <span class="kw">_</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                            .<span class="kw">await
+                        </span>{
+                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
+                            <span class="kw">_ </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                         }
-                    } <span class="kw">else</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span>
-                            <span class="ident">OffsetDateTime::parse</span>(<span class="ident">ano</span>.<span class="ident">datetime</span>.<span class="ident">as_str</span>(), <span class="ident">time::Format::Rfc3339</span>)
+                    } <span class="kw">else </span>{
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) =
+                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
                         {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                             <span class="kw">return</span>;
                         }
 
-                        <span class="kw">match</span> <span class="ident">client</span>
-                            .<span class="ident">idm_person_account_set_attr</span>(
-                                <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                        <span class="kw">match </span>client
+                            .idm_person_account_set_attr(
+                                ano.aopts.account_id.as_str(),
                                 <span class="string">&quot;account_expire&quot;</span>,
-                                <span class="kw-2">&amp;</span>[<span class="ident">ano</span>.<span class="ident">datetime</span>.<span class="ident">as_str</span>()],
+                                <span class="kw-2">&amp;</span>[ano.datetime.as_str()],
                             )
-                            .<span class="kw">await</span>
-                        {
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
-                            <span class="kw">_</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                            .<span class="kw">await
+                        </span>{
+                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
+                            <span class="kw">_ </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                         }
                     }
                 }
-                <span class="ident">AccountValidity::BeginFrom</span>(<span class="ident">ano</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                    <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">ano</span>.<span class="ident">datetime</span>.<span class="ident">as_str</span>(), <span class="string">&quot;any&quot;</span> <span class="op">|</span> <span class="string">&quot;clear&quot;</span> <span class="op">|</span> <span class="string">&quot;whenever&quot;</span>) {
-                        <span class="comment">// Unset the value</span>
-                        <span class="kw">match</span> <span class="ident">client</span>
-                            .<span class="ident">idm_person_account_purge_attr</span>(
-                                <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                AccountValidity::BeginFrom(ano) =&gt; {
+                    <span class="kw">let </span>client = ano.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">if </span><span class="macro">matches!</span>(ano.datetime.as_str(), <span class="string">&quot;any&quot; </span>| <span class="string">&quot;clear&quot; </span>| <span class="string">&quot;whenever&quot;</span>) {
+                        <span class="comment">// Unset the value
+                        </span><span class="kw">match </span>client
+                            .idm_person_account_purge_attr(
+                                ano.aopts.account_id.as_str(),
                                 <span class="string">&quot;account_valid_from&quot;</span>,
                             )
-                            .<span class="kw">await</span>
-                        {
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
-                            <span class="kw">_</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                            .<span class="kw">await
+                        </span>{
+                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
+                            <span class="kw">_ </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                         }
-                    } <span class="kw">else</span> {
-                        <span class="comment">// Attempt to parse and set</span>
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span>
-                            <span class="ident">OffsetDateTime::parse</span>(<span class="ident">ano</span>.<span class="ident">datetime</span>.<span class="ident">as_str</span>(), <span class="ident">time::Format::Rfc3339</span>)
+                    } <span class="kw">else </span>{
+                        <span class="comment">// Attempt to parse and set
+                        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) =
+                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
                         {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                             <span class="kw">return</span>;
                         }
 
-                        <span class="kw">match</span> <span class="ident">client</span>
-                            .<span class="ident">idm_person_account_set_attr</span>(
-                                <span class="ident">ano</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                        <span class="kw">match </span>client
+                            .idm_person_account_set_attr(
+                                ano.aopts.account_id.as_str(),
                                 <span class="string">&quot;account_valid_from&quot;</span>,
-                                <span class="kw-2">&amp;</span>[<span class="ident">ano</span>.<span class="ident">datetime</span>.<span class="ident">as_str</span>()],
+                                <span class="kw-2">&amp;</span>[ano.datetime.as_str()],
                             )
-                            .<span class="kw">await</span>
-                        {
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
-                            <span class="kw">_</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                            .<span class="kw">await
+                        </span>{
+                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
+                            <span class="kw">_ </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                         }
                     }
                 }
-            }, <span class="comment">// end PersonOpt::Validity</span>
-        }
+            }, <span class="comment">// end PersonOpt::Validity
+        </span>}
     }
 }
 
-<span class="kw">impl</span> <span class="ident">AccountCredential</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AccountCredential::Status</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">AccountCredential::CreateResetToken</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">AccountCredential::UseResetToken</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">AccountCredential::Update</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+<span class="kw">impl </span>AccountCredential {
+    <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            AccountCredential::Status(aopt) =&gt; aopt.copt.debug,
+            AccountCredential::CreateResetToken(aopt) =&gt; aopt.copt.debug,
+            AccountCredential::UseResetToken(aopt) =&gt; aopt.copt.debug,
+            AccountCredential::Update(aopt) =&gt; aopt.copt.debug,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AccountCredential::Status</span>(<span class="ident">aopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_person_account_get_credential_status</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="ident">cstatus</span>) =&gt; {
-                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">cstatus</span>);
+    <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self </span>{
+            AccountCredential::Status(aopt) =&gt; {
+                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">match </span>client
+                    .idm_person_account_get_credential_status(aopt.aopts.account_id.as_str())
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(cstatus) =&gt; {
+                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, cstatus);
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error getting credential status -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    }
-                }
-            }
-            <span class="ident">AccountCredential::Update</span>(<span class="ident">aopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_account_credential_update_begin</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>((<span class="ident">cusession_token</span>, <span class="ident">custatus</span>)) =&gt; {
-                        <span class="ident">credential_update_exec</span>(<span class="ident">cusession_token</span>, <span class="ident">custatus</span>, <span class="ident">client</span>).<span class="kw">await</span>
-                    }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error starting credential update -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error getting credential status -&gt; {:?}&quot;</span>, e);
                     }
                 }
             }
-            <span class="comment">// The account credential use_reset_token CLI</span>
-            <span class="ident">AccountCredential::UseResetToken</span>(<span class="ident">aopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_unauth_client</span>();
-                <span class="kw">let</span> <span class="ident">cuintent_token</span> <span class="op">=</span> <span class="ident">CUIntentToken</span> {
-                    <span class="ident">token</span>: <span class="ident">aopt</span>.<span class="ident">token</span>.<span class="ident">clone</span>(),
+            AccountCredential::Update(aopt) =&gt; {
+                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">match </span>client
+                    .idm_account_credential_update_begin(aopt.aopts.account_id.as_str())
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>((cusession_token, custatus)) =&gt; {
+                        credential_update_exec(cusession_token, custatus, client).<span class="kw">await
+                    </span>}
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error starting credential update -&gt; {:?}&quot;</span>, e);
+                    }
+                }
+            }
+            <span class="comment">// The account credential use_reset_token CLI
+            </span>AccountCredential::UseResetToken(aopt) =&gt; {
+                <span class="kw">let </span>client = aopt.copt.to_unauth_client();
+                <span class="kw">let </span>cuintent_token = CUIntentToken {
+                    token: aopt.token.clone(),
                 };
 
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_account_credential_update_exchange</span>(<span class="ident">cuintent_token</span>)
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>((<span class="ident">cusession_token</span>, <span class="ident">custatus</span>)) =&gt; {
-                        <span class="ident">credential_update_exec</span>(<span class="ident">cusession_token</span>, <span class="ident">custatus</span>, <span class="ident">client</span>).<span class="kw">await</span>
-                    }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="kw">match</span> <span class="ident">e</span> {
-                            <span class="ident">ClientErrorHttp</span>(<span class="ident">status_code</span>, <span class="ident">error</span>, <span class="ident">_kopid</span>) =&gt; {
+                <span class="kw">match </span>client
+                    .idm_account_credential_update_exchange(cuintent_token)
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>((cusession_token, custatus)) =&gt; {
+                        credential_update_exec(cusession_token, custatus, client).<span class="kw">await
+                    </span>}
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="kw">match </span>e {
+                            ClientErrorHttp(status_code, error, _kopid) =&gt; {
                                 <span class="macro">eprintln!</span>(
                                     <span class="string">&quot;Error completing command: HTTP{} - {:?}&quot;</span>,
-                                    <span class="ident">status_code</span>, <span class="ident">error</span>
+                                    status_code, error
                                 );
                             }
-                            <span class="kw">_</span> =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error starting use_reset_token -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                            <span class="kw">_ </span>=&gt; <span class="macro">error!</span>(<span class="string">&quot;Error starting use_reset_token -&gt; {:?}&quot;</span>, e),
                         };
                     }
                 }
             }
-            <span class="ident">AccountCredential::CreateResetToken</span>(<span class="ident">aopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+            AccountCredential::CreateResetToken(aopt) =&gt; {
+                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
 
-                <span class="comment">// What&#39;s the client url?</span>
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_person_account_credential_update_intent</span>(<span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="ident">cuintent_token</span>) =&gt; {
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">url</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Url::parse</span>(<span class="ident">client</span>.<span class="ident">get_url</span>()) {
-                            <span class="prelude-val">Ok</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>,
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                                <span class="macro">error!</span>(<span class="string">&quot;Unable to parse url - {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="comment">// What&#39;s the client url?
+                </span><span class="kw">match </span>client
+                    .idm_person_account_credential_update_intent(aopt.aopts.account_id.as_str())
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(cuintent_token) =&gt; {
+                        <span class="kw">let </span><span class="kw-2">mut </span>url = <span class="kw">match </span>Url::parse(client.get_url()) {
+                            <span class="prelude-val">Ok</span>(u) =&gt; u,
+                            <span class="prelude-val">Err</span>(e) =&gt; {
+                                <span class="macro">error!</span>(<span class="string">&quot;Unable to parse url - {:?}&quot;</span>, e);
                                 <span class="kw">return</span>;
                             }
                         };
-                        <span class="ident">url</span>.<span class="ident">set_path</span>(<span class="string">&quot;/ui/reset&quot;</span>);
-                        <span class="ident">url</span>.<span class="ident">query_pairs_mut</span>()
-                            .<span class="ident">append_pair</span>(<span class="string">&quot;token&quot;</span>, <span class="ident">cuintent_token</span>.<span class="ident">token</span>.<span class="ident">as_str</span>());
+                        url.set_path(<span class="string">&quot;/ui/reset&quot;</span>);
+                        url.query_pairs_mut()
+                            .append_pair(<span class="string">&quot;token&quot;</span>, cuintent_token.token.as_str());
 
                         <span class="macro">debug!</span>(
                             <span class="string">&quot;Successfully created credential reset token for {}: {}&quot;</span>,
-                            <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>, <span class="ident">cuintent_token</span>.<span class="ident">token</span>
+                            aopt.aopts.account_id, cuintent_token.token
                         );
                         <span class="macro">println!</span>(
-                            <span class="string">&quot;The person can use one of the following to allow the credential reset&quot;</span>
-                        );
+                            <span class="string">&quot;The person can use one of the following to allow the credential reset&quot;
+                        </span>);
                         <span class="macro">println!</span>(<span class="string">&quot;\nScan this QR Code:\n&quot;</span>);
-                        <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">QrCode::new</span>(<span class="ident">url</span>.<span class="ident">as_str</span>()) {
-                            <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                                <span class="macro">error!</span>(<span class="string">&quot;Failed to generate QR code -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="kw">let </span>code = <span class="kw">match </span>QrCode::new(url.as_str()) {
+                            <span class="prelude-val">Ok</span>(c) =&gt; c,
+                            <span class="prelude-val">Err</span>(e) =&gt; {
+                                <span class="macro">error!</span>(<span class="string">&quot;Failed to generate QR code -&gt; {:?}&quot;</span>, e);
                                 <span class="kw">return</span>;
                             }
                         };
-                        <span class="kw">let</span> <span class="ident">image</span> <span class="op">=</span> <span class="ident">code</span>
-                            .<span class="ident">render</span>::<span class="op">&lt;</span><span class="ident">unicode::Dense1x2</span><span class="op">&gt;</span>()
-                            .<span class="ident">dark_color</span>(<span class="ident">unicode::Dense1x2::Light</span>)
-                            .<span class="ident">light_color</span>(<span class="ident">unicode::Dense1x2::Dark</span>)
-                            .<span class="ident">build</span>();
-                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">image</span>);
+                        <span class="kw">let </span>image = code
+                            .render::&lt;unicode::Dense1x2&gt;()
+                            .dark_color(unicode::Dense1x2::Light)
+                            .light_color(unicode::Dense1x2::Dark)
+                            .build();
+                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, image);
 
                         <span class="macro">println!</span>();
-                        <span class="macro">println!</span>(<span class="string">&quot;This link: {}&quot;</span>, <span class="ident">url</span>.<span class="ident">as_str</span>());
+                        <span class="macro">println!</span>(<span class="string">&quot;This link: {}&quot;</span>, url.as_str());
                         <span class="macro">println!</span>(
                             <span class="string">&quot;Or run this command: kanidm account credential use_reset_token {}&quot;</span>,
-                            <span class="ident">cuintent_token</span>.<span class="ident">token</span>
+                            cuintent_token.token
                         );
                         <span class="macro">println!</span>();
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error starting credential reset -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error starting credential reset -&gt; {:?}&quot;</span>, e);
                     }
                 }
             }
@@ -1707,25 +1707,25 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">enum</span> <span class="ident">CUAction</span> {
-    <span class="ident">Help</span>,
-    <span class="ident">Status</span>,
-    <span class="ident">Password</span>,
-    <span class="ident">Totp</span>,
-    <span class="ident">TotpRemove</span>,
-    <span class="ident">BackupCodes</span>,
-    <span class="ident">Remove</span>,
-    <span class="ident">Passkey</span>,
-    <span class="ident">PasskeyRemove</span>,
-    <span class="ident">End</span>,
-    <span class="ident">Commit</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">enum </span>CUAction {
+    Help,
+    Status,
+    Password,
+    Totp,
+    TotpRemove,
+    BackupCodes,
+    Remove,
+    Passkey,
+    PasskeyRemove,
+    End,
+    Commit,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">CUAction</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>CUAction {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         <span class="macro">write!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">r#&quot;
 help (h, ?) - Display this help
 status (ls, st) - Show the status of the credential
@@ -1740,487 +1740,487 @@ remove (rm) - Remove only the password based credential
 -- Passkeys
 passkey (pk) - Add a new Passkey
 passkey remove (passkey rm, pkrm) - Remove a Passkey
-&quot;#</span>
-        )
+&quot;#
+        </span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">CUAction</span> {
-    <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> ();
+<span class="kw">impl </span>FromStr <span class="kw">for </span>CUAction {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= ();
 
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">to_lowercase</span>();
-        <span class="kw">match</span> <span class="ident">s</span>.<span class="ident">as_str</span>() {
-            <span class="string">&quot;help&quot;</span> <span class="op">|</span> <span class="string">&quot;h&quot;</span> <span class="op">|</span> <span class="string">&quot;?&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::Help</span>),
-            <span class="string">&quot;status&quot;</span> <span class="op">|</span> <span class="string">&quot;ls&quot;</span> <span class="op">|</span> <span class="string">&quot;st&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::Status</span>),
-            <span class="string">&quot;end&quot;</span> <span class="op">|</span> <span class="string">&quot;quit&quot;</span> <span class="op">|</span> <span class="string">&quot;exit&quot;</span> <span class="op">|</span> <span class="string">&quot;x&quot;</span> <span class="op">|</span> <span class="string">&quot;q&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::End</span>),
-            <span class="string">&quot;commit&quot;</span> <span class="op">|</span> <span class="string">&quot;save&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::Commit</span>),
-            <span class="string">&quot;password&quot;</span> <span class="op">|</span> <span class="string">&quot;passwd&quot;</span> <span class="op">|</span> <span class="string">&quot;pass&quot;</span> <span class="op">|</span> <span class="string">&quot;pw&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::Password</span>),
-            <span class="string">&quot;totp&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::Totp</span>),
-            <span class="string">&quot;totp remove&quot;</span> <span class="op">|</span> <span class="string">&quot;totp rm&quot;</span> <span class="op">|</span> <span class="string">&quot;trm&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::TotpRemove</span>),
-            <span class="string">&quot;backup codes&quot;</span> <span class="op">|</span> <span class="string">&quot;bcode&quot;</span> <span class="op">|</span> <span class="string">&quot;bcg&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::BackupCodes</span>),
-            <span class="string">&quot;remove&quot;</span> <span class="op">|</span> <span class="string">&quot;rm&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::Remove</span>),
-            <span class="string">&quot;passkey&quot;</span> <span class="op">|</span> <span class="string">&quot;pk&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::Passkey</span>),
-            <span class="string">&quot;passkey remove&quot;</span> <span class="op">|</span> <span class="string">&quot;passkey rm&quot;</span> <span class="op">|</span> <span class="string">&quot;pkrm&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CUAction::PasskeyRemove</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(()),
+    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span>s = s.to_lowercase();
+        <span class="kw">match </span>s.as_str() {
+            <span class="string">&quot;help&quot; </span>| <span class="string">&quot;h&quot; </span>| <span class="string">&quot;?&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::Help),
+            <span class="string">&quot;status&quot; </span>| <span class="string">&quot;ls&quot; </span>| <span class="string">&quot;st&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::Status),
+            <span class="string">&quot;end&quot; </span>| <span class="string">&quot;quit&quot; </span>| <span class="string">&quot;exit&quot; </span>| <span class="string">&quot;x&quot; </span>| <span class="string">&quot;q&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::End),
+            <span class="string">&quot;commit&quot; </span>| <span class="string">&quot;save&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::Commit),
+            <span class="string">&quot;password&quot; </span>| <span class="string">&quot;passwd&quot; </span>| <span class="string">&quot;pass&quot; </span>| <span class="string">&quot;pw&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::Password),
+            <span class="string">&quot;totp&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::Totp),
+            <span class="string">&quot;totp remove&quot; </span>| <span class="string">&quot;totp rm&quot; </span>| <span class="string">&quot;trm&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::TotpRemove),
+            <span class="string">&quot;backup codes&quot; </span>| <span class="string">&quot;bcode&quot; </span>| <span class="string">&quot;bcg&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::BackupCodes),
+            <span class="string">&quot;remove&quot; </span>| <span class="string">&quot;rm&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::Remove),
+            <span class="string">&quot;passkey&quot; </span>| <span class="string">&quot;pk&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::Passkey),
+            <span class="string">&quot;passkey remove&quot; </span>| <span class="string">&quot;passkey rm&quot; </span>| <span class="string">&quot;pkrm&quot; </span>=&gt; <span class="prelude-val">Ok</span>(CUAction::PasskeyRemove),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">totp_enroll_prompt</span>(<span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>, <span class="ident">client</span>: <span class="kw-2">&amp;</span><span class="ident">KanidmClient</span>) {
-    <span class="comment">// First, submit the server side gen.</span>
-    <span class="kw">let</span> <span class="ident">totp_secret</span>: <span class="ident">TotpSecret</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">client</span>
-        .<span class="ident">idm_account_credential_update_init_totp</span>(<span class="ident">session_token</span>)
-        .<span class="kw">await</span>
-    {
-        <span class="prelude-val">Ok</span>(<span class="ident">CUStatus</span> {
-            <span class="ident">mfaregstate</span>: <span class="ident">CURegState::TotpCheck</span>(<span class="ident">totp_secret</span>),
+<span class="kw">async fn </span>totp_enroll_prompt(session_token: <span class="kw-2">&amp;</span>CUSessionToken, client: <span class="kw-2">&amp;</span>KanidmClient) {
+    <span class="comment">// First, submit the server side gen.
+    </span><span class="kw">let </span>totp_secret: TotpSecret = <span class="kw">match </span>client
+        .idm_account_credential_update_init_totp(session_token)
+        .<span class="kw">await
+    </span>{
+        <span class="prelude-val">Ok</span>(CUStatus {
+            mfaregstate: CURegState::TotpCheck(totp_secret),
             ..
-        }) =&gt; <span class="ident">totp_secret</span>,
-        <span class="prelude-val">Ok</span>(<span class="ident">status</span>) =&gt; {
-            <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">status</span>);
+        }) =&gt; totp_secret,
+        <span class="prelude-val">Ok</span>(status) =&gt; {
+            <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
             <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
             <span class="kw">return</span>;
         }
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
             <span class="kw">return</span>;
         }
     };
 
-    <span class="comment">// gen the qr</span>
-    <span class="macro">println!</span>(<span class="string">&quot;Scan the following QR code with your OTP app.&quot;</span>);
+    <span class="comment">// gen the qr
+    </span><span class="macro">println!</span>(<span class="string">&quot;Scan the following QR code with your OTP app.&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">QrCode::new</span>(<span class="ident">totp_secret</span>.<span class="ident">to_uri</span>().<span class="ident">as_str</span>()) {
-        <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Failed to generate QR code -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="kw">let </span>code = <span class="kw">match </span>QrCode::new(totp_secret.to_uri().as_str()) {
+        <span class="prelude-val">Ok</span>(c) =&gt; c,
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to generate QR code -&gt; {:?}&quot;</span>, e);
             <span class="kw">return</span>;
         }
     };
-    <span class="kw">let</span> <span class="ident">image</span> <span class="op">=</span> <span class="ident">code</span>
-        .<span class="ident">render</span>::<span class="op">&lt;</span><span class="ident">unicode::Dense1x2</span><span class="op">&gt;</span>()
-        .<span class="ident">dark_color</span>(<span class="ident">unicode::Dense1x2::Light</span>)
-        .<span class="ident">light_color</span>(<span class="ident">unicode::Dense1x2::Dark</span>)
-        .<span class="ident">build</span>();
-    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">image</span>);
+    <span class="kw">let </span>image = code
+        .render::&lt;unicode::Dense1x2&gt;()
+        .dark_color(unicode::Dense1x2::Light)
+        .light_color(unicode::Dense1x2::Dark)
+        .build();
+    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, image);
 
     <span class="macro">println!</span>(<span class="string">&quot;Alternatively, you can manually enter the following OTP details:&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;--------------------------------------------------------------&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;TOTP URI: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">to_uri</span>().<span class="ident">as_str</span>());
-    <span class="macro">println!</span>(<span class="string">&quot;Account Name: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">accountname</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Issuer: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">issuer</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Algorithm: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">algo</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Period/Step: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">step</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Secret: {}&quot;</span>, <span class="ident">totp_secret</span>.<span class="ident">get_secret</span>());
+    <span class="macro">println!</span>(<span class="string">&quot;TOTP URI: {}&quot;</span>, totp_secret.to_uri().as_str());
+    <span class="macro">println!</span>(<span class="string">&quot;Account Name: {}&quot;</span>, totp_secret.accountname);
+    <span class="macro">println!</span>(<span class="string">&quot;Issuer: {}&quot;</span>, totp_secret.issuer);
+    <span class="macro">println!</span>(<span class="string">&quot;Algorithm: {}&quot;</span>, totp_secret.algo);
+    <span class="macro">println!</span>(<span class="string">&quot;Period/Step: {}&quot;</span>, totp_secret.step);
+    <span class="macro">println!</span>(<span class="string">&quot;Secret: {}&quot;</span>, totp_secret.get_secret());
 
-    <span class="comment">// prompt for the totp.</span>
-    <span class="macro">println!</span>(<span class="string">&quot;--------------------------------------------------------------&quot;</span>);
+    <span class="comment">// prompt for the totp.
+    </span><span class="macro">println!</span>(<span class="string">&quot;--------------------------------------------------------------&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;Enter a TOTP from your authenticator to complete registration:&quot;</span>);
 
-    <span class="comment">// Up to three attempts</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attempts</span> <span class="op">=</span> <span class="number">3</span>;
-    <span class="kw">while</span> <span class="ident">attempts</span> <span class="op">&gt;</span> <span class="number">0</span> {
-        <span class="ident">attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="comment">// prompt for it. OR cancel.</span>
-        <span class="kw">let</span> <span class="ident">input</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">Input::new</span>()
-            .<span class="ident">with_prompt</span>(<span class="string">&quot;TOTP&quot;</span>)
-            .<span class="ident">validate_with</span>(<span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">String</span><span class="op">|</span> -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">to_lowercase</span>().<span class="ident">starts_with</span>(<span class="string">&#39;c&#39;</span>) <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">trim</span>().<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>().<span class="ident">is_ok</span>() {
+    <span class="comment">// Up to three attempts
+    </span><span class="kw">let </span><span class="kw-2">mut </span>attempts = <span class="number">3</span>;
+    <span class="kw">while </span>attempts &gt; <span class="number">0 </span>{
+        attempts -= <span class="number">1</span>;
+        <span class="comment">// prompt for it. OR cancel.
+        </span><span class="kw">let </span>input: String = Input::new()
+            .with_prompt(<span class="string">&quot;TOTP&quot;</span>)
+            .validate_with(|input: <span class="kw-2">&amp;</span>String| -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span>str&gt; {
+                <span class="kw">if </span>input.to_lowercase().starts_with(<span class="string">&#39;c&#39;</span>) || input.trim().parse::&lt;u32&gt;().is_ok() {
                     <span class="prelude-val">Ok</span>(())
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Err</span>(<span class="string">&quot;Must be a number (123456) or cancel to end&quot;</span>)
                 }
             })
-            .<span class="ident">interact_text</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+            .interact_text()
+            .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
 
-        <span class="comment">// cancel, submit the reg cancel.</span>
-        <span class="kw">let</span> <span class="ident">totp_chal</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">input</span>.<span class="ident">trim</span>().<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+        <span class="comment">// cancel, submit the reg cancel.
+        </span><span class="kw">let </span>totp_chal = <span class="kw">match </span>input.trim().parse::&lt;u32&gt;() {
+            <span class="prelude-val">Ok</span>(v) =&gt; v,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;Cancelling TOTP registration ...&quot;</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                    .<span class="ident">idm_account_credential_update_cancel_mfareg</span>(<span class="ident">session_token</span>)
-                    .<span class="kw">await</span>
-                {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                } <span class="kw">else</span> {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                    .idm_account_credential_update_cancel_mfareg(session_token)
+                    .<span class="kw">await
+                </span>{
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                 }
                 <span class="kw">return</span>;
             }
         };
-        <span class="macro">trace!</span>(<span class="op">%</span><span class="ident">totp_chal</span>);
+        <span class="macro">trace!</span>(%totp_chal);
 
-        <span class="comment">// Submit and see what we get.</span>
-        <span class="kw">match</span> <span class="ident">client</span>
-            .<span class="ident">idm_account_credential_update_check_totp</span>(<span class="ident">session_token</span>, <span class="ident">totp_chal</span>)
-            .<span class="kw">await</span>
-        {
-            <span class="prelude-val">Ok</span>(<span class="ident">CUStatus</span> {
-                <span class="ident">mfaregstate</span>: <span class="ident">CURegState::None</span>,
+        <span class="comment">// Submit and see what we get.
+        </span><span class="kw">match </span>client
+            .idm_account_credential_update_check_totp(session_token, totp_chal)
+            .<span class="kw">await
+        </span>{
+            <span class="prelude-val">Ok</span>(CUStatus {
+                mfaregstate: CURegState::None,
                 ..
             }) =&gt; {
                 <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                 <span class="kw">break</span>;
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">CUStatus</span> {
-                <span class="ident">mfaregstate</span>: <span class="ident">CURegState::TotpTryAgain</span>,
+            <span class="prelude-val">Ok</span>(CUStatus {
+                mfaregstate: CURegState::TotpTryAgain,
                 ..
             }) =&gt; {
-                <span class="comment">// Wrong code! Try again.</span>
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Incorrect TOTP code entered. Please try again.&quot;</span>);
+                <span class="comment">// Wrong code! Try again.
+                </span><span class="macro">eprintln!</span>(<span class="string">&quot;Incorrect TOTP code entered. Please try again.&quot;</span>);
                 <span class="kw">continue</span>;
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">CUStatus</span> {
-                <span class="ident">mfaregstate</span>: <span class="ident">CURegState::TotpInvalidSha1</span>,
+            <span class="prelude-val">Ok</span>(CUStatus {
+                mfaregstate: CURegState::TotpInvalidSha1,
                 ..
             }) =&gt; {
-                <span class="comment">// Sha 1 warning.</span>
-                <span class="macro">eprintln!</span>(<span class="string">&quot;⚠️  WARNING - It appears your authenticator app may be broken ⚠️  &quot;</span>);
+                <span class="comment">// Sha 1 warning.
+                </span><span class="macro">eprintln!</span>(<span class="string">&quot;⚠️  WARNING - It appears your authenticator app may be broken ⚠️  &quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot; The TOTP authenticator you are using is forcing the use of SHA1\n&quot;</span>);
                 <span class="macro">eprintln!</span>(
-                    <span class="string">&quot; SHA1 is a deprecated and potentially insecure cryptographic algorithm\n&quot;</span>
-                );
+                    <span class="string">&quot; SHA1 is a deprecated and potentially insecure cryptographic algorithm\n&quot;
+                </span>);
 
-                <span class="kw">let</span> <span class="ident">items</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="string">&quot;Cancel&quot;</span>, <span class="string">&quot;I am sure&quot;</span>];
-                <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="ident">Select::with_theme</span>(<span class="kw-2">&amp;</span><span class="ident">ColorfulTheme::default</span>())
-                    .<span class="ident">items</span>(<span class="kw-2">&amp;</span><span class="ident">items</span>)
-                    .<span class="ident">default</span>(<span class="number">0</span>)
-                    .<span class="ident">interact</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+                <span class="kw">let </span>items = <span class="macro">vec!</span>[<span class="string">&quot;Cancel&quot;</span>, <span class="string">&quot;I am sure&quot;</span>];
+                <span class="kw">let </span>selection = Select::with_theme(<span class="kw-2">&amp;</span>ColorfulTheme::default())
+                    .items(<span class="kw-2">&amp;</span>items)
+                    .default(<span class="number">0</span>)
+                    .interact()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
 
-                <span class="kw">match</span> <span class="ident">selection</span> {
-                    <span class="number">1</span> =&gt; {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                            .<span class="ident">idm_account_credential_update_accept_sha1_totp</span>(<span class="ident">session_token</span>)
-                            .<span class="kw">await</span>
-                        {
-                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        } <span class="kw">else</span> {
+                <span class="kw">match </span>selection {
+                    <span class="number">1 </span>=&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                            .idm_account_credential_update_accept_sha1_totp(session_token)
+                            .<span class="kw">await
+                        </span>{
+                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        } <span class="kw">else </span>{
                             <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                         }
                     }
-                    <span class="kw">_</span> =&gt; {
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">println!</span>(<span class="string">&quot;Cancelling TOTP registration ...&quot;</span>);
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                            .<span class="ident">idm_account_credential_update_cancel_mfareg</span>(<span class="ident">session_token</span>)
-                            .<span class="kw">await</span>
-                        {
-                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        } <span class="kw">else</span> {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                            .idm_account_credential_update_cancel_mfareg(session_token)
+                            .<span class="kw">await
+                        </span>{
+                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        } <span class="kw">else </span>{
                             <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                         }
                     }
                 }
                 <span class="kw">return</span>;
             }
-            <span class="prelude-val">Ok</span>(<span class="ident">status</span>) =&gt; {
-                <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">status</span>);
+            <span class="prelude-val">Ok</span>(status) =&gt; {
+                <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
                 <span class="kw">return</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
                 <span class="kw">return</span>;
             }
         }
     }
-    <span class="comment">// Done!</span>
-}
+    <span class="comment">// Done!
+</span>}
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">passkey_enroll_prompt</span>(<span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>, <span class="ident">client</span>: <span class="kw-2">&amp;</span><span class="ident">KanidmClient</span>) {
-    <span class="kw">let</span> <span class="ident">pk_reg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">client</span>
-        .<span class="ident">idm_account_credential_update_passkey_init</span>(<span class="ident">session_token</span>)
-        .<span class="kw">await</span>
-    {
-        <span class="prelude-val">Ok</span>(<span class="ident">CUStatus</span> {
-            <span class="ident">mfaregstate</span>: <span class="ident">CURegState::Passkey</span>(<span class="ident">pk_reg</span>),
+<span class="kw">async fn </span>passkey_enroll_prompt(session_token: <span class="kw-2">&amp;</span>CUSessionToken, client: <span class="kw-2">&amp;</span>KanidmClient) {
+    <span class="kw">let </span>pk_reg = <span class="kw">match </span>client
+        .idm_account_credential_update_passkey_init(session_token)
+        .<span class="kw">await
+    </span>{
+        <span class="prelude-val">Ok</span>(CUStatus {
+            mfaregstate: CURegState::Passkey(pk_reg),
             ..
-        }) =&gt; <span class="ident">pk_reg</span>,
-        <span class="prelude-val">Ok</span>(<span class="ident">status</span>) =&gt; {
-            <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">status</span>);
+        }) =&gt; pk_reg,
+        <span class="prelude-val">Ok</span>(status) =&gt; {
+            <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
             <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
             <span class="kw">return</span>;
         }
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
             <span class="kw">return</span>;
         }
     };
 
-    <span class="comment">// Setup and connect to the webauthn handler ...</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FHid::new</span>());
+    <span class="comment">// Setup and connect to the webauthn handler ...
+    </span><span class="kw">let </span><span class="kw-2">mut </span>wa = WebauthnAuthenticator::new(U2FHid::new());
 
     <span class="macro">eprintln!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with.&quot;</span>);
     <span class="macro">eprintln!</span>(<span class="string">&quot;You may be asked to enter the PIN for your device.&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">rego</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">wa</span>.<span class="ident">do_registration</span>(<span class="ident">client</span>.<span class="ident">get_origin</span>().<span class="ident">clone</span>(), <span class="ident">pk_reg</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">rego</span>) =&gt; <span class="ident">rego</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Error Signing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="kw">let </span>rego = <span class="kw">match </span>wa.do_registration(client.get_origin().clone(), pk_reg) {
+        <span class="prelude-val">Ok</span>(rego) =&gt; rego,
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">error!</span>(<span class="string">&quot;Error Signing -&gt; {:?}&quot;</span>, e);
             <span class="kw">return</span>;
         }
     };
 
-    <span class="kw">let</span> <span class="ident">label</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">Input::new</span>()
-        .<span class="ident">with_prompt</span>(<span class="string">&quot;\nEnter a label for this Passkey # &quot;</span>)
-        .<span class="ident">allow_empty</span>(<span class="bool-val">false</span>)
-        .<span class="ident">interact_text</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+    <span class="kw">let </span>label: String = Input::new()
+        .with_prompt(<span class="string">&quot;\nEnter a label for this Passkey # &quot;</span>)
+        .allow_empty(<span class="bool-val">false</span>)
+        .interact_text()
+        .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
 
-    <span class="kw">match</span> <span class="ident">client</span>
-        .<span class="ident">idm_account_credential_update_passkey_finish</span>(<span class="ident">session_token</span>, <span class="ident">label</span>, <span class="ident">rego</span>)
-        .<span class="kw">await</span>
-    {
+    <span class="kw">match </span>client
+        .idm_account_credential_update_passkey_finish(session_token, label, rego)
+        .<span class="kw">await
+    </span>{
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>),
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
         }
     };
 }
 
-<span class="kw">fn</span> <span class="ident">display_status</span>(<span class="ident">status</span>: <span class="ident">CUStatus</span>) {
-    <span class="kw">let</span> <span class="ident">CUStatus</span> {
-        <span class="ident">spn</span>,
-        <span class="ident">displayname</span>,
-        <span class="ident">can_commit</span>,
-        <span class="ident">primary</span>,
-        <span class="ident">mfaregstate</span>: <span class="kw">_</span>,
-        <span class="ident">passkeys</span>,
-    } <span class="op">=</span> <span class="ident">status</span>;
+<span class="kw">fn </span>display_status(status: CUStatus) {
+    <span class="kw">let </span>CUStatus {
+        spn,
+        displayname,
+        can_commit,
+        primary,
+        mfaregstate: <span class="kw">_</span>,
+        passkeys,
+    } = status;
 
-    <span class="macro">println!</span>(<span class="string">&quot;spn: {}&quot;</span>, <span class="ident">spn</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Name: {}&quot;</span>, <span class="ident">displayname</span>);
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cred_detail</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">primary</span> {
+    <span class="macro">println!</span>(<span class="string">&quot;spn: {}&quot;</span>, spn);
+    <span class="macro">println!</span>(<span class="string">&quot;Name: {}&quot;</span>, displayname);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(cred_detail) = <span class="kw-2">&amp;</span>primary {
         <span class="macro">println!</span>(<span class="string">&quot;Primary Credential:&quot;</span>);
-        <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">cred_detail</span>);
-    } <span class="kw">else</span> {
+        <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, cred_detail);
+    } <span class="kw">else </span>{
         <span class="macro">println!</span>(<span class="string">&quot;Primary Credential:&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;  not set&quot;</span>);
     }
     <span class="macro">println!</span>(<span class="string">&quot;Passkeys:&quot;</span>);
-    <span class="kw">if</span> <span class="ident">passkeys</span>.<span class="ident">is_empty</span>() {
+    <span class="kw">if </span>passkeys.is_empty() {
         <span class="macro">println!</span>(<span class="string">&quot;  not set&quot;</span>);
-    } <span class="kw">else</span> {
-        <span class="kw">for</span> <span class="ident">pk</span> <span class="kw">in</span> <span class="ident">passkeys</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;  {} ({})&quot;</span>, <span class="ident">pk</span>.<span class="ident">tag</span>, <span class="ident">pk</span>.<span class="ident">uuid</span>);
+    } <span class="kw">else </span>{
+        <span class="kw">for </span>pk <span class="kw">in </span>passkeys {
+            <span class="macro">println!</span>(<span class="string">&quot;  {} ({})&quot;</span>, pk.tag, pk.uuid);
         }
     }
 
-    <span class="comment">// We may need to be able to display if there are dangling</span>
-    <span class="comment">// curegstates, but the cli ui statemachine can match the</span>
-    <span class="comment">// server so it may not be needed?</span>
+    <span class="comment">// We may need to be able to display if there are dangling
+    // curegstates, but the cli ui statemachine can match the
+    // server so it may not be needed?
 
-    <span class="macro">println!</span>(<span class="string">&quot;Can Commit: {}&quot;</span>, <span class="ident">can_commit</span>);
+    </span><span class="macro">println!</span>(<span class="string">&quot;Can Commit: {}&quot;</span>, can_commit);
 }
 
-<span class="doccomment">/// This is the REPL for updating a credential for a given account</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">credential_update_exec</span>(
-    <span class="ident">session_token</span>: <span class="ident">CUSessionToken</span>,
-    <span class="ident">status</span>: <span class="ident">CUStatus</span>,
-    <span class="ident">client</span>: <span class="ident">KanidmClient</span>,
+<span class="doccomment">/// This is the REPL for updating a credential for a given account
+</span><span class="kw">async fn </span>credential_update_exec(
+    session_token: CUSessionToken,
+    status: CUStatus,
+    client: KanidmClient,
 ) {
     <span class="macro">trace!</span>(<span class="string">&quot;started credential update exec&quot;</span>);
-    <span class="comment">// Show the initial status,</span>
-    <span class="ident">display_status</span>(<span class="ident">status</span>);
-    <span class="comment">// Setup to work</span>
-    <span class="kw">loop</span> {
-        <span class="comment">// Display Prompt</span>
-        <span class="kw">let</span> <span class="ident">input</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">Input::new</span>()
-            .<span class="ident">with_prompt</span>(<span class="string">&quot;\ncred update (? for help) # &quot;</span>)
-            .<span class="ident">validate_with</span>(<span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">String</span><span class="op">|</span> -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">CUAction::from_str</span>(<span class="ident">input</span>).<span class="ident">is_ok</span>() {
+    <span class="comment">// Show the initial status,
+    </span>display_status(status);
+    <span class="comment">// Setup to work
+    </span><span class="kw">loop </span>{
+        <span class="comment">// Display Prompt
+        </span><span class="kw">let </span>input: String = Input::new()
+            .with_prompt(<span class="string">&quot;\ncred update (? for help) # &quot;</span>)
+            .validate_with(|input: <span class="kw-2">&amp;</span>String| -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span>str&gt; {
+                <span class="kw">if </span>CUAction::from_str(input).is_ok() {
                     <span class="prelude-val">Ok</span>(())
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Err</span>(<span class="string">&quot;This is not a valid command. See help for valid options (?)&quot;</span>)
                 }
             })
-            .<span class="ident">interact_text</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+            .interact_text()
+            .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
 
-        <span class="comment">// Get action</span>
-        <span class="kw">let</span> <span class="ident">action</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">CUAction::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>,
+        <span class="comment">// Get action
+        </span><span class="kw">let </span>action = <span class="kw">match </span>CUAction::from_str(<span class="kw-2">&amp;</span>input) {
+            <span class="prelude-val">Ok</span>(a) =&gt; a,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
         };
 
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">action</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>action);
 
-        <span class="kw">match</span> <span class="ident">action</span> {
-            <span class="ident">CUAction::Help</span> =&gt; {
-                <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">action</span>);
+        <span class="kw">match </span>action {
+            CUAction::Help =&gt; {
+                <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, action);
             }
-            <span class="ident">CUAction::Status</span> =&gt; {
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_account_credential_update_status</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>)
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="ident">status</span>) =&gt; <span class="ident">display_status</span>(<span class="ident">status</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            CUAction::Status =&gt; {
+                <span class="kw">match </span>client
+                    .idm_account_credential_update_status(<span class="kw-2">&amp;</span>session_token)
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(status) =&gt; display_status(status),
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
                     }
                 }
             }
-            <span class="ident">CUAction::Password</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">password_a</span> <span class="op">=</span> <span class="ident">Password::new</span>()
-                    .<span class="ident">with_prompt</span>(<span class="string">&quot;New password&quot;</span>)
-                    .<span class="ident">interact</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
-                <span class="kw">let</span> <span class="ident">password_b</span> <span class="op">=</span> <span class="ident">Password::new</span>()
-                    .<span class="ident">with_prompt</span>(<span class="string">&quot;Confirm password&quot;</span>)
-                    .<span class="ident">interact</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+            CUAction::Password =&gt; {
+                <span class="kw">let </span>password_a = Password::new()
+                    .with_prompt(<span class="string">&quot;New password&quot;</span>)
+                    .interact()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+                <span class="kw">let </span>password_b = Password::new()
+                    .with_prompt(<span class="string">&quot;Confirm password&quot;</span>)
+                    .interact()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
 
-                <span class="kw">if</span> <span class="ident">password_a</span> <span class="op">!</span><span class="op">=</span> <span class="ident">password_b</span> {
+                <span class="kw">if </span>password_a != password_b {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;Passwords do not match&quot;</span>);
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                    .<span class="ident">idm_account_credential_update_set_password</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>, <span class="kw-2">&amp;</span><span class="ident">password_a</span>)
-                    .<span class="kw">await</span>
-                {
-                    <span class="kw">match</span> <span class="ident">e</span> {
-                        <span class="ident">ClientErrorHttp</span>(<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="ident">PasswordQuality</span>(<span class="ident">feedback</span>)), <span class="kw">_</span>) =&gt; {
+                } <span class="kw">else if let </span><span class="prelude-val">Err</span>(e) = client
+                    .idm_account_credential_update_set_password(<span class="kw-2">&amp;</span>session_token, <span class="kw-2">&amp;</span>password_a)
+                    .<span class="kw">await
+                </span>{
+                    <span class="kw">match </span>e {
+                        ClientErrorHttp(<span class="kw">_</span>, <span class="prelude-val">Some</span>(PasswordQuality(feedback)), <span class="kw">_</span>) =&gt; {
                             <span class="macro">eprintln!</span>(<span class="string">&quot;Password was not secure enough, please consider the following suggestions:&quot;</span>);
-                            <span class="kw">for</span> <span class="ident">fb_item</span> <span class="kw">in</span> <span class="ident">feedback</span>.<span class="ident">iter</span>() {
-                                <span class="macro">eprintln!</span>(<span class="string">&quot; - {}&quot;</span>, <span class="ident">fb_item</span>)
+                            <span class="kw">for </span>fb_item <span class="kw">in </span>feedback.iter() {
+                                <span class="macro">eprintln!</span>(<span class="string">&quot; - {}&quot;</span>, fb_item)
                             }
                         }
-                        <span class="kw">_</span> =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                        <span class="kw">_ </span>=&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e),
                     }
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Successfully reset password.&quot;</span>);
                 }
             }
-            <span class="ident">CUAction::Totp</span> =&gt; <span class="ident">totp_enroll_prompt</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>, <span class="kw-2">&amp;</span><span class="ident">client</span>).<span class="kw">await</span>,
-            <span class="ident">CUAction::TotpRemove</span> =&gt; {
-                <span class="kw">if</span> <span class="ident">Confirm::new</span>()
-                    .<span class="ident">with_prompt</span>(<span class="string">&quot;Do you want to remove your totp?&quot;</span>)
-                    .<span class="ident">interact</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>)
+            CUAction::Totp =&gt; totp_enroll_prompt(<span class="kw-2">&amp;</span>session_token, <span class="kw-2">&amp;</span>client).<span class="kw">await</span>,
+            CUAction::TotpRemove =&gt; {
+                <span class="kw">if </span>Confirm::new()
+                    .with_prompt(<span class="string">&quot;Do you want to remove your totp?&quot;</span>)
+                    .interact()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>)
                 {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_credential_update_remove_totp</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>)
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    } <span class="kw">else</span> {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_account_credential_update_remove_totp(<span class="kw-2">&amp;</span>session_token)
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                    } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Totp was NOT removed&quot;</span>);
                 }
             }
-            <span class="ident">CUAction::BackupCodes</span> =&gt; {
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_account_credential_update_backup_codes_generate</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>)
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="ident">CUStatus</span> {
-                        <span class="ident">mfaregstate</span>: <span class="ident">CURegState::BackupCodes</span>(<span class="ident">codes</span>),
+            CUAction::BackupCodes =&gt; {
+                <span class="kw">match </span>client
+                    .idm_account_credential_update_backup_codes_generate(<span class="kw-2">&amp;</span>session_token)
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(CUStatus {
+                        mfaregstate: CURegState::BackupCodes(codes),
                         ..
                     }) =&gt; {
                         <span class="macro">println!</span>(<span class="string">&quot;Please store these Backup codes in a safe place&quot;</span>);
                         <span class="macro">println!</span>(<span class="string">&quot;They will only be displayed ONCE&quot;</span>);
-                        <span class="kw">for</span> <span class="ident">code</span> <span class="kw">in</span> <span class="ident">codes</span> {
-                            <span class="macro">println!</span>(<span class="string">&quot;  {}&quot;</span>, <span class="ident">code</span>)
+                        <span class="kw">for </span>code <span class="kw">in </span>codes {
+                            <span class="macro">println!</span>(<span class="string">&quot;  {}&quot;</span>, code)
                         }
                     }
-                    <span class="prelude-val">Ok</span>(<span class="ident">status</span>) =&gt; {
-                        <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">status</span>);
+                    <span class="prelude-val">Ok</span>(status) =&gt; {
+                        <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
                         <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
                     }
                 }
             }
-            <span class="ident">CUAction::Remove</span> =&gt; {
-                <span class="kw">if</span> <span class="ident">Confirm::new</span>()
-                    .<span class="ident">with_prompt</span>(<span class="string">&quot;Do you want to remove your primary credential?&quot;</span>)
-                    .<span class="ident">interact</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>)
+            CUAction::Remove =&gt; {
+                <span class="kw">if </span>Confirm::new()
+                    .with_prompt(<span class="string">&quot;Do you want to remove your primary credential?&quot;</span>)
+                    .interact()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>)
                 {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_credential_update_primary_remove</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>)
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    } <span class="kw">else</span> {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_account_credential_update_primary_remove(<span class="kw-2">&amp;</span>session_token)
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                    } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Primary credential was NOT removed&quot;</span>);
                 }
             }
-            <span class="ident">CUAction::Passkey</span> =&gt; <span class="ident">passkey_enroll_prompt</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>, <span class="kw-2">&amp;</span><span class="ident">client</span>).<span class="kw">await</span>,
-            <span class="ident">CUAction::PasskeyRemove</span> =&gt; {
-                <span class="comment">// TODO: make this a scrollable selector with a &quot;cancel&quot; option as the default</span>
-                <span class="kw">match</span> <span class="ident">client</span>
-                    .<span class="ident">idm_account_credential_update_status</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>)
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="ident">status</span>) =&gt; {
-                        <span class="kw">if</span> <span class="ident">status</span>.<span class="ident">passkeys</span>.<span class="ident">is_empty</span>() {
+            CUAction::Passkey =&gt; passkey_enroll_prompt(<span class="kw-2">&amp;</span>session_token, <span class="kw-2">&amp;</span>client).<span class="kw">await</span>,
+            CUAction::PasskeyRemove =&gt; {
+                <span class="comment">// TODO: make this a scrollable selector with a &quot;cancel&quot; option as the default
+                </span><span class="kw">match </span>client
+                    .idm_account_credential_update_status(<span class="kw-2">&amp;</span>session_token)
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(status) =&gt; {
+                        <span class="kw">if </span>status.passkeys.is_empty() {
                             <span class="macro">println!</span>(<span class="string">&quot;No passkeys are configured for this user&quot;</span>);
                             <span class="kw">return</span>;
                         }
                         <span class="macro">println!</span>(<span class="string">&quot;Current passkeys:&quot;</span>);
-                        <span class="kw">for</span> <span class="ident">pk</span> <span class="kw">in</span> <span class="ident">status</span>.<span class="ident">passkeys</span> {
-                            <span class="macro">println!</span>(<span class="string">&quot;  {} ({})&quot;</span>, <span class="ident">pk</span>.<span class="ident">tag</span>, <span class="ident">pk</span>.<span class="ident">uuid</span>);
+                        <span class="kw">for </span>pk <span class="kw">in </span>status.passkeys {
+                            <span class="macro">println!</span>(<span class="string">&quot;  {} ({})&quot;</span>, pk.tag, pk.uuid);
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured pulling existing credentials -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured pulling existing credentials -&gt; {:?}&quot;</span>, e);
                     }
                 }
-                <span class="kw">let</span> <span class="ident">uuid_s</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">Input::new</span>()
-                    .<span class="ident">with_prompt</span>(<span class="string">&quot;\nEnter the UUID of the Passkey to remove (blank to stop) # &quot;</span>)
-                    .<span class="ident">validate_with</span>(<span class="op">|</span><span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">String</span><span class="op">|</span> -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-                        <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">is_empty</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">Uuid::parse_str</span>(<span class="ident">input</span>).<span class="ident">is_ok</span>() {
+                <span class="kw">let </span>uuid_s: String = Input::new()
+                    .with_prompt(<span class="string">&quot;\nEnter the UUID of the Passkey to remove (blank to stop) # &quot;</span>)
+                    .validate_with(|input: <span class="kw-2">&amp;</span>String| -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span>str&gt; {
+                        <span class="kw">if </span>input.is_empty() || Uuid::parse_str(input).is_ok() {
                             <span class="prelude-val">Ok</span>(())
-                        } <span class="kw">else</span> {
+                        } <span class="kw">else </span>{
                             <span class="prelude-val">Err</span>(<span class="string">&quot;This is not a valid UUID&quot;</span>)
                         }
                     })
-                    .<span class="ident">allow_empty</span>(<span class="bool-val">true</span>)
-                    .<span class="ident">interact_text</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+                    .allow_empty(<span class="bool-val">true</span>)
+                    .interact_text()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
 
-                <span class="comment">// Remeber, if it&#39;s NOT a valid uuid, it must have been empty as a termination.</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">uuid</span>) <span class="op">=</span> <span class="ident">Uuid::parse_str</span>(<span class="kw-2">&amp;</span><span class="ident">uuid_s</span>) {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_credential_update_passkey_remove</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>, <span class="ident">uuid</span>)
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    } <span class="kw">else</span> {
+                <span class="comment">// Remeber, if it&#39;s NOT a valid uuid, it must have been empty as a termination.
+                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(uuid) = Uuid::parse_str(<span class="kw-2">&amp;</span>uuid_s) {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_account_credential_update_passkey_remove(<span class="kw-2">&amp;</span>session_token, uuid)
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                    } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Passkeys were NOT changed&quot;</span>);
                 }
             }
-            <span class="ident">CUAction::End</span> =&gt; {
+            CUAction::End =&gt; {
                 <span class="macro">println!</span>(<span class="string">&quot;Changes were NOT saved.&quot;</span>);
                 <span class="kw">break</span>;
             }
-            <span class="ident">CUAction::Commit</span> =&gt; {
-                <span class="kw">if</span> <span class="ident">Confirm::new</span>()
-                    .<span class="ident">with_prompt</span>(<span class="string">&quot;Do you want to commit your changes?&quot;</span>)
-                    .<span class="ident">interact</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to interact with interactive session&quot;</span>)
+            CUAction::Commit =&gt; {
+                <span class="kw">if </span>Confirm::new()
+                    .with_prompt(<span class="string">&quot;Do you want to commit your changes?&quot;</span>)
+                    .interact()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>)
                 {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
-                        .<span class="ident">idm_account_credential_update_commit</span>(<span class="kw-2">&amp;</span><span class="ident">session_token</span>)
-                        .<span class="kw">await</span>
-                    {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    } <span class="kw">else</span> {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                        .idm_account_credential_update_commit(<span class="kw-2">&amp;</span>session_token)
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                    } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }
                     <span class="kw">break</span>;
-                } <span class="kw">else</span> {
+                } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Changes have NOT been saved.&quot;</span>);
                 }
             }
@@ -2229,4 +2229,4 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
     <span class="macro">trace!</span>(<span class="string">&quot;ended credential update exec&quot;</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

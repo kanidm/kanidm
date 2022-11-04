@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/repl/ruv.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ruv.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/repl/ruv.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ruv.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -243,214 +243,214 @@
 <span id="243">243</span>
 <span id="244">244</span>
 <span id="245">245</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
-<span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
+<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::ops::Bound::<span class="kw-2">*</span>;
+<span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">use</span> <span class="ident">concread::bptree</span>::{<span class="ident">BptreeMap</span>, <span class="ident">BptreeMapReadTxn</span>, <span class="ident">BptreeMapWriteTxn</span>};
-<span class="kw">use</span> <span class="ident">idlset::v2::IDLBitRange</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1::ConsistencyError</span>;
+<span class="kw">use </span>concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+<span class="kw">use </span>idlset::v2::IDLBitRange;
+<span class="kw">use </span>kanidm_proto::v1::ConsistencyError;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::cid::Cid</span>;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReplicationUpdateVector</span> {
-    <span class="comment">// This sorts by time. Should we look up by IDL or by UUID?</span>
-    <span class="comment">// I think IDL, because when we need to actually do the look ups we&#39;ll need</span>
-    <span class="comment">// to send this list to the BE to get the affected entries.</span>
-    <span class="ident">data</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>ReplicationUpdateVector {
+    <span class="comment">// This sorts by time. Should we look up by IDL or by UUID?
+    // I think IDL, because when we need to actually do the look ups we&#39;ll need
+    // to send this list to the BE to get the affected entries.
+    </span>data: BptreeMap&lt;Cid, IDLBitRange&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ReplicationUpdateVector</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">data</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BptreeMap::new</span>();
-        <span class="ident">ReplicationUpdateVector</span> { <span class="ident">data</span> }
+<span class="kw">impl </span>Default <span class="kw">for </span>ReplicationUpdateVector {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>data: BptreeMap&lt;Cid, IDLBitRange&gt; = BptreeMap::new();
+        ReplicationUpdateVector { data }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ReplicationUpdateVector</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ReplicationUpdateVectorWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">ReplicationUpdateVectorWriteTransaction</span> {
-            <span class="ident">data</span>: <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">write</span>(),
+<span class="kw">impl </span>ReplicationUpdateVector {
+    <span class="kw">pub fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;_</span>&gt; {
+        ReplicationUpdateVectorWriteTransaction {
+            data: <span class="self">self</span>.data.write(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ReplicationUpdateVectorReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
-        <span class="ident">ReplicationUpdateVectorReadTransaction</span> {
-            <span class="ident">data</span>: <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">read</span>(),
+    <span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;_</span>&gt; {
+        ReplicationUpdateVectorReadTransaction {
+            data: <span class="self">self</span>.data.read(),
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReplicationUpdateVectorWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">data</span>: <span class="ident">BptreeMapWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    data: BptreeMapWriteTxn&lt;<span class="lifetime">&#39;a</span>, Cid, IDLBitRange&gt;,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReplicationUpdateVectorReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">data</span>: <span class="ident">BptreeMapReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    data: BptreeMapReadTxn&lt;<span class="lifetime">&#39;a</span>, Cid, IDLBitRange&gt;,
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ReplicationUpdateVectorTransaction</span> {
-    <span class="kw">fn</span> <span class="ident">ruv_snapshot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span>;
+<span class="kw">pub trait </span>ReplicationUpdateVectorTransaction {
+    <span class="kw">fn </span>ruv_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;Cid, IDLBitRange&gt;;
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(
+    <span class="kw">fn </span>verify(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">entries</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>],
-        <span class="ident">results</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        entries: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;],
+        results: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt;,
     ) {
-        <span class="comment">// Okay rebuild the RUV in parallel.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">check_ruv</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-        <span class="kw">for</span> <span class="ident">entry</span> <span class="kw">in</span> <span class="ident">entries</span> {
-            <span class="comment">// The DB id we need.</span>
-            <span class="kw">let</span> <span class="ident">eid</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">get_id</span>();
-            <span class="kw">let</span> <span class="ident">eclog</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">get_changelog</span>();
-            <span class="comment">// We don&#39;t need the details of the change - only the cid of the</span>
-            <span class="comment">// change that this entry was involved in.</span>
-            <span class="kw">for</span> <span class="ident">cid</span> <span class="kw">in</span> <span class="ident">eclog</span>.<span class="ident">cid_iter</span>() {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span> <span class="ident">check_ruv</span>.<span class="ident">get_mut</span>(<span class="ident">cid</span>) {
-                    <span class="comment">// We can&#39;t guarantee id order, so we have to do this properly.</span>
-                    <span class="ident">idl</span>.<span class="ident">insert_id</span>(<span class="ident">eid</span>);
-                } <span class="kw">else</span> {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idl</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
-                    <span class="ident">idl</span>.<span class="ident">insert_id</span>(<span class="ident">eid</span>);
-                    <span class="ident">check_ruv</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">idl</span>);
+        <span class="comment">// Okay rebuild the RUV in parallel.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>check_ruv: BTreeMap&lt;Cid, IDLBitRange&gt; = BTreeMap::new();
+        <span class="kw">for </span>entry <span class="kw">in </span>entries {
+            <span class="comment">// The DB id we need.
+            </span><span class="kw">let </span>eid = entry.get_id();
+            <span class="kw">let </span>eclog = entry.get_changelog();
+            <span class="comment">// We don&#39;t need the details of the change - only the cid of the
+            // change that this entry was involved in.
+            </span><span class="kw">for </span>cid <span class="kw">in </span>eclog.cid_iter() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(idl) = check_ruv.get_mut(cid) {
+                    <span class="comment">// We can&#39;t guarantee id order, so we have to do this properly.
+                    </span>idl.insert_id(eid);
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span><span class="kw-2">mut </span>idl = IDLBitRange::new();
+                    idl.insert_id(eid);
+                    check_ruv.insert(cid.clone(), idl);
                 }
             }
         }
 
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">check_ruv</span>);
-        <span class="comment">// Get the current state</span>
-        <span class="kw">let</span> <span class="ident">snapshot_ruv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ruv_snapshot</span>();
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">snapshot_ruv</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>check_ruv);
+        <span class="comment">// Get the current state
+        </span><span class="kw">let </span>snapshot_ruv = <span class="self">self</span>.ruv_snapshot();
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>snapshot_ruv);
 
-        <span class="comment">// Now compare. We want to do this checking for each CID in each, and then asserting</span>
-        <span class="comment">// the content is the same.</span>
+        <span class="comment">// Now compare. We want to do this checking for each CID in each, and then asserting
+        // the content is the same.
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">check_iter</span> <span class="op">=</span> <span class="ident">check_ruv</span>.<span class="ident">iter</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">snap_iter</span> <span class="op">=</span> <span class="ident">snapshot_ruv</span>.<span class="ident">iter</span>();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>check_iter = check_ruv.iter();
+        <span class="kw">let </span><span class="kw-2">mut </span>snap_iter = snapshot_ruv.iter();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">check_next</span> <span class="op">=</span> <span class="ident">check_iter</span>.<span class="ident">next</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">snap_next</span> <span class="op">=</span> <span class="ident">snap_iter</span>.<span class="ident">next</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>check_next = check_iter.next();
+        <span class="kw">let </span><span class="kw-2">mut </span>snap_next = snap_iter.next();
 
-        <span class="kw">while</span> <span class="kw">let</span> (<span class="prelude-val">Some</span>((<span class="ident">ck</span>, <span class="ident">cv</span>)), <span class="prelude-val">Some</span>((<span class="ident">sk</span>, <span class="ident">sv</span>))) <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">check_next</span>, <span class="kw-2">&amp;</span><span class="ident">snap_next</span>) {
-            <span class="kw">match</span> <span class="ident">ck</span>.<span class="ident">cmp</span>(<span class="ident">sk</span>) {
-                <span class="ident">Ordering::Equal</span> =&gt; {
-                    <span class="kw">if</span> <span class="ident">cv</span> <span class="op">==</span> <span class="ident">sv</span> {
-                        <span class="macro">trace!</span>(<span class="string">&quot;{:?} is consistent!&quot;</span>, <span class="ident">ck</span>);
-                    } <span class="kw">else</span> {
-                        <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! IDL&#39;s differ&quot;</span>, <span class="ident">ck</span>);
+        <span class="kw">while let </span>(<span class="prelude-val">Some</span>((ck, cv)), <span class="prelude-val">Some</span>((sk, sv))) = (<span class="kw-2">&amp;</span>check_next, <span class="kw-2">&amp;</span>snap_next) {
+            <span class="kw">match </span>ck.cmp(sk) {
+                Ordering::Equal =&gt; {
+                    <span class="kw">if </span>cv == sv {
+                        <span class="macro">trace!</span>(<span class="string">&quot;{:?} is consistent!&quot;</span>, ck);
+                    } <span class="kw">else </span>{
+                        <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! IDL&#39;s differ&quot;</span>, ck);
                         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                        <span class="ident">results</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::RuvInconsistent</span>(<span class="ident">ck</span>.<span class="ident">to_string</span>())));
+                        results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(ck.to_string())));
                     }
-                    <span class="ident">check_next</span> <span class="op">=</span> <span class="ident">check_iter</span>.<span class="ident">next</span>();
-                    <span class="ident">snap_next</span> <span class="op">=</span> <span class="ident">snap_iter</span>.<span class="ident">next</span>();
+                    check_next = check_iter.next();
+                    snap_next = snap_iter.next();
                 }
-                <span class="ident">Ordering::Less</span> =&gt; {
-                    <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID missing from RUV&quot;</span>, <span class="ident">ck</span>);
+                Ordering::Less =&gt; {
+                    <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID missing from RUV&quot;</span>, ck);
                     <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                    <span class="ident">results</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::RuvInconsistent</span>(<span class="ident">ck</span>.<span class="ident">to_string</span>())));
-                    <span class="ident">check_next</span> <span class="op">=</span> <span class="ident">check_iter</span>.<span class="ident">next</span>();
+                    results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(ck.to_string())));
+                    check_next = check_iter.next();
                 }
-                <span class="ident">Ordering::Greater</span> =&gt; {
-                    <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID should not exist in RUV&quot;</span>, <span class="ident">sk</span>);
+                Ordering::Greater =&gt; {
+                    <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID should not exist in RUV&quot;</span>, sk);
                     <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                    <span class="ident">results</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::RuvInconsistent</span>(<span class="ident">sk</span>.<span class="ident">to_string</span>())));
-                    <span class="ident">snap_next</span> <span class="op">=</span> <span class="ident">snap_iter</span>.<span class="ident">next</span>();
+                    results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(sk.to_string())));
+                    snap_next = snap_iter.next();
                 }
             }
         }
 
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">ck</span>, <span class="ident">_cv</span>)) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">check_next</span> {
-            <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID missing from RUV&quot;</span>, <span class="ident">ck</span>);
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((ck, _cv)) = <span class="kw-2">&amp;</span>check_next {
+            <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID missing from RUV&quot;</span>, ck);
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="ident">results</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::RuvInconsistent</span>(<span class="ident">ck</span>.<span class="ident">to_string</span>())));
-            <span class="ident">check_next</span> <span class="op">=</span> <span class="ident">check_iter</span>.<span class="ident">next</span>();
+            results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(ck.to_string())));
+            check_next = check_iter.next();
         }
 
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">sk</span>, <span class="ident">_sv</span>)) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">snap_next</span> {
-            <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID should not exist in RUV&quot;</span>, <span class="ident">sk</span>);
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((sk, _sv)) = <span class="kw-2">&amp;</span>snap_next {
+            <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID should not exist in RUV&quot;</span>, sk);
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="ident">results</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::RuvInconsistent</span>(<span class="ident">sk</span>.<span class="ident">to_string</span>())));
-            <span class="ident">snap_next</span> <span class="op">=</span> <span class="ident">snap_iter</span>.<span class="ident">next</span>();
+            results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(sk.to_string())));
+            snap_next = snap_iter.next();
         }
 
-        <span class="comment">// Done!</span>
+        <span class="comment">// Done!
+    </span>}
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ReplicationUpdateVectorTransaction <span class="kw">for </span>ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>ruv_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;Cid, IDLBitRange&gt; {
+        <span class="self">self</span>.data
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ReplicationUpdateVectorTransaction</span> <span class="kw">for</span> <span class="ident">ReplicationUpdateVectorWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">ruv_snapshot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">data</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> (<span class="ident">k</span>.<span class="ident">clone</span>(), <span class="ident">v</span>.<span class="ident">clone</span>()))
-            .<span class="ident">collect</span>()
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ReplicationUpdateVectorTransaction <span class="kw">for </span>ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>ruv_snapshot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;Cid, IDLBitRange&gt; {
+        <span class="self">self</span>.data
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ReplicationUpdateVectorTransaction</span> <span class="kw">for</span> <span class="ident">ReplicationUpdateVectorReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">ruv_snapshot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">data</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> (<span class="ident">k</span>.<span class="ident">clone</span>(), <span class="ident">v</span>.<span class="ident">clone</span>()))
-            .<span class="ident">collect</span>()
-    }
-}
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub fn </span>rebuild(<span class="kw-2">&amp;mut </span><span class="self">self</span>, entries: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;]) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// Entries and their internal changelogs are the &quot;source of truth&quot; for all changes
+        // that have ever occured and are stored on this server. So we use them to rebuild our RUV
+        // here!
+        </span><span class="kw">let </span><span class="kw-2">mut </span>rebuild_ruv: BTreeMap&lt;Cid, IDLBitRange&gt; = BTreeMap::new();
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ReplicationUpdateVectorWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rebuild</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">entries</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Entries and their internal changelogs are the &quot;source of truth&quot; for all changes</span>
-        <span class="comment">// that have ever occured and are stored on this server. So we use them to rebuild our RUV</span>
-        <span class="comment">// here!</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rebuild_ruv</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">IDLBitRange</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-
-        <span class="kw">for</span> <span class="ident">entry</span> <span class="kw">in</span> <span class="ident">entries</span> {
-            <span class="comment">// The DB id we need.</span>
-            <span class="kw">let</span> <span class="ident">eid</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">get_id</span>();
-            <span class="kw">let</span> <span class="ident">eclog</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">get_changelog</span>();
-            <span class="comment">// We don&#39;t need the details of the change - only the cid of the</span>
-            <span class="comment">// change that this entry was involved in.</span>
-            <span class="kw">for</span> <span class="ident">cid</span> <span class="kw">in</span> <span class="ident">eclog</span>.<span class="ident">cid_iter</span>() {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span> <span class="ident">rebuild_ruv</span>.<span class="ident">get_mut</span>(<span class="ident">cid</span>) {
-                    <span class="comment">// We can&#39;t guarantee id order, so we have to do this properly.</span>
-                    <span class="ident">idl</span>.<span class="ident">insert_id</span>(<span class="ident">eid</span>);
-                } <span class="kw">else</span> {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idl</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
-                    <span class="ident">idl</span>.<span class="ident">insert_id</span>(<span class="ident">eid</span>);
-                    <span class="ident">rebuild_ruv</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">idl</span>);
+        <span class="kw">for </span>entry <span class="kw">in </span>entries {
+            <span class="comment">// The DB id we need.
+            </span><span class="kw">let </span>eid = entry.get_id();
+            <span class="kw">let </span>eclog = entry.get_changelog();
+            <span class="comment">// We don&#39;t need the details of the change - only the cid of the
+            // change that this entry was involved in.
+            </span><span class="kw">for </span>cid <span class="kw">in </span>eclog.cid_iter() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(idl) = rebuild_ruv.get_mut(cid) {
+                    <span class="comment">// We can&#39;t guarantee id order, so we have to do this properly.
+                    </span>idl.insert_id(eid);
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span><span class="kw-2">mut </span>idl = IDLBitRange::new();
+                    idl.insert_id(eid);
+                    rebuild_ruv.insert(cid.clone(), idl);
                 }
             }
         }
 
-        <span class="comment">// Finally, we need to do a cleanup/compact of the IDL&#39;s if possible.</span>
-        <span class="ident">rebuild_ruv</span>.<span class="ident">iter_mut</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">_k</span>, <span class="ident">idl</span>)<span class="op">|</span> {
-            <span class="ident">idl</span>.<span class="ident">maybe_compress</span>();
+        <span class="comment">// Finally, we need to do a cleanup/compact of the IDL&#39;s if possible.
+        </span>rebuild_ruv.iter_mut().for_each(|(_k, idl)| {
+            idl.maybe_compress();
         });
 
-        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">clear</span>();
-        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">extend</span>(<span class="ident">rebuild_ruv</span>.<span class="ident">into_iter</span>());
+        <span class="self">self</span>.data.clear();
+        <span class="self">self</span>.data.extend(rebuild_ruv.into_iter());
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_change</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>, <span class="ident">idl</span>: <span class="ident">IDLBitRange</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Remember, in a transaction the changes can be updated multiple times.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ex_idl</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">get_mut</span>(<span class="ident">cid</span>) {
-            <span class="comment">// This ensures both sets have all the available ids.</span>
-            <span class="kw">let</span> <span class="ident">idl</span> <span class="op">=</span> <span class="ident">ex_idl</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">_</span> <span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">idl</span>;
-            <span class="kw-2">*</span><span class="ident">ex_idl</span> <span class="op">=</span> <span class="ident">idl</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">idl</span>);
+    <span class="kw">pub fn </span>insert_change(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid, idl: IDLBitRange) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// Remember, in a transaction the changes can be updated multiple times.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ex_idl) = <span class="self">self</span>.data.get_mut(cid) {
+            <span class="comment">// This ensures both sets have all the available ids.
+            </span><span class="kw">let </span>idl = ex_idl <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">_ </span>| <span class="kw-2">&amp;</span>idl;
+            <span class="kw-2">*</span>ex_idl = idl;
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.data.insert(cid.clone(), idl);
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ruv_idls</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IDLBitRange</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idl</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
-        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">_cid</span>, <span class="ident">ex_idl</span>)<span class="op">|</span> {
-            <span class="ident">idl</span> <span class="op">=</span> <span class="ident">ex_idl</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">_</span> <span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">idl</span>;
+    <span class="kw">pub fn </span>ruv_idls(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IDLBitRange {
+        <span class="kw">let </span><span class="kw-2">mut </span>idl = IDLBitRange::new();
+        <span class="self">self</span>.data.iter().for_each(|(_cid, ex_idl)| {
+            idl = ex_idl <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">_ </span>| <span class="kw-2">&amp;</span>idl;
         });
-        <span class="ident">idl</span>
+        idl
     }
 
     <span class="comment">/*
@@ -466,27 +466,27 @@
                 }
             })
     }
-    */</span>
+    */
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">trim_up_to</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idl</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
+    </span><span class="kw">pub fn </span>trim_up_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) -&gt; <span class="prelude-ty">Result</span>&lt;IDLBitRange, OperationError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>idl = IDLBitRange::new();
 
-        <span class="self">self</span>.<span class="ident">data</span>
-            .<span class="ident">range</span>((<span class="ident">Unbounded</span>, <span class="ident">Excluded</span>(<span class="ident">cid</span>)))
-            .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">ex_idl</span>)<span class="op">|</span> {
-                <span class="ident">idl</span> <span class="op">=</span> <span class="ident">ex_idl</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">_</span> <span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">idl</span>;
+        <span class="self">self</span>.data
+            .range((Unbounded, Excluded(cid)))
+            .for_each(|(<span class="kw">_</span>, ex_idl)| {
+                idl = ex_idl <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">_ </span>| <span class="kw-2">&amp;</span>idl;
             });
 
-        <span class="comment">// Trim all cid&#39;s up to this value, and return the range of IDs</span>
-        <span class="comment">// that are affected.</span>
-        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">split_off_lt</span>(<span class="ident">cid</span>);
+        <span class="comment">// Trim all cid&#39;s up to this value, and return the range of IDs
+        // that are affected.
+        </span><span class="self">self</span>.data.split_off_lt(cid);
 
-        <span class="prelude-val">Ok</span>(<span class="ident">idl</span>)
+        <span class="prelude-val">Ok</span>(idl)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">commit</span>();
+    <span class="kw">pub fn </span>commit(<span class="self">self</span>) {
+        <span class="self">self</span>.data.commit();
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

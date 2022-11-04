@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/https/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_core/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/core/src/https/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_core/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_core/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -865,252 +865,252 @@
 <span id="865">865</span>
 <span id="866">866</span>
 <span id="867">867</span>
-</pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">manifest</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">middleware</span>;
-<span class="kw">mod</span> <span class="ident">oauth2</span>;
-<span class="kw">mod</span> <span class="ident">routemaps</span>;
-<span class="kw">mod</span> <span class="ident">v1</span>;
-<span class="kw">mod</span> <span class="ident">v1_scim</span>;
+</pre><pre class="rust"><code><span class="kw">mod </span>manifest;
+<span class="kw">pub mod </span>middleware;
+<span class="kw">mod </span>oauth2;
+<span class="kw">mod </span>routemaps;
+<span class="kw">mod </span>v1;
+<span class="kw">mod </span>v1_scim;
 
-<span class="kw">use</span> <span class="ident">std::fs::canonicalize</span>;
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+<span class="kw">use </span>std::fs::canonicalize;
+<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>, <span class="ident">JwsUnverified</span>, <span class="ident">JwsValidator</span>};
-<span class="kw">use</span> <span class="ident">kanidmd_lib::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">kanidmd_lib::status::StatusActor</span>;
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
-<span class="kw">use</span> <span class="ident">tide_compress::CompressMiddleware</span>;
-<span class="kw">use</span> <span class="ident">tide_openssl::TlsListener</span>;
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>};
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+<span class="kw">use </span>kanidmd_lib::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>kanidmd_lib::status::StatusActor;
+<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>tide_compress::CompressMiddleware;
+<span class="kw">use </span>tide_openssl::TlsListener;
+<span class="kw">use </span>tracing::{error, info};
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::manifest::manifest</span>;
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::middleware</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::oauth2</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::routemaps</span>::{<span class="ident">RouteMap</span>, <span class="ident">RouteMaps</span>};
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::v1</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::v1_scim</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::actors::v1_write::QueryServerWriteV1</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">ServerRole</span>, <span class="ident">TlsConfiguration</span>};
+<span class="kw">use </span><span class="self">self</span>::manifest::manifest;
+<span class="kw">use </span><span class="self">self</span>::middleware::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="self">self</span>::oauth2::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="self">self</span>::routemaps::{RouteMap, RouteMaps};
+<span class="kw">use </span><span class="self">self</span>::v1::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="self">self</span>::v1_scim::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1;
+<span class="kw">use </span><span class="kw">crate</span>::actors::v1_write::QueryServerWriteV1;
+<span class="kw">use </span><span class="kw">crate</span>::config::{ServerRole, TlsConfiguration};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">JavaScriptFile</span> {
-    <span class="comment">// Relative to the pkg/ dir</span>
-    <span class="ident">filepath</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>,
-    <span class="comment">// SHA384 hash of the file</span>
-    <span class="ident">hash</span>: <span class="ident">String</span>,
-    <span class="comment">// if it&#39;s a module add the &quot;type&quot;</span>
-    <span class="ident">filetype</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>JavaScriptFile {
+    <span class="comment">// Relative to the pkg/ dir
+    </span>filepath: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
+    <span class="comment">// SHA384 hash of the file
+    </span>hash: String,
+    <span class="comment">// if it&#39;s a module add the &quot;type&quot;
+    </span>filetype: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">JavaScriptFile</span> {
-    <span class="doccomment">/// return the hash for use in CSP headers</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_csp_hash</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="self">self</span>.<span class="ident">hash</span>
+<span class="kw">impl </span>JavaScriptFile {
+    <span class="doccomment">/// return the hash for use in CSP headers
+    </span><span class="kw">pub fn </span>as_csp_hash(<span class="self">self</span>) -&gt; String {
+        <span class="self">self</span>.hash
     }
 
-    <span class="doccomment">/// returns a &lt;script&gt; HTML tag</span>
-    <span class="kw">fn</span> <span class="ident">as_tag</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">typeattr</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">filetype</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">val</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;type=\&quot;{}\&quot; &quot;</span>, <span class="ident">val</span>),
-            <span class="kw">_</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;&quot;</span>),
+    <span class="doccomment">/// returns a &lt;script&gt; HTML tag
+    </span><span class="kw">fn </span>as_tag(<span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span>typeattr = <span class="kw">match </span><span class="self">self</span>.filetype {
+            <span class="prelude-val">Some</span>(val) =&gt; <span class="macro">format!</span>(<span class="string">&quot;type=\&quot;{}\&quot; &quot;</span>, val),
+            <span class="kw">_ </span>=&gt; String::from(<span class="string">&quot;&quot;</span>),
         };
         <span class="macro">format!</span>(
             <span class="string">r#&quot;&lt;script src=&quot;/pkg/{}&quot; integrity=&quot;{}&quot; {}&gt;&lt;/script&gt;&quot;#</span>,
-            <span class="self">self</span>.<span class="ident">filepath</span>, <span class="self">self</span>.<span class="ident">hash</span>, <span class="ident">typeattr</span>,
+            <span class="self">self</span>.filepath, <span class="self">self</span>.hash, typeattr,
         )
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AppState</span> {
-    <span class="kw">pub</span> <span class="ident">status_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">StatusActor</span>,
-    <span class="kw">pub</span> <span class="ident">qe_w_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerWriteV1</span>,
-    <span class="kw">pub</span> <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
-    <span class="comment">// Store the token management parts.</span>
-    <span class="kw">pub</span> <span class="ident">jws_signer</span>: <span class="ident">std::sync::Arc</span><span class="op">&lt;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">jws_validator</span>: <span class="ident">std::sync::Arc</span><span class="op">&lt;</span><span class="ident">JwsValidator</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// The SHA384 hashes of javascript files we&#39;re going to serve to users</span>
-    <span class="kw">pub</span> <span class="ident">js_files</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JavaScriptFile</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>AppState {
+    <span class="kw">pub </span>status_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>StatusActor,
+    <span class="kw">pub </span>qe_w_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerWriteV1,
+    <span class="kw">pub </span>qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
+    <span class="comment">// Store the token management parts.
+    </span><span class="kw">pub </span>jws_signer: std::sync::Arc&lt;JwsSigner&gt;,
+    <span class="kw">pub </span>jws_validator: std::sync::Arc&lt;JwsValidator&gt;,
+    <span class="doccomment">/// The SHA384 hashes of javascript files we&#39;re going to serve to users
+    </span><span class="kw">pub </span>js_files: Vec&lt;JavaScriptFile&gt;,
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RequestExtensions</span> {
-    <span class="kw">fn</span> <span class="ident">get_current_uat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
+<span class="kw">pub trait </span>RequestExtensions {
+    <span class="kw">fn </span>get_current_uat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_auth_bearer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_auth_bearer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_current_auth_session_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_current_auth_session_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_url_param</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">tide::Error</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_url_param(<span class="kw-2">&amp;</span><span class="self">self</span>, param: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String, tide::Error&gt;;
 
-    <span class="kw">fn</span> <span class="ident">get_url_param_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">tide::Error</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>get_url_param_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, param: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Uuid, tide::Error&gt;;
 
-    <span class="kw">fn</span> <span class="ident">new_eventid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">Uuid</span>, <span class="ident">String</span>);
+    <span class="kw">fn </span>new_eventid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Uuid, String);
 }
 
-<span class="kw">impl</span> <span class="ident">RequestExtensions</span> <span class="kw">for</span> <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">get_auth_bearer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="comment">// Contact the QS to get it to validate wtf is up.</span>
-        <span class="comment">// let kref = &amp;self.state().bundy_handle;</span>
-        <span class="comment">// self.session().get::&lt;UserAuthToken&gt;(&quot;uat&quot;)</span>
-        <span class="self">self</span>.<span class="ident">header</span>(<span class="ident">tide::http::headers::AUTHORIZATION</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> {
-                <span class="comment">// Get the first header value.</span>
-                <span class="ident">hv</span>.<span class="ident">get</span>(<span class="number">0</span>)
+<span class="kw">impl </span>RequestExtensions <span class="kw">for </span>tide::Request&lt;AppState&gt; {
+    <span class="kw">fn </span>get_auth_bearer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="comment">// Contact the QS to get it to validate wtf is up.
+        // let kref = &amp;self.state().bundy_handle;
+        // self.session().get::&lt;UserAuthToken&gt;(&quot;uat&quot;)
+        </span><span class="self">self</span>.header(tide::http::headers::AUTHORIZATION)
+            .and_then(|hv| {
+                <span class="comment">// Get the first header value.
+                </span>hv.get(<span class="number">0</span>)
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> {
-                <span class="comment">// Turn it to a &amp;str, and then check the prefix</span>
-                <span class="ident">h</span>.<span class="ident">as_str</span>().<span class="ident">strip_prefix</span>(<span class="string">&quot;Bearer &quot;</span>)
+            .and_then(|h| {
+                <span class="comment">// Turn it to a &amp;str, and then check the prefix
+                </span>h.as_str().strip_prefix(<span class="string">&quot;Bearer &quot;</span>)
             })
     }
 
-    <span class="kw">fn</span> <span class="ident">get_current_uat</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="comment">// Contact the QS to get it to validate wtf is up.</span>
-        <span class="comment">// let kref = &amp;self.state().bundy_handle;</span>
-        <span class="comment">// self.session().get::&lt;UserAuthToken&gt;(&quot;uat&quot;)</span>
-        <span class="self">self</span>.<span class="ident">header</span>(<span class="ident">tide::http::headers::AUTHORIZATION</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> {
-                <span class="comment">// Get the first header value.</span>
-                <span class="ident">hv</span>.<span class="ident">get</span>(<span class="number">0</span>)
+    <span class="kw">fn </span>get_current_uat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="comment">// Contact the QS to get it to validate wtf is up.
+        // let kref = &amp;self.state().bundy_handle;
+        // self.session().get::&lt;UserAuthToken&gt;(&quot;uat&quot;)
+        </span><span class="self">self</span>.header(tide::http::headers::AUTHORIZATION)
+            .and_then(|hv| {
+                <span class="comment">// Get the first header value.
+                </span>hv.get(<span class="number">0</span>)
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> {
-                <span class="comment">// Turn it to a &amp;str, and then check the prefix</span>
-                <span class="ident">h</span>.<span class="ident">as_str</span>().<span class="ident">strip_prefix</span>(<span class="string">&quot;Bearer &quot;</span>)
+            .and_then(|h| {
+                <span class="comment">// Turn it to a &amp;str, and then check the prefix
+                </span>h.as_str().strip_prefix(<span class="string">&quot;Bearer &quot;</span>)
             })
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">session</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(<span class="string">&quot;bearer&quot;</span>))
+            .map(|s| s.to_string())
+            .or_else(|| <span class="self">self</span>.session().get::&lt;String&gt;(<span class="string">&quot;bearer&quot;</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">get_current_auth_session_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
-        <span class="comment">// We see if there is a signed header copy first.</span>
-        <span class="kw">let</span> <span class="ident">kref</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span>().<span class="ident">jws_validator</span>;
-        <span class="self">self</span>.<span class="ident">header</span>(<span class="string">&quot;X-KANIDM-AUTH-SESSION-ID&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> {
-                <span class="comment">// Get the first header value.</span>
-                <span class="ident">hv</span>.<span class="ident">get</span>(<span class="number">0</span>)
+    <span class="kw">fn </span>get_current_auth_session_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
+        <span class="comment">// We see if there is a signed header copy first.
+        </span><span class="kw">let </span>kref = <span class="kw-2">&amp;</span><span class="self">self</span>.state().jws_validator;
+        <span class="self">self</span>.header(<span class="string">&quot;X-KANIDM-AUTH-SESSION-ID&quot;</span>)
+            .and_then(|hv| {
+                <span class="comment">// Get the first header value.
+                </span>hv.get(<span class="number">0</span>)
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> {
-                <span class="comment">// Take the token str and attempt to decrypt</span>
-                <span class="comment">// Attempt to re-inflate a uuid from bytes.</span>
-                <span class="ident">JwsUnverified::from_str</span>(<span class="ident">h</span>.<span class="ident">as_str</span>()).<span class="ident">ok</span>()
+            .and_then(|h| {
+                <span class="comment">// Take the token str and attempt to decrypt
+                // Attempt to re-inflate a uuid from bytes.
+                </span>JwsUnverified::from_str(h.as_str()).ok()
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">jwsu</span><span class="op">|</span> {
-                <span class="ident">jwsu</span>.<span class="ident">validate</span>(<span class="ident">kref</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">jws</span>: <span class="ident">Jws</span><span class="op">&lt;</span><span class="ident">SessionId</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">jws</span>.<span class="ident">into_inner</span>().<span class="ident">sessionid</span>)
-                    .<span class="ident">ok</span>()
+            .and_then(|jwsu| {
+                jwsu.validate(kref)
+                    .map(|jws: Jws&lt;SessionId&gt;| jws.into_inner().sessionid)
+                    .ok()
             })
-            <span class="comment">// If not there, get from the cookie instead.</span>
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">session</span>().<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>(<span class="string">&quot;auth-session-id&quot;</span>))
+            <span class="comment">// If not there, get from the cookie instead.
+            </span>.or_else(|| <span class="self">self</span>.session().get::&lt;Uuid&gt;(<span class="string">&quot;auth-session-id&quot;</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">get_url_param</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">tide::Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">param</span>(<span class="ident">param</span>).<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
-            <span class="ident">tide::Error::from_str</span>(<span class="ident">tide::StatusCode::ImATeapot</span>, <span class="string">&quot;teapot&quot;</span>)
+    <span class="kw">fn </span>get_url_param(<span class="kw-2">&amp;</span><span class="self">self</span>, param: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String, tide::Error&gt; {
+        <span class="self">self</span>.param(param).map(str::to_string).map_err(|e| {
+            <span class="macro">error!</span>(<span class="question-mark">?</span>e);
+            tide::Error::from_str(tide::StatusCode::ImATeapot, <span class="string">&quot;teapot&quot;</span>)
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">get_url_param_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">tide::Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">param</span>(<span class="ident">param</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
-                <span class="ident">tide::Error::from_str</span>(<span class="ident">tide::StatusCode::ImATeapot</span>, <span class="string">&quot;teapot&quot;</span>)
+    <span class="kw">fn </span>get_url_param_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, param: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Uuid, tide::Error&gt; {
+        <span class="self">self</span>.param(param)
+            .map_err(|e| {
+                <span class="macro">error!</span>(<span class="question-mark">?</span>e);
+                tide::Error::from_str(tide::StatusCode::ImATeapot, <span class="string">&quot;teapot&quot;</span>)
             })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> {
-                <span class="ident">Uuid::try_parse</span>(<span class="ident">s</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
-                    <span class="ident">tide::Error::from_str</span>(<span class="ident">tide::StatusCode::ImATeapot</span>, <span class="string">&quot;teapot&quot;</span>)
+            .and_then(|s| {
+                Uuid::try_parse(s).map_err(|e| {
+                    <span class="macro">error!</span>(<span class="question-mark">?</span>e);
+                    tide::Error::from_str(tide::StatusCode::ImATeapot, <span class="string">&quot;teapot&quot;</span>)
                 })
             })
     }
 
-    <span class="kw">fn</span> <span class="ident">new_eventid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">Uuid</span>, <span class="ident">String</span>) {
-        <span class="kw">let</span> <span class="ident">eventid</span> <span class="op">=</span> <span class="ident">sketching::tracing_forest::id</span>();
-        <span class="kw">let</span> <span class="ident">hv</span> <span class="op">=</span> <span class="ident">eventid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
-        (<span class="ident">eventid</span>, <span class="ident">hv</span>)
+    <span class="kw">fn </span>new_eventid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Uuid, String) {
+        <span class="kw">let </span>eventid = sketching::tracing_forest::id();
+        <span class="kw">let </span>hv = eventid.as_hyphenated().to_string();
+        (eventid, hv)
     }
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_tide_response</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Serialize</span><span class="op">&gt;</span>(
-    <span class="ident">v</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>,
-    <span class="ident">hvalue</span>: <span class="ident">String</span>,
-) -&gt; <span class="ident">tide::Result</span> {
-    <span class="kw">match</span> <span class="ident">v</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">iv</span>) =&gt; {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
-            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">iv</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
-                <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
-                <span class="ident">res</span>
+<span class="kw">pub fn </span>to_tide_response&lt;T: Serialize&gt;(
+    v: <span class="prelude-ty">Result</span>&lt;T, OperationError&gt;,
+    hvalue: String,
+) -&gt; tide::Result {
+    <span class="kw">match </span>v {
+        <span class="prelude-val">Ok</span>(iv) =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">200</span>);
+            tide::Body::from_json(<span class="kw-2">&amp;</span>iv).map(|b| {
+                res.set_body(b);
+                res
             })
         }
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">e</span> {
-                <span class="ident">OperationError::NotAuthenticated</span> <span class="op">|</span> <span class="ident">OperationError::SessionExpired</span> =&gt; {
-                    <span class="comment">// https://datatracker.ietf.org/doc/html/rfc7235#section-4.1</span>
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::Unauthorized</span>);
-                    <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;WWW-Authenticate&quot;</span>, <span class="string">&quot;Bearer&quot;</span>);
-                    <span class="ident">res</span>
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="kw">match </span><span class="kw-2">&amp;</span>e {
+                OperationError::NotAuthenticated | OperationError::SessionExpired =&gt; {
+                    <span class="comment">// https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(tide::StatusCode::Unauthorized);
+                    res.insert_header(<span class="string">&quot;WWW-Authenticate&quot;</span>, <span class="string">&quot;Bearer&quot;</span>);
+                    res
                 }
-                <span class="ident">OperationError::SystemProtectedObject</span> <span class="op">|</span> <span class="ident">OperationError::AccessDenied</span> =&gt; {
-                    <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::Forbidden</span>)
+                OperationError::SystemProtectedObject | OperationError::AccessDenied =&gt; {
+                    tide::Response::new(tide::StatusCode::Forbidden)
                 }
-                <span class="ident">OperationError::NoMatchingEntries</span> =&gt; {
-                    <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::NotFound</span>)
+                OperationError::NoMatchingEntries =&gt; {
+                    tide::Response::new(tide::StatusCode::NotFound)
                 }
-                <span class="ident">OperationError::PasswordQuality</span>(<span class="kw">_</span>)
-                <span class="op">|</span> <span class="ident">OperationError::EmptyRequest</span>
-                <span class="op">|</span> <span class="ident">OperationError::SchemaViolation</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::BadRequest</span>)
+                OperationError::PasswordQuality(<span class="kw">_</span>)
+                | OperationError::EmptyRequest
+                | OperationError::SchemaViolation(<span class="kw">_</span>) =&gt; {
+                    tide::Response::new(tide::StatusCode::BadRequest)
                 }
-                <span class="kw">_</span> =&gt; <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::InternalServerError</span>),
+                <span class="kw">_ </span>=&gt; tide::Response::new(tide::StatusCode::InternalServerError),
             };
-            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">e</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
-                <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
-                <span class="ident">res</span>
+            tide::Body::from_json(<span class="kw-2">&amp;</span>e).map(|b| {
+                res.set_body(b);
+                res
             })
         }
     }
-    .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">res</span><span class="op">|</span> {
-        <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
-        <span class="ident">res</span>
+    .map(|<span class="kw-2">mut </span>res| {
+        res.insert_header(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, hvalue);
+        res
     })
 }
 
-<span class="doccomment">/// Returns a generic robots.txt blocking all bots</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">robots_txt</span>(<span class="ident">_req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
+<span class="doccomment">/// Returns a generic robots.txt blocking all bots
+</span><span class="kw">async fn </span>robots_txt(_req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">200</span>);
 
-    <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="string">&quot;text/plain;charset=utf-8&quot;</span>);
-    <span class="ident">res</span>.<span class="ident">set_body</span>(
+    res.set_content_type(<span class="string">&quot;text/plain;charset=utf-8&quot;</span>);
+    res.set_body(
         <span class="string">r#&quot;
 User-agent: *
 Disallow: /
 &quot;#</span>,
     );
-    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+    <span class="prelude-val">Ok</span>(res)
 }
 
-<span class="doccomment">/// The web UI at / for Kanidm</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">index_view</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
-    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+<span class="doccomment">/// The web UI at / for Kanidm
+</span><span class="kw">async fn </span>index_view(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">200</span>);
+    <span class="kw">let </span>(eventid, hvalue) = req.new_eventid();
 
-    <span class="kw">let</span> <span class="ident">domain_display_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">qe_r_ref</span>.<span class="ident">get_domain_display_name</span>(<span class="ident">eventid</span>).<span class="kw">await</span>;
-    <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
+    <span class="kw">let </span>domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).<span class="kw">await</span>;
+    res.insert_header(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, hvalue);
 
-    <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="string">&quot;text/html;charset=utf-8&quot;</span>);
-    <span class="comment">// this feels icky but I felt that adding a trait on Vec&lt;JavaScriptFile&gt; which generated the string was going a bit far</span>
-    <span class="kw">let</span> <span class="ident">jsfiles</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">req</span>
-        .<span class="ident">state</span>()
-        .<span class="ident">to_owned</span>()
-        .<span class="ident">js_files</span>
-        .<span class="ident">into_iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">j</span>.<span class="ident">as_tag</span>())
-        .<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">jstags</span> <span class="op">=</span> <span class="ident">jsfiles</span>.<span class="ident">join</span>(<span class="string">&quot; &quot;</span>);
-    <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="macro">format!</span>(<span class="string">r#&quot;
+    res.set_content_type(<span class="string">&quot;text/html;charset=utf-8&quot;</span>);
+    <span class="comment">// this feels icky but I felt that adding a trait on Vec&lt;JavaScriptFile&gt; which generated the string was going a bit far
+    </span><span class="kw">let </span>jsfiles: Vec&lt;String&gt; = req
+        .state()
+        .to_owned()
+        .js_files
+        .into_iter()
+        .map(|j| j.as_tag())
+        .collect();
+    <span class="kw">let </span>jstags = jsfiles.join(<span class="string">&quot; &quot;</span>);
+    res.set_body(<span class="macro">format!</span>(<span class="string">r#&quot;
 &lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;en&quot;&gt;
     &lt;head&gt;
@@ -1145,130 +1145,130 @@ Disallow: /
         &lt;/footer&gt;
     &lt;/body&gt;
 &lt;/html&gt;&quot;#</span>,
-    <span class="ident">domain_display_name</span>.<span class="ident">as_str</span>(),
-    <span class="ident">jstags</span>,
+    domain_display_name.as_str(),
+    jstags,
     )
     );
 
-    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+    <span class="prelude-val">Ok</span>(res)
 }
 
-<span class="doccomment">/// Generates the integrity hash for a file based on a filename</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_integrity_hash</span>(<span class="ident">filename</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">wasm_filepath</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">filename</span>);
-    <span class="kw">match</span> <span class="ident">wasm_filepath</span>.<span class="ident">exists</span>() {
-        <span class="bool-val">false</span> =&gt; {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(
+<span class="doccomment">/// Generates the integrity hash for a file based on a filename
+</span><span class="kw">pub fn </span>generate_integrity_hash(filename: String) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    <span class="kw">let </span>wasm_filepath = PathBuf::from(filename);
+    <span class="kw">match </span>wasm_filepath.exists() {
+        <span class="bool-val">false </span>=&gt; {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
                 <span class="string">&quot;Can&#39;t find {:?} to generate file hash&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="ident">wasm_filepath</span>
+                <span class="kw-2">&amp;</span>wasm_filepath
             ));
         }
-        <span class="bool-val">true</span> =&gt; {
-            <span class="kw">let</span> <span class="ident">filecontents</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">std::fs::read</span>(<span class="kw-2">&amp;</span><span class="ident">wasm_filepath</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(
+        <span class="bool-val">true </span>=&gt; {
+            <span class="kw">let </span>filecontents = <span class="kw">match </span>std::fs::read(<span class="kw-2">&amp;</span>wasm_filepath) {
+                <span class="prelude-val">Ok</span>(value) =&gt; value,
+                <span class="prelude-val">Err</span>(error) =&gt; {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
                         <span class="string">&quot;Failed to read {:?}, skipping: {:?}&quot;</span>,
-                        <span class="ident">wasm_filepath</span>, <span class="ident">error</span>
+                        wasm_filepath, error
                     ));
                 }
             };
-            <span class="kw">let</span> <span class="ident">shasum</span> <span class="op">=</span>
-                <span class="ident">openssl::hash::hash</span>(<span class="ident">openssl::hash::MessageDigest::sha384</span>(), <span class="kw-2">&amp;</span><span class="ident">filecontents</span>).<span class="ident">unwrap</span>();
-            <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;sha384-{}&quot;</span>, <span class="ident">openssl::base64::encode_block</span>(<span class="kw-2">&amp;</span><span class="ident">shasum</span>)))
+            <span class="kw">let </span>shasum =
+                openssl::hash::hash(openssl::hash::MessageDigest::sha384(), <span class="kw-2">&amp;</span>filecontents).unwrap();
+            <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;sha384-{}&quot;</span>, openssl::base64::encode_block(<span class="kw-2">&amp;</span>shasum)))
         }
     }
 }
 
-<span class="comment">// TODO: Add request limits.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_https_server</span>(
-    <span class="ident">address</span>: <span class="ident">String</span>,
-    <span class="comment">// opt_tls_params: Option&lt;SslAcceptorBuilder&gt;,</span>
-    <span class="ident">opt_tls_params</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">TlsConfiguration</span><span class="op">&gt;</span>,
-    <span class="ident">role</span>: <span class="ident">ServerRole</span>,
-    <span class="ident">trust_x_forward_for</span>: <span class="ident">bool</span>,
-    <span class="ident">cookie_key</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="number">32</span>],
-    <span class="ident">jws_signer</span>: <span class="ident">JwsSigner</span>,
-    <span class="ident">status_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">StatusActor</span>,
-    <span class="ident">qe_w_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerWriteV1</span>,
-    <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">jws_validator</span> <span class="op">=</span> <span class="ident">jws_signer</span>.<span class="ident">get_validator</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-        <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to get jws validator&quot;</span>);
+<span class="comment">// TODO: Add request limits.
+</span><span class="kw">pub fn </span>create_https_server(
+    address: String,
+    <span class="comment">// opt_tls_params: Option&lt;SslAcceptorBuilder&gt;,
+    </span>opt_tls_params: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>TlsConfiguration&gt;,
+    role: ServerRole,
+    trust_x_forward_for: bool,
+    cookie_key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
+    jws_signer: JwsSigner,
+    status_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>StatusActor,
+    qe_w_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerWriteV1,
+    qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    <span class="kw">let </span>jws_validator = jws_signer.get_validator().map_err(|e| {
+        <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to get jws validator&quot;</span>);
     })<span class="question-mark">?</span>;
 
-    <span class="kw">let</span> <span class="ident">jws_validator</span> <span class="op">=</span> <span class="ident">std::sync::Arc::new</span>(<span class="ident">jws_validator</span>);
-    <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="ident">std::sync::Arc::new</span>(<span class="ident">jws_signer</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">routemap</span> <span class="op">=</span> <span class="ident">RouteMap::default</span>();
+    <span class="kw">let </span>jws_validator = std::sync::Arc::new(jws_validator);
+    <span class="kw">let </span>jws_signer = std::sync::Arc::new(jws_signer);
+    <span class="kw">let </span><span class="kw-2">mut </span>routemap = RouteMap::default();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">js_files</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JavaScriptFile</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="kw">let </span><span class="kw-2">mut </span>js_files: Vec&lt;JavaScriptFile&gt; = Vec::new();
 
-    <span class="kw">if</span> <span class="op">!</span><span class="macro">matches!</span>(<span class="ident">role</span>, <span class="ident">ServerRole::WriteReplicaNoUI</span>) {
-        <span class="comment">// let&#39;s set up the list of js module hashes</span>
-        <span class="kw">for</span> <span class="ident">filepath</span> <span class="kw">in</span> [<span class="string">&quot;wasmloader.js&quot;</span>] {
-            <span class="ident">js_files</span>.<span class="ident">push</span>(<span class="ident">JavaScriptFile</span> {
-                <span class="ident">filepath</span>,
-                <span class="ident">hash</span>: <span class="ident">generate_integrity_hash</span>(<span class="macro">format!</span>(
+    <span class="kw">if </span>!<span class="macro">matches!</span>(role, ServerRole::WriteReplicaNoUI) {
+        <span class="comment">// let&#39;s set up the list of js module hashes
+        </span><span class="kw">for </span>filepath <span class="kw">in </span>[<span class="string">&quot;wasmloader.js&quot;</span>] {
+            js_files.push(JavaScriptFile {
+                filepath,
+                hash: generate_integrity_hash(<span class="macro">format!</span>(
                     <span class="string">&quot;{}/{}&quot;</span>,
-                    <span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>).<span class="ident">to_owned</span>(),
-                    <span class="ident">filepath</span>,
+                    <span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>).to_owned(),
+                    filepath,
                 ))
-                .<span class="ident">unwrap</span>(),
-                <span class="ident">filetype</span>: <span class="prelude-val">Some</span>(<span class="string">&quot;module&quot;</span>.<span class="ident">to_string</span>()),
+                .unwrap(),
+                filetype: <span class="prelude-val">Some</span>(<span class="string">&quot;module&quot;</span>.to_string()),
             });
         }
-        <span class="comment">// let&#39;s set up the list of non-module hashes</span>
-        <span class="kw">for</span> <span class="ident">filepath</span> <span class="kw">in</span> [<span class="string">&quot;external/bootstrap.bundle.min.js&quot;</span>] {
-            <span class="ident">js_files</span>.<span class="ident">push</span>(<span class="ident">JavaScriptFile</span> {
-                <span class="ident">filepath</span>,
-                <span class="ident">hash</span>: <span class="ident">generate_integrity_hash</span>(<span class="macro">format!</span>(
+        <span class="comment">// let&#39;s set up the list of non-module hashes
+        </span><span class="kw">for </span>filepath <span class="kw">in </span>[<span class="string">&quot;external/bootstrap.bundle.min.js&quot;</span>] {
+            js_files.push(JavaScriptFile {
+                filepath,
+                hash: generate_integrity_hash(<span class="macro">format!</span>(
                     <span class="string">&quot;{}/{}&quot;</span>,
-                    <span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>).<span class="ident">to_owned</span>(),
-                    <span class="ident">filepath</span>,
+                    <span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>).to_owned(),
+                    filepath,
                 ))
-                .<span class="ident">unwrap</span>(),
-                <span class="ident">filetype</span>: <span class="prelude-val">None</span>,
+                .unwrap(),
+                filetype: <span class="prelude-val">None</span>,
             });
         }
     };
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tserver</span> <span class="op">=</span> <span class="ident">tide::Server::with_state</span>(<span class="ident">AppState</span> {
-        <span class="ident">status_ref</span>,
-        <span class="ident">qe_w_ref</span>,
-        <span class="ident">qe_r_ref</span>,
-        <span class="ident">jws_signer</span>,
-        <span class="ident">jws_validator</span>,
-        <span class="ident">js_files</span>: <span class="ident">js_files</span>.<span class="ident">to_owned</span>(),
+    <span class="kw">let </span><span class="kw-2">mut </span>tserver = tide::Server::with_state(AppState {
+        status_ref,
+        qe_w_ref,
+        qe_r_ref,
+        jws_signer,
+        jws_validator,
+        js_files: js_files.to_owned(),
     });
 
-    <span class="comment">// Add middleware?</span>
-    <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">sketching::middleware::TreeMiddleware::new</span>(
-        <span class="ident">trust_x_forward_for</span>,
+    <span class="comment">// Add middleware?
+    </span>tserver.with(sketching::middleware::TreeMiddleware::new(
+        trust_x_forward_for,
     ));
 
-    <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.</span>
-    <span class="ident">tserver</span>.<span class="ident">with</span>(
-        <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.</span>
-        <span class="ident">tide::sessions::SessionMiddleware::new</span>(<span class="ident">tide::sessions::CookieStore::new</span>(), <span class="ident">cookie_key</span>)
-            .<span class="ident">with_cookie_name</span>(<span class="string">&quot;kanidm-session&quot;</span>)
-            .<span class="ident">with_same_site_policy</span>(<span class="ident">tide::http::cookies::SameSite::Strict</span>),
+    <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.
+    </span>tserver.with(
+        <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.
+        </span>tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
+            .with_cookie_name(<span class="string">&quot;kanidm-session&quot;</span>)
+            .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
-    <span class="ident">tserver</span>.<span class="ident">with</span>(<span class="ident">StrictResponseMiddleware::default</span>());
+    tserver.with(StrictResponseMiddleware::default());
 
-    <span class="comment">// Add routes</span>
-    <span class="comment">// ==== static content routes that have a longer cache policy.</span>
+    <span class="comment">// Add routes
+    // ==== static content routes that have a longer cache policy.
 
-    <span class="comment">// If we are no-ui, we remove this.</span>
-    <span class="kw">if</span> <span class="op">!</span><span class="macro">matches!</span>(<span class="ident">role</span>, <span class="ident">ServerRole::WriteReplicaNoUI</span>) {
-        <span class="kw">let</span> <span class="ident">pkg_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>));
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">pkg_path</span>.<span class="ident">exists</span>() {
+    // If we are no-ui, we remove this.
+    </span><span class="kw">if </span>!<span class="macro">matches!</span>(role, ServerRole::WriteReplicaNoUI) {
+        <span class="kw">let </span>pkg_path = PathBuf::from(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>));
+        <span class="kw">if </span>!pkg_path.exists() {
             <span class="macro">eprintln!</span>(
                 <span class="string">&quot;Couldn&#39;t find Web UI package path: ({}), quitting.&quot;</span>,
                 <span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>)
             );
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            std::process::exit(<span class="number">1</span>);
         }
-        <span class="macro">info!</span>(<span class="string">&quot;Web UI package path: {:?}&quot;</span>, <span class="ident">canonicalize</span>(<span class="ident">pkg_path</span>).<span class="ident">unwrap</span>());
+        <span class="macro">info!</span>(<span class="string">&quot;Web UI package path: {:?}&quot;</span>, canonicalize(pkg_path).unwrap());
 
         <span class="comment">/*
         Let&#39;s build a compression middleware!
@@ -1287,444 +1287,444 @@ Disallow: /
 
 
         [1] - https://resources.infosecinstitute.com/topic/the-breach-attack/
-        */</span>
+        */
 
-        <span class="kw">let</span> <span class="ident">compress_middleware</span> <span class="op">=</span> <span class="ident">CompressMiddleware::builder</span>()
-            .<span class="ident">threshold</span>(<span class="number">1024</span>)
-            .<span class="ident">content_type_check</span>(<span class="prelude-val">Some</span>(<span class="ident">compression_content_type_checker</span>()))
-            .<span class="ident">build</span>();
+        </span><span class="kw">let </span>compress_middleware = CompressMiddleware::builder()
+            .threshold(<span class="number">1024</span>)
+            .content_type_check(<span class="prelude-val">Some</span>(compression_content_type_checker()))
+            .build();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">static_tserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
-        <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">StaticContentMiddleware::default</span>());
+        <span class="kw">let </span><span class="kw-2">mut </span>static_tserver = tserver.at(<span class="string">&quot;&quot;</span>);
+        static_tserver.with(StaticContentMiddleware::default());
 
-        <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">UIContentSecurityPolicyResponseMiddleware::new</span>(<span class="ident">js_files</span>));
+        static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(js_files));
 
-        <span class="comment">// The compression middleware needs to be the last one added before routes</span>
-        <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">compress_middleware</span>.<span class="ident">clone</span>());
+        <span class="comment">// The compression middleware needs to be the last one added before routes
+        </span>static_tserver.with(compress_middleware.clone());
 
-        <span class="ident">static_tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">index_view</span>);
-        <span class="ident">static_tserver</span>
-            .<span class="ident">at</span>(<span class="string">&quot;/robots.txt&quot;</span>)
-            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">robots_txt</span>);
-        <span class="ident">static_tserver</span>
-            .<span class="ident">at</span>(<span class="string">&quot;/manifest.webmanifest&quot;</span>)
-            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">manifest</span>);
-        <span class="ident">static_tserver</span>
-            .<span class="ident">at</span>(<span class="string">&quot;/ui/&quot;</span>)
-            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">index_view</span>);
-        <span class="ident">static_tserver</span>
-            .<span class="ident">at</span>(<span class="string">&quot;/ui/*&quot;</span>)
-            .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">index_view</span>);
+        static_tserver.at(<span class="string">&quot;/&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, index_view);
+        static_tserver
+            .at(<span class="string">&quot;/robots.txt&quot;</span>)
+            .mapped_get(<span class="kw-2">&amp;mut </span>routemap, robots_txt);
+        static_tserver
+            .at(<span class="string">&quot;/manifest.webmanifest&quot;</span>)
+            .mapped_get(<span class="kw-2">&amp;mut </span>routemap, manifest);
+        static_tserver
+            .at(<span class="string">&quot;/ui/&quot;</span>)
+            .mapped_get(<span class="kw-2">&amp;mut </span>routemap, index_view);
+        static_tserver
+            .at(<span class="string">&quot;/ui/*&quot;</span>)
+            .mapped_get(<span class="kw-2">&amp;mut </span>routemap, index_view);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">static_dir_tserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
-        <span class="ident">static_dir_tserver</span>.<span class="ident">with</span>(<span class="ident">StaticContentMiddleware::default</span>());
-        <span class="comment">// The compression middleware needs to be the last one added before routes</span>
-        <span class="ident">static_dir_tserver</span>.<span class="ident">with</span>(<span class="ident">compress_middleware</span>);
-        <span class="ident">static_dir_tserver</span>
-            .<span class="ident">at</span>(<span class="string">&quot;/pkg&quot;</span>)
-            .<span class="ident">serve_dir</span>(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>))
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="kw">let </span><span class="kw-2">mut </span>static_dir_tserver = tserver.at(<span class="string">&quot;&quot;</span>);
+        static_dir_tserver.with(StaticContentMiddleware::default());
+        <span class="comment">// The compression middleware needs to be the last one added before routes
+        </span>static_dir_tserver.with(compress_middleware);
+        static_dir_tserver
+            .at(<span class="string">&quot;/pkg&quot;</span>)
+            .serve_dir(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>))
+            .map_err(|e| {
                 <span class="macro">error!</span>(
                     <span class="string">&quot;Failed to serve pkg dir {} -&gt; {:?}&quot;</span>,
                     <span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>),
-                    <span class="ident">e</span>
+                    e
                 );
             })<span class="question-mark">?</span>;
     };
 
-    <span class="comment">// ==== Some routes can be cached - these are here:</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tserver_cacheable</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
-    <span class="ident">tserver_cacheable</span>.<span class="ident">with</span>(<span class="ident">CacheableMiddleware::default</span>());
+    <span class="comment">// ==== Some routes can be cached - these are here:
+    </span><span class="kw">let </span><span class="kw-2">mut </span>tserver_cacheable = tserver.at(<span class="string">&quot;&quot;</span>);
+    tserver_cacheable.with(CacheableMiddleware::default());
 
-    <span class="comment">// We allow clients to cache the unix token for accounts and groups.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">account_route_cacheable</span> <span class="op">=</span> <span class="ident">tserver_cacheable</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/account&quot;</span>);
-    <span class="ident">account_route_cacheable</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_token&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_unix_token</span>);
-    <span class="comment">// We allow caching of the radius token.</span>
-    <span class="ident">account_route_cacheable</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_radius/_token&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_radius_token</span>);
+    <span class="comment">// We allow clients to cache the unix token for accounts and groups.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>account_route_cacheable = tserver_cacheable.at(<span class="string">&quot;/v1/account&quot;</span>);
+    account_route_cacheable
+        .at(<span class="string">&quot;/:id/_unix/_token&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_unix_token);
+    <span class="comment">// We allow caching of the radius token.
+    </span>account_route_cacheable
+        .at(<span class="string">&quot;/:id/_radius/_token&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_radius_token);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group_route_cacheable</span> <span class="op">=</span> <span class="ident">tserver_cacheable</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/group&quot;</span>);
-    <span class="ident">group_route_cacheable</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_token&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_get_id_unix_token</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>group_route_cacheable = tserver_cacheable.at(<span class="string">&quot;/v1/group&quot;</span>);
+    group_route_cacheable
+        .at(<span class="string">&quot;/:id/_unix/_token&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, group_get_id_unix_token);
 
-    <span class="comment">// ==== These routes can not be cached</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">appserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
-    <span class="ident">appserver</span>.<span class="ident">with</span>(<span class="ident">NoCacheMiddleware::default</span>());
+    <span class="comment">// ==== These routes can not be cached
+    </span><span class="kw">let </span><span class="kw-2">mut </span>appserver = tserver.at(<span class="string">&quot;&quot;</span>);
+    appserver.with(NoCacheMiddleware::default());
 
-    <span class="comment">// let mut well_known = appserver.at(&quot;/.well-known&quot;);</span>
+    <span class="comment">// let mut well_known = appserver.at(&quot;/.well-known&quot;);
 
-    <span class="ident">appserver</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/status&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident"><span class="self">self</span>::status</span>);
+    </span>appserver
+        .at(<span class="string">&quot;/status&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, <span class="self">self</span>::status);
 
-    <span class="comment">// == oauth endpoints.</span>
-    <span class="ident">oauth2_route_setup</span>(<span class="kw-2">&amp;mut</span> <span class="ident">appserver</span>, <span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>);
+    <span class="comment">// == oauth endpoints.
+    </span>oauth2_route_setup(<span class="kw-2">&amp;mut </span>appserver, <span class="kw-2">&amp;mut </span>routemap);
 
-    <span class="comment">// == scim endpoints.</span>
-    <span class="ident">scim_route_setup</span>(<span class="kw-2">&amp;mut</span> <span class="ident">appserver</span>, <span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>);
+    <span class="comment">// == scim endpoints.
+    </span>scim_route_setup(<span class="kw-2">&amp;mut </span>appserver, <span class="kw-2">&amp;mut </span>routemap);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">raw_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/raw&quot;</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/create&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">create</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/modify&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">modify</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/delete&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">delete</span>);
-    <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/search&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">search</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>raw_route = appserver.at(<span class="string">&quot;/v1/raw&quot;</span>);
+    raw_route.at(<span class="string">&quot;/create&quot;</span>).mapped_post(<span class="kw-2">&amp;mut </span>routemap, create);
+    raw_route.at(<span class="string">&quot;/modify&quot;</span>).mapped_post(<span class="kw-2">&amp;mut </span>routemap, modify);
+    raw_route.at(<span class="string">&quot;/delete&quot;</span>).mapped_post(<span class="kw-2">&amp;mut </span>routemap, delete);
+    raw_route.at(<span class="string">&quot;/search&quot;</span>).mapped_post(<span class="kw-2">&amp;mut </span>routemap, search);
 
-    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/auth&quot;</span>).<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">auth</span>);
-    <span class="ident">appserver</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">auth_valid</span>);
+    appserver.at(<span class="string">&quot;/v1/auth&quot;</span>).mapped_post(<span class="kw-2">&amp;mut </span>routemap, auth);
+    appserver
+        .at(<span class="string">&quot;/v1/auth/valid&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, auth_valid);
 
-    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/logout&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">logout</span>);
+    appserver.at(<span class="string">&quot;/v1/logout&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, logout);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">schema_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/schema&quot;</span>);
-    <span class="ident">schema_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_get</span>);
-    <span class="ident">schema_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/attributetype&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_attributetype_get</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">schema_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/attributetype/:id&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_attributetype_get_id</span>)
-        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
-        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>schema_route = appserver.at(<span class="string">&quot;/v1/schema&quot;</span>);
+    schema_route.at(<span class="string">&quot;/&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, schema_get);
+    schema_route
+        .at(<span class="string">&quot;/attributetype&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, schema_attributetype_get)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    schema_route
+        .at(<span class="string">&quot;/attributetype/:id&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, schema_attributetype_get_id)
+        .mapped_put(<span class="kw-2">&amp;mut </span>routemap, do_nothing)
+        .mapped_patch(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="ident">schema_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/classtype&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_classtype_get</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">schema_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/classtype/:id&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">schema_classtype_get_id</span>)
-        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
-        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    schema_route
+        .at(<span class="string">&quot;/classtype&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, schema_classtype_get)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    schema_route
+        .at(<span class="string">&quot;/classtype/:id&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, schema_classtype_get_id)
+        .mapped_put(<span class="kw-2">&amp;mut </span>routemap, do_nothing)
+        .mapped_patch(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oauth2_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/oauth2&quot;</span>);
-    <span class="ident">oauth2_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_get</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>oauth2_route = appserver.at(<span class="string">&quot;/v1/oauth2&quot;</span>);
+    oauth2_route.at(<span class="string">&quot;/&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, oauth2_get);
 
-    <span class="ident">oauth2_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_basic&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_basic_post</span>);
+    oauth2_route
+        .at(<span class="string">&quot;/_basic&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, oauth2_basic_post);
 
-    <span class="ident">oauth2_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:rs_name&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_get</span>)
-        <span class="comment">// It&#39;s not really possible to replace this wholesale.</span>
-        <span class="comment">// .mapped_put(&amp;mut routemap, oauth2_id_put)</span>
-        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_patch</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_delete</span>);
+    oauth2_route
+        .at(<span class="string">&quot;/:rs_name&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_get)
+        <span class="comment">// It&#39;s not really possible to replace this wholesale.
+        // .mapped_put(&amp;mut routemap, oauth2_id_put)
+        </span>.mapped_patch(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_patch)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_delete);
 
-    <span class="ident">oauth2_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:rs_name/_basic_secret&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_get_basic_secret</span>);
+    oauth2_route
+        .at(<span class="string">&quot;/:rs_name/_basic_secret&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_get_basic_secret);
 
-    <span class="ident">oauth2_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_scopemap/:group&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_scopemap_post</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_scopemap_delete</span>);
+    oauth2_route
+        .at(<span class="string">&quot;/:id/_scopemap/:group&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_scopemap_post)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_scopemap_delete);
 
-    <span class="ident">oauth2_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_sup_scopemap/:group&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_sup_scopemap_post</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">oauth2_id_sup_scopemap_delete</span>);
+    oauth2_route
+        .at(<span class="string">&quot;/:id/_sup_scopemap/:group&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_sup_scopemap_post)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, oauth2_id_sup_scopemap_delete);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/self&quot;</span>);
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">whoami</span>);
-    <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/_uat&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">whoami_uat</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>self_route = appserver.at(<span class="string">&quot;/v1/self&quot;</span>);
+    self_route.at(<span class="string">&quot;/&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, whoami);
+    self_route.at(<span class="string">&quot;/_uat&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, whoami_uat);
 
-    <span class="ident">self_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">self_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_credential&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    self_route
+        .at(<span class="string">&quot;/_attr/:attr&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    self_route
+        .at(<span class="string">&quot;/_credential&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="ident">self_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_credential/:cid/_lock&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    self_route
+        .at(<span class="string">&quot;/_credential/:cid/_lock&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="ident">self_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_radius&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    self_route
+        .at(<span class="string">&quot;/_radius&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, do_nothing)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="ident">self_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_radius/_config&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">self_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_radius/_config/:token&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">self_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_radius/_config/:token/apple&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    self_route
+        .at(<span class="string">&quot;/_radius/_config&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    self_route
+        .at(<span class="string">&quot;/_radius/_config/:token&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    self_route
+        .at(<span class="string">&quot;/_radius/_config/:token/apple&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">person_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/person&quot;</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">person_get</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">person_post</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">person_id_get</span>)
-        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_patch</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">person_account_id_delete</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_get_attr</span>)
-        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_put_attr</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_post_attr</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_delete_attr</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>person_route = appserver.at(<span class="string">&quot;/v1/person&quot;</span>);
+    person_route
+        .at(<span class="string">&quot;/&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, person_get)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, person_post);
+    person_route
+        .at(<span class="string">&quot;/:id&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, person_id_get)
+        .mapped_patch(<span class="kw-2">&amp;mut </span>routemap, account_id_patch)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, person_account_id_delete);
+    person_route
+        .at(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_id_get_attr)
+        .mapped_put(<span class="kw-2">&amp;mut </span>routemap, account_id_put_attr)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_id_post_attr)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, account_id_delete_attr);
 
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_lock&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_status&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_status</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/:cid/_lock&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_update</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update_intent&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_update_intent</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update_intent/:ttl&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_update_intent</span>);
+    person_route
+        .at(<span class="string">&quot;/:id/_lock&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    person_route
+        .at(<span class="string">&quot;/:id/_credential&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    person_route
+        .at(<span class="string">&quot;/:id/_credential/_status&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_credential_status);
+    person_route
+        .at(<span class="string">&quot;/:id/_credential/:cid/_lock&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    person_route
+        .at(<span class="string">&quot;/:id/_credential/_update&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_credential_update);
+    person_route
+        .at(<span class="string">&quot;/:id/_credential/_update_intent&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_credential_update_intent);
+    person_route
+        .at(<span class="string">&quot;/:id/_credential/_update_intent/:ttl&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_credential_update_intent);
 
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkeys</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_ssh_pubkey</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkey_tag</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_delete_id_ssh_pubkey_tag</span>);
+    person_route
+        .at(<span class="string">&quot;/:id/_ssh_pubkeys&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_ssh_pubkeys)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_post_id_ssh_pubkey);
+    person_route
+        .at(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_ssh_pubkey_tag)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, account_delete_id_ssh_pubkey_tag);
 
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_radius&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_radius</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_radius_regenerate</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_delete_id_radius</span>);
+    person_route
+        .at(<span class="string">&quot;/:id/_radius&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_radius)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_post_id_radius_regenerate)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, account_delete_id_radius);
 
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_unix</span>);
-    <span class="ident">person_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_credential&quot;</span>)
-        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_put_id_unix_credential</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_delete_id_unix_credential</span>);
+    person_route
+        .at(<span class="string">&quot;/:id/_unix&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_post_id_unix);
+    person_route
+        .at(<span class="string">&quot;/:id/_unix/_credential&quot;</span>)
+        .mapped_put(<span class="kw-2">&amp;mut </span>routemap, account_put_id_unix_credential)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, account_delete_id_unix_credential);
 
-    <span class="comment">// Service accounts</span>
+    <span class="comment">// Service accounts
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">service_account_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/service_account&quot;</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_get</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_post</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_id_get</span>)
-        .<span class="ident">mapped_patch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_patch</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_id_delete</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_get_attr</span>)
-        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_put_attr</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_post_attr</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_id_delete_attr</span>);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>service_account_route = appserver.at(<span class="string">&quot;/v1/service_account&quot;</span>);
+    service_account_route
+        .at(<span class="string">&quot;/&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, service_account_get)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, service_account_post);
+    service_account_route
+        .at(<span class="string">&quot;/:id&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, service_account_id_get)
+        .mapped_patch(<span class="kw-2">&amp;mut </span>routemap, account_id_patch)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, service_account_id_delete);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_id_get_attr)
+        .mapped_put(<span class="kw-2">&amp;mut </span>routemap, account_id_put_attr)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_id_post_attr)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, account_id_delete_attr);
 
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_lock&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_lock&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_into_person&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_into_person</span>);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_into_person&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, service_account_into_person);
 
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_api_token&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_api_token_post</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_api_token_get</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_api_token/:token_id&quot;</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_api_token_delete</span>);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_api_token&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, service_account_api_token_post)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, service_account_api_token_get);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_api_token/:token_id&quot;</span>)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, service_account_api_token_delete);
 
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_generate&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">service_account_credential_generate</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_status&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_credential_status</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/:cid/_lock&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_credential&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_credential/_generate&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, service_account_credential_generate);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_credential/_status&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_credential_status);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_credential/:cid/_lock&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkeys</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_ssh_pubkey</span>);
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkey_tag</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_delete_id_ssh_pubkey_tag</span>);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_ssh_pubkeys&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_ssh_pubkeys)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_post_id_ssh_pubkey);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_ssh_pubkey_tag)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, account_delete_id_ssh_pubkey_tag);
 
-    <span class="ident">service_account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_unix</span>);
+    service_account_route
+        .at(<span class="string">&quot;/:id/_unix&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_post_id_unix);
 
-    <span class="comment">// Shared account features only - mainly this is for unix-like</span>
-    <span class="comment">// features.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">account_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/account&quot;</span>);
-    <span class="ident">account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix/_auth&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_post_id_unix_auth</span>);
-    <span class="ident">account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkeys</span>);
-    <span class="ident">account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_ssh_pubkey_tag</span>);
-    <span class="ident">account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_user_auth_token&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_get_id_user_auth_token</span>);
-    <span class="ident">account_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_user_auth_token/:token_id&quot;</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">account_user_auth_token_delete</span>);
+    <span class="comment">// Shared account features only - mainly this is for unix-like
+    // features.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>account_route = appserver.at(<span class="string">&quot;/v1/account&quot;</span>);
+    account_route
+        .at(<span class="string">&quot;/:id/_unix/_auth&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, account_post_id_unix_auth);
+    account_route
+        .at(<span class="string">&quot;/:id/_ssh_pubkeys&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_ssh_pubkeys);
+    account_route
+        .at(<span class="string">&quot;/:id/_ssh_pubkeys/:tag&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_ssh_pubkey_tag);
+    account_route
+        .at(<span class="string">&quot;/:id/_user_auth_token&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, account_get_id_user_auth_token);
+    account_route
+        .at(<span class="string">&quot;/:id/_user_auth_token/:token_id&quot;</span>)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, account_user_auth_token_delete);
 
-    <span class="comment">// Credential updates, don&#39;t require the account id.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cred_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/credential&quot;</span>);
-    <span class="ident">cred_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_exchange_intent&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_exchange_intent</span>);
+    <span class="comment">// Credential updates, don&#39;t require the account id.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>cred_route = appserver.at(<span class="string">&quot;/v1/credential&quot;</span>);
+    cred_route
+        .at(<span class="string">&quot;/_exchange_intent&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, credential_update_exchange_intent);
 
-    <span class="ident">cred_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_status&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_status</span>);
+    cred_route
+        .at(<span class="string">&quot;/_status&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, credential_update_status);
 
-    <span class="ident">cred_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_update&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_update</span>);
+    cred_route
+        .at(<span class="string">&quot;/_update&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, credential_update_update);
 
-    <span class="ident">cred_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_commit&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_commit</span>);
+    cred_route
+        .at(<span class="string">&quot;/_commit&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, credential_update_commit);
 
-    <span class="ident">cred_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_cancel&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">credential_update_cancel</span>);
+    cred_route
+        .at(<span class="string">&quot;/_cancel&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, credential_update_cancel);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/group&quot;</span>);
-    <span class="ident">group_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_get</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_post</span>);
-    <span class="ident">group_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_get</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_delete</span>);
-    <span class="ident">group_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_delete_attr</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_get_attr</span>)
-        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_put_attr</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_id_post_attr</span>);
-    <span class="ident">group_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_unix&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">group_post_id_unix</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>group_route = appserver.at(<span class="string">&quot;/v1/group&quot;</span>);
+    group_route
+        .at(<span class="string">&quot;/&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, group_get)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, group_post);
+    group_route
+        .at(<span class="string">&quot;/:id&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, group_id_get)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, group_id_delete);
+    group_route
+        .at(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, group_id_delete_attr)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, group_id_get_attr)
+        .mapped_put(<span class="kw-2">&amp;mut </span>routemap, group_id_put_attr)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, group_id_post_attr);
+    group_route
+        .at(<span class="string">&quot;/:id/_unix&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, group_post_id_unix);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">domain_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/domain&quot;</span>);
-    <span class="ident">domain_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_get</span>);
-    <span class="ident">domain_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_get_attr</span>)
-        .<span class="ident">mapped_put</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_put_attr</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">domain_delete_attr</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>domain_route = appserver.at(<span class="string">&quot;/v1/domain&quot;</span>);
+    domain_route.at(<span class="string">&quot;/&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, domain_get);
+    domain_route
+        .at(<span class="string">&quot;/_attr/:attr&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, domain_get_attr)
+        .mapped_put(<span class="kw-2">&amp;mut </span>routemap, domain_put_attr)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, domain_delete_attr);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">system_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/system&quot;</span>);
-    <span class="ident">system_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">system_get</span>);
-    <span class="ident">system_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">system_get_attr</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">system_post_attr</span>)
-        .<span class="ident">mapped_delete</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">system_delete_attr</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>system_route = appserver.at(<span class="string">&quot;/v1/system&quot;</span>);
+    system_route.at(<span class="string">&quot;/&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, system_get);
+    system_route
+        .at(<span class="string">&quot;/_attr/:attr&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, system_get_attr)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, system_post_attr)
+        .mapped_delete(<span class="kw-2">&amp;mut </span>routemap, system_delete_attr);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">recycle_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/recycle_bin&quot;</span>);
-    <span class="ident">recycle_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">recycle_bin_get</span>);
-    <span class="ident">recycle_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">recycle_bin_id_get</span>);
-    <span class="ident">recycle_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_revive&quot;</span>)
-        .<span class="ident">mapped_post</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">recycle_bin_revive_id_post</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>recycle_route = appserver.at(<span class="string">&quot;/v1/recycle_bin&quot;</span>);
+    recycle_route
+        .at(<span class="string">&quot;/&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, recycle_bin_get);
+    recycle_route
+        .at(<span class="string">&quot;/:id&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, recycle_bin_id_get);
+    recycle_route
+        .at(<span class="string">&quot;/:id/_revive&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, recycle_bin_revive_id_post);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accessprof_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/access_profile&quot;</span>);
-    <span class="ident">accessprof_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">accessprof_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
-    <span class="ident">accessprof_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
-        .<span class="ident">mapped_get</span>(<span class="kw-2">&amp;mut</span> <span class="ident">routemap</span>, <span class="ident">do_nothing</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>accessprof_route = appserver.at(<span class="string">&quot;/v1/access_profile&quot;</span>);
+    accessprof_route
+        .at(<span class="string">&quot;/&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    accessprof_route
+        .at(<span class="string">&quot;/:id&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+    accessprof_route
+        .at(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
-    <span class="ident">routemap</span>.<span class="ident">push_self</span>(<span class="string">&quot;/v1/routemap&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">http_types::Method::Get</span>);
-    <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/routemap&quot;</span>).<span class="ident">nest</span>({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">route_api</span> <span class="op">=</span> <span class="ident">tide::with_state</span>(<span class="ident">routemap</span>);
-        <span class="ident">route_api</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">do_routemap</span>);
-        <span class="ident">route_api</span>
+    routemap.push_self(<span class="string">&quot;/v1/routemap&quot;</span>.to_string(), http_types::Method::Get);
+    appserver.at(<span class="string">&quot;/v1/routemap&quot;</span>).nest({
+        <span class="kw">let </span><span class="kw-2">mut </span>route_api = tide::with_state(routemap);
+        route_api.at(<span class="string">&quot;/&quot;</span>).get(do_routemap);
+        route_api
     });
-    <span class="comment">// routemap_route.at(&quot;/&quot;).mapped_get(&amp;mut routemap, do_routemap);</span>
-    <span class="comment">// ===  End routes</span>
+    <span class="comment">// routemap_route.at(&quot;/&quot;).mapped_get(&amp;mut routemap, do_routemap);
+    // ===  End routes
 
-    <span class="comment">// Create listener?</span>
-    <span class="kw">match</span> <span class="ident">opt_tls_params</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">tls_param</span>) =&gt; {
-            <span class="kw">let</span> <span class="ident">tlsl</span> <span class="op">=</span> <span class="ident">TlsListener::build</span>()
-                .<span class="ident">addrs</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>)
-                .<span class="ident">cert</span>(<span class="kw-2">&amp;</span><span class="ident">tls_param</span>.<span class="ident">chain</span>)
-                .<span class="ident">key</span>(<span class="kw-2">&amp;</span><span class="ident">tls_param</span>.<span class="ident">key</span>)
-                .<span class="ident">finish</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Failed to build TLS Listener -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+    // Create listener?
+    </span><span class="kw">match </span>opt_tls_params {
+        <span class="prelude-val">Some</span>(tls_param) =&gt; {
+            <span class="kw">let </span>tlsl = TlsListener::build()
+                .addrs(<span class="kw-2">&amp;</span>address)
+                .cert(<span class="kw-2">&amp;</span>tls_param.chain)
+                .key(<span class="kw-2">&amp;</span>tls_param.key)
+                .finish()
+                .map_err(|e| {
+                    <span class="macro">error!</span>(<span class="string">&quot;Failed to build TLS Listener -&gt; {:?}&quot;</span>, e);
                 })<span class="question-mark">?</span>;
             <span class="comment">/*
             let x = Box::new(tls_param.build());
             let x_ref = Box::leak(x);
             let tlsl = TlsListener::new(address, x_ref);
-            */</span>
+            */
 
-            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">listen</span>(<span class="ident">tlsl</span>).<span class="kw">await</span> {
+            </span>tokio::spawn(<span class="kw">async move </span>{
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tserver.listen(tlsl).<span class="kw">await </span>{
                     <span class="macro">error!</span>(
                         <span class="string">&quot;Failed to start server listener on address {:?} -&gt; {:?}&quot;</span>,
-                        <span class="kw-2">&amp;</span><span class="ident">address</span>, <span class="ident">e</span>
+                        <span class="kw-2">&amp;</span>address, e
                     );
                 }
             });
         }
-        <span class="prelude-val">None</span> =&gt; {
-            <span class="comment">// Create without https</span>
-            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">listen</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>).<span class="kw">await</span> {
+        <span class="prelude-val">None </span>=&gt; {
+            <span class="comment">// Create without https
+            </span>tokio::spawn(<span class="kw">async move </span>{
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tserver.listen(<span class="kw-2">&amp;</span>address).<span class="kw">await </span>{
                     <span class="macro">error!</span>(
                         <span class="string">&quot;Failed to start server listener on address {:?} -&gt; {:?}&quot;</span>,
-                        <span class="kw-2">&amp;</span><span class="ident">address</span>, <span class="ident">e</span>,
+                        <span class="kw-2">&amp;</span>address, e,
                     );
                 }
             });
@@ -1733,4 +1733,4 @@ Disallow: /
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

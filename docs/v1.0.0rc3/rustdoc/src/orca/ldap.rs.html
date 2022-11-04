@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/ldap.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ldap.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/ldap.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ldap.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -359,131 +359,131 @@
 <span id="359">359</span>
 <span id="360">360</span>
 <span id="361">361</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core::pin::Pin</span>;
-<span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">SocketAddr</span>, <span class="ident">ToSocketAddrs</span>};
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>core::pin::Pin;
+<span class="kw">use </span>std::net::{SocketAddr, ToSocketAddrs};
+<span class="kw">use </span>std::time::{Duration, Instant};
 
-<span class="kw">use</span> <span class="ident">futures_util::sink::SinkExt</span>;
-<span class="kw">use</span> <span class="ident">futures_util::stream::StreamExt</span>;
-<span class="kw">use</span> <span class="ident">ldap3_proto::proto</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">ldap3_proto::LdapCodec</span>;
-<span class="kw">use</span> <span class="ident">openssl::ssl</span>::{<span class="ident">Ssl</span>, <span class="ident">SslConnector</span>, <span class="ident">SslMethod</span>, <span class="ident">SslVerifyMode</span>};
-<span class="comment">// use std::sync::atomic::{AtomicUsize, Ordering};</span>
-<span class="kw">use</span> <span class="ident">tokio::net::TcpStream</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::Mutex</span>;
-<span class="kw">use</span> <span class="ident">tokio_openssl::SslStream</span>;
-<span class="kw">use</span> <span class="ident">tokio_util::codec::Framed</span>;
+<span class="kw">use </span>futures_util::sink::SinkExt;
+<span class="kw">use </span>futures_util::stream::StreamExt;
+<span class="kw">use </span>ldap3_proto::proto::<span class="kw-2">*</span>;
+<span class="kw">use </span>ldap3_proto::LdapCodec;
+<span class="kw">use </span>openssl::ssl::{Ssl, SslConnector, SslMethod, SslVerifyMode};
+<span class="comment">// use std::sync::atomic::{AtomicUsize, Ordering};
+</span><span class="kw">use </span>tokio::net::TcpStream;
+<span class="kw">use </span>tokio::sync::Mutex;
+<span class="kw">use </span>tokio_openssl::SslStream;
+<span class="kw">use </span>tokio_util::codec::Framed;
 
-<span class="kw">struct</span> <span class="ident">LdapInner</span> {
-    <span class="kw">pub</span> <span class="ident">framed</span>: <span class="ident">Framed</span><span class="op">&lt;</span><span class="ident">SslStream</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span>, <span class="ident">LdapCodec</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">msgid</span>: <span class="ident">i32</span>,
+<span class="kw">struct </span>LdapInner {
+    <span class="kw">pub </span>framed: Framed&lt;SslStream&lt;TcpStream&gt;, LdapCodec&gt;,
+    <span class="kw">pub </span>msgid: i32,
 }
 
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LdapSchema</span> {
-    <span class="ident">Kanidm</span>,
-    <span class="ident">Rfc2307bis</span>,
+<span class="kw">pub enum </span>LdapSchema {
+    Kanidm,
+    Rfc2307bis,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LdapClient</span> {
-    <span class="kw">pub</span> <span class="ident">uri</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">addr</span>: <span class="ident">SocketAddr</span>,
-    <span class="kw">pub</span> <span class="ident">basedn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">schema</span>: <span class="ident">LdapSchema</span>,
-    <span class="ident">conn</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapInner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>LdapClient {
+    <span class="kw">pub </span>uri: String,
+    <span class="kw">pub </span>addr: SocketAddr,
+    <span class="kw">pub </span>basedn: String,
+    <span class="kw">pub </span>schema: LdapSchema,
+    conn: Mutex&lt;<span class="prelude-ty">Option</span>&lt;LdapInner&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">LdapClient</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;LdapClient&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;uri&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">uri</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;addr&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">addr</span>)
-            .<span class="ident">finish</span>()
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>LdapClient {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">&quot;LdapClient&quot;</span>)
+            .field(<span class="string">&quot;uri&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.uri)
+            .field(<span class="string">&quot;addr&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.addr)
+            .finish()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">LdapClient</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">basedn</span>: <span class="ident">String</span>, <span class="ident">schema</span>: <span class="ident">LdapSchema</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
-        <span class="comment">// Turn this into an address.</span>
-        <span class="macro">debug!</span>(<span class="string">&quot;ldap_uri {}&quot;</span>, <span class="ident">uri</span>);
+<span class="kw">impl </span>LdapClient {
+    <span class="kw">pub fn </span>new(uri: String, basedn: String, schema: LdapSchema) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt; {
+        <span class="comment">// Turn this into an address.
+        </span><span class="macro">debug!</span>(<span class="string">&quot;ldap_uri {}&quot;</span>, uri);
 
-        <span class="comment">// First remove the ldaps from the start.</span>
-        <span class="kw">let</span> <span class="ident">trimmed</span> <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">trim_start_matches</span>(<span class="string">&quot;ldaps://&quot;</span>);
+        <span class="comment">// First remove the ldaps from the start.
+        </span><span class="kw">let </span>trimmed = uri.trim_start_matches(<span class="string">&quot;ldaps://&quot;</span>);
 
-        <span class="comment">// Then provide the rest to the to_socket_addrs.</span>
-        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">trimmed</span>.<span class="ident">to_socket_addrs</span>() {
-            <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">addrs_iter</span>) =&gt; <span class="kw">match</span> <span class="ident">addrs_iter</span>.<span class="ident">next</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="ident">addr</span>,
-                <span class="prelude-val">None</span> =&gt; {
+        <span class="comment">// Then provide the rest to the to_socket_addrs.
+        </span><span class="kw">let </span>addr = <span class="kw">match </span>trimmed.to_socket_addrs() {
+            <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>addrs_iter) =&gt; <span class="kw">match </span>addrs_iter.next() {
+                <span class="prelude-val">Some</span>(addr) =&gt; addr,
+                <span class="prelude-val">None </span>=&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;No ldap uri addresses found&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
             },
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;Unable to parse LDAP uri address - {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;Unable to parse LDAP uri address - {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(());
             }
         };
 
-        <span class="macro">debug!</span>(<span class="string">&quot;addr -&gt; {:?}&quot;</span>, <span class="ident">addr</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;addr -&gt; {:?}&quot;</span>, addr);
 
-        <span class="comment">// now we store this for the tcp stream later.</span>
-        <span class="comment">// https://docs.rs/tokio/1.5.0/tokio/net/struct.TcpStream.html</span>
+        <span class="comment">// now we store this for the tcp stream later.
+        // https://docs.rs/tokio/1.5.0/tokio/net/struct.TcpStream.html
 
-        <span class="prelude-val">Ok</span>(<span class="ident">LdapClient</span> {
-            <span class="ident">uri</span>,
-            <span class="ident">addr</span>,
-            <span class="ident">basedn</span>,
-            <span class="ident">schema</span>,
-            <span class="ident">conn</span>: <span class="ident">Mutex::new</span>(<span class="prelude-val">None</span>),
+        </span><span class="prelude-val">Ok</span>(LdapClient {
+            uri,
+            addr,
+            basedn,
+            schema,
+            conn: Mutex::new(<span class="prelude-val">None</span>),
         })
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">bind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dn</span>: <span class="ident">String</span>, <span class="ident">pw</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">LdapMsg</span> {
-            <span class="ident">msgid</span>: <span class="number">1</span>,
-            <span class="ident">op</span>: <span class="ident">LdapOp::BindRequest</span>(<span class="ident">LdapBindRequest</span> {
-                <span class="ident">dn</span>,
-                <span class="ident">cred</span>: <span class="ident">LdapBindCred::Simple</span>(<span class="ident">pw</span>),
+    <span class="kw">async fn </span>bind(<span class="kw-2">&amp;</span><span class="self">self</span>, dn: String, pw: String) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span>msg = LdapMsg {
+            msgid: <span class="number">1</span>,
+            op: LdapOp::BindRequest(LdapBindRequest {
+                dn,
+                cred: LdapBindCred::Simple(pw),
             }),
-            <span class="ident">ctrl</span>: <span class="macro">vec!</span>[],
+            ctrl: <span class="macro">vec!</span>[],
         };
 
-        <span class="kw">let</span> <span class="ident">tcpstream</span> <span class="op">=</span> <span class="ident">TcpStream::connect</span>(<span class="self">self</span>.<span class="ident">addr</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">error!</span>(<span class="string">&quot;Failed to connect to {} -&gt; {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">uri</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>tcpstream = TcpStream::connect(<span class="self">self</span>.addr)
+            .<span class="kw">await
+            </span>.map_err(|e| <span class="macro">error!</span>(<span class="string">&quot;Failed to connect to {} -&gt; {:?}&quot;</span>, <span class="self">self</span>.uri, e))<span class="question-mark">?</span>;
 
-        <span class="comment">// Now add TLS</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tls_parms</span> <span class="op">=</span> <span class="ident">SslConnector::builder</span>(<span class="ident">SslMethod::tls_client</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;openssl -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="comment">// Now add TLS
+        </span><span class="kw">let </span><span class="kw-2">mut </span>tls_parms = SslConnector::builder(SslMethod::tls_client()).map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;openssl -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
-        <span class="ident">tls_parms</span>.<span class="ident">set_verify</span>(<span class="ident">SslVerifyMode::NONE</span>);
-        <span class="kw">let</span> <span class="ident">tls_parms</span> <span class="op">=</span> <span class="ident">tls_parms</span>.<span class="ident">build</span>();
+        tls_parms.set_verify(SslVerifyMode::NONE);
+        <span class="kw">let </span>tls_parms = tls_parms.build();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tlsstream</span> <span class="op">=</span> <span class="ident">Ssl::new</span>(<span class="ident">tls_parms</span>.<span class="ident">context</span>())
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">tls_obj</span><span class="op">|</span> <span class="ident">SslStream::new</span>(<span class="ident">tls_obj</span>, <span class="ident">tcpstream</span>))
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to initialise TLS -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>tlsstream = Ssl::new(tls_parms.context())
+            .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+            .map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to initialise TLS -&gt; {:?}&quot;</span>, e);
             })<span class="question-mark">?</span>;
 
-        <span class="ident">SslStream::connect</span>(<span class="ident">Pin::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">tlsstream</span>))
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to initialise TLS -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        SslStream::connect(Pin::new(<span class="kw-2">&amp;mut </span>tlsstream))
+            .<span class="kw">await
+            </span>.map_err(|e| {
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to initialise TLS -&gt; {:?}&quot;</span>, e);
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">framed</span> <span class="op">=</span> <span class="ident">Framed::new</span>(<span class="ident">tlsstream</span>, <span class="ident">LdapCodec</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>framed = Framed::new(tlsstream, LdapCodec);
 
-        <span class="ident">framed</span>.<span class="ident">send</span>(<span class="ident">msg</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to bind -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        framed.send(msg).<span class="kw">await</span>.map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Unable to bind -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) <span class="op">=</span> <span class="ident">framed</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">LdapOp::BindResponse</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">op</span> {
-                <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">res</span>.<span class="ident">code</span> <span class="op">==</span> <span class="ident">LdapResultCode::Success</span> {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">conn</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-                    <span class="kw-2">*</span><span class="ident">mguard</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">LdapInner</span> { <span class="ident">framed</span>, <span class="ident">msgid</span>: <span class="number">1</span> });
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(msg)) = framed.next().<span class="kw">await </span>{
+            <span class="kw">if let </span>LdapOp::BindResponse(res) = msg.op {
+                <span class="kw">if </span>res.res.code == LdapResultCode::Success {
+                    <span class="kw">let </span><span class="kw-2">mut </span>mguard = <span class="self">self</span>.conn.lock().<span class="kw">await</span>;
+                    <span class="kw-2">*</span>mguard = <span class="prelude-val">Some</span>(LdapInner { framed, msgid: <span class="number">1 </span>});
 
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
             }
         }
@@ -491,191 +491,154 @@
         <span class="prelude-val">Err</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_dm_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">bind</span>(<span class="string">&quot;cn=Directory Manager&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">pw</span>.<span class="ident">to_string</span>())
-            .<span class="kw">await</span>
-    }
+    <span class="kw">pub async fn </span>open_dm_connection(<span class="kw-2">&amp;</span><span class="self">self</span>, pw: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="self">self</span>.bind(<span class="string">&quot;cn=Directory Manager&quot;</span>.to_string(), pw.to_string())
+            .<span class="kw">await
+    </span>}
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_user_connection</span>(
+    <span class="kw">pub async fn </span>open_user_connection(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dn</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">schema</span> {
-            <span class="ident">LdapSchema::Kanidm</span> =&gt; <span class="ident">name</span>.<span class="ident">to_string</span>(),
-            <span class="ident">LdapSchema::Rfc2307bis</span> =&gt; <span class="macro">format!</span>(<span class="string">&quot;uid={},ou=people,{}&quot;</span>, <span class="ident">name</span>, <span class="self">self</span>.<span class="ident">basedn</span>),
+        test_start: Instant,
+        name: <span class="kw-2">&amp;</span>str,
+        pw: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration), ()&gt; {
+        <span class="kw">let </span>dn = <span class="kw">match </span><span class="self">self</span>.schema {
+            LdapSchema::Kanidm =&gt; name.to_string(),
+            LdapSchema::Rfc2307bis =&gt; <span class="macro">format!</span>(<span class="string">&quot;uid={},ou=people,{}&quot;</span>, name, <span class="self">self</span>.basedn),
         };
 
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
+        <span class="kw">let </span>start = Instant::now();
 
-        <span class="self">self</span>.<span class="ident">bind</span>(<span class="ident">dn</span>, <span class="ident">pw</span>.<span class="ident">to_string</span>()).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.bind(dn, pw.to_string()).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">end</span>.<span class="ident">duration_since</span>(<span class="ident">start</span>);
-        <span class="kw">let</span> <span class="ident">rel_diff</span> <span class="op">=</span> <span class="ident">start</span>.<span class="ident">duration_since</span>(<span class="ident">test_start</span>);
+        <span class="kw">let </span>end = Instant::now();
+        <span class="kw">let </span>diff = end.duration_since(start);
+        <span class="kw">let </span>rel_diff = start.duration_since(test_start);
 
-        <span class="prelude-val">Ok</span>((<span class="ident">rel_diff</span>, <span class="ident">diff</span>))
+        <span class="prelude-val">Ok</span>((rel_diff, diff))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">conn</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw-2">*</span><span class="ident">mguard</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+    <span class="kw">pub async fn </span>close_connection(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let </span><span class="kw-2">mut </span>mguard = <span class="self">self</span>.conn.lock().<span class="kw">await</span>;
+        <span class="kw-2">*</span>mguard = <span class="prelude-val">None</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search_name</span>(
+    <span class="kw">pub async fn </span>search_name(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">test_start</span>: <span class="ident">Instant</span>,
-        <span class="ident">ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">name_attr</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">schema</span> {
-            <span class="ident">LdapSchema::Kanidm</span> =&gt; <span class="string">&quot;name&quot;</span>,
-            <span class="ident">LdapSchema::Rfc2307bis</span> =&gt; <span class="string">&quot;cn&quot;</span>,
+        test_start: Instant,
+        ids: <span class="kw-2">&amp;</span>[String],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Duration, Duration, usize), ()&gt; {
+        <span class="kw">let </span>name_attr = <span class="kw">match </span><span class="self">self</span>.schema {
+            LdapSchema::Kanidm =&gt; <span class="string">&quot;name&quot;</span>,
+            LdapSchema::Rfc2307bis =&gt; <span class="string">&quot;cn&quot;</span>,
         };
 
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">LdapFilter::Or</span>(
-            <span class="ident">ids</span>.<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">LdapFilter::Equality</span>(<span class="ident">name_attr</span>.<span class="ident">to_string</span>(), <span class="ident">n</span>.<span class="ident">to_string</span>()))
-                .<span class="ident">collect</span>(),
+        <span class="kw">let </span>filter = LdapFilter::Or(
+            ids.iter()
+                .map(|n| LdapFilter::Equality(name_attr.to_string(), n.to_string()))
+                .collect(),
         );
 
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
+        <span class="kw">let </span>start = Instant::now();
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">filter</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>res = <span class="self">self</span>.search(filter).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">end</span>.<span class="ident">duration_since</span>(<span class="ident">start</span>);
-        <span class="kw">let</span> <span class="ident">rel_diff</span> <span class="op">=</span> <span class="ident">start</span>.<span class="ident">duration_since</span>(<span class="ident">test_start</span>);
+        <span class="kw">let </span>end = Instant::now();
+        <span class="kw">let </span>diff = end.duration_since(start);
+        <span class="kw">let </span>rel_diff = start.duration_since(test_start);
 
-        <span class="prelude-val">Ok</span>((<span class="ident">rel_diff</span>, <span class="ident">diff</span>, <span class="ident">res</span>.<span class="ident">len</span>()))
+        <span class="prelude-val">Ok</span>((rel_diff, diff, res.len()))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">LdapFilter</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LdapSearchResultEntry</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="comment">// Create the search filter</span>
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">LdapSearchRequest</span> {
-            <span class="ident">base</span>: <span class="self">self</span>.<span class="ident">basedn</span>.<span class="ident">clone</span>(),
-            <span class="ident">scope</span>: <span class="ident">LdapSearchScope::Subtree</span>,
-            <span class="ident">aliases</span>: <span class="ident">LdapDerefAliases::Never</span>,
-            <span class="ident">sizelimit</span>: <span class="number">0</span>,
-            <span class="ident">timelimit</span>: <span class="number">0</span>,
-            <span class="ident">typesonly</span>: <span class="bool-val">false</span>,
-            <span class="ident">filter</span>,
-            <span class="ident">attrs</span>: <span class="macro">vec!</span>[],
+    <span class="kw">pub async fn </span>search(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: LdapFilter) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LdapSearchResultEntry&gt;, ()&gt; {
+        <span class="comment">// Create the search filter
+        </span><span class="kw">let </span>req = LdapSearchRequest {
+            base: <span class="self">self</span>.basedn.clone(),
+            scope: LdapSearchScope::Subtree,
+            aliases: LdapDerefAliases::Never,
+            sizelimit: <span class="number">0</span>,
+            timelimit: <span class="number">0</span>,
+            typesonly: <span class="bool-val">false</span>,
+            filter,
+            attrs: <span class="macro">vec!</span>[],
         };
 
-        <span class="comment">// Prep the proto msg</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">conn</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">*</span><span class="ident">mguard</span>).<span class="ident">as_mut</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">i</span>) =&gt; <span class="ident">i</span>,
-            <span class="prelude-val">None</span> =&gt; {
+        <span class="comment">// Prep the proto msg
+        </span><span class="kw">let </span><span class="kw-2">mut </span>mguard = <span class="self">self</span>.conn.lock().<span class="kw">await</span>;
+        <span class="kw">let </span>inner = <span class="kw">match </span>(<span class="kw-2">*</span>mguard).as_mut() {
+            <span class="prelude-val">Some</span>(i) =&gt; i,
+            <span class="prelude-val">None </span>=&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;No connection available&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(());
             }
         };
 
-        <span class="ident">inner</span>.<span class="ident">msgid</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="ident">msgid</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">msgid</span>;
+        inner.msgid += <span class="number">1</span>;
+        <span class="kw">let </span>msgid = inner.msgid;
 
-        <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">LdapMsg</span> {
-            <span class="ident">msgid</span>,
-            <span class="ident">ctrl</span>: <span class="macro">vec!</span>[],
-            <span class="ident">op</span>: <span class="ident">LdapOp::SearchRequest</span>(<span class="ident">req</span>),
+        <span class="kw">let </span>msg = LdapMsg {
+            msgid,
+            ctrl: <span class="macro">vec!</span>[],
+            op: LdapOp::SearchRequest(req),
         };
 
-        <span class="comment">// Send it</span>
-        <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">send</span>(<span class="ident">msg</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to search -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="comment">// Send it
+        </span>inner.framed.send(msg).<span class="kw">await</span>.map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Unable to search -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">results</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="comment">// It takes a lot more work to process a response from ldap :(</span>
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-            <span class="kw">match</span> <span class="ident">msg</span>.<span class="ident">op</span> {
-                <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">ent</span>) =&gt; <span class="ident">results</span>.<span class="ident">push</span>(<span class="ident">ent</span>),
-                <span class="ident">LdapOp::SearchResultDone</span>(<span class="ident">res</span>) =&gt; {
-                    <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">code</span> <span class="op">==</span> <span class="ident">LdapResultCode::Success</span> {
+        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
+        <span class="comment">// It takes a lot more work to process a response from ldap :(
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(msg)) = inner.framed.next().<span class="kw">await </span>{
+            <span class="kw">match </span>msg.op {
+                LdapOp::SearchResultEntry(ent) =&gt; results.push(ent),
+                LdapOp::SearchResultDone(res) =&gt; {
+                    <span class="kw">if </span>res.code == LdapResultCode::Success {
                         <span class="kw">break</span>;
-                    } <span class="kw">else</span> {
-                        <span class="macro">error!</span>(<span class="string">&quot;Search Failed -&gt; {:?}&quot;</span>, <span class="ident">res</span>);
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+                    } <span class="kw">else </span>{
+                        <span class="macro">error!</span>(<span class="string">&quot;Search Failed -&gt; {:?}&quot;</span>, res);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(());
                     }
                 }
-                <span class="kw">_</span> =&gt; {
+                <span class="kw">_ </span>=&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Invalid ldap response state&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">results</span>)
+        <span class="prelude-val">Ok</span>(results)
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dn</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">conn</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">*</span><span class="ident">mguard</span>).<span class="ident">as_mut</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">i</span>) =&gt; <span class="ident">i</span>,
-            <span class="prelude-val">None</span> =&gt; {
+    <span class="kw">pub async fn </span>delete(<span class="kw-2">&amp;</span><span class="self">self</span>, dn: String) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>mguard = <span class="self">self</span>.conn.lock().<span class="kw">await</span>;
+        <span class="kw">let </span>inner = <span class="kw">match </span>(<span class="kw-2">*</span>mguard).as_mut() {
+            <span class="prelude-val">Some</span>(i) =&gt; i,
+            <span class="prelude-val">None </span>=&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;No connection available&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(());
             }
         };
 
-        <span class="ident">inner</span>.<span class="ident">msgid</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="ident">msgid</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">msgid</span>;
+        inner.msgid += <span class="number">1</span>;
+        <span class="kw">let </span>msgid = inner.msgid;
 
-        <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">LdapMsg</span> {
-            <span class="ident">msgid</span>,
-            <span class="ident">ctrl</span>: <span class="macro">vec!</span>[],
-            <span class="ident">op</span>: <span class="ident">LdapOp::DelRequest</span>(<span class="ident">dn</span>),
+        <span class="kw">let </span>msg = LdapMsg {
+            msgid,
+            ctrl: <span class="macro">vec!</span>[],
+            op: LdapOp::DelRequest(dn),
         };
 
-        <span class="comment">// Send it</span>
-        <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">send</span>(<span class="ident">msg</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to delete -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="comment">// Send it
+        </span>inner.framed.send(msg).<span class="kw">await</span>.map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Unable to delete -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">LdapOp::DelResponse</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">op</span> {
-                <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">code</span> <span class="op">==</span> <span class="ident">LdapResultCode::Success</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
-                } <span class="kw">else</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Delete Failed -&gt; {:?}&quot;</span>, <span class="ident">res</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(());
-                }
-            }
-        }
-        <span class="macro">error!</span>(<span class="string">&quot;Invalid ldap response state&quot;</span>);
-        <span class="prelude-val">Err</span>(())
-    }
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">req</span>: <span class="ident">LdapAddRequest</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">conn</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">*</span><span class="ident">mguard</span>).<span class="ident">as_mut</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">i</span>) =&gt; <span class="ident">i</span>,
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;No connection available&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(());
-            }
-        };
-
-        <span class="ident">inner</span>.<span class="ident">msgid</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="ident">msgid</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">msgid</span>;
-
-        <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">LdapMsg</span> {
-            <span class="ident">msgid</span>,
-            <span class="ident">ctrl</span>: <span class="macro">vec!</span>[],
-            <span class="ident">op</span>: <span class="ident">LdapOp::AddRequest</span>(<span class="ident">req</span>),
-        };
-
-        <span class="comment">// Send it</span>
-        <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">send</span>(<span class="ident">msg</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to add -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-        })<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">LdapOp::AddResponse</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">op</span> {
-                <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">code</span> <span class="op">==</span> <span class="ident">LdapResultCode::Success</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
-                } <span class="kw">else</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Add Failed -&gt; {:?}&quot;</span>, <span class="ident">res</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(msg)) = inner.framed.next().<span class="kw">await </span>{
+            <span class="kw">if let </span>LdapOp::DelResponse(res) = msg.op {
+                <span class="kw">if </span>res.code == LdapResultCode::Success {
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                } <span class="kw">else </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Delete Failed -&gt; {:?}&quot;</span>, res);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
             }
         }
@@ -683,36 +646,73 @@
         <span class="prelude-val">Err</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">req</span>: <span class="ident">LdapModifyRequest</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">conn</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">*</span><span class="ident">mguard</span>).<span class="ident">as_mut</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">i</span>) =&gt; <span class="ident">i</span>,
-            <span class="prelude-val">None</span> =&gt; {
+    <span class="kw">pub async fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, req: LdapAddRequest) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>mguard = <span class="self">self</span>.conn.lock().<span class="kw">await</span>;
+        <span class="kw">let </span>inner = <span class="kw">match </span>(<span class="kw-2">*</span>mguard).as_mut() {
+            <span class="prelude-val">Some</span>(i) =&gt; i,
+            <span class="prelude-val">None </span>=&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;No connection available&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(());
             }
         };
 
-        <span class="ident">inner</span>.<span class="ident">msgid</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="ident">msgid</span> <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">msgid</span>;
+        inner.msgid += <span class="number">1</span>;
+        <span class="kw">let </span>msgid = inner.msgid;
 
-        <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">LdapMsg</span> {
-            <span class="ident">msgid</span>,
-            <span class="ident">ctrl</span>: <span class="macro">vec!</span>[],
-            <span class="ident">op</span>: <span class="ident">LdapOp::ModifyRequest</span>(<span class="ident">req</span>),
+        <span class="kw">let </span>msg = LdapMsg {
+            msgid,
+            ctrl: <span class="macro">vec!</span>[],
+            op: LdapOp::AddRequest(req),
         };
 
-        <span class="comment">// Send it</span>
-        <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">send</span>(<span class="ident">msg</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to modify -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="comment">// Send it
+        </span>inner.framed.send(msg).<span class="kw">await</span>.map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Unable to add -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) <span class="op">=</span> <span class="ident">inner</span>.<span class="ident">framed</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">LdapOp::ModifyResponse</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="ident">msg</span>.<span class="ident">op</span> {
-                <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">code</span> <span class="op">==</span> <span class="ident">LdapResultCode::Success</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
-                } <span class="kw">else</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Modify Failed -&gt; {:?}&quot;</span>, <span class="ident">res</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(msg)) = inner.framed.next().<span class="kw">await </span>{
+            <span class="kw">if let </span>LdapOp::AddResponse(res) = msg.op {
+                <span class="kw">if </span>res.code == LdapResultCode::Success {
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                } <span class="kw">else </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Add Failed -&gt; {:?}&quot;</span>, res);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
+                }
+            }
+        }
+        <span class="macro">error!</span>(<span class="string">&quot;Invalid ldap response state&quot;</span>);
+        <span class="prelude-val">Err</span>(())
+    }
+
+    <span class="kw">pub async fn </span>modify(<span class="kw-2">&amp;</span><span class="self">self</span>, req: LdapModifyRequest) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>mguard = <span class="self">self</span>.conn.lock().<span class="kw">await</span>;
+        <span class="kw">let </span>inner = <span class="kw">match </span>(<span class="kw-2">*</span>mguard).as_mut() {
+            <span class="prelude-val">Some</span>(i) =&gt; i,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;No connection available&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(());
+            }
+        };
+
+        inner.msgid += <span class="number">1</span>;
+        <span class="kw">let </span>msgid = inner.msgid;
+
+        <span class="kw">let </span>msg = LdapMsg {
+            msgid,
+            ctrl: <span class="macro">vec!</span>[],
+            op: LdapOp::ModifyRequest(req),
+        };
+
+        <span class="comment">// Send it
+        </span>inner.framed.send(msg).<span class="kw">await</span>.map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Unable to modify -&gt; {:?}&quot;</span>, e);
+        })<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(msg)) = inner.framed.next().<span class="kw">await </span>{
+            <span class="kw">if let </span>LdapOp::ModifyResponse(res) = msg.op {
+                <span class="kw">if </span>res.code == LdapResultCode::Success {
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                } <span class="kw">else </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Modify Failed -&gt; {:?}&quot;</span>, res);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
             }
         }
@@ -721,4 +721,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

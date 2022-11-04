@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/components/admin_groups.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>admin_groups.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/components/admin_groups.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>admin_groups.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -376,383 +376,383 @@
 <span id="376">376</span>
 <span id="377">377</span>
 <span id="378">378</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
-<span class="kw">use</span> <span class="ident">gloo::console</span>;
-<span class="kw">use</span> <span class="ident">yew</span>::{<span class="ident">html</span>, <span class="ident">Component</span>, <span class="ident">Context</span>, <span class="ident">Html</span>, <span class="ident">Properties</span>};
-<span class="kw">use</span> <span class="ident">yew_router::prelude::Link</span>;
+<span class="kw">use </span>gloo::console;
+<span class="kw">use </span>yew::{html, Component, Context, Html, Properties};
+<span class="kw">use </span>yew_router::prelude::Link;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::components::adminmenu</span>::{<span class="ident">Entity</span>, <span class="ident">EntityType</span>, <span class="ident">GetError</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::components::alpha_warning_banner</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">CSS_BREADCRUMB_ITEM</span>, <span class="ident">CSS_BREADCRUMB_ITEM_ACTIVE</span>, <span class="ident">CSS_CELL</span>, <span class="ident">CSS_TABLE</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::{<span class="ident">do_alert_error</span>, <span class="ident">do_page_header</span>, <span class="ident">init_request</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::views::AdminRoute</span>;
+<span class="kw">use </span><span class="kw">crate</span>::components::adminmenu::{Entity, EntityType, GetError};
+<span class="kw">use </span><span class="kw">crate</span>::components::alpha_warning_banner;
+<span class="kw">use </span><span class="kw">crate</span>::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
+<span class="kw">use </span><span class="kw">crate</span>::utils::{do_alert_error, do_page_header, init_request};
+<span class="kw">use </span><span class="kw">crate</span>::views::AdminRoute;
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">GetError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AdminListGroupsMsg</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ge</span>: <span class="ident">GetError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AdminListGroupsMsg::Failed</span> {
-            <span class="ident">emsg</span>: <span class="ident">ge</span>.<span class="ident">err</span>,
-            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>From&lt;GetError&gt; <span class="kw">for </span>AdminListGroupsMsg {
+    <span class="kw">fn </span>from(ge: GetError) -&gt; <span class="self">Self </span>{
+        AdminListGroupsMsg::Failed {
+            emsg: ge.err,
+            kopid: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AdminListGroups</span> {
-    <span class="ident">state</span>: <span class="ident">GroupsViewState</span>,
+<span class="kw">pub struct </span>AdminListGroups {
+    state: GroupsViewState,
 }
 
-<span class="comment">// callback messaging for this confused pile of crab-bait</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AdminListGroupsMsg</span> {
-    <span class="doccomment">/// When the server responds and we need to update the page</span>
-    <span class="ident">Responded</span> {
-        <span class="ident">response</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
+<span class="comment">// callback messaging for this confused pile of crab-bait
+</span><span class="kw">pub enum </span>AdminListGroupsMsg {
+    <span class="doccomment">/// When the server responds and we need to update the page
+    </span>Responded {
+        response: BTreeMap&lt;String, Entity&gt;,
     },
-    <span class="ident">Failed</span> {
-        <span class="ident">emsg</span>: <span class="ident">String</span>,
-        <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    Failed {
+        emsg: String,
+        kopid: <span class="prelude-ty">Option</span>&lt;String&gt;,
     },
 }
 
-<span class="kw">enum</span> <span class="ident">GroupsViewState</span> {
-    <span class="doccomment">/// waiting for the page to load</span>
-    <span class="ident">Loading</span>,
-    <span class="doccomment">/// server has responded</span>
-    <span class="ident">Responded</span> { <span class="ident">response</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Entity</span><span class="op">&gt;</span> },
-    <span class="doccomment">/// failed to pull the details</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="ident">Failed</span> {
-        <span class="comment">// TODO: use this</span>
-        <span class="ident">emsg</span>: <span class="ident">String</span>,
-        <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="kw">enum </span>GroupsViewState {
+    <span class="doccomment">/// waiting for the page to load
+    </span>Loading,
+    <span class="doccomment">/// server has responded
+    </span>Responded { response: BTreeMap&lt;String, Entity&gt; },
+    <span class="doccomment">/// failed to pull the details
+    </span><span class="attribute">#[allow(dead_code)]
+    </span>Failed {
+        <span class="comment">// TODO: use this
+        </span>emsg: String,
+        kopid: <span class="prelude-ty">Option</span>&lt;String&gt;,
     },
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="doccomment">/// Not authorized to pull the details</span>
-    <span class="ident">NotAuthorized</span> {}, <span class="comment">// TODO: use this</span>
-}
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="doccomment">/// Not authorized to pull the details
+    </span>NotAuthorized {}, <span class="comment">// TODO: use this
+</span>}
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Properties</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AdminListGroupsProps</span> {
-    <span class="comment">// for filtering and pagination</span>
-    <span class="comment">// #[allow(dead_code)]</span>
-    <span class="comment">// search: Option&lt;String&gt;,</span>
-    <span class="comment">// #[allow(dead_code)]</span>
-    <span class="comment">// page: Option&lt;u32&gt;,</span>
-}
+<span class="attribute">#[derive(PartialEq, Properties, Eq)]
+</span><span class="kw">pub struct </span>AdminListGroupsProps {
+    <span class="comment">// for filtering and pagination
+    // #[allow(dead_code)]
+    // search: Option&lt;String&gt;,
+    // #[allow(dead_code)]
+    // page: Option&lt;u32&gt;,
+</span>}
 
-<span class="doccomment">/// Pulls all accounts (service or person-class) from the backend and returns a HashMap</span>
-<span class="doccomment">/// with the &quot;name&quot; field being the keys, for easy human-facing sortability.</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_groups</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AdminListGroupsMsg</span>, <span class="ident">GetError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all_groups</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
+<span class="doccomment">/// Pulls all accounts (service or person-class) from the backend and returns a HashMap
+/// with the &quot;name&quot; field being the keys, for easy human-facing sortability.
+</span><span class="kw">pub async fn </span>get_groups() -&gt; <span class="prelude-ty">Result</span>&lt;AdminListGroupsMsg, GetError&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>all_groups = BTreeMap::new();
 
-    <span class="comment">// we iterate over these endpoints</span>
-    <span class="kw">let</span> <span class="ident">endpoints</span> <span class="op">=</span> [(<span class="string">&quot;/v1/group&quot;</span>, <span class="ident">EntityType::Group</span>)];
+    <span class="comment">// we iterate over these endpoints
+    </span><span class="kw">let </span>endpoints = [(<span class="string">&quot;/v1/group&quot;</span>, EntityType::Group)];
 
-    <span class="kw">for</span> (<span class="ident">endpoint</span>, <span class="ident">object_type</span>) <span class="kw">in</span> <span class="ident">endpoints</span> {
-        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">init_request</span>(<span class="ident">endpoint</span>);
-        <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">request</span>.<span class="ident">send</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GetError</span> {
-                    <span class="ident">err</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">error</span>),
+    <span class="kw">for </span>(endpoint, object_type) <span class="kw">in </span>endpoints {
+        <span class="kw">let </span>request = init_request(endpoint);
+        <span class="kw">let </span>response = <span class="kw">match </span>request.send().<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(value) =&gt; value,
+            <span class="prelude-val">Err</span>(error) =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(GetError {
+                    err: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, error),
                 })
             }
         };
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::panic</span>)]</span>
-        <span class="kw">let</span> <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entity</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Failed to grab the group data into JSON: {:?}&quot;</span>, <span class="ident">error</span>),
+        <span class="attribute">#[allow(clippy::panic)]
+        </span><span class="kw">let </span>data: Vec&lt;Entity&gt; = <span class="kw">match </span>response.json().<span class="kw">await </span>{
+            <span class="prelude-val">Ok</span>(value) =&gt; value,
+            <span class="prelude-val">Err</span>(error) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Failed to grab the group data into JSON: {:?}&quot;</span>, error),
         };
 
-        <span class="kw">for</span> <span class="ident">entity</span> <span class="kw">in</span> <span class="ident">data</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_entity</span> <span class="op">=</span> <span class="ident">entity</span>.<span class="ident">to_owned</span>();
-            <span class="ident">new_entity</span>.<span class="ident">object_type</span> <span class="op">=</span> <span class="ident">object_type</span>.<span class="ident">clone</span>();
+        <span class="kw">for </span>entity <span class="kw">in </span>data.iter() {
+            <span class="kw">let </span><span class="kw-2">mut </span>new_entity = entity.to_owned();
+            new_entity.object_type = object_type.clone();
 
-            <span class="comment">// first we try the short name and, if that isn&#39;t there then just use the SPN...</span>
-            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-            <span class="kw">let</span> <span class="ident">entity_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">entity</span>.<span class="ident">attrs</span>.<span class="ident">name</span>.<span class="ident">first</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">to_string</span>(),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">entity</span>
-                    .<span class="ident">attrs</span>
-                    .<span class="ident">spn</span>
-                    .<span class="ident">first</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to grab the SPN for a group.&quot;</span>)
-                    .<span class="ident">to_string</span>(),
+            <span class="comment">// first we try the short name and, if that isn&#39;t there then just use the SPN...
+            </span><span class="attribute">#[allow(clippy::expect_used)]
+            </span><span class="kw">let </span>entity_id = <span class="kw">match </span>entity.attrs.name.first() {
+                <span class="prelude-val">Some</span>(value) =&gt; value.to_string(),
+                <span class="prelude-val">None </span>=&gt; entity
+                    .attrs
+                    .spn
+                    .first()
+                    .expect(<span class="string">&quot;Failed to grab the SPN for a group.&quot;</span>)
+                    .to_string(),
             };
-            <span class="ident">all_groups</span>.<span class="ident">insert</span>(<span class="ident">entity_id</span>.<span class="ident">to_string</span>(), <span class="ident">new_entity</span>);
+            all_groups.insert(entity_id.to_string(), new_entity);
         }
     }
 
-    <span class="prelude-val">Ok</span>(<span class="ident">AdminListGroupsMsg::Responded</span> {
-        <span class="ident">response</span>: <span class="ident">all_groups</span>,
+    <span class="prelude-val">Ok</span>(AdminListGroupsMsg::Responded {
+        response: all_groups,
     })
 }
 
-<span class="kw">impl</span> <span class="ident">Component</span> <span class="kw">for</span> <span class="ident">AdminListGroups</span> {
-    <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">AdminListGroupsMsg</span>;
-    <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> <span class="ident">AdminListGroupsProps</span>;
+<span class="kw">impl </span>Component <span class="kw">for </span>AdminListGroups {
+    <span class="kw">type </span>Message = AdminListGroupsMsg;
+    <span class="kw">type </span>Properties = AdminListGroupsProps;
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// TODO: work out the querystring thing so we can just show x number of elements</span>
-        <span class="comment">// console::log!(&quot;query: {:?}&quot;, location().query);</span>
+    <span class="kw">fn </span>create(ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="comment">// TODO: work out the querystring thing so we can just show x number of elements
+        // console::log!(&quot;query: {:?}&quot;, location().query);
 
-        <span class="comment">// start pulling the account data on startup</span>
-        <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">match</span> <span class="ident">get_groups</span>().<span class="kw">await</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+        // start pulling the account data on startup
+        </span>ctx.link().send_future(<span class="kw">async move </span>{
+            <span class="kw">match </span>get_groups().<span class="kw">await </span>{
+                <span class="prelude-val">Ok</span>(v) =&gt; v,
+                <span class="prelude-val">Err</span>(v) =&gt; v.into(),
             }
         });
-        <span class="ident">AdminListGroups</span> {
-            <span class="ident">state</span>: <span class="ident">GroupsViewState::Loading</span>,
+        AdminListGroups {
+            state: GroupsViewState::Loading,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="op">&gt;</span>
-              {<span class="ident">do_page_header</span>(<span class="string">&quot;Group Administration&quot;</span>)}
+    <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="macro">html! </span>{
+            &lt;&gt;
+              {do_page_header(<span class="string">&quot;Group Administration&quot;</span>)}
 
-              { <span class="ident">alpha_warning_banner</span>() }
-        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">id</span><span class="op">=</span>{<span class="string">&quot;grouplist&quot;</span>}<span class="op">&gt;</span>
-        {<span class="self">self</span>.<span class="ident">view_state</span>(<span class="ident">ctx</span>)}
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+              { alpha_warning_banner() }
+        &lt;div id={<span class="string">&quot;grouplist&quot;</span>}&gt;
+        {<span class="self">self</span>.view_state(ctx)}
+        &lt;/div&gt;
+        &lt;/&gt;
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">msg</span> {
-            <span class="ident">AdminListGroupsMsg::Responded</span> { <span class="ident">response</span> } =&gt; {
-                <span class="comment">// TODO: do we paginate here?</span>
-                <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-                <span class="kw">for</span> <span class="ident">key</span> <span class="kw">in</span> <span class="ident">response</span>.<span class="ident">keys</span>() {
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, msg: <span class="self">Self</span>::Message) -&gt; bool {
+        <span class="kw">match </span>msg {
+            AdminListGroupsMsg::Responded { response } =&gt; {
+                <span class="comment">// TODO: do we paginate here?
+                </span><span class="attribute">#[cfg(test)]
+                </span><span class="kw">for </span>key <span class="kw">in </span>response.keys() {
                     <span class="macro">console::debug!</span>(
                         <span class="string">&quot;response: {:?}&quot;</span>,
-                        <span class="ident">serde_json::to_string</span>(<span class="ident">response</span>.<span class="ident">get</span>(<span class="ident">key</span>).<span class="ident">unwrap</span>()).<span class="ident">unwrap</span>()
+                        serde_json::to_string(response.get(key).unwrap()).unwrap()
                     );
                 }
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">GroupsViewState::Responded</span> { <span class="ident">response</span> };
-                <span class="kw">return</span> <span class="bool-val">true</span>;
+                <span class="self">self</span>.state = GroupsViewState::Responded { response };
+                <span class="kw">return </span><span class="bool-val">true</span>;
             }
-            <span class="ident">AdminListGroupsMsg::Failed</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="comment">// TODO: make this push a view state</span>
-                <span class="macro">console::log!</span>(<span class="string">&quot;emsg: {:?}&quot;</span>, <span class="ident">emsg</span>);
-                <span class="macro">console::log!</span>(<span class="string">&quot;kopid: {:?}&quot;</span>, <span class="ident">kopid</span>);
+            AdminListGroupsMsg::Failed { emsg, kopid } =&gt; {
+                <span class="comment">// TODO: make this push a view state
+                </span><span class="macro">console::log!</span>(<span class="string">&quot;emsg: {:?}&quot;</span>, emsg);
+                <span class="macro">console::log!</span>(<span class="string">&quot;kopid: {:?}&quot;</span>, kopid);
             }
         }
-        <span class="bool-val">false</span>
-    }
+        <span class="bool-val">false
+    </span>}
 }
 
-<span class="kw">impl</span> <span class="ident">AdminListGroups</span> {
-    <span class="doccomment">/// output the information based on what&#39;s in the current state</span>
-    <span class="kw">fn</span> <span class="ident">view_state</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">GroupsViewState::Loading</span> =&gt; {
-                <span class="macro">html!</span> {<span class="string">&quot;Waiting on the groups list to load...&quot;</span>}
+<span class="kw">impl </span>AdminListGroups {
+    <span class="doccomment">/// output the information based on what&#39;s in the current state
+    </span><span class="kw">fn </span>view_state(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+            GroupsViewState::Loading =&gt; {
+                <span class="macro">html! </span>{<span class="string">&quot;Waiting on the groups list to load...&quot;</span>}
             }
 
-            <span class="ident">GroupsViewState::Responded</span> { <span class="ident">response</span> } =&gt; {
-                <span class="kw">let</span> <span class="ident">scope_col</span> <span class="op">=</span> <span class="string">&quot;col&quot;</span>;
+            GroupsViewState::Responded { response } =&gt; {
+                <span class="kw">let </span>scope_col = <span class="string">&quot;col&quot;</span>;
 
                 <span class="macro">html!</span>(
-                  <span class="op">&lt;</span><span class="ident">table</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CSS_TABLE</span>}<span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">thead</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">tr</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span>{<span class="ident">scope_col</span>}<span class="op">&gt;</span>{<span class="string">&quot;Name&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span>{<span class="ident">scope_col</span>}<span class="op">&gt;</span>{<span class="string">&quot;Description&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">thead</span><span class="op">&gt;</span>
+                  &lt;table class={CSS_TABLE}&gt;
+                  &lt;thead&gt;
+                    &lt;tr&gt;
+                      &lt;th scope={scope_col}&gt;{<span class="string">&quot;Name&quot;</span>}&lt;/th&gt;
+                      &lt;th scope={scope_col}&gt;{<span class="string">&quot;Description&quot;</span>}&lt;/th&gt;
+                    &lt;/tr&gt;
+                  &lt;/thead&gt;
 
                   {
-                    <span class="ident">response</span>.<span class="ident">keys</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">name</span><span class="op">|</span> {
-                        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                      <span class="kw">let</span> <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">Entity</span> <span class="op">=</span> <span class="ident">response</span>.<span class="ident">get</span>(<span class="ident">name</span>).<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t get group key when it was just in the iter...&quot;</span>);
+                    response.keys().map(|name| {
+                        <span class="attribute">#[allow(clippy::expect_used)]
+                      </span><span class="kw">let </span>group: <span class="kw-2">&amp;</span>Entity = response.get(name).expect(<span class="string">&quot;Couldn&#39;t get group key when it was just in the iter...&quot;</span>);
 
-                        <span class="kw">let</span> <span class="ident">description</span>: <span class="ident">String</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">group</span>.<span class="ident">attrs</span>.<span class="ident">description</span>.<span class="ident">first</span>() {
-                          <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">to_string</span>(),
-                          <span class="prelude-val">None</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;&quot;</span>),
+                        <span class="kw">let </span>description: String = <span class="kw">match </span>group.attrs.description.first() {
+                          <span class="prelude-val">Some</span>(value) =&gt; value.to_string(),
+                          <span class="prelude-val">None </span>=&gt; String::from(<span class="string">&quot;&quot;</span>),
                         };
-                        <span class="kw">let</span> <span class="ident">uuid</span>: <span class="ident">String</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">group</span>.<span class="ident">attrs</span>.<span class="ident">uuid</span>.<span class="ident">first</span>() {
-                            <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">to_string</span>(),
-                            <span class="prelude-val">None</span> =&gt; {
-                                <span class="macro">console::error!</span>(<span class="string">&quot;Group without a UUID?&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">group</span>).<span class="ident">to_string</span>());
-                                <span class="ident">String::from</span>(<span class="string">&quot;GROUP WITHOUT A UUID!&quot;</span>)
+                        <span class="kw">let </span>uuid: String = <span class="kw">match </span>group.attrs.uuid.first() {
+                            <span class="prelude-val">Some</span>(value) =&gt; value.to_string(),
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="macro">console::error!</span>(<span class="string">&quot;Group without a UUID?&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, group).to_string());
+                                String::from(<span class="string">&quot;GROUP WITHOUT A UUID!&quot;</span>)
                             }
                         };
 
                         <span class="macro">html!</span>{
-                          <span class="op">&lt;</span><span class="ident">tr</span> <span class="ident">key</span><span class="op">=</span>{<span class="ident">uuid</span>.<span class="ident">clone</span>()}<span class="op">&gt;</span>
-                          <span class="op">&lt;</span><span class="ident">td</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CSS_CELL</span>} <span class="ident">scope</span><span class="op">=</span>{<span class="ident">scope_col</span>}<span class="op">&gt;</span>
-                          <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">AdminRoute::ViewGroup</span>{<span class="ident">uuid</span>:{<span class="ident">uuid</span>.<span class="ident">clone</span>()}}} <span class="op">&gt;</span>{<span class="ident">name</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                          <span class="op">&lt;</span><span class="ident">td</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CSS_CELL</span>}<span class="op">&gt;</span>{<span class="ident">description</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                          <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
+                          &lt;tr key={uuid.clone()}&gt;
+                          &lt;td class={CSS_CELL} scope={scope_col}&gt;
+                          &lt;Link&lt;AdminRoute&gt; to={AdminRoute::ViewGroup{uuid:{uuid.clone()}}} &gt;{name}&lt;/Link&lt;AdminRoute&gt;&gt;&lt;/td&gt;
+                          &lt;td class={CSS_CELL}&gt;{description}&lt;/td&gt;
+                          &lt;/tr&gt;
                         }
-                    }).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Html</span><span class="op">&gt;</span>()
+                    }).collect::&lt;Html&gt;()
                   }
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">table</span><span class="op">&gt;</span>
+                  &lt;/table&gt;
                 )
             }
 
-            <span class="ident">GroupsViewState::Failed</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="macro">console::error!</span>(<span class="string">&quot;Failed to pull details&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">kopid</span>));
+            GroupsViewState::Failed { emsg, kopid } =&gt; {
+                <span class="macro">console::error!</span>(<span class="string">&quot;Failed to pull details&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, kopid));
                 <span class="macro">html!</span>(
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    {<span class="ident">do_alert_error</span>(<span class="string">&quot;Failed to Query Groups&quot;</span>, <span class="prelude-val">Some</span>(<span class="ident">emsg</span>))}
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                    &lt;&gt;
+                    {do_alert_error(<span class="string">&quot;Failed to Query Groups&quot;</span>, <span class="prelude-val">Some</span>(emsg))}
+                    &lt;/&gt;
                 )
             }
-            <span class="ident">GroupsViewState::NotAuthorized</span> {} =&gt; {
-                <span class="ident">do_alert_error</span>(<span class="string">&quot;You&#39;re not authorized to see this page!&quot;</span>, <span class="prelude-val">None</span>)
+            GroupsViewState::NotAuthorized {} =&gt; {
+                do_alert_error(<span class="string">&quot;You&#39;re not authorized to see this page!&quot;</span>, <span class="prelude-val">None</span>)
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Properties</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AdminViewGroupProps</span> {
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Properties, PartialEq, Eq, Clone)]
+</span><span class="kw">pub struct </span>AdminViewGroupProps {
+    <span class="kw">pub </span>uuid: String,
 }
 
-<span class="comment">// callback messaging for group detail view</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AdminViewGroupMsg</span> {
-    <span class="doccomment">/// When the server responds and we need to update the page</span>
-    <span class="ident">Responded</span> { <span class="ident">response</span>: <span class="ident">Entity</span> },
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="ident">Failed</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="ident">NotAuthorized</span> {},
+<span class="comment">// callback messaging for group detail view
+</span><span class="kw">pub enum </span>AdminViewGroupMsg {
+    <span class="doccomment">/// When the server responds and we need to update the page
+    </span>Responded { response: Entity },
+    <span class="attribute">#[allow(dead_code)]
+    </span>Failed { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
+    <span class="attribute">#[allow(dead_code)]
+    </span>NotAuthorized {},
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">GetError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AdminViewGroupMsg</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ge</span>: <span class="ident">GetError</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AdminViewGroupMsg::Failed</span> {
-            <span class="ident">emsg</span>: <span class="ident">ge</span>.<span class="ident">err</span>,
-            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>From&lt;GetError&gt; <span class="kw">for </span>AdminViewGroupMsg {
+    <span class="kw">fn </span>from(ge: GetError) -&gt; <span class="self">Self </span>{
+        AdminViewGroupMsg::Failed {
+            emsg: ge.err,
+            kopid: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="kw">enum</span> <span class="ident">GroupViewState</span> {
-    <span class="doccomment">/// waiting for the page to load</span>
-    <span class="ident">Loading</span>,
-    <span class="doccomment">/// server has responded</span>
-    <span class="ident">Responded</span> { <span class="ident">response</span>: <span class="ident">Entity</span> },
-    <span class="doccomment">/// failed to pull the details</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="ident">Failed</span> {
-        <span class="comment">// TODO: use this</span>
-        <span class="ident">emsg</span>: <span class="ident">String</span>,
-        <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="kw">enum </span>GroupViewState {
+    <span class="doccomment">/// waiting for the page to load
+    </span>Loading,
+    <span class="doccomment">/// server has responded
+    </span>Responded { response: Entity },
+    <span class="doccomment">/// failed to pull the details
+    </span><span class="attribute">#[allow(dead_code)]
+    </span>Failed {
+        <span class="comment">// TODO: use this
+        </span>emsg: String,
+        kopid: <span class="prelude-ty">Option</span>&lt;String&gt;,
     },
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="doccomment">/// Not authorized to pull the details</span>
-    <span class="ident">NotAuthorized</span> {}, <span class="comment">// TODO: use this</span>
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="doccomment">/// Not authorized to pull the details
+    </span>NotAuthorized {}, <span class="comment">// TODO: use this
+</span>}
+
+<span class="kw">pub struct </span>AdminViewGroup {
+    state: GroupViewState,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AdminViewGroup</span> {
-    <span class="ident">state</span>: <span class="ident">GroupViewState</span>,
-}
+<span class="kw">impl </span>Component <span class="kw">for </span>AdminViewGroup {
+    <span class="kw">type </span>Message = AdminViewGroupMsg;
+    <span class="kw">type </span>Properties = AdminViewGroupProps;
 
-<span class="kw">impl</span> <span class="ident">Component</span> <span class="kw">for</span> <span class="ident">AdminViewGroup</span> {
-    <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">AdminViewGroupMsg</span>;
-    <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> <span class="ident">AdminViewGroupProps</span>;
-
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">props</span>().<span class="ident">uuid</span>.<span class="ident">clone</span>();
-        <span class="comment">// TODO: start pulling the group details then send the msg blep blep</span>
-        <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">match</span> <span class="ident">get_group</span>(<span class="kw-2">&amp;</span><span class="ident">uuid</span>).<span class="kw">await</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+    <span class="kw">fn </span>create(ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>uuid = ctx.props().uuid.clone();
+        <span class="comment">// TODO: start pulling the group details then send the msg blep blep
+        </span>ctx.link().send_future(<span class="kw">async move </span>{
+            <span class="kw">match </span>get_group(<span class="kw-2">&amp;</span>uuid).<span class="kw">await </span>{
+                <span class="prelude-val">Ok</span>(v) =&gt; v,
+                <span class="prelude-val">Err</span>(v) =&gt; v.into(),
             }
         });
 
-        <span class="ident">AdminViewGroup</span> {
-            <span class="ident">state</span>: <span class="ident">GroupViewState::Loading</span>,
+        AdminViewGroup {
+            state: GroupViewState::Loading,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">GroupViewState::Loading</span> =&gt; <span class="macro">html!</span> {<span class="string">&quot;Loading...&quot;</span>},
-            <span class="ident">GroupViewState::Responded</span> { <span class="ident">response</span> } =&gt; {
-                <span class="kw">let</span> <span class="ident">group_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">attrs</span>.<span class="ident">name</span>.<span class="ident">first</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">as_str</span>(),
-                    <span class="prelude-val">None</span> =&gt; {
-                        <span class="comment">// TODO: this should throw an error</span>
-                        <span class="string">&quot;No Group Name?&quot;</span>
-                    }
+    <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
+            GroupViewState::Loading =&gt; <span class="macro">html! </span>{<span class="string">&quot;Loading...&quot;</span>},
+            GroupViewState::Responded { response } =&gt; {
+                <span class="kw">let </span>group_name = <span class="kw">match </span>response.attrs.name.first() {
+                    <span class="prelude-val">Some</span>(value) =&gt; value.as_str(),
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// TODO: this should throw an error
+                        </span><span class="string">&quot;No Group Name?&quot;
+                    </span>}
                 };
-                <span class="kw">let</span> <span class="ident">page_title</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Group: {}&quot;</span>, <span class="ident">group_name</span>);
+                <span class="kw">let </span>page_title = <span class="macro">format!</span>(<span class="string">&quot;Group: {}&quot;</span>, group_name);
 
-                <span class="kw">let</span> <span class="ident">group_uuid</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">attrs</span>.<span class="ident">uuid</span>.<span class="ident">first</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">clone</span>(),
-                    <span class="prelude-val">None</span> =&gt; <span class="ident">String::from</span>(<span class="string">&quot;Error querying UUID!&quot;</span>),
+                <span class="kw">let </span>group_uuid = <span class="kw">match </span>response.attrs.uuid.first() {
+                    <span class="prelude-val">Some</span>(value) =&gt; value.clone(),
+                    <span class="prelude-val">None </span>=&gt; String::from(<span class="string">&quot;Error querying UUID!&quot;</span>),
                 };
-                <span class="macro">html!</span> {
-                    <span class="op">&lt;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">ol</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;breadcrumb&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CSS_BREADCRUMB_ITEM</span>}<span class="op">&gt;</span><span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">AdminRoute::AdminMenu</span>}<span class="op">&gt;</span>{<span class="string">&quot;Admin&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CSS_BREADCRUMB_ITEM</span>}<span class="op">&gt;</span><span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">AdminRoute::AdminListGroups</span>}<span class="op">&gt;</span>{<span class="string">&quot;Groups&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">AdminRoute</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">li</span> <span class="ident">class</span><span class="op">=</span>{<span class="ident">CSS_BREADCRUMB_ITEM_ACTIVE</span>} <span class="ident">aria</span><span class="op">-</span><span class="ident">current</span><span class="op">=</span><span class="string">&quot;page&quot;</span><span class="op">&gt;</span>{<span class="ident">group_name</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">li</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">ol</span><span class="op">&gt;</span>
-                    {<span class="ident">do_page_header</span>(<span class="kw-2">&amp;</span><span class="ident">page_title</span>)}
-                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{<span class="string">&quot;UUID: &quot;</span>}{<span class="ident">group_uuid</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="comment">// TODO: pull group membership and show members</span>
-                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{<span class="string">&quot;Group Membership will show up here soon...&quot;</span>}<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                <span class="macro">html! </span>{
+                    &lt;&gt;
+                    &lt;ol class=<span class="string">&quot;breadcrumb&quot;</span>&gt;
+                    &lt;li class={CSS_BREADCRUMB_ITEM}&gt;&lt;Link&lt;AdminRoute&gt; to={AdminRoute::AdminMenu}&gt;{<span class="string">&quot;Admin&quot;</span>}&lt;/Link&lt;AdminRoute&gt;&gt;&lt;/li&gt;
+                    &lt;li class={CSS_BREADCRUMB_ITEM}&gt;&lt;Link&lt;AdminRoute&gt; to={AdminRoute::AdminListGroups}&gt;{<span class="string">&quot;Groups&quot;</span>}&lt;/Link&lt;AdminRoute&gt;&gt;&lt;/li&gt;
+                    &lt;li class={CSS_BREADCRUMB_ITEM_ACTIVE} aria-current=<span class="string">&quot;page&quot;</span>&gt;{group_name}&lt;/li&gt;
+                    &lt;/ol&gt;
+                    {do_page_header(<span class="kw-2">&amp;</span>page_title)}
+                    &lt;p&gt;{<span class="string">&quot;UUID: &quot;</span>}{group_uuid}&lt;/p&gt;
+                    <span class="comment">// TODO: pull group membership and show members
+                    </span>&lt;p&gt;{<span class="string">&quot;Group Membership will show up here soon...&quot;</span>}&lt;/p&gt;
+                    &lt;/&gt;
                 }
             }
-            <span class="ident">GroupViewState::Failed</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; <span class="ident">do_alert_error</span>(
-                <span class="ident">emsg</span>,
+            GroupViewState::Failed { emsg, kopid } =&gt; do_alert_error(
+                emsg,
                 <span class="prelude-val">Some</span>(
-                    <span class="ident">kopid</span>
-                        .<span class="ident">as_ref</span>()
-                        .<span class="ident">unwrap_or</span>(<span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;unknown operation ID&quot;</span>)),
+                    kopid
+                        .as_ref()
+                        .unwrap_or(<span class="kw-2">&amp;</span>String::from(<span class="string">&quot;unknown operation ID&quot;</span>)),
                 ),
             ),
-            <span class="ident">GroupViewState::NotAuthorized</span> {} =&gt; {
-                <span class="ident">do_alert_error</span>(<span class="string">&quot;You are not authorized to view this page!&quot;</span>, <span class="prelude-val">None</span>)
+            GroupViewState::NotAuthorized {} =&gt; {
+                do_alert_error(<span class="string">&quot;You are not authorized to view this page!&quot;</span>, <span class="prelude-val">None</span>)
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="ident">msg</span> {
-            <span class="ident">AdminViewGroupMsg::Responded</span> { <span class="ident">response</span> } =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">GroupViewState::Responded</span> { <span class="ident">response</span> };
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">AdminViewGroupMsg::Failed</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">GroupViewState::Failed</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> };
-                <span class="bool-val">true</span>
-            }
-            <span class="ident">AdminViewGroupMsg::NotAuthorized</span> {} =&gt; {
-                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">GroupViewState::NotAuthorized</span> {};
-                <span class="bool-val">true</span>
-            }
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, msg: <span class="self">Self</span>::Message) -&gt; bool {
+        <span class="kw">match </span>msg {
+            AdminViewGroupMsg::Responded { response } =&gt; {
+                <span class="self">self</span>.state = GroupViewState::Responded { response };
+                <span class="bool-val">true
+            </span>}
+            AdminViewGroupMsg::Failed { emsg, kopid } =&gt; {
+                <span class="self">self</span>.state = GroupViewState::Failed { emsg, kopid };
+                <span class="bool-val">true
+            </span>}
+            AdminViewGroupMsg::NotAuthorized {} =&gt; {
+                <span class="self">self</span>.state = GroupViewState::NotAuthorized {};
+                <span class="bool-val">true
+            </span>}
         }
     }
 }
 
-<span class="doccomment">/// pull the details for a single group by UUID</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_group</span>(<span class="ident">groupid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AdminViewGroupMsg</span>, <span class="ident">GetError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">init_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}&quot;</span>, <span class="ident">groupid</span>).<span class="ident">as_str</span>());
-    <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">request</span>.<span class="ident">send</span>().<span class="kw">await</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GetError</span> {
-                <span class="ident">err</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">error</span>),
+<span class="doccomment">/// pull the details for a single group by UUID
+</span><span class="kw">pub async fn </span>get_group(groupid: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;AdminViewGroupMsg, GetError&gt; {
+    <span class="kw">let </span>request = init_request(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}&quot;</span>, groupid).as_str());
+    <span class="kw">let </span>response = <span class="kw">match </span>request.send().<span class="kw">await </span>{
+        <span class="prelude-val">Ok</span>(value) =&gt; value,
+        <span class="prelude-val">Err</span>(error) =&gt; {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(GetError {
+                err: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, error),
             })
         }
     };
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::panic</span>)]</span>
-    <span class="kw">let</span> <span class="ident">data</span>: <span class="ident">Entity</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Failed to grab the group data into JSON: {:?}&quot;</span>, <span class="ident">error</span>),
+    <span class="attribute">#[allow(clippy::panic)]
+    </span><span class="kw">let </span>data: Entity = <span class="kw">match </span>response.json().<span class="kw">await </span>{
+        <span class="prelude-val">Ok</span>(value) =&gt; value,
+        <span class="prelude-val">Err</span>(error) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Failed to grab the group data into JSON: {:?}&quot;</span>, error),
     };
-    <span class="prelude-val">Ok</span>(<span class="ident">AdminViewGroupMsg::Responded</span> { <span class="ident">response</span>: <span class="ident">data</span> })
+    <span class="prelude-val">Ok</span>(AdminViewGroupMsg::Responded { response: data })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/radius.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>radius.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/radius.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>radius.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -112,119 +112,119 @@
 <span id="112">112</span>
 <span id="113">113</span>
 <span id="114">114</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">RadiusAuthToken</span>};
-<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>kanidm_proto::v1::{OperationError, RadiusAuthToken};
+<span class="kw">use </span>time::OffsetDateTime;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntryReduced</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::group::Group</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryCommitted, EntryReduced};
+<span class="kw">use </span><span class="kw">crate</span>::idm::group::Group;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RadiusAccount</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">radius_secret</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">valid_from</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">expire</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>RadiusAccount {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>displayname: String,
+    <span class="kw">pub </span>uuid: Uuid,
+    <span class="kw">pub </span>groups: Vec&lt;Group&gt;,
+    <span class="kw">pub </span>radius_secret: String,
+    <span class="kw">pub </span>valid_from: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>expire: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">RadiusAccount</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_reduced</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_ACCOUNT</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: account&quot;</span>.<span class="ident">to_string</span>(),
+<span class="kw">impl </span>RadiusAccount {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_reduced(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntryReduced, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">if </span>!value.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: account&quot;</span>.to_string(),
             ));
         }
 
-        <span class="kw">let</span> <span class="ident">radius_secret</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;radius_secret&quot;</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: radius_secret&quot;</span>.<span class="ident">to_string</span>())
-            })<span class="question-mark">?</span>
-            .<span class="ident">to_string</span>();
+        <span class="kw">let </span>radius_secret = value
+            .get_ava_single_secret(<span class="string">&quot;radius_secret&quot;</span>)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: radius_secret&quot;</span>.to_string())
+            })<span class="question-mark">?
+            </span>.to_string();
 
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>name = value
+            .get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: name&quot;</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let </span>uuid = value.get_uuid();
 
-        <span class="kw">let</span> <span class="ident">displayname</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;displayname&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: displayname&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>displayname = value
+            .get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: displayname&quot;</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">Group::try_from_account_entry_red_ro</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>groups = Group::try_from_account_entry_red_ro(value, qs)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">valid_from</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_valid_from&quot;</span>);
+        <span class="kw">let </span>valid_from = value.get_ava_single_datetime(<span class="string">&quot;account_valid_from&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">expire</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_expire&quot;</span>);
+        <span class="kw">let </span>expire = value.get_ava_single_datetime(<span class="string">&quot;account_expire&quot;</span>);
 
-        <span class="prelude-val">Ok</span>(<span class="ident">RadiusAccount</span> {
-            <span class="ident">name</span>,
-            <span class="ident">displayname</span>,
-            <span class="ident">uuid</span>,
-            <span class="ident">groups</span>,
-            <span class="ident">radius_secret</span>,
-            <span class="ident">valid_from</span>,
-            <span class="ident">expire</span>,
+        <span class="prelude-val">Ok</span>(RadiusAccount {
+            name,
+            displayname,
+            uuid,
+            groups,
+            radius_secret,
+            valid_from,
+            expire,
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">is_within_valid_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">cot</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
+    <span class="kw">fn </span>is_within_valid_time(<span class="kw-2">&amp;</span><span class="self">self</span>, ct: Duration) -&gt; bool {
+        <span class="kw">let </span>cot = OffsetDateTime::unix_epoch() + ct;
 
-        <span class="kw">let</span> <span class="ident">vmin</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vft</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">valid_from</span> {
-            <span class="comment">// If current time greater than strat time window</span>
-            <span class="ident">vft</span> <span class="op">&lt;</span> <span class="kw-2">&amp;</span><span class="ident">cot</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// We have no time, not expired.</span>
-            <span class="bool-val">true</span>
-        };
-        <span class="kw">let</span> <span class="ident">vmax</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ext</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">expire</span> {
-            <span class="comment">// If exp greater than ct then expired.</span>
-            <span class="kw-2">&amp;</span><span class="ident">cot</span> <span class="op">&lt;</span> <span class="ident">ext</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// If not present, we are not expired</span>
-            <span class="bool-val">true</span>
-        };
-        <span class="comment">// Mix the results</span>
-        <span class="ident">vmin</span> <span class="op">&amp;&amp;</span> <span class="ident">vmax</span>
+        <span class="kw">let </span>vmin = <span class="kw">if let </span><span class="prelude-val">Some</span>(vft) = <span class="kw-2">&amp;</span><span class="self">self</span>.valid_from {
+            <span class="comment">// If current time greater than strat time window
+            </span>vft &lt; <span class="kw-2">&amp;</span>cot
+        } <span class="kw">else </span>{
+            <span class="comment">// We have no time, not expired.
+            </span><span class="bool-val">true
+        </span>};
+        <span class="kw">let </span>vmax = <span class="kw">if let </span><span class="prelude-val">Some</span>(ext) = <span class="kw-2">&amp;</span><span class="self">self</span>.expire {
+            <span class="comment">// If exp greater than ct then expired.
+            </span><span class="kw-2">&amp;</span>cot &lt; ext
+        } <span class="kw">else </span>{
+            <span class="comment">// If not present, we are not expired
+            </span><span class="bool-val">true
+        </span>};
+        <span class="comment">// Mix the results
+        </span>vmin &amp;&amp; vmax
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_radiusauthtoken</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_radiusauthtoken(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_within_valid_time</span>(<span class="ident">ct</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Account Expired&quot;</span>.<span class="ident">to_string</span>(),
+        ct: Duration,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;RadiusAuthToken, OperationError&gt; {
+        <span class="kw">if </span>!<span class="self">self</span>.is_within_valid_time(ct) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Account Expired&quot;</span>.to_string(),
             ));
         }
 
-        <span class="comment">// If we don&#39;t have access/permission, then just error instead.</span>
-        <span class="comment">// This includes if we don&#39;t have the secret.</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">RadiusAuthToken</span> {
-            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
-            <span class="ident">displayname</span>: <span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
-            <span class="ident">secret</span>: <span class="self">self</span>.<span class="ident">radius_secret</span>.<span class="ident">clone</span>(),
-            <span class="ident">groups</span>: <span class="self">self</span>.<span class="ident">groups</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">to_proto</span>()).<span class="ident">collect</span>(),
+        <span class="comment">// If we don&#39;t have access/permission, then just error instead.
+        // This includes if we don&#39;t have the secret.
+        </span><span class="prelude-val">Ok</span>(RadiusAuthToken {
+            name: <span class="self">self</span>.name.clone(),
+            displayname: <span class="self">self</span>.displayname.clone(),
+            uuid: <span class="self">self</span>.uuid.as_hyphenated().to_string(),
+            secret: <span class="self">self</span>.radius_secret.clone(),
+            groups: <span class="self">self</span>.groups.iter().map(|g| g.to_proto()).collect(),
         })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

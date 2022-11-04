@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/pam_kanidm/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../pam_kanidm/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../pam_kanidm/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../pam_kanidm/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/pam_kanidm/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../pam_kanidm/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../pam_kanidm/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../pam_kanidm/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -334,341 +334,341 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unimplemented</span>)]</span>
-<span class="comment">// In this file, we do want to panic on these faults.</span>
-<span class="comment">// #![deny(clippy::unwrap_used)]</span>
-<span class="comment">// #![deny(clippy::expect_used)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::panic</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unreachable</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::await_holding_lock</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+</span><span class="comment">// In this file, we do want to panic on these faults.
+// #![deny(clippy::unwrap_used)]
+// #![deny(clippy::expect_used)]
+</span><span class="attribute">#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
 
-<span class="comment">// extern crate libc;</span>
+</span><span class="comment">// extern crate libc;
 
-<span class="kw">mod</span> <span class="ident">pam</span>;
-<span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
-<span class="kw">use</span> <span class="ident">std::ffi::CStr</span>;
+</span><span class="kw">mod </span>pam;
+<span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::convert::TryFrom;
+<span class="kw">use </span>std::ffi::CStr;
 
-<span class="comment">// use std::os::raw::c_char;</span>
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::client_sync::call_daemon_blocking</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>};
+<span class="comment">// use std::os::raw::c_char;
+</span><span class="kw">use </span>kanidm_unix_common::client_sync::call_daemon_blocking;
+<span class="kw">use </span>kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+<span class="kw">use </span>kanidm_unix_common::unix_config::KanidmUnixdConfig;
+<span class="kw">use </span>kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::pam::constants</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::pam::conv::PamConv</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::pam::module</span>::{<span class="ident">PamHandle</span>, <span class="ident">PamHooks</span>};
+<span class="kw">use </span><span class="kw">crate</span>::pam::constants::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::pam::conv::PamConv;
+<span class="kw">use </span><span class="kw">crate</span>::pam::module::{PamHandle, PamHooks};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Options</span> {
-    <span class="ident">debug</span>: <span class="ident">bool</span>,
-    <span class="ident">use_first_pass</span>: <span class="ident">bool</span>,
-    <span class="ident">ignore_unknown_user</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">struct </span>Options {
+    debug: bool,
+    use_first_pass: bool,
+    ignore_unknown_user: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Options</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> ();
+<span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;&gt; <span class="kw">for </span>Options {
+    <span class="kw">type </span>Error = ();
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">args</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">opts</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="ident">cs</span>.<span class="ident">to_str</span>()).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">gopts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">opts</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">println!</span>(<span class="string">&quot;Error in module args -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+    <span class="kw">fn </span>try_from(args: <span class="kw-2">&amp;</span>Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">let </span>opts: <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;<span class="kw-2">&amp;</span>str&gt;, <span class="kw">_</span>&gt; = args.iter().map(|cs| cs.to_str()).collect();
+        <span class="kw">let </span>gopts = <span class="kw">match </span>opts {
+            <span class="prelude-val">Ok</span>(o) =&gt; o,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">println!</span>(<span class="string">&quot;Error in module args -&gt; {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(());
             }
         };
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Options</span> {
-            <span class="ident">debug</span>: <span class="ident">gopts</span>.<span class="ident">contains</span>(<span class="string">&quot;debug&quot;</span>),
-            <span class="ident">use_first_pass</span>: <span class="ident">gopts</span>.<span class="ident">contains</span>(<span class="string">&quot;use_first_pass&quot;</span>),
-            <span class="ident">ignore_unknown_user</span>: <span class="ident">gopts</span>.<span class="ident">contains</span>(<span class="string">&quot;ignore_unknown_user&quot;</span>),
+        <span class="prelude-val">Ok</span>(Options {
+            debug: gopts.contains(<span class="string">&quot;debug&quot;</span>),
+            use_first_pass: gopts.contains(<span class="string">&quot;use_first_pass&quot;</span>),
+            ignore_unknown_user: gopts.contains(<span class="string">&quot;ignore_unknown_user&quot;</span>),
         })
     }
 }
 
-<span class="kw">fn</span> <span class="ident">get_cfg</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmUnixdConfig</span>, <span class="ident">PamResultCode</span><span class="op">&gt;</span> {
-    <span class="ident">KanidmUnixdConfig::new</span>()
-        .<span class="ident">read_options_from_optional_config</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>)
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>)
+<span class="kw">fn </span>get_cfg() -&gt; <span class="prelude-ty">Result</span>&lt;KanidmUnixdConfig, PamResultCode&gt; {
+    KanidmUnixdConfig::new()
+        .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
+        .map_err(|<span class="kw">_</span>| PamResultCode::PAM_SERVICE_ERR)
 }
 
-<span class="kw">struct</span> <span class="ident">PamKanidm</span>;
-<span class="macro">pam_hooks!</span>(<span class="ident">PamKanidm</span>);
+<span class="kw">struct </span>PamKanidm;
+<span class="macro">pam_hooks!</span>(PamKanidm);
 
-<span class="kw">impl</span> <span class="ident">PamHooks</span> <span class="kw">for</span> <span class="ident">PamKanidm</span> {
-    <span class="kw">fn</span> <span class="ident">acct_mgmt</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
-        <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+<span class="kw">impl </span>PamHooks <span class="kw">for </span>PamKanidm {
+    <span class="kw">fn </span>acct_mgmt(pamh: <span class="kw-2">&amp;</span>PamHandle, args: Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;, _flags: PamFlag) -&gt; PamResultCode {
+        <span class="kw">let </span>opts = <span class="kw">match </span>Options::try_from(<span class="kw-2">&amp;</span>args) {
+            <span class="prelude-val">Ok</span>(o) =&gt; o,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>PamResultCode::PAM_SERVICE_ERR,
         };
 
-        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        <span class="kw">if </span>opts.debug {
             <span class="macro">println!</span>(<span class="string">&quot;acct_mgmt&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, <span class="ident">args</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, <span class="ident">opts</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, args);
+            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, opts);
         }
 
-        <span class="kw">let</span> <span class="ident">account_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_user</span>(<span class="prelude-val">None</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) =&gt; <span class="ident">aid</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">let </span>account_id = <span class="kw">match </span>pamh.get_user(<span class="prelude-val">None</span>) {
+            <span class="prelude-val">Ok</span>(aid) =&gt; aid,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">if </span>opts.debug {
+                    <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, e);
                 }
-                <span class="kw">return</span> <span class="ident">e</span>;
+                <span class="kw">return </span>e;
             }
         };
 
-        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">get_cfg</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) =&gt; <span class="ident">cfg</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="ident">e</span>,
+        <span class="kw">let </span>cfg = <span class="kw">match </span>get_cfg() {
+            <span class="prelude-val">Ok</span>(cfg) =&gt; cfg,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>e,
         };
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAccountAllowed</span>(<span class="ident">account_id</span>);
-        <span class="comment">// PamResultCode::PAM_IGNORE</span>
+        <span class="kw">let </span>req = ClientRequest::PamAccountAllowed(account_id);
+        <span class="comment">// PamResultCode::PAM_IGNORE
 
-        <span class="kw">match</span> <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>, <span class="ident">cfg</span>.<span class="ident">unix_sock_timeout</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
-                    <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        </span><span class="kw">match </span>call_daemon_blocking(cfg.sock_path.as_str(), <span class="kw-2">&amp;</span>req, cfg.unix_sock_timeout) {
+            <span class="prelude-val">Ok</span>(r) =&gt; <span class="kw">match </span>r {
+                ClientResponse::PamStatus(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
+                    <span class="kw">if </span>opts.debug {
                         <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_SUCCESS&quot;</span>);
                     }
-                    <span class="ident">PamResultCode::PAM_SUCCESS</span>
+                    PamResultCode::PAM_SUCCESS
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
-                    <span class="comment">// println!(&quot;PAM_IGNORE&quot;);</span>
-                    <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+                ClientResponse::PamStatus(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
+                    <span class="comment">// println!(&quot;PAM_IGNORE&quot;);
+                    </span><span class="kw">if </span>opts.debug {
                         <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_AUTH_ERR&quot;</span>);
                     }
-                    <span class="ident">PamResultCode::PAM_AUTH_ERR</span>
+                    PamResultCode::PAM_AUTH_ERR
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) =&gt; {
-                    <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">ignore_unknown_user</span> {
-                        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+                ClientResponse::PamStatus(<span class="prelude-val">None</span>) =&gt; {
+                    <span class="kw">if </span>opts.ignore_unknown_user {
+                        <span class="kw">if </span>opts.debug {
                             <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE&quot;</span>);
                         }
-                        <span class="ident">PamResultCode::PAM_IGNORE</span>
-                    } <span class="kw">else</span> {
-                        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+                        PamResultCode::PAM_IGNORE
+                    } <span class="kw">else </span>{
+                        <span class="kw">if </span>opts.debug {
                             <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_USER_UNKNOWN&quot;</span>);
                         }
-                        <span class="ident">PamResultCode::PAM_USER_UNKNOWN</span>
+                        PamResultCode::PAM_USER_UNKNOWN
                     }
                 }
-                <span class="kw">_</span> =&gt; {
-                    <span class="comment">// unexpected response.</span>
-                    <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                        <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
+                <span class="kw">_ </span>=&gt; {
+                    <span class="comment">// unexpected response.
+                    </span><span class="kw">if </span>opts.debug {
+                        <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE -&gt; {:?}&quot;</span>, r);
                     }
-                    <span class="ident">PamResultCode::PAM_IGNORE</span>
+                    PamResultCode::PAM_IGNORE
                 }
             },
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE  -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">if </span>opts.debug {
+                    <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE  -&gt; {:?}&quot;</span>, e);
                 }
-                <span class="ident">PamResultCode::PAM_IGNORE</span>
+                PamResultCode::PAM_IGNORE
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_authenticate</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
-        <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+    <span class="kw">fn </span>sm_authenticate(pamh: <span class="kw-2">&amp;</span>PamHandle, args: Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;, _flags: PamFlag) -&gt; PamResultCode {
+        <span class="kw">let </span>opts = <span class="kw">match </span>Options::try_from(<span class="kw-2">&amp;</span>args) {
+            <span class="prelude-val">Ok</span>(o) =&gt; o,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>PamResultCode::PAM_SERVICE_ERR,
         };
 
-        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        <span class="kw">if </span>opts.debug {
             <span class="macro">println!</span>(<span class="string">&quot;sm_authenticate&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, <span class="ident">args</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, <span class="ident">opts</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, args);
+            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, opts);
         }
 
-        <span class="kw">let</span> <span class="ident">account_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_user</span>(<span class="prelude-val">None</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) =&gt; <span class="ident">aid</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="ident">e</span>;
+        <span class="kw">let </span>account_id = <span class="kw">match </span>pamh.get_user(<span class="prelude-val">None</span>) {
+            <span class="prelude-val">Ok</span>(aid) =&gt; aid,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, e);
+                <span class="kw">return </span>e;
             }
         };
 
-        <span class="kw">let</span> <span class="ident">authtok</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_authtok</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">atok</span>) =&gt; <span class="ident">atok</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;Error get_authtok -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">let </span>authtok = <span class="kw">match </span>pamh.get_authtok() {
+            <span class="prelude-val">Ok</span>(atok) =&gt; atok,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">if </span>opts.debug {
+                    <span class="macro">println!</span>(<span class="string">&quot;Error get_authtok -&gt; {:?}&quot;</span>, e);
                 }
-                <span class="kw">return</span> <span class="ident">e</span>;
+                <span class="kw">return </span>e;
             }
         };
 
-        <span class="kw">let</span> <span class="ident">authtok</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">authtok</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">use_first_pass</span> {
-                    <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        <span class="kw">let </span>authtok = <span class="kw">match </span>authtok {
+            <span class="prelude-val">Some</span>(v) =&gt; v,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">if </span>opts.use_first_pass {
+                    <span class="kw">if </span>opts.debug {
                         <span class="macro">println!</span>(<span class="string">&quot;Don&#39;t have an authtok, returning PAM_AUTH_ERR&quot;</span>);
                     }
-                    <span class="kw">return</span> <span class="ident">PamResultCode::PAM_AUTH_ERR</span>;
-                } <span class="kw">else</span> {
-                    <span class="kw">let</span> <span class="ident">conv</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_item</span>::<span class="op">&lt;</span><span class="ident">PamConv</span><span class="op">&gt;</span>() {
-                        <span class="prelude-val">Ok</span>(<span class="ident">conv</span>) =&gt; <span class="ident">conv</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                            <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+                    <span class="kw">return </span>PamResultCode::PAM_AUTH_ERR;
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>conv = <span class="kw">match </span>pamh.get_item::&lt;PamConv&gt;() {
+                        <span class="prelude-val">Ok</span>(conv) =&gt; conv,
+                        <span class="prelude-val">Err</span>(err) =&gt; {
+                            <span class="kw">if </span>opts.debug {
                                 <span class="macro">println!</span>(<span class="string">&quot;Couldn&#39;t get pam_conv&quot;</span>);
                             }
-                            <span class="kw">return</span> <span class="ident">err</span>;
+                            <span class="kw">return </span>err;
                         }
                     };
-                    <span class="kw">match</span> <span class="ident">conv</span>.<span class="ident">send</span>(<span class="ident">PAM_PROMPT_ECHO_OFF</span>, <span class="string">&quot;Password: &quot;</span>) {
-                        <span class="prelude-val">Ok</span>(<span class="ident">password</span>) =&gt; <span class="kw">match</span> <span class="ident">password</span> {
-                            <span class="prelude-val">Some</span>(<span class="ident">pw</span>) =&gt; <span class="ident">pw</span>,
-                            <span class="prelude-val">None</span> =&gt; {
-                                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+                    <span class="kw">match </span>conv.send(PAM_PROMPT_ECHO_OFF, <span class="string">&quot;Password: &quot;</span>) {
+                        <span class="prelude-val">Ok</span>(password) =&gt; <span class="kw">match </span>password {
+                            <span class="prelude-val">Some</span>(pw) =&gt; pw,
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="kw">if </span>opts.debug {
                                     <span class="macro">println!</span>(<span class="string">&quot;No password&quot;</span>);
                                 }
-                                <span class="kw">return</span> <span class="ident">PamResultCode::PAM_CRED_INSUFFICIENT</span>;
+                                <span class="kw">return </span>PamResultCode::PAM_CRED_INSUFFICIENT;
                             }
                         },
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                            <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+                        <span class="prelude-val">Err</span>(err) =&gt; {
+                            <span class="kw">if </span>opts.debug {
                                 <span class="macro">println!</span>(<span class="string">&quot;Couldn&#39;t get password&quot;</span>);
                             }
-                            <span class="kw">return</span> <span class="ident">err</span>;
+                            <span class="kw">return </span>err;
                         }
                     }
-                } <span class="comment">// end opts.use_first_pass</span>
-            }
+                } <span class="comment">// end opts.use_first_pass
+            </span>}
         };
 
-        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">get_cfg</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) =&gt; <span class="ident">cfg</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="ident">e</span>,
+        <span class="kw">let </span>cfg = <span class="kw">match </span>get_cfg() {
+            <span class="prelude-val">Ok</span>(cfg) =&gt; cfg,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>e,
         };
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAuthenticate</span>(<span class="ident">account_id</span>, <span class="ident">authtok</span>);
+        <span class="kw">let </span>req = ClientRequest::PamAuthenticate(account_id, authtok);
 
-        <span class="kw">match</span> <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>, <span class="ident">cfg</span>.<span class="ident">unix_sock_timeout</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
-                    <span class="comment">// println!(&quot;PAM_SUCCESS&quot;);</span>
-                    <span class="ident">PamResultCode::PAM_SUCCESS</span>
+        <span class="kw">match </span>call_daemon_blocking(cfg.sock_path.as_str(), <span class="kw-2">&amp;</span>req, cfg.unix_sock_timeout) {
+            <span class="prelude-val">Ok</span>(r) =&gt; <span class="kw">match </span>r {
+                ClientResponse::PamStatus(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
+                    <span class="comment">// println!(&quot;PAM_SUCCESS&quot;);
+                    </span>PamResultCode::PAM_SUCCESS
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
-                    <span class="comment">// println!(&quot;PAM_AUTH_ERR&quot;);</span>
-                    <span class="ident">PamResultCode::PAM_AUTH_ERR</span>
+                ClientResponse::PamStatus(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
+                    <span class="comment">// println!(&quot;PAM_AUTH_ERR&quot;);
+                    </span>PamResultCode::PAM_AUTH_ERR
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) =&gt; {
-                    <span class="comment">// println!(&quot;PAM_USER_UNKNOWN&quot;);</span>
-                    <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">ignore_unknown_user</span> {
-                        <span class="ident">PamResultCode::PAM_IGNORE</span>
-                    } <span class="kw">else</span> {
-                        <span class="ident">PamResultCode::PAM_USER_UNKNOWN</span>
+                ClientResponse::PamStatus(<span class="prelude-val">None</span>) =&gt; {
+                    <span class="comment">// println!(&quot;PAM_USER_UNKNOWN&quot;);
+                    </span><span class="kw">if </span>opts.ignore_unknown_user {
+                        PamResultCode::PAM_IGNORE
+                    } <span class="kw">else </span>{
+                        PamResultCode::PAM_USER_UNKNOWN
                     }
                 }
-                <span class="kw">_</span> =&gt; {
-                    <span class="comment">// unexpected response.</span>
-                    <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                        <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
+                <span class="kw">_ </span>=&gt; {
+                    <span class="comment">// unexpected response.
+                    </span><span class="kw">if </span>opts.debug {
+                        <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE -&gt; {:?}&quot;</span>, r);
                     }
-                    <span class="ident">PamResultCode::PAM_IGNORE</span>
+                    PamResultCode::PAM_IGNORE
                 }
             },
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">if </span>opts.debug {
+                    <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE -&gt; {:?}&quot;</span>, e);
                 }
-                <span class="ident">PamResultCode::PAM_IGNORE</span>
+                PamResultCode::PAM_IGNORE
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_chauthtok</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
-        <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+    <span class="kw">fn </span>sm_chauthtok(_pamh: <span class="kw-2">&amp;</span>PamHandle, args: Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;, _flags: PamFlag) -&gt; PamResultCode {
+        <span class="kw">let </span>opts = <span class="kw">match </span>Options::try_from(<span class="kw-2">&amp;</span>args) {
+            <span class="prelude-val">Ok</span>(o) =&gt; o,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>PamResultCode::PAM_SERVICE_ERR,
         };
 
-        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        <span class="kw">if </span>opts.debug {
             <span class="macro">println!</span>(<span class="string">&quot;sm_chauthtok&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, <span class="ident">args</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, <span class="ident">opts</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, args);
+            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, opts);
         }
-        <span class="ident">PamResultCode::PAM_IGNORE</span>
+        PamResultCode::PAM_IGNORE
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_close_session</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
-        <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+    <span class="kw">fn </span>sm_close_session(_pamh: <span class="kw-2">&amp;</span>PamHandle, args: Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;, _flags: PamFlag) -&gt; PamResultCode {
+        <span class="kw">let </span>opts = <span class="kw">match </span>Options::try_from(<span class="kw-2">&amp;</span>args) {
+            <span class="prelude-val">Ok</span>(o) =&gt; o,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>PamResultCode::PAM_SERVICE_ERR,
         };
 
-        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        <span class="kw">if </span>opts.debug {
             <span class="macro">println!</span>(<span class="string">&quot;sm_close_session&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, <span class="ident">args</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, <span class="ident">opts</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, args);
+            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, opts);
         }
-        <span class="ident">PamResultCode::PAM_SUCCESS</span>
+        PamResultCode::PAM_SUCCESS
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_open_session</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
-        <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+    <span class="kw">fn </span>sm_open_session(pamh: <span class="kw-2">&amp;</span>PamHandle, args: Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;, _flags: PamFlag) -&gt; PamResultCode {
+        <span class="kw">let </span>opts = <span class="kw">match </span>Options::try_from(<span class="kw-2">&amp;</span>args) {
+            <span class="prelude-val">Ok</span>(o) =&gt; o,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>PamResultCode::PAM_SERVICE_ERR,
         };
 
-        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        <span class="kw">if </span>opts.debug {
             <span class="macro">println!</span>(<span class="string">&quot;sm_open_session&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, <span class="ident">args</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, <span class="ident">opts</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, args);
+            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, opts);
         }
 
-        <span class="kw">let</span> <span class="ident">account_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_user</span>(<span class="prelude-val">None</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) =&gt; <span class="ident">aid</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">let </span>account_id = <span class="kw">match </span>pamh.get_user(<span class="prelude-val">None</span>) {
+            <span class="prelude-val">Ok</span>(aid) =&gt; aid,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">if </span>opts.debug {
+                    <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, e);
                 }
-                <span class="kw">return</span> <span class="ident">e</span>;
+                <span class="kw">return </span>e;
             }
         };
 
-        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">get_cfg</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) =&gt; <span class="ident">cfg</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="ident">e</span>,
+        <span class="kw">let </span>cfg = <span class="kw">match </span>get_cfg() {
+            <span class="prelude-val">Ok</span>(cfg) =&gt; cfg,
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>e,
         };
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAccountBeginSession</span>(<span class="ident">account_id</span>);
+        <span class="kw">let </span>req = ClientRequest::PamAccountBeginSession(account_id);
 
-        <span class="kw">match</span> <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>, <span class="ident">cfg</span>.<span class="ident">unix_sock_timeout</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">ClientResponse::Ok</span>) =&gt; {
-                <span class="comment">// println!(&quot;PAM_SUCCESS&quot;);</span>
-                <span class="ident">PamResultCode::PAM_SUCCESS</span>
+        <span class="kw">match </span>call_daemon_blocking(cfg.sock_path.as_str(), <span class="kw-2">&amp;</span>req, cfg.unix_sock_timeout) {
+            <span class="prelude-val">Ok</span>(ClientResponse::Ok) =&gt; {
+                <span class="comment">// println!(&quot;PAM_SUCCESS&quot;);
+                </span>PamResultCode::PAM_SUCCESS
             }
-            <span class="ident">other</span> =&gt; {
-                <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE  -&gt; {:?}&quot;</span>, <span class="ident">other</span>);
+            other =&gt; {
+                <span class="kw">if </span>opts.debug {
+                    <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE  -&gt; {:?}&quot;</span>, other);
                 }
-                <span class="ident">PamResultCode::PAM_IGNORE</span>
+                PamResultCode::PAM_IGNORE
             }
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_setcred</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
-        <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+    <span class="kw">fn </span>sm_setcred(_pamh: <span class="kw-2">&amp;</span>PamHandle, args: Vec&lt;<span class="kw-2">&amp;</span>CStr&gt;, _flags: PamFlag) -&gt; PamResultCode {
+        <span class="kw">let </span>opts = <span class="kw">match </span>Options::try_from(<span class="kw-2">&amp;</span>args) {
+            <span class="prelude-val">Ok</span>(o) =&gt; o,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>PamResultCode::PAM_SERVICE_ERR,
         };
 
-        <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
+        <span class="kw">if </span>opts.debug {
             <span class="macro">println!</span>(<span class="string">&quot;sm_setcred&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, <span class="ident">args</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, <span class="ident">opts</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;args -&gt; {:?}&quot;</span>, args);
+            <span class="macro">println!</span>(<span class="string">&quot;opts -&gt; {:?}&quot;</span>, opts);
         }
-        <span class="ident">PamResultCode::PAM_SUCCESS</span>
+        PamResultCode::PAM_SUCCESS
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="pam_kanidm" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="pam_kanidm" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

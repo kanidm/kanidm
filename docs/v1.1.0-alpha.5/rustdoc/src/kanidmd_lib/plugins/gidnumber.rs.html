@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/gidnumber.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>gidnumber.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/gidnumber.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>gidnumber.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -346,353 +346,353 @@
 <span id="346">346</span>
 <span id="347">347</span>
 <span id="348">348</span>
-</pre><pre class="rust"><code><span class="comment">// A plugin that generates gid numbers on types that require them for posix</span>
-<span class="comment">// support.</span>
+</pre><pre class="rust"><code><span class="comment">// A plugin that generates gid numbers on types that require them for posix
+// support.
 
-<span class="kw">use</span> <span class="ident">std::iter::once</span>;
+</span><span class="kw">use </span>std::iter::once;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">CreateEvent</span>, <span class="ident">ModifyEvent</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plugins::Plugin</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::uuid_to_gid_u32</span>;
+<span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
+<span class="kw">use </span><span class="kw">crate</span>::plugins::Plugin;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::utils::uuid_to_gid_u32;
 
-<span class="doccomment">/// Systemd dynamic units allocate between 61184–65519, most distros allocate</span>
-<span class="doccomment">/// system uids from 0 - 1000, and many others give user ids between 1000 to</span>
-<span class="doccomment">/// 2000. This whole numberspace is cursed, lets assume it&#39;s not ours. :(</span>
-<span class="kw">const</span> <span class="ident">GID_SYSTEM_NUMBER_MIN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">65536</span>;
+<span class="doccomment">/// Systemd dynamic units allocate between 61184–65519, most distros allocate
+/// system uids from 0 - 1000, and many others give user ids between 1000 to
+/// 2000. This whole numberspace is cursed, lets assume it&#39;s not ours. :(
+</span><span class="kw">const </span>GID_SYSTEM_NUMBER_MIN: u32 = <span class="number">65536</span>;
 
-<span class="doccomment">/// This is the normal system range, we MUST NOT allow it to be allocated.</span>
-<span class="kw">const</span> <span class="ident">GID_SAFETY_NUMBER_MIN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
+<span class="doccomment">/// This is the normal system range, we MUST NOT allow it to be allocated.
+</span><span class="kw">const </span>GID_SAFETY_NUMBER_MIN: u32 = <span class="number">1000</span>;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GidNumber</span> {}
+<span class="kw">pub struct </span>GidNumber {}
 
-<span class="kw">fn</span> <span class="ident">apply_gidnumber</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span><span class="op">&gt;</span>(<span class="ident">e</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> (<span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_POSIXGROUP</span>)
-        <span class="op">|</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_POSIXACCOUNT</span>))
-        <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">e</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;gidnumber&quot;</span>)
+<span class="kw">fn </span>apply_gidnumber&lt;T: Clone&gt;(e: <span class="kw-2">&amp;mut </span>Entry&lt;EntryInvalid, T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="kw">if </span>(e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXGROUP)
+        || e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXACCOUNT))
+        &amp;&amp; !e.attribute_pres(<span class="string">&quot;gidnumber&quot;</span>)
     {
-        <span class="kw">let</span> <span class="ident">u_ref</span> <span class="op">=</span> <span class="ident">e</span>
-            .<span class="ident">get_uuid</span>()
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="kw">let </span>u_ref = e
+            .get_uuid()
+            .ok_or(OperationError::InvalidEntryState)
+            .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid Entry State - Missing UUID&quot;</span>);
-                <span class="ident">e</span>
+                e
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">gid</span> <span class="op">=</span> <span class="ident">uuid_to_gid_u32</span>(<span class="ident">u_ref</span>);
-        <span class="comment">// assert the value is greater than the system range.</span>
-        <span class="kw">if</span> <span class="ident">gid</span> <span class="op">&lt;</span> <span class="ident">GID_SYSTEM_NUMBER_MIN</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="macro">format!</span>(
+        <span class="kw">let </span>gid = uuid_to_gid_u32(u_ref);
+        <span class="comment">// assert the value is greater than the system range.
+        </span><span class="kw">if </span>gid &lt; GID_SYSTEM_NUMBER_MIN {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
                 <span class="string">&quot;gidnumber {} may overlap with system range {}&quot;</span>,
-                <span class="ident">gid</span>, <span class="ident">GID_SYSTEM_NUMBER_MIN</span>
+                gid, GID_SYSTEM_NUMBER_MIN
             )));
         }
 
-        <span class="kw">let</span> <span class="ident">gid_v</span> <span class="op">=</span> <span class="ident">Value::new_uint32</span>(<span class="ident">gid</span>);
-        <span class="macro">admin_info!</span>(<span class="string">&quot;Generated {} for {:?}&quot;</span>, <span class="ident">gid</span>, <span class="ident">u_ref</span>);
-        <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;gidnumber&quot;</span>, <span class="ident">once</span>(<span class="ident">gid_v</span>));
+        <span class="kw">let </span>gid_v = Value::new_uint32(gid);
+        <span class="macro">admin_info!</span>(<span class="string">&quot;Generated {} for {:?}&quot;</span>, gid, u_ref);
+        e.set_ava(<span class="string">&quot;gidnumber&quot;</span>, once(gid_v));
         <span class="prelude-val">Ok</span>(())
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">gid</span>) <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;gidnumber&quot;</span>) {
-        <span class="comment">// If they provided us with a gid number, ensure it&#39;s in a safe range.</span>
-        <span class="kw">if</span> <span class="ident">gid</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">GID_SAFETY_NUMBER_MIN</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="macro">format!</span>(
+    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(gid) = e.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) {
+        <span class="comment">// If they provided us with a gid number, ensure it&#39;s in a safe range.
+        </span><span class="kw">if </span>gid &lt;= GID_SAFETY_NUMBER_MIN {
+            <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
                 <span class="string">&quot;gidnumber {} overlaps into system secure range {}&quot;</span>,
-                <span class="ident">gid</span>, <span class="ident">GID_SAFETY_NUMBER_MIN</span>
+                gid, GID_SAFETY_NUMBER_MIN
             )))
-        } <span class="kw">else</span> {
+        } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
-    } <span class="kw">else</span> {
+    } <span class="kw">else </span>{
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">GidNumber</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="string">&quot;plugin_gidnumber&quot;</span>
-    }
+<span class="kw">impl </span>Plugin <span class="kw">for </span>GidNumber {
+    <span class="kw">fn </span>id() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="string">&quot;plugin_gidnumber&quot;
+    </span>}
 
-    <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;gidnumber_pre_create_transform&quot;</span>,
-        <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">_ce</span>)
-    )]</span>
-    <span class="kw">fn</span> <span class="ident">pre_create_transform</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="ident">cand</span>.<span class="ident">iter_mut</span>() {
-            <span class="ident">apply_gidnumber</span>(<span class="ident">e</span>)<span class="question-mark">?</span>;
+    <span class="attribute">#[instrument(
+        level = <span class="string">&quot;debug&quot;</span>,
+        name = <span class="string">&quot;gidnumber_pre_create_transform&quot;</span>,
+        skip(_qs, cand, _ce)
+    )]
+    </span><span class="kw">fn </span>pre_create_transform(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
+        _ce: <span class="kw-2">&amp;</span>CreateEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">for </span>e <span class="kw">in </span>cand.iter_mut() {
+            apply_gidnumber(e)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;gidnumber_pre_modify&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">_me</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="ident">cand</span>.<span class="ident">iter_mut</span>() {
-            <span class="ident">apply_gidnumber</span>(<span class="ident">e</span>)<span class="question-mark">?</span>;
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;gidnumber_pre_modify&quot;</span>, skip(_qs, cand, _me))]
+    </span><span class="kw">fn </span>pre_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>ModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">for </span>e <span class="kw">in </span>cand.iter_mut() {
+            apply_gidnumber(e)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-    <span class="kw">fn</span> <span class="ident">check_gid</span>(<span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">gid</span>: <span class="ident">u32</span>) {
-        <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">Uuid::parse_str</span>(<span class="ident">uuid</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">u</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">gidnumber</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;gidnumber&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">ex_gid</span> <span class="op">=</span> <span class="ident">Value::new_uint32</span>(<span class="ident">gid</span>);
-        <span class="macro">assert!</span>(<span class="ident">ex_gid</span> <span class="op">==</span> <span class="ident">gidnumber</span>);
+    <span class="kw">fn </span>check_gid(qs_write: <span class="kw-2">&amp;</span>QueryServerWriteTransaction, uuid: <span class="kw-2">&amp;</span>str, gid: u32) {
+        <span class="kw">let </span>u = Uuid::parse_str(uuid).unwrap();
+        <span class="kw">let </span>e = qs_write.internal_search_uuid(<span class="kw-2">&amp;</span>u).unwrap();
+        <span class="kw">let </span>gidnumber = e.get_ava_single(<span class="string">&quot;gidnumber&quot;</span>).unwrap();
+        <span class="kw">let </span>ex_gid = Value::new_uint32(gid);
+        <span class="macro">assert!</span>(ex_gid == gidnumber);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_create_generate</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_create_generate() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                <span class="ident">Value::new_uuid</span>(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = Vec::new();
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
-                <span class="ident">qs_write</span>,
+            |qs_write: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| check_gid(
+                qs_write,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,
-                <span class="number">0x997ef244</span>
-            )
+                <span class="number">0x997ef244
+            </span>)
         );
     }
 
-    <span class="comment">// test that gid is not altered if provided on create.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_create_noaction</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;gidnumber&quot;</span>, <span class="ident">Value::Uint32</span>(<span class="number">10001</span>)),
+    <span class="comment">// test that gid is not altered if provided on create.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_create_noaction() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">10001</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                <span class="ident">Value::new_uuid</span>(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = Vec::new();
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
-                <span class="ident">qs_write</span>,
+            |qs_write: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| check_gid(
+                qs_write,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,
-                <span class="number">10001</span>
-            )
+                <span class="number">10001
+            </span>)
         );
     }
 
-    <span class="comment">// Test generated if not on mod (ie adding posixaccount to something)</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_modify_generate</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
+    <span class="comment">// Test generated if not on mod (ie adding posixaccount to something)
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_modify_generate() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                <span class="ident">Value::new_uuid</span>(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[e];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
-            <span class="macro">modlist!</span>([<span class="ident">m_pres</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_class</span>(<span class="string">&quot;posixgroup&quot;</span>))]),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))),
+            <span class="macro">modlist!</span>([m_pres(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>Value::new_class(<span class="string">&quot;posixgroup&quot;</span>))]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
-                <span class="ident">qs_write</span>,
+            |<span class="kw">_</span>| {},
+            |qs_write: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| check_gid(
+                qs_write,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,
-                <span class="number">0x997ef244</span>
-            )
+                <span class="number">0x997ef244
+            </span>)
         );
     }
 
-    <span class="comment">// test generated if DELETED on mod</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_modify_regenerate</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
+    <span class="comment">// test generated if DELETED on mod
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_modify_regenerate() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                <span class="ident">Value::new_uuid</span>(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[e];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
-            <span class="macro">modlist!</span>([<span class="ident">m_purge</span>(<span class="string">&quot;gidnumber&quot;</span>)]),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))),
+            <span class="macro">modlist!</span>([m_purge(<span class="string">&quot;gidnumber&quot;</span>)]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
-                <span class="ident">qs_write</span>,
+            |<span class="kw">_</span>| {},
+            |qs_write: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| check_gid(
+                qs_write,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,
-                <span class="number">0x997ef244</span>
-            )
+                <span class="number">0x997ef244
+            </span>)
         );
     }
 
-    <span class="comment">// Test NOT regenerated if given on mod</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_modify_noregen</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
+    <span class="comment">// Test NOT regenerated if given on mod
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_modify_noregen() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                <span class="ident">Value::new_uuid</span>(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[e];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))),
             <span class="macro">modlist!</span>([
-                <span class="ident">m_purge</span>(<span class="string">&quot;gidnumber&quot;</span>),
-                <span class="ident">m_pres</span>(<span class="string">&quot;gidnumber&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_uint32</span>(<span class="number">2000</span>))
+                m_purge(<span class="string">&quot;gidnumber&quot;</span>),
+                m_pres(<span class="string">&quot;gidnumber&quot;</span>, <span class="kw-2">&amp;</span>Value::new_uint32(<span class="number">2000</span>))
             ]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="ident">qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> <span class="ident">check_gid</span>(
-                <span class="ident">qs_write</span>,
+            |<span class="kw">_</span>| {},
+            |qs_write: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| check_gid(
+                qs_write,
                 <span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>,
-                <span class="number">2000</span>
-            )
+                <span class="number">2000
+            </span>)
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_create_system_reject</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_create_system_reject() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                <span class="ident">Value::new_uuid</span>(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-000000000244&quot;</span>))
+                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-000000000244&quot;</span>))
             ),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = Vec::new();
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(
-                <span class="string">&quot;gidnumber 580 may overlap with system range 65536&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(
+                <span class="string">&quot;gidnumber 580 may overlap with system range 65536&quot;</span>.to_string()
             )),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_create_secure_reject</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;gidnumber&quot;</span>, <span class="ident">Value::Uint32</span>(<span class="number">500</span>)),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_create_secure_reject() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">500</span>)),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = Vec::new();
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(
-                <span class="string">&quot;gidnumber 500 overlaps into system secure range 1000&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(
+                <span class="string">&quot;gidnumber 500 overlaps into system secure range 1000&quot;</span>.to_string()
             )),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_gidnumber_create_secure_root_reject</span>() {
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-            (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;gidnumber&quot;</span>, <span class="ident">Value::Uint32</span>(<span class="number">0</span>)),
-            (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson&quot;</span>))
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_gidnumber_create_secure_root_reject() {
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">0</span>)),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = Vec::new();
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(
-                <span class="string">&quot;gidnumber 0 overlaps into system secure range 1000&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(
+                <span class="string">&quot;gidnumber 0 overlaps into system secure range 1000&quot;</span>.to_string()
             )),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/account.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>account.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/account.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>account.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -693,700 +693,700 @@
 <span id="693">693</span>
 <span id="694">694</span>
 <span id="695">695</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AuthType</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span>, <span class="ident">UatPurpose</span>, <span class="ident">UatStatus</span>, <span class="ident">UiHint</span>,
-    <span class="ident">UserAuthToken</span>,
+<span class="kw">use </span>kanidm_proto::v1::{
+    AuthType, BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint,
+    UserAuthToken,
 };
-<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::prelude</span>::{
-    <span class="ident">AuthenticationResult</span>, <span class="ident">CredentialID</span>, <span class="ident">DeviceKey</span> <span class="kw">as</span> <span class="ident">DeviceKeyV4</span>, <span class="ident">Passkey</span> <span class="kw">as</span> <span class="ident">PasskeyV4</span>,
+<span class="kw">use </span>time::OffsetDateTime;
+<span class="kw">use </span>uuid::Uuid;
+<span class="kw">use </span>webauthn_rs::prelude::{
+    AuthenticationResult, CredentialID, DeviceKey <span class="kw">as </span>DeviceKeyV4, Passkey <span class="kw">as </span>PasskeyV4,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::UUID_ANONYMOUS</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLockPolicy</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::Credential</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntryReduced</span>, <span class="ident">EntrySealed</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event::SearchEvent</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::group::Group</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServerProxyReadTransaction</span>, <span class="ident">IdmServerProxyWriteTransaction</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">ModifyInvalid</span>, <span class="ident">ModifyList</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaTransaction</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value</span>::{<span class="ident">IntentTokenState</span>, <span class="ident">PartialValue</span>, <span class="ident">Value</span>};
+<span class="kw">use </span><span class="kw">crate</span>::constants::UUID_ANONYMOUS;
+<span class="kw">use </span><span class="kw">crate</span>::credential::policy::CryptoPolicy;
+<span class="kw">use </span><span class="kw">crate</span>::credential::softlock::CredSoftLockPolicy;
+<span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
+<span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
+<span class="kw">use </span><span class="kw">crate</span>::event::SearchEvent;
+<span class="kw">use </span><span class="kw">crate</span>::idm::group::Group;
+<span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
+<span class="kw">use </span><span class="kw">crate</span>::modify::{ModifyInvalid, ModifyList};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
+<span class="kw">use </span><span class="kw">crate</span>::value::{IntentTokenState, PartialValue, Value};
 
-<span class="macro">macro_rules!</span> <span class="ident">try_from_entry</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">groups</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="comment">// Check the classes</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_ACCOUNT</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: account&quot;</span>.<span class="ident">to_string</span>(),
+<span class="macro">macro_rules! </span>try_from_entry {
+    (<span class="macro-nonterminal">$value</span>:expr, <span class="macro-nonterminal">$groups</span>:expr) =&gt; {{
+        <span class="comment">// Check the classes
+        </span><span class="kw">if </span>!<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: account&quot;</span>.to_string(),
             ));
         }
 
-        <span class="comment">// Now extract our needed attributes</span>
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="comment">// Now extract our needed attributes
+        </span><span class="kw">let </span>name = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing attribute: name&quot;</span>.to_string(),
             ))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">displayname</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;displayname&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing attribute: displayname&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="kw">let </span>displayname = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing attribute: displayname&quot;</span>.to_string(),
             ))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">primary</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_credential</span>(<span class="string">&quot;primary_credential&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span>primary = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_credential(<span class="string">&quot;primary_credential&quot;</span>)
+            .map(|v| v.clone());
 
-        <span class="kw">let</span> <span class="ident">passkeys</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_passkeys</span>(<span class="string">&quot;passkeys&quot;</span>)
-            .<span class="ident">cloned</span>()
-            .<span class="ident">unwrap_or_default</span>();
+        <span class="kw">let </span>passkeys = <span class="macro-nonterminal">$value
+            </span>.get_ava_passkeys(<span class="string">&quot;passkeys&quot;</span>)
+            .cloned()
+            .unwrap_or_default();
 
-        <span class="kw">let</span> <span class="ident">devicekeys</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_devicekeys</span>(<span class="string">&quot;devicekeys&quot;</span>)
-            .<span class="ident">cloned</span>()
-            .<span class="ident">unwrap_or_default</span>();
+        <span class="kw">let </span>devicekeys = <span class="macro-nonterminal">$value
+            </span>.get_ava_devicekeys(<span class="string">&quot;devicekeys&quot;</span>)
+            .cloned()
+            .unwrap_or_default();
 
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or</span>(
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>()),
+        <span class="kw">let </span>spn = <span class="macro-nonterminal">$value</span>.get_ava_single_proto_string(<span class="string">&quot;spn&quot;</span>).ok_or(
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: spn&quot;</span>.to_string()),
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">mail_primary</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_mail_primary</span>(<span class="string">&quot;mail&quot;</span>).<span class="ident">map</span>(<span class="ident">str::to_string</span>);
+        <span class="kw">let </span>mail_primary = <span class="macro-nonterminal">$value</span>.get_ava_mail_primary(<span class="string">&quot;mail&quot;</span>).map(str::to_string);
 
-        <span class="kw">let</span> <span class="ident">mail</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_iter_mail</span>(<span class="string">&quot;mail&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>())
-            .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
+        <span class="kw">let </span>mail = <span class="macro-nonterminal">$value
+            </span>.get_ava_iter_mail(<span class="string">&quot;mail&quot;</span>)
+            .map(|i| i.map(str::to_string).collect())
+            .unwrap_or_else(Vec::new);
 
-        <span class="kw">let</span> <span class="ident">valid_from</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_valid_from&quot;</span>);
+        <span class="kw">let </span>valid_from = <span class="macro-nonterminal">$value</span>.get_ava_single_datetime(<span class="string">&quot;account_valid_from&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">expire</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_expire&quot;</span>);
+        <span class="kw">let </span>expire = <span class="macro-nonterminal">$value</span>.get_ava_single_datetime(<span class="string">&quot;account_expire&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">radius_secret</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;radius_secret&quot;</span>)
-            .<span class="ident">map</span>(<span class="ident">str::to_string</span>);
+        <span class="kw">let </span>radius_secret = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_secret(<span class="string">&quot;radius_secret&quot;</span>)
+            .map(str::to_string);
 
-        <span class="comment">// Resolved by the caller</span>
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">groups</span>;
+        <span class="comment">// Resolved by the caller
+        </span><span class="kw">let </span>groups = <span class="macro-nonterminal">$groups</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>().<span class="ident">clone</span>();
+        <span class="kw">let </span>uuid = <span class="macro-nonterminal">$value</span>.get_uuid().clone();
 
-        <span class="kw">let</span> <span class="ident">credential_update_intent_tokens</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_as_intenttokens</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>)
-            .<span class="ident">cloned</span>()
-            .<span class="ident">unwrap_or_default</span>();
+        <span class="kw">let </span>credential_update_intent_tokens = <span class="macro-nonterminal">$value
+            </span>.get_ava_as_intenttokens(<span class="string">&quot;credential_update_intent_token&quot;</span>)
+            .cloned()
+            .unwrap_or_default();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ui_hints</span> <span class="op">=</span> <span class="ident">BTreeSet::default</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>ui_hints = BTreeSet::default();
 
-        <span class="kw">if</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_POSIXACCOUNT</span>) {
-            <span class="ident">ui_hints</span>.<span class="ident">insert</span>(<span class="ident">UiHint::PosixAccount</span>);
+        <span class="kw">if </span><span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXACCOUNT) {
+            ui_hints.insert(UiHint::PosixAccount);
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Account</span> {
-            <span class="ident">uuid</span>,
-            <span class="ident">name</span>,
-            <span class="ident">displayname</span>,
-            <span class="ident">groups</span>,
-            <span class="ident">primary</span>,
-            <span class="ident">passkeys</span>,
-            <span class="ident">devicekeys</span>,
-            <span class="ident">valid_from</span>,
-            <span class="ident">expire</span>,
-            <span class="ident">radius_secret</span>,
-            <span class="ident">spn</span>,
-            <span class="ident">ui_hints</span>,
-            <span class="ident">mail_primary</span>,
-            <span class="ident">mail</span>,
-            <span class="ident">credential_update_intent_tokens</span>,
+        <span class="prelude-val">Ok</span>(Account {
+            uuid,
+            name,
+            displayname,
+            groups,
+            primary,
+            passkeys,
+            devicekeys,
+            valid_from,
+            expire,
+            radius_secret,
+            spn,
+            ui_hints,
+            mail_primary,
+            mail,
+            credential_update_intent_tokens,
         })
     }};
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Account</span> {
-    <span class="comment">// Later these could be &amp;str if we cache entry here too ...</span>
-    <span class="comment">// They can&#39;t because if we mod the entry, we&#39;ll lose the ref.</span>
-    <span class="comment">//</span>
-    <span class="comment">// We do need to decide if we&#39;ll cache the entry, or if we just &quot;work out&quot;</span>
-    <span class="comment">// what the ops should be based on the values we cache here ... That&#39;s a future</span>
-    <span class="comment">// william problem I think :)</span>
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="comment">// We want to allow this so that in the future we can populate this into oauth2 tokens</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">passkeys</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">devicekeys</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">DeviceKeyV4</span>)<span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">valid_from</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">expire</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">radius_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">ui_hints</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">UiHint</span><span class="op">&gt;</span>,
-    <span class="comment">// TODO #256: When you add mail, you should update the check to zxcvbn</span>
-    <span class="comment">// to include these.</span>
-    <span class="kw">pub</span> <span class="ident">mail_primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">mail</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">credential_update_intent_tokens</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">IntentTokenState</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>Account {
+    <span class="comment">// Later these could be &amp;str if we cache entry here too ...
+    // They can&#39;t because if we mod the entry, we&#39;ll lose the ref.
+    //
+    // We do need to decide if we&#39;ll cache the entry, or if we just &quot;work out&quot;
+    // what the ops should be based on the values we cache here ... That&#39;s a future
+    // william problem I think :)
+    </span><span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>displayname: String,
+    <span class="kw">pub </span>uuid: Uuid,
+    <span class="comment">// We want to allow this so that in the future we can populate this into oauth2 tokens
+    </span><span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">pub </span>groups: Vec&lt;Group&gt;,
+    <span class="kw">pub </span>primary: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+    <span class="kw">pub </span>passkeys: BTreeMap&lt;Uuid, (String, PasskeyV4)&gt;,
+    <span class="kw">pub </span>devicekeys: BTreeMap&lt;Uuid, (String, DeviceKeyV4)&gt;,
+    <span class="kw">pub </span>valid_from: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>expire: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>radius_secret: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>ui_hints: BTreeSet&lt;UiHint&gt;,
+    <span class="comment">// TODO #256: When you add mail, you should update the check to zxcvbn
+    // to include these.
+    </span><span class="kw">pub </span>mail_primary: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>mail: Vec&lt;String&gt;,
+    <span class="kw">pub </span>credential_update_intent_tokens: BTreeMap&lt;String, IntentTokenState&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Account</span> {
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip_all</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_ro</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">Group::try_from_account_entry_ro</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
+<span class="kw">impl </span>Account {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip_all)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_ro(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>groups = Group::try_from_account_entry_ro(value, qs)<span class="question-mark">?</span>;
+        <span class="macro">try_from_entry!</span>(value, groups)
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip_all</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_rw</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">Group::try_from_account_entry_rw</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
+    <span class="attribute">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip_all)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_rw(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>groups = Group::try_from_account_entry_rw(value, qs)<span class="question-mark">?</span>;
+        <span class="macro">try_from_entry!</span>(value, groups)
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip_all</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_reduced</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">Group::try_from_account_entry_red_ro</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
+    <span class="attribute">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip_all)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_reduced(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntryReduced, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>groups = Group::try_from_account_entry_red_ro(value, qs)<span class="question-mark">?</span>;
+        <span class="macro">try_from_entry!</span>(value, groups)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_no_groups</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="macro">vec!</span>[])
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_no_groups(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="macro">try_from_entry!</span>(value, <span class="macro">vec!</span>[])
     }
 
-    <span class="doccomment">/// Given the session_id and other metadata, create a user authentication token</span>
-    <span class="doccomment">/// that represents a users session. Since this metadata can vary from session</span>
-    <span class="doccomment">/// to session, this userauthtoken may contain some data (claims) that may yield</span>
-    <span class="doccomment">/// different privileges to the bearer.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_userauthtoken</span>(
+    <span class="doccomment">/// Given the session_id and other metadata, create a user authentication token
+    /// that represents a users session. Since this metadata can vary from session
+    /// to session, this userauthtoken may contain some data (claims) that may yield
+    /// different privileges to the bearer.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_userauthtoken(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
-        <span class="ident">ct</span>: <span class="ident">Duration</span>,
-        <span class="ident">auth_type</span>: <span class="ident">AuthType</span>,
-        <span class="ident">expiry_secs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span><span class="op">&gt;</span> {
-        <span class="comment">// This could consume self?</span>
-        <span class="comment">// The cred handler provided is what authenticated this user, so we can use it to</span>
-        <span class="comment">// process what the proper claims should be.</span>
-        <span class="comment">// Get the claims from the cred_h</span>
+        session_id: Uuid,
+        ct: Duration,
+        auth_type: AuthType,
+        expiry_secs: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;UserAuthToken&gt; {
+        <span class="comment">// This could consume self?
+        // The cred handler provided is what authenticated this user, so we can use it to
+        // process what the proper claims should be.
+        // Get the claims from the cred_h
 
-        <span class="comment">// TODO: Apply policy to this expiry time.</span>
-        <span class="kw">let</span> <span class="ident">expiry</span> <span class="op">=</span> <span class="ident">expiry_secs</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">offset</span><span class="op">|</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">offset</span>));
-        <span class="kw">let</span> <span class="ident">issued_at</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
-        <span class="comment">// TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).</span>
-        <span class="kw">let</span> <span class="ident">purpose</span> <span class="op">=</span> <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span> };
+        // TODO: Apply policy to this expiry time.
+        </span><span class="kw">let </span>expiry = expiry_secs
+            .map(|offset| OffsetDateTime::unix_epoch() + ct + Duration::from_secs(offset));
+        <span class="kw">let </span>issued_at = OffsetDateTime::unix_epoch() + ct;
+        <span class="comment">// TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).
+        </span><span class="kw">let </span>purpose = UatPurpose::ReadWrite { expiry };
 
-        <span class="prelude-val">Some</span>(<span class="ident">UserAuthToken</span> {
-            <span class="ident">session_id</span>,
-            <span class="ident">auth_type</span>,
-            <span class="ident">expiry</span>,
-            <span class="ident">issued_at</span>,
-            <span class="ident">purpose</span>,
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>,
-            <span class="ident">displayname</span>: <span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
-            <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
-            <span class="ident">mail_primary</span>: <span class="self">self</span>.<span class="ident">mail_primary</span>.<span class="ident">clone</span>(),
-            <span class="ident">ui_hints</span>: <span class="self">self</span>.<span class="ident">ui_hints</span>.<span class="ident">clone</span>(),
-            <span class="comment">// application: None,</span>
-            <span class="comment">// groups: self.groups.iter().map(|g| g.to_proto()).collect(),</span>
-        })
+        <span class="prelude-val">Some</span>(UserAuthToken {
+            session_id,
+            auth_type,
+            expiry,
+            issued_at,
+            purpose,
+            uuid: <span class="self">self</span>.uuid,
+            displayname: <span class="self">self</span>.displayname.clone(),
+            spn: <span class="self">self</span>.spn.clone(),
+            mail_primary: <span class="self">self</span>.mail_primary.clone(),
+            ui_hints: <span class="self">self</span>.ui_hints.clone(),
+            <span class="comment">// application: None,
+            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+        </span>})
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_within_valid_time</span>(
-        <span class="ident">ct</span>: <span class="ident">Duration</span>,
-        <span class="ident">valid_from</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-        <span class="ident">expire</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">cot</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
+    <span class="kw">pub fn </span>check_within_valid_time(
+        ct: Duration,
+        valid_from: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OffsetDateTime&gt;,
+        expire: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OffsetDateTime&gt;,
+    ) -&gt; bool {
+        <span class="kw">let </span>cot = OffsetDateTime::unix_epoch() + ct;
 
-        <span class="kw">let</span> <span class="ident">vmin</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vft</span>) <span class="op">=</span> <span class="ident">valid_from</span> {
-            <span class="comment">// If current time greater than strat time window</span>
-            <span class="ident">vft</span> <span class="op">&lt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">cot</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// We have no time, not expired.</span>
-            <span class="bool-val">true</span>
-        };
-        <span class="kw">let</span> <span class="ident">vmax</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ext</span>) <span class="op">=</span> <span class="ident">expire</span> {
-            <span class="comment">// If exp greater than ct then expired.</span>
-            <span class="kw-2">&amp;</span><span class="ident">cot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">ext</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// If not present, we are not expired</span>
-            <span class="bool-val">true</span>
-        };
-        <span class="comment">// Mix the results</span>
-        <span class="ident">vmin</span> <span class="op">&amp;&amp;</span> <span class="ident">vmax</span>
+        <span class="kw">let </span>vmin = <span class="kw">if let </span><span class="prelude-val">Some</span>(vft) = valid_from {
+            <span class="comment">// If current time greater than strat time window
+            </span>vft &lt;= <span class="kw-2">&amp;</span>cot
+        } <span class="kw">else </span>{
+            <span class="comment">// We have no time, not expired.
+            </span><span class="bool-val">true
+        </span>};
+        <span class="kw">let </span>vmax = <span class="kw">if let </span><span class="prelude-val">Some</span>(ext) = expire {
+            <span class="comment">// If exp greater than ct then expired.
+            </span><span class="kw-2">&amp;</span>cot &lt;= ext
+        } <span class="kw">else </span>{
+            <span class="comment">// If not present, we are not expired
+            </span><span class="bool-val">true
+        </span>};
+        <span class="comment">// Mix the results
+        </span>vmin &amp;&amp; vmax
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_within_valid_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident"><span class="self">Self</span>::check_within_valid_time</span>(<span class="ident">ct</span>, <span class="self">self</span>.<span class="ident">valid_from</span>.<span class="ident">as_ref</span>(), <span class="self">self</span>.<span class="ident">expire</span>.<span class="ident">as_ref</span>())
+    <span class="kw">pub fn </span>is_within_valid_time(<span class="kw-2">&amp;</span><span class="self">self</span>, ct: Duration) -&gt; bool {
+        <span class="self">Self</span>::check_within_valid_time(ct, <span class="self">self</span>.valid_from.as_ref(), <span class="self">self</span>.expire.as_ref())
     }
 
-    <span class="comment">// Get related inputs, such as account name, email, etc.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">related_inputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">4</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">mail</span>.<span class="ident">len</span>());
-        <span class="self">self</span>.<span class="ident">mail</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">m</span><span class="op">|</span> {
-            <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="ident">m</span>.<span class="ident">as_str</span>());
+    <span class="comment">// Get related inputs, such as account name, email, etc.
+    </span><span class="kw">pub fn </span>related_inputs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>inputs = Vec::with_capacity(<span class="number">4 </span>+ <span class="self">self</span>.mail.len());
+        <span class="self">self</span>.mail.iter().for_each(|m| {
+            inputs.push(m.as_str());
         });
-        <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">name</span>.<span class="ident">as_str</span>());
-        <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>());
-        <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">as_str</span>());
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">radius_secret</span>.<span class="ident">as_deref</span>() {
-            <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="ident">s</span>);
+        inputs.push(<span class="self">self</span>.name.as_str());
+        inputs.push(<span class="self">self</span>.spn.as_str());
+        inputs.push(<span class="self">self</span>.displayname.as_str());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(s) = <span class="self">self</span>.radius_secret.as_deref() {
+            inputs.push(s);
         }
-        <span class="ident">inputs</span>
+        inputs
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">primary_cred_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> <span class="ident">cred</span>.<span class="ident">uuid</span>).<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_anonymous</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">UUID_ANONYMOUS</span>)
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            }
+    <span class="kw">pub fn </span>primary_cred_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
+        <span class="self">self</span>.primary.as_ref().map(|cred| cred.uuid).or_else(|| {
+            <span class="kw">if </span><span class="self">self</span>.is_anonymous() {
+                <span class="prelude-val">Some</span>(UUID_ANONYMOUS)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">primary_cred_uuid_and_policy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">CredSoftLockPolicy</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">primary</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> (<span class="ident">cred</span>.<span class="ident">uuid</span>, <span class="ident">cred</span>.<span class="ident">softlock_policy</span>()))
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_anonymous</span>() {
-                    <span class="prelude-val">Some</span>((<span class="ident">UUID_ANONYMOUS</span>, <span class="ident">CredSoftLockPolicy::Unrestricted</span>))
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">None</span>
-                }
+    <span class="kw">pub fn </span>primary_cred_uuid_and_policy(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(Uuid, CredSoftLockPolicy)&gt; {
+        <span class="self">self</span>.primary
+            .as_ref()
+            .map(|cred| (cred.uuid, cred.softlock_policy()))
+            .or_else(|| {
+                <span class="kw">if </span><span class="self">self</span>.is_anonymous() {
+                    <span class="prelude-val">Some</span>((UUID_ANONYMOUS, CredSoftLockPolicy::Unrestricted))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
             })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="ident">UUID_ANONYMOUS</span>
+    <span class="kw">pub fn </span>is_anonymous(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.uuid == UUID_ANONYMOUS
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_generatedpassword_recover_mod</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>gen_generatedpassword_recover_mod(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="ident">CryptoPolicy</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">Credential::new_generatedpassword_only</span>(<span class="ident">crypto_policy</span>, <span class="ident">cleartext</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
+        cleartext: <span class="kw-2">&amp;</span>str,
+        crypto_policy: <span class="kw-2">&amp;</span>CryptoPolicy,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ModifyList&lt;ModifyInvalid&gt;, OperationError&gt; {
+        <span class="kw">let </span>ncred = Credential::new_generatedpassword_only(crypto_policy, cleartext)<span class="question-mark">?</span>;
+        <span class="kw">let </span>vcred = Value::new_credential(<span class="string">&quot;primary&quot;</span>, ncred);
+        <span class="prelude-val">Ok</span>(ModifyList::new_purge_and_set(<span class="string">&quot;primary_credential&quot;</span>, vcred))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_password_mod</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>gen_password_mod(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="ident">CryptoPolicy</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
-            <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">set_password</span>(<span class="ident">crypto_policy</span>, <span class="ident">cleartext</span>)<span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
+        cleartext: <span class="kw-2">&amp;</span>str,
+        crypto_policy: <span class="kw-2">&amp;</span>CryptoPolicy,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ModifyList&lt;ModifyInvalid&gt;, OperationError&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.primary {
+            <span class="comment">// Change the cred
+            </span><span class="prelude-val">Some</span>(primary) =&gt; {
+                <span class="kw">let </span>ncred = primary.set_password(crypto_policy, cleartext)<span class="question-mark">?</span>;
+                <span class="kw">let </span>vcred = Value::new_credential(<span class="string">&quot;primary&quot;</span>, ncred);
+                <span class="prelude-val">Ok</span>(ModifyList::new_purge_and_set(<span class="string">&quot;primary_credential&quot;</span>, vcred))
             }
-            <span class="comment">// Make a new credential instead</span>
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">Credential::new_password_only</span>(<span class="ident">crypto_policy</span>, <span class="ident">cleartext</span>)<span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
+            <span class="comment">// Make a new credential instead
+            </span><span class="prelude-val">None </span>=&gt; {
+                <span class="kw">let </span>ncred = Credential::new_password_only(crypto_policy, cleartext)<span class="question-mark">?</span>;
+                <span class="kw">let </span>vcred = Value::new_credential(<span class="string">&quot;primary&quot;</span>, ncred);
+                <span class="prelude-val">Ok</span>(ModifyList::new_purge_and_set(<span class="string">&quot;primary_credential&quot;</span>, vcred))
             }
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_webauthn_counter_mod</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">auth_result</span>: <span class="kw-2">&amp;</span><span class="ident">AuthenticationResult</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ml</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">2</span>);
-        <span class="comment">// Where is the credential we need to update?</span>
-        <span class="kw">let</span> <span class="ident">opt_ncred</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; <span class="ident">primary</span>.<span class="ident">update_webauthn_properties</span>(<span class="ident">auth_result</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>gen_webauthn_counter_mod(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        auth_result: <span class="kw-2">&amp;</span>AuthenticationResult,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;ModifyList&lt;ModifyInvalid&gt;&gt;, OperationError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>ml = Vec::with_capacity(<span class="number">2</span>);
+        <span class="comment">// Where is the credential we need to update?
+        </span><span class="kw">let </span>opt_ncred = <span class="kw">match </span><span class="self">self</span>.primary.as_ref() {
+            <span class="prelude-val">Some</span>(primary) =&gt; primary.update_webauthn_properties(auth_result)<span class="question-mark">?</span>,
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
         };
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ncred</span>) <span class="op">=</span> <span class="ident">opt_ncred</span> {
-            <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-            <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Purged</span>(<span class="string">&quot;primary_credential&quot;</span>.<span class="ident">into</span>()));
-            <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(<span class="string">&quot;primary_credential&quot;</span>.<span class="ident">into</span>(), <span class="ident">vcred</span>));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ncred) = opt_ncred {
+            <span class="kw">let </span>vcred = Value::new_credential(<span class="string">&quot;primary&quot;</span>, ncred);
+            ml.push(Modify::Purged(<span class="string">&quot;primary_credential&quot;</span>.into()));
+            ml.push(Modify::Present(<span class="string">&quot;primary_credential&quot;</span>.into(), vcred));
         }
 
-        <span class="comment">// Is it a passkey?</span>
-        <span class="self">self</span>.<span class="ident">passkeys</span>.<span class="ident">iter_mut</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">u</span>, (<span class="ident">t</span>, <span class="ident">k</span>))<span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) <span class="op">=</span> <span class="ident">k</span>.<span class="ident">update_credential</span>(<span class="ident">auth_result</span>) {
-                <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Removed</span>(
-                    <span class="string">&quot;passkeys&quot;</span>.<span class="ident">into</span>(),
-                    <span class="ident">PartialValue::Passkey</span>(<span class="kw-2">*</span><span class="ident">u</span>),
+        <span class="comment">// Is it a passkey?
+        </span><span class="self">self</span>.passkeys.iter_mut().for_each(|(u, (t, k))| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="bool-val">true</span>) = k.update_credential(auth_result) {
+                ml.push(Modify::Removed(
+                    <span class="string">&quot;passkeys&quot;</span>.into(),
+                    PartialValue::Passkey(<span class="kw-2">*</span>u),
                 ));
 
-                <span class="ident">ml</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(
-                    <span class="string">&quot;passkeys&quot;</span>.<span class="ident">into</span>(),
-                    <span class="ident">Value::Passkey</span>(<span class="kw-2">*</span><span class="ident">u</span>, <span class="ident">t</span>.<span class="ident">clone</span>(), <span class="ident">k</span>.<span class="ident">clone</span>()),
+                ml.push(Modify::Present(
+                    <span class="string">&quot;passkeys&quot;</span>.into(),
+                    Value::Passkey(<span class="kw-2">*</span>u, t.clone(), k.clone()),
                 ));
             }
         });
 
-        <span class="kw">if</span> <span class="ident">ml</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if </span>ml.is_empty() {
             <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ModifyList::new_list</span>(<span class="ident">ml</span>)))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(ModifyList::new_list(ml)))
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">invalidate_backup_code_mod</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invalidate_backup_code_mod(
         <span class="self">self</span>,
-        <span class="ident">code_to_remove</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">primary</span> {
-            <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">r_ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">invalidate_backup_code</span>(<span class="ident">code_to_remove</span>);
-                <span class="kw">match</span> <span class="ident">r_ncred</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ncred</span>) =&gt; {
-                        <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
-                        <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
+        code_to_remove: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ModifyList&lt;ModifyInvalid&gt;, OperationError&gt; {
+        <span class="kw">match </span><span class="self">self</span>.primary {
+            <span class="comment">// Change the cred
+            </span><span class="prelude-val">Some</span>(primary) =&gt; {
+                <span class="kw">let </span>r_ncred = primary.invalidate_backup_code(code_to_remove);
+                <span class="kw">match </span>r_ncred {
+                    <span class="prelude-val">Ok</span>(ncred) =&gt; {
+                        <span class="kw">let </span>vcred = Value::new_credential(<span class="string">&quot;primary&quot;</span>, ncred);
+                        <span class="prelude-val">Ok</span>(ModifyList::new_purge_and_set(<span class="string">&quot;primary_credential&quot;</span>, vcred))
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
                 }
             }
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="comment">// No credential exists, we can&#39;t supplementy it.</span>
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// No credential exists, we can&#39;t supplementy it.
+                </span><span class="prelude-val">Err</span>(OperationError::InvalidState)
             }
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">check_credential_pw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">primary</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> <span class="ident">cred</span>.<span class="ident">password_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">pw</span><span class="op">|</span> <span class="ident">pw</span>.<span class="ident">verify</span>(<span class="ident">cleartext</span>)))
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_credential_pw(<span class="kw-2">&amp;</span><span class="self">self</span>, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="self">self</span>.primary
+            .as_ref()
+            .ok_or(OperationError::InvalidState)
+            .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">regenerate_radius_secret_mod</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>regenerate_radius_secret_mod(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_secret_str</span>(<span class="ident">cleartext</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;radius_secret&quot;</span>, <span class="ident">vcred</span>))
+        cleartext: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ModifyList&lt;ModifyInvalid&gt;, OperationError&gt; {
+        <span class="kw">let </span>vcred = Value::new_secret_str(cleartext);
+        <span class="prelude-val">Ok</span>(ModifyList::new_purge_and_set(<span class="string">&quot;radius_secret&quot;</span>, vcred))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_credentialstatus</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// In the future this will need to handle multiple credentials, not just single.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_credentialstatus(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialStatus, OperationError&gt; {
+        <span class="comment">// In the future this will need to handle multiple credentials, not just single.
 
-        <span class="self">self</span>.<span class="ident">primary</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> <span class="ident">CredentialStatus</span> {
-                <span class="ident">creds</span>: <span class="macro">vec!</span>[<span class="ident">cred</span>.<span class="ident">into</span>()],
+        </span><span class="self">self</span>.primary
+            .as_ref()
+            .map(|cred| CredentialStatus {
+                creds: <span class="macro">vec!</span>[cred.into()],
             })
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingAttributes</span>)
+            .ok_or(OperationError::NoMatchingAttributes)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_backupcodesview</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">primary</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> <span class="ident">cred</span>.<span class="ident">get_backup_code_view</span>())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_backupcodesview(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BackupCodesView, OperationError&gt; {
+        <span class="self">self</span>.primary
+            .as_ref()
+            .ok_or(OperationError::InvalidState)
+            .and_then(|cred| cred.get_backup_code_view())
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">existing_credential_id_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CredentialID</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// TODO!!!</span>
-        <span class="comment">// Used in registrations only for disallowing exsiting credentials.</span>
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>existing_credential_id_list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;CredentialID&gt;&gt; {
+        <span class="comment">// TODO!!!
+        // Used in registrations only for disallowing exsiting credentials.
+        </span><span class="prelude-val">None
+    </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">check_user_auth_token_valid</span>(
-        <span class="ident">ct</span>: <span class="ident">Duration</span>,
-        <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
-        <span class="ident">entry</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// Remember, token expiry is checked by validate_and_parse_token_to_token.</span>
-        <span class="comment">// If we wanted we could check other properties of the uat here?</span>
-        <span class="comment">// Alternatelly, we could always store LESS in the uat because of this?</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_user_auth_token_valid(
+        ct: Duration,
+        uat: <span class="kw-2">&amp;</span>UserAuthToken,
+        entry: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+    ) -&gt; bool {
+        <span class="comment">// Remember, token expiry is checked by validate_and_parse_token_to_token.
+        // If we wanted we could check other properties of the uat here?
+        // Alternatelly, we could always store LESS in the uat because of this?
 
-        <span class="kw">let</span> <span class="ident">within_valid_window</span> <span class="op">=</span> <span class="ident">Account::check_within_valid_time</span>(
-            <span class="ident">ct</span>,
-            <span class="ident">entry</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_valid_from&quot;</span>).<span class="ident">as_ref</span>(),
-            <span class="ident">entry</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_expire&quot;</span>).<span class="ident">as_ref</span>(),
+        </span><span class="kw">let </span>within_valid_window = Account::check_within_valid_time(
+            ct,
+            entry.get_ava_single_datetime(<span class="string">&quot;account_valid_from&quot;</span>).as_ref(),
+            entry.get_ava_single_datetime(<span class="string">&quot;account_expire&quot;</span>).as_ref(),
         );
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">within_valid_window</span> {
+        <span class="kw">if </span>!within_valid_window {
             <span class="macro">security_info!</span>(<span class="string">&quot;Account has expired or is not yet valid, not allowing to proceed&quot;</span>);
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="comment">// Anonymous does NOT record it&#39;s sessions, so we simply check the expiry time</span>
-        <span class="comment">// of the token. This is already done for us as noted above.</span>
+        <span class="comment">// Anonymous does NOT record it&#39;s sessions, so we simply check the expiry time
+        // of the token. This is already done for us as noted above.
 
-        <span class="kw">if</span> <span class="ident">uat</span>.<span class="ident">auth_type</span> <span class="op">==</span> <span class="ident">AuthType::Anonymous</span> {
+        </span><span class="kw">if </span>uat.auth_type == AuthType::Anonymous {
             <span class="macro">security_info!</span>(<span class="string">&quot;Anonymous sessions do not have session records, session is valid.&quot;</span>);
-            <span class="bool-val">true</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// Get the sessions.</span>
-            <span class="kw">let</span> <span class="ident">session_present</span> <span class="op">=</span> <span class="ident">entry</span>
-                .<span class="ident">get_ava_as_session_map</span>(<span class="string">&quot;user_auth_token_session&quot;</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">session_map</span><span class="op">|</span> <span class="ident">session_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>.<span class="ident">session_id</span>).<span class="ident">is_some</span>())
-                .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
+            <span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="comment">// Get the sessions.
+            </span><span class="kw">let </span>session_present = entry
+                .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
+                .map(|session_map| session_map.get(<span class="kw-2">&amp;</span>uat.session_id).is_some())
+                .unwrap_or(<span class="bool-val">false</span>);
 
-            <span class="kw">if</span> <span class="ident">session_present</span> {
+            <span class="kw">if </span>session_present {
                 <span class="macro">security_info!</span>(<span class="string">&quot;A valid session value exists for this token&quot;</span>);
-                <span class="bool-val">true</span>
-            } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">grace</span> <span class="op">=</span> <span class="ident">uat</span>.<span class="ident">issued_at</span> <span class="op">+</span> <span class="ident">GRACE_WINDOW</span>;
-                <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">time::OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
-                <span class="macro">trace!</span>(<span class="op">%</span><span class="ident">grace</span>, <span class="op">%</span><span class="ident">current</span>);
-                <span class="kw">if</span> <span class="ident">current</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">grace</span> {
+                <span class="bool-val">true
+            </span>} <span class="kw">else </span>{
+                <span class="kw">let </span>grace = uat.issued_at + GRACE_WINDOW;
+                <span class="kw">let </span>current = time::OffsetDateTime::unix_epoch() + ct;
+                <span class="macro">trace!</span>(%grace, %current);
+                <span class="kw">if </span>current &gt;= grace {
                     <span class="macro">security_info!</span>(
-                        <span class="string">&quot;The token grace window has passed, and no session exists. Assuming invalid.&quot;</span>
-                    );
-                    <span class="bool-val">false</span>
-                } <span class="kw">else</span> {
+                        <span class="string">&quot;The token grace window has passed, and no session exists. Assuming invalid.&quot;
+                    </span>);
+                    <span class="bool-val">false
+                </span>} <span class="kw">else </span>{
                     <span class="macro">security_info!</span>(<span class="string">&quot;The token grace window is in effect. Assuming valid.&quot;</span>);
-                    <span class="bool-val">true</span>
-                }
+                    <span class="bool-val">true
+                </span>}
             }
         }
     }
 }
 
-<span class="comment">// Need to also add a &quot;to UserAuthToken&quot; ...</span>
+<span class="comment">// Need to also add a &quot;to UserAuthToken&quot; ...
 
-<span class="comment">// Need tests for conversion and the cred validations</span>
+// Need tests for conversion and the cred validations
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DestroySessionTokenEvent</span> {
-    <span class="comment">// Who initiated this?</span>
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// Who is it targetting?</span>
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    <span class="comment">// Which token id.</span>
-    <span class="kw">pub</span> <span class="ident">token_id</span>: <span class="ident">Uuid</span>,
+</span><span class="kw">pub struct </span>DestroySessionTokenEvent {
+    <span class="comment">// Who initiated this?
+    </span><span class="kw">pub </span>ident: Identity,
+    <span class="comment">// Who is it targetting?
+    </span><span class="kw">pub </span>target: Uuid,
+    <span class="comment">// Which token id.
+    </span><span class="kw">pub </span>token_id: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">DestroySessionTokenEvent</span> {
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">token_id</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">DestroySessionTokenEvent</span> {
-            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
-            <span class="ident">target</span>,
-            <span class="ident">token_id</span>,
+<span class="kw">impl </span>DestroySessionTokenEvent {
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid, token_id: Uuid) -&gt; <span class="self">Self </span>{
+        DestroySessionTokenEvent {
+            ident: Identity::from_internal(),
+            target,
+            token_id,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">account_destroy_session_token</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">dte</span>: <span class="kw-2">&amp;</span><span class="ident">DestroySessionTokenEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Delete the attribute with uuid.</span>
-        <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Removed</span>(
-            <span class="ident">AttrString::from</span>(<span class="string">&quot;user_auth_token_session&quot;</span>),
-            <span class="ident">PartialValue::Refer</span>(<span class="ident">dte</span>.<span class="ident">token_id</span>),
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerProxyWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub fn </span>account_destroy_session_token(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        dte: <span class="kw-2">&amp;</span>DestroySessionTokenEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// Delete the attribute with uuid.
+        </span><span class="kw">let </span>modlist = ModifyList::new_list(<span class="macro">vec!</span>[Modify::Removed(
+            AttrString::from(<span class="string">&quot;user_auth_token_session&quot;</span>),
+            PartialValue::Refer(dte.token_id),
         )]);
 
-        <span class="self">self</span>.<span class="ident">qs_write</span>
-            .<span class="ident">impersonate_modify</span>(
-                <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="macro">f_and!</span>([
-                    <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::Uuid</span>(<span class="ident">dte</span>.<span class="ident">target</span>)),
-                    <span class="ident">f_eq</span>(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="ident">PartialValue::Refer</span>(<span class="ident">dte</span>.<span class="ident">token_id</span>))
+        <span class="self">self</span>.qs_write
+            .impersonate_modify(
+                <span class="comment">// Filter as executed
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="macro">f_and!</span>([
+                    f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(dte.target)),
+                    f_eq(<span class="string">&quot;user_auth_token_session&quot;</span>, PartialValue::Refer(dte.token_id))
                 ])),
-                <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="macro">f_and!</span>([
-                    <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::Uuid</span>(<span class="ident">dte</span>.<span class="ident">target</span>)),
-                    <span class="ident">f_eq</span>(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="ident">PartialValue::Refer</span>(<span class="ident">dte</span>.<span class="ident">token_id</span>))
+                <span class="comment">// Filter as intended (acp)
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="macro">f_and!</span>([
+                    f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(dte.target)),
+                    f_eq(<span class="string">&quot;user_auth_token_session&quot;</span>, PartialValue::Refer(dte.token_id))
                 ])),
-                <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
-                <span class="comment">// Provide the event to impersonate</span>
-                <span class="kw-2">&amp;</span><span class="ident">dte</span>.<span class="ident">ident</span>,
+                <span class="kw-2">&amp;</span>modlist,
+                <span class="comment">// Provide the event to impersonate
+                </span><span class="kw-2">&amp;</span>dte.ident,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to destroy user auth token {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to destroy user auth token {:?}&quot;</span>, e);
+                e
             })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">service_account_into_person</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-        <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">schema_ref</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">get_schema</span>();
+    <span class="kw">pub fn </span>service_account_into_person(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        ident: <span class="kw-2">&amp;</span>Identity,
+        target_uuid: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>schema_ref = <span class="self">self</span>.qs_write.get_schema();
 
-        <span class="comment">// Get the entry.</span>
-        <span class="kw">let</span> <span class="ident">account_entry</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">qs_write</span>
-            .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">target_uuid</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start service account into person -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
+        <span class="comment">// Get the entry.
+        </span><span class="kw">let </span>account_entry = <span class="self">self
+            </span>.qs_write
+            .internal_search_uuid(<span class="kw-2">&amp;</span>target_uuid)
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start service account into person -&gt; {:?}&quot;</span>, e);
+                e
             })<span class="question-mark">?</span>;
 
-        <span class="comment">// Copy the current classes</span>
-        <span class="kw">let</span> <span class="ident">prev_classes</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">account_entry</span>
-            .<span class="ident">get_ava_as_iutf8_iter</span>(<span class="string">&quot;class&quot;</span>)
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+        <span class="comment">// Copy the current classes
+        </span><span class="kw">let </span>prev_classes: BTreeSet&lt;<span class="kw">_</span>&gt; = account_entry
+            .get_ava_as_iutf8_iter(<span class="string">&quot;class&quot;</span>)
+            .ok_or_else(|| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid entry, class attribute is not present or not iutf8&quot;</span>);
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: class&quot;</span>.<span class="ident">to_string</span>())
-            })<span class="question-mark">?</span>
-            .<span class="ident">collect</span>();
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: class&quot;</span>.to_string())
+            })<span class="question-mark">?
+            </span>.collect();
 
-        <span class="comment">// Remove the service account class.</span>
-        <span class="comment">// Add the person class.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_classes</span> <span class="op">=</span> <span class="ident">prev_classes</span>.<span class="ident">clone</span>();
-        <span class="ident">new_classes</span>.<span class="ident">remove</span>(<span class="string">&quot;service_account&quot;</span>);
-        <span class="ident">new_classes</span>.<span class="ident">insert</span>(<span class="string">&quot;person&quot;</span>);
+        <span class="comment">// Remove the service account class.
+        // Add the person class.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>new_classes = prev_classes.clone();
+        new_classes.remove(<span class="string">&quot;service_account&quot;</span>);
+        new_classes.insert(<span class="string">&quot;person&quot;</span>);
 
-        <span class="comment">// diff the schema attrs, and remove the ones that are service_account only.</span>
-        <span class="kw">let</span> (<span class="ident">_added</span>, <span class="ident">removed</span>) <span class="op">=</span> <span class="ident">schema_ref</span>
-            .<span class="ident">query_attrs_difference</span>(<span class="kw-2">&amp;</span><span class="ident">prev_classes</span>, <span class="kw-2">&amp;</span><span class="ident">new_classes</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">se</span><span class="op">|</span> {
+        <span class="comment">// diff the schema attrs, and remove the ones that are service_account only.
+        </span><span class="kw">let </span>(_added, removed) = schema_ref
+            .query_attrs_difference(<span class="kw-2">&amp;</span>prev_classes, <span class="kw-2">&amp;</span>new_classes)
+            .map_err(|se| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;While querying the schema, it reported that requested classes may not be present indicating a possible corruption&quot;</span>);
-                <span class="ident">OperationError::SchemaViolation</span>(
-                    <span class="ident">se</span>
+                OperationError::SchemaViolation(
+                    se
                 )
             })<span class="question-mark">?</span>;
 
-        <span class="comment">// Now construct the modlist which:</span>
-        <span class="comment">// removes service_account</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modlist</span> <span class="op">=</span>
-            <span class="ident">ModifyList::new_remove</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;service_account&quot;</span>));
-        <span class="comment">// add person</span>
-        <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Present</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">into</span>(), <span class="ident">Value::new_class</span>(<span class="string">&quot;person&quot;</span>)));
-        <span class="comment">// purge the other attrs that are SA only.</span>
-        <span class="ident">removed</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">attr</span><span class="op">|</span> <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Purged</span>(<span class="ident">attr</span>.<span class="ident">into</span>())));
-        <span class="comment">// purge existing sessions</span>
+        <span class="comment">// Now construct the modlist which:
+        // removes service_account
+        </span><span class="kw">let </span><span class="kw-2">mut </span>modlist =
+            ModifyList::new_remove(<span class="string">&quot;class&quot;</span>, PartialValue::new_class(<span class="string">&quot;service_account&quot;</span>));
+        <span class="comment">// add person
+        </span>modlist.push_mod(Modify::Present(<span class="string">&quot;class&quot;</span>.into(), Value::new_class(<span class="string">&quot;person&quot;</span>)));
+        <span class="comment">// purge the other attrs that are SA only.
+        </span>removed
+            .into_iter()
+            .for_each(|attr| modlist.push_mod(Modify::Purged(attr.into())));
+        <span class="comment">// purge existing sessions
 
-        <span class="comment">// Modify</span>
-        <span class="self">self</span>.<span class="ident">qs_write</span>
-            .<span class="ident">impersonate_modify</span>(
-                <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">target_uuid</span>))),
-                <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">target_uuid</span>))),
-                <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
-                <span class="comment">// Provide the entry to impersonate</span>
-                <span class="ident">ident</span>,
+        // Modify
+        </span><span class="self">self</span>.qs_write
+            .impersonate_modify(
+                <span class="comment">// Filter as executed
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid))),
+                <span class="comment">// Filter as intended (acp)
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid))),
+                <span class="kw-2">&amp;</span>modlist,
+                <span class="comment">// Provide the entry to impersonate
+                </span>ident,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to migrate service account to person - {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to migrate service account to person - {:?}&quot;</span>, e);
+                e
             })
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ListUserAuthTokenEvent</span> {
-    <span class="comment">// Who initiated this?</span>
-    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
-    <span class="comment">// Who is it targetting?</span>
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
+<span class="kw">pub struct </span>ListUserAuthTokenEvent {
+    <span class="comment">// Who initiated this?
+    </span><span class="kw">pub </span>ident: Identity,
+    <span class="comment">// Who is it targetting?
+    </span><span class="kw">pub </span>target: Uuid,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">account_list_user_auth_tokens</span>(
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub fn </span>account_list_user_auth_tokens(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">lte</span>: <span class="kw-2">&amp;</span><span class="ident">ListUserAuthTokenEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UatStatus</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Make an event from the request</span>
-        <span class="kw">let</span> <span class="ident">srch</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">SearchEvent::from_target_uuid_request</span>(
-            <span class="ident">lte</span>.<span class="ident">ident</span>.<span class="ident">clone</span>(),
-            <span class="ident">lte</span>.<span class="ident">target</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qs_read</span>,
+        lte: <span class="kw-2">&amp;</span>ListUserAuthTokenEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UatStatus&gt;, OperationError&gt; {
+        <span class="comment">// Make an event from the request
+        </span><span class="kw">let </span>srch = <span class="kw">match </span>SearchEvent::from_target_uuid_request(
+            lte.ident.clone(),
+            lte.target,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.qs_read,
         ) {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin account list user auth tokens: {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
+            <span class="prelude-val">Ok</span>(s) =&gt; s,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin account list user auth tokens: {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(e);
             }
         };
 
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-            <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) =&gt; {
-                <span class="ident">entries</span>
-                    .<span class="ident">pop</span>()
-                    <span class="comment">// get the first entry</span>
-                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">account_id</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>();
-                        <span class="comment">// From the entry, turn it into the value</span>
-                        <span class="ident">e</span>.<span class="ident">get_ava_as_session_map</span>(<span class="string">&quot;user_auth_token_session&quot;</span>)
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">smap</span><span class="op">|</span> {
-                                <span class="ident">smap</span>.<span class="ident">iter</span>()
-                                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">s</span>)<span class="op">|</span> {
-                                        <span class="ident">s</span>.<span class="ident">scope</span>
-                                            .<span class="ident">try_into</span>()
-                                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">purpose</span><span class="op">|</span> <span class="ident">UatStatus</span> {
-                                                <span class="ident">account_id</span>,
-                                                <span class="ident">session_id</span>: <span class="kw-2">*</span><span class="ident">u</span>,
-                                                <span class="ident">expiry</span>: <span class="ident">s</span>.<span class="ident">expiry</span>,
-                                                <span class="ident">issued_at</span>: <span class="ident">s</span>.<span class="ident">issued_at</span>,
-                                                <span class="ident">purpose</span>,
+        <span class="kw">match </span><span class="self">self</span>.qs_read.search_ext(<span class="kw-2">&amp;</span>srch) {
+            <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>entries) =&gt; {
+                entries
+                    .pop()
+                    <span class="comment">// get the first entry
+                    </span>.and_then(|e| {
+                        <span class="kw">let </span>account_id = e.get_uuid();
+                        <span class="comment">// From the entry, turn it into the value
+                        </span>e.get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
+                            .map(|smap| {
+                                smap.iter()
+                                    .map(|(u, s)| {
+                                        s.scope
+                                            .try_into()
+                                            .map(|purpose| UatStatus {
+                                                account_id,
+                                                session_id: <span class="kw-2">*</span>u,
+                                                expiry: s.expiry,
+                                                issued_at: s.issued_at,
+                                                purpose,
                                             })
-                                            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                                                <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid user auth token {}&quot;</span>, <span class="ident">u</span>);
-                                                <span class="ident">e</span>
+                                            .map_err(|e| {
+                                                <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid user auth token {}&quot;</span>, u);
+                                                e
                                             })
                                     })
-                                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()
+                                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()
                             })
                     })
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                        <span class="comment">// No matching entry? Return none.</span>
-                        <span class="prelude-val">Ok</span>(<span class="ident">Vec::new</span>())
+                    .unwrap_or_else(|| {
+                        <span class="comment">// No matching entry? Return none.
+                        </span><span class="prelude-val">Ok</span>(Vec::new())
                     })
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::JSON_ANONYMOUS_V1</span>;
-    <span class="comment">// use crate::entry::{Entry, EntryNew, EntrySealed};</span>
-    <span class="comment">// use crate::idm::account::Account;</span>
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::constants::JSON_ANONYMOUS_V1;
+    <span class="comment">// use crate::entry::{Entry, EntryNew, EntrySealed};
+    // use crate::idm::account::Account;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_idm_account_from_anonymous</span>() {
-        <span class="kw">let</span> <span class="ident">anon_e</span> <span class="op">=</span> <span class="macro">entry_str_to_account!</span>(<span class="ident">JSON_ANONYMOUS_V1</span>);
-        <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">anon_e</span>);
-        <span class="comment">// I think that&#39;s it? we may want to check anonymous mech ...</span>
-    }
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_idm_account_from_anonymous() {
+        <span class="kw">let </span>anon_e = <span class="macro">entry_str_to_account!</span>(JSON_ANONYMOUS_V1);
+        <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, anon_e);
+        <span class="comment">// I think that&#39;s it? we may want to check anonymous mech ...
+    </span>}
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_idm_account_from_real</span>() {
-        <span class="comment">// For now, nothing, but later, we&#39;ll test different types of cred</span>
-        <span class="comment">// passing.</span>
-    }
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_idm_account_from_real() {
+        <span class="comment">// For now, nothing, but later, we&#39;ll test different types of cred
+        // passing.
+    </span>}
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_idm_account_set_credential</span>() {
-        <span class="comment">// Using a real entry, set a credential back to it&#39;s entry.</span>
-        <span class="comment">// In the end, this boils down to a modify operation on the Value</span>
-    }
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_idm_account_set_credential() {
+        <span class="comment">// Using a real entry, set a credential back to it&#39;s entry.
+        // In the end, this boils down to a modify operation on the Value
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

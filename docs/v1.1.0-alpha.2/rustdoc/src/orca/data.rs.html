@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/data.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>data.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/data.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>data.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -176,183 +176,183 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">rand::distributions::Alphanumeric</span>;
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">thread_rng</span>, <span class="ident">Rng</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>rand::distributions::Alphanumeric;
+<span class="kw">use </span>rand::{thread_rng, Rng};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">readable_password_from_random</span>() -&gt; <span class="ident">String</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">trng</span> <span class="op">=</span> <span class="ident">thread_rng</span>();
+<span class="kw">pub fn </span>readable_password_from_random() -&gt; String {
+    <span class="kw">let </span><span class="kw-2">mut </span>trng = thread_rng();
     <span class="macro">format!</span>(
         <span class="string">&quot;{}-{}-{}-{}&quot;</span>,
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">Alphanumeric</span>)
-            .<span class="ident">take</span>(<span class="number">4</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span> <span class="kw">as</span> <span class="ident">char</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">Alphanumeric</span>)
-            .<span class="ident">take</span>(<span class="number">4</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span> <span class="kw">as</span> <span class="ident">char</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">Alphanumeric</span>)
-            .<span class="ident">take</span>(<span class="number">4</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span> <span class="kw">as</span> <span class="ident">char</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">Alphanumeric</span>)
-            .<span class="ident">take</span>(<span class="number">4</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span> <span class="kw">as</span> <span class="ident">char</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>Alphanumeric)
+            .take(<span class="number">4</span>)
+            .map(|v| v <span class="kw">as </span>char)
+            .collect::&lt;String&gt;(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>Alphanumeric)
+            .take(<span class="number">4</span>)
+            .map(|v| v <span class="kw">as </span>char)
+            .collect::&lt;String&gt;(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>Alphanumeric)
+            .take(<span class="number">4</span>)
+            .map(|v| v <span class="kw">as </span>char)
+            .collect::&lt;String&gt;(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>Alphanumeric)
+            .take(<span class="number">4</span>)
+            .map(|v| v <span class="kw">as </span>char)
+            .collect::&lt;String&gt;(),
     )
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Account</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">display_name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">password</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>Account {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>display_name: String,
+    <span class="kw">pub </span>password: String,
+    <span class="kw">pub </span>uuid: Uuid,
 }
 
-<span class="kw">impl</span> <span class="ident">Account</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;uid={},ou=people,{}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">basedn</span>)
+<span class="kw">impl </span>Account {
+    <span class="kw">pub fn </span>get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>, basedn: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;uid={},ou=people,{}&quot;</span>, <span class="self">self</span>.name.as_str(), basedn)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
-        <span class="kw">let</span> <span class="ident">id</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">rng</span>.<span class="ident">gen</span>();
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;account_{}&quot;</span>, <span class="ident">id</span>);
-        <span class="kw">let</span> <span class="ident">display_name</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Account {}&quot;</span>, <span class="ident">id</span>);
+    <span class="kw">pub fn </span>generate(uuid: Uuid) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
+        <span class="kw">let </span>id: u64 = rng.gen();
+        <span class="kw">let </span>name = <span class="macro">format!</span>(<span class="string">&quot;account_{}&quot;</span>, id);
+        <span class="kw">let </span>display_name = <span class="macro">format!</span>(<span class="string">&quot;Account {}&quot;</span>, id);
 
-        <span class="ident">Account</span> {
-            <span class="ident">name</span>,
-            <span class="ident">display_name</span>,
-            <span class="ident">password</span>: <span class="ident">readable_password_from_random</span>(),
-            <span class="ident">uuid</span>,
+        Account {
+            name,
+            display_name,
+            password: readable_password_from_random(),
+            uuid,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Group</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>Group {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>uuid: Uuid,
+    <span class="kw">pub </span>members: Vec&lt;Uuid&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Group</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;cn={},ou=groups,{}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">basedn</span>)
+<span class="kw">impl </span>Group {
+    <span class="kw">pub fn </span>get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>, basedn: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;cn={},ou=groups,{}&quot;</span>, <span class="self">self</span>.name.as_str(), basedn)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">uuid</span>: <span class="ident">Uuid</span>, <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
+    <span class="kw">pub fn </span>generate(uuid: Uuid, members: Vec&lt;Uuid&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
 
-        <span class="kw">let</span> <span class="ident">id</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">rng</span>.<span class="ident">gen</span>();
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;group_{}&quot;</span>, <span class="ident">id</span>);
+        <span class="kw">let </span>id: u64 = rng.gen();
+        <span class="kw">let </span>name = <span class="macro">format!</span>(<span class="string">&quot;group_{}&quot;</span>, id);
 
-        <span class="ident">Group</span> {
-            <span class="ident">name</span>,
-            <span class="ident">uuid</span>,
-            <span class="ident">members</span>,
+        Group {
+            name,
+            uuid,
+            members,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Entity</span> {
-    <span class="ident">Account</span>(<span class="ident">Account</span>),
-    <span class="ident">Group</span>(<span class="ident">Group</span>),
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub enum </span>Entity {
+    Account(Account),
+    Group(Group),
 }
 
-<span class="kw">impl</span> <span class="ident">Entity</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">uuid</span>,
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">g</span>.<span class="ident">uuid</span>,
+<span class="kw">impl </span>Entity {
+    <span class="kw">pub fn </span>get_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Uuid {
+        <span class="kw">match </span><span class="self">self </span>{
+            Entity::Account(a) =&gt; a.uuid,
+            Entity::Group(g) =&gt; g.uuid,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">g</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+    <span class="kw">pub fn </span>get_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="kw">match </span><span class="self">self </span>{
+            Entity::Account(a) =&gt; a.name.as_str(),
+            Entity::Group(g) =&gt; g.name.as_str(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="ident">basedn</span>),
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">g</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="ident">basedn</span>),
+    <span class="kw">pub fn </span>get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>, basedn: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="kw">match </span><span class="self">self </span>{
+            Entity::Account(a) =&gt; a.get_ds_ldap_dn(basedn),
+            Entity::Group(g) =&gt; g.get_ds_ldap_dn(basedn),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_entity_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">EntityType</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">EntityType::Account</span>(<span class="ident">a</span>.<span class="ident">uuid</span>),
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">EntityType::Group</span>(<span class="ident">g</span>.<span class="ident">uuid</span>),
-        }
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">EntityType</span> {
-    <span class="ident">Account</span>(<span class="ident">Uuid</span>),
-    <span class="ident">Group</span>(<span class="ident">Uuid</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Change</span> {
-    <span class="ident">Account</span>,
-    <span class="comment">// What it should be set to</span>
-    <span class="ident">Group</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OpType</span> {
-    <span class="ident">Bind</span>(<span class="ident">Uuid</span>),
-    <span class="ident">Add</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
-    <span class="ident">Mod</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">Change</span>)<span class="op">&gt;</span>),
-    <span class="ident">Delete</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
-    <span class="ident">Search</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Op</span> {
-    <span class="kw">pub</span> <span class="ident">orig_etime</span>: <span class="ident">Duration</span>,
-    <span class="kw">pub</span> <span class="ident">rtime</span>: <span class="ident">Duration</span>,
-    <span class="kw">pub</span> <span class="ident">op_type</span>: <span class="ident">OpType</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Op</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">require_reset</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">op_type</span> {
-            <span class="ident">OpType::Add</span>(<span class="ident">ids</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ids</span>.<span class="ident">iter</span>().<span class="ident">copied</span>())),
-            <span class="ident">OpType::Mod</span>(<span class="ident">changes</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">changes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>))),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">pub fn </span>get_entity_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; EntityType {
+        <span class="kw">match </span><span class="self">self </span>{
+            Entity::Account(a) =&gt; EntityType::Account(a.uuid),
+            Entity::Group(g) =&gt; EntityType::Group(g.uuid),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Conn</span> {
-    <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">i32</span>,
-    <span class="kw">pub</span> <span class="ident">ops</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Op</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+</span><span class="kw">pub enum </span>EntityType {
+    Account(Uuid),
+    Group(Uuid),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TestData</span> {
-    <span class="kw">pub</span> <span class="ident">all_entities</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">access</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityType</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">accounts</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">precreate</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">connections</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Conn</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>Change {
+    Account,
+    <span class="comment">// What it should be set to
+    </span>Group(Vec&lt;Uuid&gt;),
+}
+
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>OpType {
+    Bind(Uuid),
+    Add(Vec&lt;Uuid&gt;),
+    Mod(Vec&lt;(Uuid, Change)&gt;),
+    Delete(Vec&lt;Uuid&gt;),
+    Search(Vec&lt;Uuid&gt;),
+}
+
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Op {
+    <span class="kw">pub </span>orig_etime: Duration,
+    <span class="kw">pub </span>rtime: Duration,
+    <span class="kw">pub </span>op_type: OpType,
+}
+
+<span class="kw">impl </span>Op {
+    <span class="kw">pub fn </span>require_reset&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Uuid&gt; + <span class="lifetime">&#39;a</span>&gt;&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.op_type {
+            OpType::Add(ids) =&gt; <span class="prelude-val">Some</span>(Box::new(ids.iter().copied())),
+            OpType::Mod(changes) =&gt; <span class="prelude-val">Some</span>(Box::new(changes.iter().map(|v| v.<span class="number">0</span>))),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+    }
+}
+
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Conn {
+    <span class="kw">pub </span>id: i32,
+    <span class="kw">pub </span>ops: Vec&lt;Op&gt;,
+}
+
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>TestData {
+    <span class="kw">pub </span>all_entities: HashMap&lt;Uuid, Entity&gt;,
+    <span class="kw">pub </span>access: HashMap&lt;Uuid, Vec&lt;EntityType&gt;&gt;,
+    <span class="kw">pub </span>accounts: HashSet&lt;Uuid&gt;,
+    <span class="kw">pub </span>precreate: HashSet&lt;Uuid&gt;,
+    <span class="kw">pub </span>connections: Vec&lt;Conn&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/profile.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>profile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `orca/src/profile.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>profile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../orca/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../orca/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -48,55 +48,55 @@
 <span id="48">48</span>
 <span id="49">49</span>
 <span id="50">50</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>serde::Deserialize;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DsConfig</span> {
-    <span class="kw">pub</span> <span class="ident">uri</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">dm_pw</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">base_dn</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">pub struct </span>DsConfig {
+    <span class="kw">pub </span>uri: String,
+    <span class="kw">pub </span>dm_pw: String,
+    <span class="kw">pub </span>base_dn: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KaniHttpConfig</span> {
-    <span class="kw">pub</span> <span class="ident">uri</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">admin_pw</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">pub struct </span>KaniHttpConfig {
+    <span class="kw">pub </span>uri: String,
+    <span class="kw">pub </span>admin_pw: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KaniLdapConfig</span> {
-    <span class="kw">pub</span> <span class="ident">uri</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">ldap_uri</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">admin_pw</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">base_dn</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">pub struct </span>KaniLdapConfig {
+    <span class="kw">pub </span>uri: String,
+    <span class="kw">pub </span>ldap_uri: String,
+    <span class="kw">pub </span>admin_pw: String,
+    <span class="kw">pub </span>base_dn: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchBasicConfig</span> {
-    <span class="comment">// Could consider fn for this #[serde(default = &quot;Priority::lowest&quot;)]</span>
-    <span class="kw">pub</span> <span class="ident">warmup_seconds</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">workers</span>: <span class="ident">u32</span>,
+<span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">pub struct </span>SearchBasicConfig {
+    <span class="comment">// Could consider fn for this #[serde(default = &quot;Priority::lowest&quot;)]
+    </span><span class="kw">pub </span>warmup_seconds: u32,
+    <span class="kw">pub </span>workers: u32,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SearchBasicConfig</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchBasicConfig</span> {
-            <span class="ident">warmup_seconds</span>: <span class="number">5</span>,
-            <span class="ident">workers</span>: <span class="number">16</span>,
+<span class="kw">impl </span>Default <span class="kw">for </span>SearchBasicConfig {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        SearchBasicConfig {
+            warmup_seconds: <span class="number">5</span>,
+            workers: <span class="number">16</span>,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Profile</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">results</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">ds_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DsConfig</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">kani_http_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KaniHttpConfig</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">kani_ldap_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KaniLdapConfig</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">search_basic_config</span>: <span class="ident">SearchBasicConfig</span>,
+<span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">pub struct </span>Profile {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>data: String,
+    <span class="kw">pub </span>results: String,
+    <span class="kw">pub </span>ds_config: <span class="prelude-ty">Option</span>&lt;DsConfig&gt;,
+    <span class="kw">pub </span>kani_http_config: <span class="prelude-ty">Option</span>&lt;KaniHttpConfig&gt;,
+    <span class="kw">pub </span>kani_ldap_config: <span class="prelude-ty">Option</span>&lt;KaniLdapConfig&gt;,
+    <span class="attribute">#[serde(default)]
+    </span><span class="kw">pub </span>search_basic_config: SearchBasicConfig,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

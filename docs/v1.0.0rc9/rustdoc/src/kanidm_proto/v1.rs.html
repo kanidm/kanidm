@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_proto/src/v1.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>v1.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_proto/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_proto/src/v1.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>v1.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_proto/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_proto/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1201,290 +1201,290 @@
 <span id="1201">1201</span>
 <span id="1202">1202</span>
 <span id="1203">1203</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
+<span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>std::fmt;
 
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs_proto</span>::{
-    <span class="ident">CreationChallengeResponse</span>, <span class="ident">PublicKeyCredential</span>, <span class="ident">RegisterPublicKeyCredential</span>,
-    <span class="ident">RequestChallengeResponse</span>,
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>uuid::Uuid;
+<span class="kw">use </span>webauthn_rs_proto::{
+    CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
+    RequestChallengeResponse,
 };
 
-<span class="comment">// These proto implementations are here because they have public definitions</span>
+<span class="comment">// These proto implementations are here because they have public definitions
 
-<span class="comment">/* ===== errors ===== */</span>
+/* ===== errors ===== */
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SchemaError</span> {
-    <span class="ident">NotImplemented</span>,
-    <span class="ident">NoClassFound</span>,
-    <span class="ident">InvalidClass</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="ident">MissingMustAttribute</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="ident">InvalidAttribute</span>(<span class="ident">String</span>),
-    <span class="ident">InvalidAttributeSyntax</span>(<span class="ident">String</span>),
-    <span class="ident">AttributeNotValidForClass</span>(<span class="ident">String</span>),
-    <span class="ident">SupplementsNotSatisfied</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="ident">ExcludesNotSatisfied</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="ident">EmptyFilter</span>,
-    <span class="ident">Corrupted</span>,
-    <span class="ident">PhantomAttribute</span>(<span class="ident">String</span>),
+</span><span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>SchemaError {
+    NotImplemented,
+    NoClassFound,
+    InvalidClass(Vec&lt;String&gt;),
+    MissingMustAttribute(Vec&lt;String&gt;),
+    InvalidAttribute(String),
+    InvalidAttributeSyntax(String),
+    AttributeNotValidForClass(String),
+    SupplementsNotSatisfied(Vec&lt;String&gt;),
+    ExcludesNotSatisfied(Vec&lt;String&gt;),
+    EmptyFilter,
+    Corrupted,
+    PhantomAttribute(String),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PluginError</span> {
-    <span class="ident">AttrUnique</span>(<span class="ident">String</span>),
-    <span class="ident">Base</span>(<span class="ident">String</span>),
-    <span class="ident">ReferentialIntegrity</span>(<span class="ident">String</span>),
-    <span class="ident">PasswordImport</span>(<span class="ident">String</span>),
-    <span class="ident">Oauth2Secrets</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>PluginError {
+    AttrUnique(String),
+    Base(String),
+    ReferentialIntegrity(String),
+    PasswordImport(String),
+    Oauth2Secrets,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ConsistencyError</span> {
-    <span class="ident">Unknown</span>,
-    <span class="comment">// Class, Attribute</span>
-    <span class="ident">SchemaClassMissingAttribute</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="ident">SchemaClassPhantomAttribute</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="ident">SchemaUuidNotUnique</span>(<span class="ident">Uuid</span>),
-    <span class="ident">QueryServerSearchFailure</span>,
-    <span class="ident">EntryUuidCorrupt</span>(<span class="ident">u64</span>),
-    <span class="ident">UuidIndexCorrupt</span>(<span class="ident">String</span>),
-    <span class="ident">UuidNotUnique</span>(<span class="ident">String</span>),
-    <span class="ident">RefintNotUpheld</span>(<span class="ident">u64</span>),
-    <span class="ident">MemberOfInvalid</span>(<span class="ident">u64</span>),
-    <span class="ident">InvalidAttributeType</span>(<span class="ident">String</span>),
-    <span class="ident">DuplicateUniqueAttribute</span>(<span class="ident">String</span>),
-    <span class="ident">InvalidSpn</span>(<span class="ident">u64</span>),
-    <span class="ident">SqliteIntegrityFailure</span>,
-    <span class="ident">BackendAllIdsSync</span>,
-    <span class="ident">BackendIndexSync</span>,
-    <span class="ident">ChangelogDesynchronised</span>(<span class="ident">u64</span>),
-    <span class="ident">RuvInconsistent</span>(<span class="ident">String</span>),
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>ConsistencyError {
+    Unknown,
+    <span class="comment">// Class, Attribute
+    </span>SchemaClassMissingAttribute(String, String),
+    SchemaClassPhantomAttribute(String, String),
+    SchemaUuidNotUnique(Uuid),
+    QueryServerSearchFailure,
+    EntryUuidCorrupt(u64),
+    UuidIndexCorrupt(String),
+    UuidNotUnique(String),
+    RefintNotUpheld(u64),
+    MemberOfInvalid(u64),
+    InvalidAttributeType(String),
+    DuplicateUniqueAttribute(String),
+    InvalidSpn(u64),
+    SqliteIntegrityFailure,
+    BackendAllIdsSync,
+    BackendIndexSync,
+    ChangelogDesynchronised(u64),
+    RuvInconsistent(String),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PasswordFeedback</span> {
-    <span class="comment">// https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html</span>
-    <span class="ident">UseAFewWordsAvoidCommonPhrases</span>,
-    <span class="ident">NoNeedForSymbolsDigitsOrUppercaseLetters</span>,
-    <span class="ident">AddAnotherWordOrTwo</span>,
-    <span class="ident">CapitalizationDoesntHelpVeryMuch</span>,
-    <span class="ident">AllUppercaseIsAlmostAsEasyToGuessAsAllLowercase</span>,
-    <span class="ident">ReversedWordsArentMuchHarderToGuess</span>,
-    <span class="ident">PredictableSubstitutionsDontHelpVeryMuch</span>,
-    <span class="ident">UseALongerKeyboardPatternWithMoreTurns</span>,
-    <span class="ident">AvoidRepeatedWordsAndCharacters</span>,
-    <span class="ident">AvoidSequences</span>,
-    <span class="ident">AvoidRecentYears</span>,
-    <span class="ident">AvoidYearsThatAreAssociatedWithYou</span>,
-    <span class="ident">AvoidDatesAndYearsThatAreAssociatedWithYou</span>,
-    <span class="comment">// https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Warning.html</span>
-    <span class="ident">StraightRowsOfKeysAreEasyToGuess</span>,
-    <span class="ident">ShortKeyboardPatternsAreEasyToGuess</span>,
-    <span class="ident">RepeatsLikeAaaAreEasyToGuess</span>,
-    <span class="ident">RepeatsLikeAbcAbcAreOnlySlightlyHarderToGuess</span>,
-    <span class="ident">ThisIsATop10Password</span>,
-    <span class="ident">ThisIsATop100Password</span>,
-    <span class="ident">ThisIsACommonPassword</span>,
-    <span class="ident">ThisIsSimilarToACommonlyUsedPassword</span>,
-    <span class="ident">SequencesLikeAbcAreEasyToGuess</span>,
-    <span class="ident">RecentYearsAreEasyToGuess</span>,
-    <span class="ident">AWordByItselfIsEasyToGuess</span>,
-    <span class="ident">DatesAreOftenEasyToGuess</span>,
-    <span class="ident">NamesAndSurnamesByThemselvesAreEasyToGuess</span>,
-    <span class="ident">CommonNamesAndSurnamesAreEasyToGuess</span>,
-    <span class="comment">// Custom</span>
-    <span class="ident">TooShort</span>(<span class="ident">usize</span>),
-    <span class="ident">BadListed</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>PasswordFeedback {
+    <span class="comment">// https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html
+    </span>UseAFewWordsAvoidCommonPhrases,
+    NoNeedForSymbolsDigitsOrUppercaseLetters,
+    AddAnotherWordOrTwo,
+    CapitalizationDoesntHelpVeryMuch,
+    AllUppercaseIsAlmostAsEasyToGuessAsAllLowercase,
+    ReversedWordsArentMuchHarderToGuess,
+    PredictableSubstitutionsDontHelpVeryMuch,
+    UseALongerKeyboardPatternWithMoreTurns,
+    AvoidRepeatedWordsAndCharacters,
+    AvoidSequences,
+    AvoidRecentYears,
+    AvoidYearsThatAreAssociatedWithYou,
+    AvoidDatesAndYearsThatAreAssociatedWithYou,
+    <span class="comment">// https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Warning.html
+    </span>StraightRowsOfKeysAreEasyToGuess,
+    ShortKeyboardPatternsAreEasyToGuess,
+    RepeatsLikeAaaAreEasyToGuess,
+    RepeatsLikeAbcAbcAreOnlySlightlyHarderToGuess,
+    ThisIsATop10Password,
+    ThisIsATop100Password,
+    ThisIsACommonPassword,
+    ThisIsSimilarToACommonlyUsedPassword,
+    SequencesLikeAbcAreEasyToGuess,
+    RecentYearsAreEasyToGuess,
+    AWordByItselfIsEasyToGuess,
+    DatesAreOftenEasyToGuess,
+    NamesAndSurnamesByThemselvesAreEasyToGuess,
+    CommonNamesAndSurnamesAreEasyToGuess,
+    <span class="comment">// Custom
+    </span>TooShort(usize),
+    BadListed,
 }
 
-<span class="doccomment">/// Human-readable PasswordFeedback result.</span>
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">PasswordFeedback</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">PasswordFeedback::AddAnotherWordOrTwo</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Add another word or two.&quot;</span>),
-            <span class="ident">PasswordFeedback::AllUppercaseIsAlmostAsEasyToGuessAsAllLowercase</span> =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
-                <span class="string">&quot;All uppercase is almost as easy to guess as all lowercase.&quot;</span>
-            ),
-            <span class="ident">PasswordFeedback::AvoidDatesAndYearsThatAreAssociatedWithYou</span> =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
-                <span class="string">&quot;Avoid dates and years that are associated with you or your account.&quot;</span>
-            ),
-            <span class="ident">PasswordFeedback::AvoidRecentYears</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Avoid recent years.&quot;</span>),
-            <span class="ident">PasswordFeedback::AvoidRepeatedWordsAndCharacters</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Avoid repeated words and characters.&quot;</span>)
+<span class="doccomment">/// Human-readable PasswordFeedback result.
+</span><span class="kw">impl </span>fmt::Display <span class="kw">for </span>PasswordFeedback {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            PasswordFeedback::AddAnotherWordOrTwo =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Add another word or two.&quot;</span>),
+            PasswordFeedback::AllUppercaseIsAlmostAsEasyToGuessAsAllLowercase =&gt; <span class="macro">write!</span>(
+                f,
+                <span class="string">&quot;All uppercase is almost as easy to guess as all lowercase.&quot;
+            </span>),
+            PasswordFeedback::AvoidDatesAndYearsThatAreAssociatedWithYou =&gt; <span class="macro">write!</span>(
+                f,
+                <span class="string">&quot;Avoid dates and years that are associated with you or your account.&quot;
+            </span>),
+            PasswordFeedback::AvoidRecentYears =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Avoid recent years.&quot;</span>),
+            PasswordFeedback::AvoidRepeatedWordsAndCharacters =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Avoid repeated words and characters.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::AvoidSequences</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Avoid sequences of characters.&quot;</span>),
-            <span class="ident">PasswordFeedback::AvoidYearsThatAreAssociatedWithYou</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Avoid years that are associated with you.&quot;</span>)
+            PasswordFeedback::AvoidSequences =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Avoid sequences of characters.&quot;</span>),
+            PasswordFeedback::AvoidYearsThatAreAssociatedWithYou =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Avoid years that are associated with you.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::AWordByItselfIsEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;A word by itself is easy to guess.&quot;</span>)
+            PasswordFeedback::AWordByItselfIsEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;A word by itself is easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::BadListed</span> =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
-                <span class="string">&quot;This password has been compromised or otherwise blocked and can not be used.&quot;</span>
-            ),
-            <span class="ident">PasswordFeedback::CapitalizationDoesntHelpVeryMuch</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Capitalization doesn&#39;t help very much.&quot;</span>)
+            PasswordFeedback::BadListed =&gt; <span class="macro">write!</span>(
+                f,
+                <span class="string">&quot;This password has been compromised or otherwise blocked and can not be used.&quot;
+            </span>),
+            PasswordFeedback::CapitalizationDoesntHelpVeryMuch =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Capitalization doesn&#39;t help very much.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::CommonNamesAndSurnamesAreEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Common names and surnames are easy to guess.&quot;</span>)
+            PasswordFeedback::CommonNamesAndSurnamesAreEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Common names and surnames are easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::DatesAreOftenEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Dates are often easy to guess.&quot;</span>)
+            PasswordFeedback::DatesAreOftenEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Dates are often easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Names and surnames by themselves are easy to guess.&quot;</span>)
+            PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Names and surnames by themselves are easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;No need for symbols, digits or upper-case letters.&quot;</span>)
+            PasswordFeedback::NoNeedForSymbolsDigitsOrUppercaseLetters =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;No need for symbols, digits or upper-case letters.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::PredictableSubstitutionsDontHelpVeryMuch</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Predictable substitutions don&#39;t help very much.&quot;</span>)
+            PasswordFeedback::PredictableSubstitutionsDontHelpVeryMuch =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Predictable substitutions don&#39;t help very much.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::RecentYearsAreEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Recent years are easy to guess.&quot;</span>)
+            PasswordFeedback::RecentYearsAreEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Recent years are easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::RepeatsLikeAaaAreEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Repeats like &#39;aaa&#39; are easy to guess.&quot;</span>)
+            PasswordFeedback::RepeatsLikeAaaAreEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Repeats like &#39;aaa&#39; are easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::RepeatsLikeAbcAbcAreOnlySlightlyHarderToGuess</span> =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
-                <span class="string">&quot;Repeats like abcabcabc are only slightly harder to guess.&quot;</span>
-            ),
-            <span class="ident">PasswordFeedback::ReversedWordsArentMuchHarderToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Reversed words aren&#39;t much harder to guess.&quot;</span>)
+            PasswordFeedback::RepeatsLikeAbcAbcAreOnlySlightlyHarderToGuess =&gt; <span class="macro">write!</span>(
+                f,
+                <span class="string">&quot;Repeats like abcabcabc are only slightly harder to guess.&quot;
+            </span>),
+            PasswordFeedback::ReversedWordsArentMuchHarderToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Reversed words aren&#39;t much harder to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::SequencesLikeAbcAreEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Sequences like &#39;abc&#39; are easy to guess.&quot;</span>)
+            PasswordFeedback::SequencesLikeAbcAreEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Sequences like &#39;abc&#39; are easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::ShortKeyboardPatternsAreEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Short keyboard patterns are easy to guess.&quot;</span>)
+            PasswordFeedback::ShortKeyboardPatternsAreEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Short keyboard patterns are easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::StraightRowsOfKeysAreEasyToGuess</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Straight rows of keys are easy to guess.&quot;</span>)
+            PasswordFeedback::StraightRowsOfKeysAreEasyToGuess =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Straight rows of keys are easy to guess.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::ThisIsACommonPassword</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;This is a common password.&quot;</span>),
-            <span class="ident">PasswordFeedback::ThisIsATop100Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;This is a top 100 password.&quot;</span>),
-            <span class="ident">PasswordFeedback::ThisIsATop10Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;This is a top 10 password.&quot;</span>),
-            <span class="ident">PasswordFeedback::ThisIsSimilarToACommonlyUsedPassword</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;This is similar to a commonly used password.&quot;</span>)
+            PasswordFeedback::ThisIsACommonPassword =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;This is a common password.&quot;</span>),
+            PasswordFeedback::ThisIsATop100Password =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;This is a top 100 password.&quot;</span>),
+            PasswordFeedback::ThisIsATop10Password =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;This is a top 10 password.&quot;</span>),
+            PasswordFeedback::ThisIsSimilarToACommonlyUsedPassword =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;This is similar to a commonly used password.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::TooShort</span>(<span class="ident">minlength</span>) =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
+            PasswordFeedback::TooShort(minlength) =&gt; <span class="macro">write!</span>(
+                f,
                 <span class="string">&quot;Password too was short, needs to be at least {} characters long.&quot;</span>,
-                <span class="ident">minlength</span>
+                minlength
             ),
-            <span class="ident">PasswordFeedback::UseAFewWordsAvoidCommonPhrases</span> =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Use a few words and avoid common phrases.&quot;</span>)
+            PasswordFeedback::UseAFewWordsAvoidCommonPhrases =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Use a few words and avoid common phrases.&quot;</span>)
             }
-            <span class="ident">PasswordFeedback::UseALongerKeyboardPatternWithMoreTurns</span> =&gt; {
+            PasswordFeedback::UseALongerKeyboardPatternWithMoreTurns =&gt; {
                 <span class="macro">write!</span>(
-                    <span class="ident">f</span>,
-                    <span class="string">&quot;The password included keyboard patterns across too much of a single row.&quot;</span>
-                )
+                    f,
+                    <span class="string">&quot;The password included keyboard patterns across too much of a single row.&quot;
+                </span>)
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OperationError</span> {
-    <span class="ident">SessionExpired</span>,
-    <span class="ident">EmptyRequest</span>,
-    <span class="ident">Backend</span>,
-    <span class="ident">NoMatchingEntries</span>,
-    <span class="ident">NoMatchingAttributes</span>,
-    <span class="ident">CorruptedEntry</span>(<span class="ident">u64</span>),
-    <span class="ident">CorruptedIndex</span>(<span class="ident">String</span>),
-    <span class="ident">ConsistencyError</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="ident">SchemaViolation</span>(<span class="ident">SchemaError</span>),
-    <span class="ident">Plugin</span>(<span class="ident">PluginError</span>),
-    <span class="ident">FilterGeneration</span>,
-    <span class="ident">FilterUuidResolution</span>,
-    <span class="ident">InvalidAttributeName</span>(<span class="ident">String</span>),
-    <span class="ident">InvalidAttribute</span>(<span class="ident">String</span>),
-    <span class="ident">InvalidDbState</span>,
-    <span class="ident">InvalidCacheState</span>,
-    <span class="ident">InvalidValueState</span>,
-    <span class="ident">InvalidEntryId</span>,
-    <span class="ident">InvalidRequestState</span>,
-    <span class="ident">InvalidState</span>,
-    <span class="ident">InvalidEntryState</span>,
-    <span class="ident">InvalidUuid</span>,
-    <span class="ident">InvalidReplChangeId</span>,
-    <span class="ident">InvalidAcpState</span>(<span class="ident">String</span>),
-    <span class="ident">InvalidSchemaState</span>(<span class="ident">String</span>),
-    <span class="ident">InvalidAccountState</span>(<span class="ident">String</span>),
-    <span class="ident">BackendEngine</span>,
-    <span class="ident">SqliteError</span>, <span class="comment">//(RusqliteError)</span>
-    <span class="ident">FsError</span>,
-    <span class="ident">SerdeJsonError</span>,
-    <span class="ident">SerdeCborError</span>,
-    <span class="ident">AccessDenied</span>,
-    <span class="ident">NotAuthenticated</span>,
-    <span class="ident">NotAuthorised</span>,
-    <span class="ident">InvalidAuthState</span>(<span class="ident">String</span>),
-    <span class="ident">InvalidSessionState</span>,
-    <span class="ident">SystemProtectedObject</span>,
-    <span class="ident">SystemProtectedAttribute</span>,
-    <span class="ident">PasswordQuality</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PasswordFeedback</span><span class="op">&gt;</span>),
-    <span class="ident">CryptographyError</span>,
-    <span class="ident">ResourceLimit</span>,
-    <span class="ident">QueueDisconnected</span>,
-    <span class="ident">Webauthn</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
-    <span class="ident">Wait</span>(<span class="ident">time::OffsetDateTime</span>),
-    <span class="ident">ReplReplayFailure</span>,
-    <span class="ident">ReplEntryNotChanged</span>,
-    <span class="ident">ReplInvalidRUVState</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>OperationError {
+    SessionExpired,
+    EmptyRequest,
+    Backend,
+    NoMatchingEntries,
+    NoMatchingAttributes,
+    CorruptedEntry(u64),
+    CorruptedIndex(String),
+    ConsistencyError(Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt;),
+    SchemaViolation(SchemaError),
+    Plugin(PluginError),
+    FilterGeneration,
+    FilterUuidResolution,
+    InvalidAttributeName(String),
+    InvalidAttribute(String),
+    InvalidDbState,
+    InvalidCacheState,
+    InvalidValueState,
+    InvalidEntryId,
+    InvalidRequestState,
+    InvalidState,
+    InvalidEntryState,
+    InvalidUuid,
+    InvalidReplChangeId,
+    InvalidAcpState(String),
+    InvalidSchemaState(String),
+    InvalidAccountState(String),
+    BackendEngine,
+    SqliteError, <span class="comment">//(RusqliteError)
+    </span>FsError,
+    SerdeJsonError,
+    SerdeCborError,
+    AccessDenied,
+    NotAuthenticated,
+    NotAuthorised,
+    InvalidAuthState(String),
+    InvalidSessionState,
+    SystemProtectedObject,
+    SystemProtectedAttribute,
+    PasswordQuality(Vec&lt;PasswordFeedback&gt;),
+    CryptographyError,
+    ResourceLimit,
+    QueueDisconnected,
+    Webauthn,
+    <span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp&quot;</span>)]
+    </span>Wait(time::OffsetDateTime),
+    ReplReplayFailure,
+    ReplEntryNotChanged,
+    ReplInvalidRUVState,
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">OperationError</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// We do this to avoid InvalidPassword being checked as it&#39;s not</span>
-        <span class="comment">// derive PartialEq. Generally we only use the PartialEq for TESTING</span>
-        <span class="comment">// anyway.</span>
-        <span class="ident">std::mem::discriminant</span>(<span class="self">self</span>) <span class="op">==</span> <span class="ident">std::mem::discriminant</span>(<span class="ident">other</span>)
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>OperationError {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="comment">// We do this to avoid InvalidPassword being checked as it&#39;s not
+        // derive PartialEq. Generally we only use the PartialEq for TESTING
+        // anyway.
+        </span>std::mem::discriminant(<span class="self">self</span>) == std::mem::discriminant(other)
     }
 }
 
-<span class="comment">/* ===== higher level types ===== */</span>
-<span class="comment">// These are all types that are conceptually layers ontop of entry and</span>
-<span class="comment">// friends. They allow us to process more complex requests and provide</span>
-<span class="comment">// domain specific fields for the purposes of IDM, over the normal</span>
-<span class="comment">// entry/ava/filter types. These related deeply to schema.</span>
+<span class="comment">/* ===== higher level types ===== */
+// These are all types that are conceptually layers ontop of entry and
+// friends. They allow us to process more complex requests and provide
+// domain specific fields for the purposes of IDM, over the normal
+// entry/ava/filter types. These related deeply to schema.
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Group</span> {
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">String</span>,
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>Group {
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>uuid: String,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Group</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;[ spn: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">spn</span>)<span class="question-mark">?</span>;
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {} ]&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Group {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;[ spn: {}, &quot;</span>, <span class="self">self</span>.spn)<span class="question-mark">?</span>;
+        <span class="macro">write!</span>(f, <span class="string">&quot;uuid: {} ]&quot;</span>, <span class="self">self</span>.uuid)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Claim</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">String</span>,
-    <span class="comment">// These can be ephemeral, or shortlived in a session.</span>
-    <span class="comment">// some may even need requesting.</span>
-    <span class="comment">// pub expiry: DateTime</span>
-}
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>Claim {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>uuid: String,
+    <span class="comment">// These can be ephemeral, or shortlived in a session.
+    // some may even need requesting.
+    // pub expiry: DateTime
+</span>}
 
 <span class="comment">/*
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1492,313 +1492,313 @@ pub struct Application {
     pub name: String,
     pub uuid: String,
 }
-*/</span>
+*/
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthType</span> {
-    <span class="ident">Anonymous</span>,
-    <span class="ident">UnixPassword</span>,
-    <span class="ident">Password</span>,
-    <span class="ident">GeneratedPassword</span>,
-    <span class="ident">PasswordMfa</span>,
-    <span class="ident">Passkey</span>,
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>AuthType {
+    Anonymous,
+    UnixPassword,
+    Password,
+    GeneratedPassword,
+    PasswordMfa,
+    Passkey,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">AuthType</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AuthType::Anonymous</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;anonymous&quot;</span>),
-            <span class="ident">AuthType::UnixPassword</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;unixpassword&quot;</span>),
-            <span class="ident">AuthType::Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;password&quot;</span>),
-            <span class="ident">AuthType::GeneratedPassword</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;generatedpassword&quot;</span>),
-            <span class="ident">AuthType::PasswordMfa</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;passwordmfa&quot;</span>),
-            <span class="ident">AuthType::Passkey</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;passkey&quot;</span>),
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>AuthType {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            AuthType::Anonymous =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;anonymous&quot;</span>),
+            AuthType::UnixPassword =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;unixpassword&quot;</span>),
+            AuthType::Password =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;password&quot;</span>),
+            AuthType::GeneratedPassword =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;generatedpassword&quot;</span>),
+            AuthType::PasswordMfa =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;passwordmfa&quot;</span>),
+            AuthType::Passkey =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;passkey&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UiHint</span> {
-    <span class="ident">PosixAccount</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>UiHint {
+    PosixAccount,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UatPurposeStatus</span> {
-    <span class="ident">IdentityOnly</span>,
-    <span class="ident">ReadOnly</span>,
-    <span class="ident">ReadWrite</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>UatPurposeStatus {
+    IdentityOnly,
+    ReadOnly,
+    ReadWrite,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UatStatus</span> {
-    <span class="kw">pub</span> <span class="ident">account_id</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">time::OffsetDateTime</span>,
-    <span class="kw">pub</span> <span class="ident">purpose</span>: <span class="ident">UatPurposeStatus</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub struct </span>UatStatus {
+    <span class="kw">pub </span>account_id: Uuid,
+    <span class="kw">pub </span>session_id: Uuid,
+    <span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]
+    </span><span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;time::OffsetDateTime&gt;,
+    <span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp&quot;</span>)]
+    </span><span class="kw">pub </span>issued_at: time::OffsetDateTime,
+    <span class="kw">pub </span>purpose: UatPurposeStatus,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">UatStatus</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;account_id: {}&quot;</span>, <span class="self">self</span>.<span class="ident">account_id</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;session_id: {}&quot;</span>, <span class="self">self</span>.<span class="ident">session_id</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exp</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">expiry</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: {}&quot;</span>, <span class="ident">exp</span>)<span class="question-mark">?</span>;
-        } <span class="kw">else</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: -&quot;</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>UatStatus {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;account_id: {}&quot;</span>, <span class="self">self</span>.account_id)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;session_id: {}&quot;</span>, <span class="self">self</span>.session_id)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(exp) = <span class="self">self</span>.expiry {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;expiry: {}&quot;</span>, exp)<span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;expiry: -&quot;</span>)<span class="question-mark">?</span>;
         }
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;issued_at: {}&quot;</span>, <span class="self">self</span>.<span class="ident">issued_at</span>)<span class="question-mark">?</span>;
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">purpose</span> {
-            <span class="ident">UatPurposeStatus::IdentityOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: identity only&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">UatPurposeStatus::ReadOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read only&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">UatPurposeStatus::ReadWrite</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read write&quot;</span>)<span class="question-mark">?</span>,
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;issued_at: {}&quot;</span>, <span class="self">self</span>.issued_at)<span class="question-mark">?</span>;
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.purpose {
+            UatPurposeStatus::IdentityOnly =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;purpose: identity only&quot;</span>)<span class="question-mark">?</span>,
+            UatPurposeStatus::ReadOnly =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;purpose: read only&quot;</span>)<span class="question-mark">?</span>,
+            UatPurposeStatus::ReadWrite =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;purpose: read write&quot;</span>)<span class="question-mark">?</span>,
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UatPurpose</span> {
-    <span class="ident">IdentityOnly</span>,
-    <span class="ident">ReadOnly</span>,
-    <span class="ident">ReadWrite</span> {
-        <span class="doccomment">/// If none, there is no expiry, and this is always rw. If there is</span>
-        <span class="doccomment">/// an expiry, check that the current time &lt; expiry.</span>
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
-        <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>UatPurpose {
+    IdentityOnly,
+    ReadOnly,
+    ReadWrite {
+        <span class="doccomment">/// If none, there is no expiry, and this is always rw. If there is
+        /// an expiry, check that the current time &lt; expiry.
+        </span><span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]
+        </span>expiry: <span class="prelude-ty">Option</span>&lt;time::OffsetDateTime&gt;,
     },
 }
 
-<span class="doccomment">/// The currently authenticated user, and any required metadata for them</span>
-<span class="doccomment">/// to properly authorise them. This is similar in nature to oauth and the krb</span>
-<span class="doccomment">/// PAC/PAD structures. This information is transparent to clients and CAN</span>
-<span class="doccomment">/// be parsed by them!</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This structure and how it works will *very much* change over time from this</span>
-<span class="doccomment">/// point onward! This means on updates, that sessions will invalidate in many</span>
-<span class="doccomment">/// cases.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UserAuthToken</span> {
-    <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">auth_type</span>: <span class="ident">AuthType</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">time::OffsetDateTime</span>,
-    <span class="doccomment">/// If none, there is no expiry, and this is always valid. If there is</span>
-    <span class="doccomment">/// an expiry, check that the current time &lt; expiry.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">purpose</span>: <span class="ident">UatPurpose</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">mail_primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="comment">// pub groups: Vec&lt;Group&gt;,</span>
-    <span class="kw">pub</span> <span class="ident">ui_hints</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">UiHint</span><span class="op">&gt;</span>,
+<span class="doccomment">/// The currently authenticated user, and any required metadata for them
+/// to properly authorise them. This is similar in nature to oauth and the krb
+/// PAC/PAD structures. This information is transparent to clients and CAN
+/// be parsed by them!
+///
+/// This structure and how it works will *very much* change over time from this
+/// point onward! This means on updates, that sessions will invalidate in many
+/// cases.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub struct </span>UserAuthToken {
+    <span class="kw">pub </span>session_id: Uuid,
+    <span class="kw">pub </span>auth_type: AuthType,
+    <span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp&quot;</span>)]
+    </span><span class="kw">pub </span>issued_at: time::OffsetDateTime,
+    <span class="doccomment">/// If none, there is no expiry, and this is always valid. If there is
+    /// an expiry, check that the current time &lt; expiry.
+    </span><span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]
+    </span><span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;time::OffsetDateTime&gt;,
+    <span class="kw">pub </span>purpose: UatPurpose,
+    <span class="kw">pub </span>uuid: Uuid,
+    <span class="kw">pub </span>displayname: String,
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>mail_primary: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="comment">// pub groups: Vec&lt;Group&gt;,
+    </span><span class="kw">pub </span>ui_hints: BTreeSet&lt;UiHint&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">UserAuthToken</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;spn: {}&quot;</span>, <span class="self">self</span>.<span class="ident">spn</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;display: {}&quot;</span>, <span class="self">self</span>.<span class="ident">displayname</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exp</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">expiry</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: {}&quot;</span>, <span class="ident">exp</span>)<span class="question-mark">?</span>;
-        } <span class="kw">else</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;expiry: -&quot;</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>UserAuthToken {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;spn: {}&quot;</span>, <span class="self">self</span>.spn)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.uuid)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;display: {}&quot;</span>, <span class="self">self</span>.displayname)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(exp) = <span class="self">self</span>.expiry {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;expiry: {}&quot;</span>, exp)<span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;expiry: -&quot;</span>)<span class="question-mark">?</span>;
         }
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">purpose</span> {
-            <span class="ident">UatPurpose::IdentityOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: identity only&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">UatPurpose::ReadOnly</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read only&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">UatPurpose::ReadWrite</span> {
-                <span class="ident">expiry</span>: <span class="prelude-val">Some</span>(<span class="ident">expiry</span>),
-            } =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read write (expiry: {})&quot;</span>, <span class="ident">expiry</span>)<span class="question-mark">?</span>,
-            <span class="ident">UatPurpose::ReadWrite</span> { <span class="ident">expiry</span>: <span class="prelude-val">None</span> } =&gt; {
-                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;purpose: read write (expiry: none)&quot;</span>)<span class="question-mark">?</span>
-            }
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.purpose {
+            UatPurpose::IdentityOnly =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;purpose: identity only&quot;</span>)<span class="question-mark">?</span>,
+            UatPurpose::ReadOnly =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;purpose: read only&quot;</span>)<span class="question-mark">?</span>,
+            UatPurpose::ReadWrite {
+                expiry: <span class="prelude-val">Some</span>(expiry),
+            } =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;purpose: read write (expiry: {})&quot;</span>, expiry)<span class="question-mark">?</span>,
+            UatPurpose::ReadWrite { expiry: <span class="prelude-val">None </span>} =&gt; {
+                <span class="macro">writeln!</span>(f, <span class="string">&quot;purpose: read write (expiry: none)&quot;</span>)<span class="question-mark">?
+            </span>}
         }
         <span class="comment">/*
         for group in &amp;self.groups {
             writeln!(f, &quot;group: {:?}&quot;, group.spn)?;
         }
-        */</span>
-        <span class="prelude-val">Ok</span>(())
+        */
+        </span><span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">UserAuthToken</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">session_id</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">session_id</span>
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>UserAuthToken {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="self">self</span>.session_id == other.session_id
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="ident">UserAuthToken</span> {}
+<span class="kw">impl </span>Eq <span class="kw">for </span>UserAuthToken {}
 
-<span class="kw">impl</span> <span class="ident">UserAuthToken</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-        <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">split_once</span>(<span class="string">&#39;@&#39;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">0</span>).<span class="ident">unwrap_or</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">spn</span>)
+<span class="kw">impl </span>UserAuthToken {
+    <span class="kw">pub fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="self">self</span>.spn.split_once(<span class="string">&#39;@&#39;</span>).map(|x| x.<span class="number">0</span>).unwrap_or(<span class="kw-2">&amp;</span><span class="self">self</span>.spn)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApiTokenPurpose</span> {
-    <span class="attribute">#[<span class="ident">default</span>]</span>
-    <span class="ident">ReadOnly</span>,
-    <span class="ident">ReadWrite</span>,
-    <span class="ident">Synchronise</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>ApiTokenPurpose {
+    <span class="attribute">#[default]
+    </span>ReadOnly,
+    ReadWrite,
+    Synchronise,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ApiToken</span> {
-    <span class="comment">// The account this is associated with.</span>
-    <span class="kw">pub</span> <span class="ident">account_id</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">token_id</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">label</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">time::OffsetDateTime</span>,
-    <span class="comment">// Defaults to ReadOnly if not present</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">purpose</span>: <span class="ident">ApiTokenPurpose</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub struct </span>ApiToken {
+    <span class="comment">// The account this is associated with.
+    </span><span class="kw">pub </span>account_id: Uuid,
+    <span class="kw">pub </span>token_id: Uuid,
+    <span class="kw">pub </span>label: String,
+    <span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]
+    </span><span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;time::OffsetDateTime&gt;,
+    <span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp&quot;</span>)]
+    </span><span class="kw">pub </span>issued_at: time::OffsetDateTime,
+    <span class="comment">// Defaults to ReadOnly if not present
+    </span><span class="attribute">#[serde(default)]
+    </span><span class="kw">pub </span>purpose: ApiTokenPurpose,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">ApiToken</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;account_id: {}&quot;</span>, <span class="self">self</span>.<span class="ident">account_id</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;token_id: {}&quot;</span>, <span class="self">self</span>.<span class="ident">token_id</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;label: {}&quot;</span>, <span class="self">self</span>.<span class="ident">label</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;issued at: {}&quot;</span>, <span class="self">self</span>.<span class="ident">issued_at</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">expiry</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">expiry</span> {
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>ApiToken {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;account_id: {}&quot;</span>, <span class="self">self</span>.account_id)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;token_id: {}&quot;</span>, <span class="self">self</span>.token_id)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;label: {}&quot;</span>, <span class="self">self</span>.label)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;issued at: {}&quot;</span>, <span class="self">self</span>.issued_at)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(expiry) = <span class="self">self</span>.expiry {
             <span class="macro">writeln!</span>(
-                <span class="ident">f</span>,
+                f,
                 <span class="string">&quot;token expiry: {}&quot;</span>,
-                <span class="ident">expiry</span>
-                    .<span class="ident">to_offset</span>(
-                        <span class="ident">time::UtcOffset::try_current_local_offset</span>().<span class="ident">unwrap_or</span>(<span class="ident">time::UtcOffset::UTC</span>),
+                expiry
+                    .to_offset(
+                        time::UtcOffset::try_current_local_offset().unwrap_or(time::UtcOffset::UTC),
                     )
-                    .<span class="ident">format</span>(<span class="ident">time::Format::Rfc3339</span>)
+                    .format(time::Format::Rfc3339)
             )
-        } <span class="kw">else</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;token expiry: never&quot;</span>)
+        } <span class="kw">else </span>{
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;token expiry: never&quot;</span>)
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">ApiToken</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">token_id</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">token_id</span>
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>ApiToken {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="self">self</span>.token_id == other.token_id
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="ident">ApiToken</span> {}
+<span class="kw">impl </span>Eq <span class="kw">for </span>ApiToken {}
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ApiTokenGenerate</span> {
-    <span class="kw">pub</span> <span class="ident">label</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">time::OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">read_write</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub struct </span>ApiTokenGenerate {
+    <span class="kw">pub </span>label: String,
+    <span class="attribute">#[serde(with = <span class="string">&quot;time::serde::timestamp::option&quot;</span>)]
+    </span><span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;time::OffsetDateTime&gt;,
+    <span class="kw">pub </span>read_write: bool,
 }
 
-<span class="comment">// UAT will need a downcast to Entry, which adds in the claims to the entry</span>
-<span class="comment">// for the purpose of filtering.</span>
+<span class="comment">// UAT will need a downcast to Entry, which adds in the claims to the entry
+// for the purpose of filtering.
 
-<span class="comment">// This is similar to uat, but omits claims (they have no role in radius), and adds</span>
-<span class="comment">// the radius secret field.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RadiusAuthToken</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">secret</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span>,
+// This is similar to uat, but omits claims (they have no role in radius), and adds
+// the radius secret field.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>RadiusAuthToken {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>displayname: String,
+    <span class="kw">pub </span>uuid: String,
+    <span class="kw">pub </span>secret: String,
+    <span class="kw">pub </span>groups: Vec&lt;Group&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">RadiusAuthToken</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;name: {}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;displayname: {}&quot;</span>, <span class="self">self</span>.<span class="ident">displayname</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;secret: {}&quot;</span>, <span class="self">self</span>.<span class="ident">secret</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">groups</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;group: {}&quot;</span>, <span class="ident">g</span>))
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>RadiusAuthToken {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;name: {}&quot;</span>, <span class="self">self</span>.name)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;displayname: {}&quot;</span>, <span class="self">self</span>.displayname)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.uuid)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;secret: {}&quot;</span>, <span class="self">self</span>.secret)<span class="question-mark">?</span>;
+        <span class="self">self</span>.groups
+            .iter()
+            .try_for_each(|g| <span class="macro">writeln!</span>(f, <span class="string">&quot;group: {}&quot;</span>, g))
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixGroupToken</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">gidnumber</span>: <span class="ident">u32</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>UnixGroupToken {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>uuid: String,
+    <span class="kw">pub </span>gidnumber: u32,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">UnixGroupToken</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;[ spn: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">spn</span>)<span class="question-mark">?</span>;
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;gidnumber: {} &quot;</span>, <span class="self">self</span>.<span class="ident">gidnumber</span>)<span class="question-mark">?</span>;
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;name: {}, &quot;</span>, <span class="self">self</span>.<span class="ident">name</span>)<span class="question-mark">?</span>;
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {} ]&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>UnixGroupToken {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;[ spn: {}, &quot;</span>, <span class="self">self</span>.spn)<span class="question-mark">?</span>;
+        <span class="macro">write!</span>(f, <span class="string">&quot;gidnumber: {} &quot;</span>, <span class="self">self</span>.gidnumber)<span class="question-mark">?</span>;
+        <span class="macro">write!</span>(f, <span class="string">&quot;name: {}, &quot;</span>, <span class="self">self</span>.name)<span class="question-mark">?</span>;
+        <span class="macro">write!</span>(f, <span class="string">&quot;uuid: {} ]&quot;</span>, <span class="self">self</span>.uuid)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupUnixExtend</span> {
-    <span class="kw">pub</span> <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>GroupUnixExtend {
+    <span class="kw">pub </span>gidnumber: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixUserToken</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">gidnumber</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">sshkeys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="comment">// The default value of bool is false.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">valid</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>UnixUserToken {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>displayname: String,
+    <span class="kw">pub </span>gidnumber: u32,
+    <span class="kw">pub </span>uuid: String,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>shell: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>groups: Vec&lt;UnixGroupToken&gt;,
+    <span class="kw">pub </span>sshkeys: Vec&lt;String&gt;,
+    <span class="comment">// The default value of bool is false.
+    </span><span class="attribute">#[serde(default)]
+    </span><span class="kw">pub </span>valid: bool,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">UnixUserToken</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;---&quot;</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;spn: {}&quot;</span>, <span class="self">self</span>.<span class="ident">spn</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;name: {}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;displayname: {}&quot;</span>, <span class="self">self</span>.<span class="ident">displayname</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)<span class="question-mark">?</span>;
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">shell</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;shell: {}&quot;</span>, <span class="ident">s</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;shell: &lt;none&gt;&quot;</span>)<span class="question-mark">?</span>,
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>UnixUserToken {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;---&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;spn: {}&quot;</span>, <span class="self">self</span>.spn)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;name: {}&quot;</span>, <span class="self">self</span>.name)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;displayname: {}&quot;</span>, <span class="self">self</span>.displayname)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.uuid)<span class="question-mark">?</span>;
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.shell {
+            <span class="prelude-val">Some</span>(s) =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;shell: {}&quot;</span>, s)<span class="question-mark">?</span>,
+            <span class="prelude-val">None </span>=&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;shell: &lt;none&gt;&quot;</span>)<span class="question-mark">?</span>,
         }
-        <span class="self">self</span>.<span class="ident">sshkeys</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;ssh_publickey: {}&quot;</span>, <span class="ident">s</span>))<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">groups</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;group: {}&quot;</span>, <span class="ident">g</span>))
+        <span class="self">self</span>.sshkeys
+            .iter()
+            .try_for_each(|s| <span class="macro">writeln!</span>(f, <span class="string">&quot;ssh_publickey: {}&quot;</span>, s))<span class="question-mark">?</span>;
+        <span class="self">self</span>.groups
+            .iter()
+            .try_for_each(|g| <span class="macro">writeln!</span>(f, <span class="string">&quot;group: {}&quot;</span>, g))
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountUnixExtend</span> {
-    <span class="kw">pub</span> <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>AccountUnixExtend {
+    <span class="kw">pub </span>gidnumber: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="kw">pub </span>shell: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
 <span class="comment">/*
@@ -1806,399 +1806,399 @@ pub struct Application {
 pub struct AccountOrgPersonExtend {
     pub mail: String,
 }
-*/</span>
+*/
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CredentialDetailType</span> {
-    <span class="ident">Password</span>,
-    <span class="ident">GeneratedPassword</span>,
-    <span class="ident">Passkey</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// totp, webauthn</span>
-    <span class="ident">PasswordMfa</span>(<span class="ident">bool</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">usize</span>),
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>CredentialDetailType {
+    Password,
+    GeneratedPassword,
+    Passkey(Vec&lt;String&gt;),
+    <span class="doccomment">/// totp, webauthn
+    </span>PasswordMfa(bool, Vec&lt;String&gt;, usize),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CredentialDetail</span> {
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">type_</span>: <span class="ident">CredentialDetailType</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>CredentialDetail {
+    <span class="kw">pub </span>uuid: Uuid,
+    <span class="kw">pub </span>type_: CredentialDetailType,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">CredentialDetail</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>CredentialDetail {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.uuid)<span class="question-mark">?</span>;
         <span class="comment">/*
         writeln!(f, &quot;claims:&quot;)?;
         for claim in &amp;self.claims {
             writeln!(f, &quot; * {}&quot;, claim)?;
         }
-        */</span>
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">type_</span> {
-            <span class="ident">CredentialDetailType::Password</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;password: set&quot;</span>),
-            <span class="ident">CredentialDetailType::GeneratedPassword</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;generated password: set&quot;</span>),
-            <span class="ident">CredentialDetailType::Passkey</span>(<span class="ident">labels</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">labels</span>.<span class="ident">is_empty</span>() {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;passkeys: none registered&quot;</span>)
-                } <span class="kw">else</span> {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;passkeys:&quot;</span>)<span class="question-mark">?</span>;
-                    <span class="kw">for</span> <span class="ident">label</span> <span class="kw">in</span> <span class="ident">labels</span> {
-                        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot; * {}&quot;</span>, <span class="ident">label</span>)<span class="question-mark">?</span>;
+        */
+        </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.type_ {
+            CredentialDetailType::Password =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;password: set&quot;</span>),
+            CredentialDetailType::GeneratedPassword =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;generated password: set&quot;</span>),
+            CredentialDetailType::Passkey(labels) =&gt; {
+                <span class="kw">if </span>labels.is_empty() {
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;passkeys: none registered&quot;</span>)
+                } <span class="kw">else </span>{
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;passkeys:&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="kw">for </span>label <span class="kw">in </span>labels {
+                        <span class="macro">writeln!</span>(f, <span class="string">&quot; * {}&quot;</span>, label)<span class="question-mark">?</span>;
                     }
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;&quot;</span>)
+                    <span class="macro">write!</span>(f, <span class="string">&quot;&quot;</span>)
                 }
             }
-            <span class="ident">CredentialDetailType::PasswordMfa</span>(<span class="ident">totp</span>, <span class="ident">labels</span>, <span class="ident">backup_code</span>) =&gt; {
-                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;password: set&quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">totp</span> {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;totp: enabled&quot;</span>)<span class="question-mark">?</span>;
-                } <span class="kw">else</span> {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;totp: disabled&quot;</span>)<span class="question-mark">?</span>;
+            CredentialDetailType::PasswordMfa(totp, labels, backup_code) =&gt; {
+                <span class="macro">writeln!</span>(f, <span class="string">&quot;password: set&quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">if </span><span class="kw-2">*</span>totp {
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;totp: enabled&quot;</span>)<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;totp: disabled&quot;</span>)<span class="question-mark">?</span>;
                 }
-                <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">backup_code</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;backup_code: enabled&quot;</span>)<span class="question-mark">?</span>;
-                } <span class="kw">else</span> {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;backup_code: disabled&quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">if </span><span class="kw-2">*</span>backup_code &gt; <span class="number">0 </span>{
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;backup_code: enabled&quot;</span>)<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;backup_code: disabled&quot;</span>)<span class="question-mark">?</span>;
                 }
-                <span class="kw">if</span> <span class="ident">labels</span>.<span class="ident">is_empty</span>() {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;webauthn: no authenticators&quot;</span>)
-                } <span class="kw">else</span> {
-                    <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;webauthn:&quot;</span>)<span class="question-mark">?</span>;
-                    <span class="kw">for</span> <span class="ident">label</span> <span class="kw">in</span> <span class="ident">labels</span> {
-                        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot; * {}&quot;</span>, <span class="ident">label</span>)<span class="question-mark">?</span>;
+                <span class="kw">if </span>labels.is_empty() {
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;webauthn: no authenticators&quot;</span>)
+                } <span class="kw">else </span>{
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;webauthn:&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="kw">for </span>label <span class="kw">in </span>labels {
+                        <span class="macro">writeln!</span>(f, <span class="string">&quot; * {}&quot;</span>, label)<span class="question-mark">?</span>;
                     }
-                    <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;&quot;</span>)
+                    <span class="macro">write!</span>(f, <span class="string">&quot;&quot;</span>)
                 }
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PasskeyDetail</span> {
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">tag</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>PasskeyDetail {
+    <span class="kw">pub </span>uuid: Uuid,
+    <span class="kw">pub </span>tag: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CredentialStatus</span> {
-    <span class="kw">pub</span> <span class="ident">creds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CredentialDetail</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>CredentialStatus {
+    <span class="kw">pub </span>creds: Vec&lt;CredentialDetail&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">CredentialStatus</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">for</span> <span class="ident">cred</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creds</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;---&quot;</span>)<span class="question-mark">?</span>;
-            <span class="ident">cred</span>.<span class="ident">fmt</span>(<span class="ident">f</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>CredentialStatus {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">for </span>cred <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.creds {
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;---&quot;</span>)<span class="question-mark">?</span>;
+            cred.fmt(f)<span class="question-mark">?</span>;
         }
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;---&quot;</span>)
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;---&quot;</span>)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BackupCodesView</span> {
-    <span class="kw">pub</span> <span class="ident">backup_codes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>BackupCodesView {
+    <span class="kw">pub </span>backup_codes: Vec&lt;String&gt;,
 }
 
-<span class="comment">/* ===== low level proto types ===== */</span>
+<span class="comment">/* ===== low level proto types ===== */
 
-<span class="comment">// ProtoEntry vs Entry</span>
-<span class="comment">// There is a good future reason for this seperation. It allows changing</span>
-<span class="comment">// the in memory server core entry type, without affecting the protoEntry type</span>
-<span class="comment">//</span>
+// ProtoEntry vs Entry
+// There is a good future reason for this seperation. It allows changing
+// the in memory server core entry type, without affecting the protoEntry type
+//
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Entry</span> {
-    <span class="kw">pub</span> <span class="ident">attrs</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+</span><span class="kw">pub struct </span>Entry {
+    <span class="kw">pub </span>attrs: BTreeMap&lt;String, Vec&lt;String&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Entry</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;---&quot;</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">attrs</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{}: {}&quot;</span>, <span class="ident">k</span>, <span class="ident">v</span>)))
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Entry {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;---&quot;</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.attrs
+            .iter()
+            .try_for_each(|(k, vs)| vs.iter().try_for_each(|v| <span class="macro">writeln!</span>(f, <span class="string">&quot;{}: {}&quot;</span>, k, v)))
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Filter</span> {
-    <span class="comment">// This is attr - value</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;Eq&quot;</span>)]</span>
-    <span class="ident">Eq</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;Sub&quot;</span>)]</span>
-    <span class="ident">Sub</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;Pres&quot;</span>)]</span>
-    <span class="ident">Pres</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;Or&quot;</span>)]</span>
-    <span class="ident">Or</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;And&quot;</span>)]</span>
-    <span class="ident">And</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;AndNot&quot;</span>)]</span>
-    <span class="ident">AndNot</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Filter</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;self&quot;</span>, <span class="ident">alias</span> <span class="op">=</span> <span class="string">&quot;Self&quot;</span>)]</span>
-    <span class="ident">SelfUuid</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>Filter {
+    <span class="comment">// This is attr - value
+    </span><span class="attribute">#[serde(alias = <span class="string">&quot;Eq&quot;</span>)]
+    </span>Eq(String, String),
+    <span class="attribute">#[serde(alias = <span class="string">&quot;Sub&quot;</span>)]
+    </span>Sub(String, String),
+    <span class="attribute">#[serde(alias = <span class="string">&quot;Pres&quot;</span>)]
+    </span>Pres(String),
+    <span class="attribute">#[serde(alias = <span class="string">&quot;Or&quot;</span>)]
+    </span>Or(Vec&lt;Filter&gt;),
+    <span class="attribute">#[serde(alias = <span class="string">&quot;And&quot;</span>)]
+    </span>And(Vec&lt;Filter&gt;),
+    <span class="attribute">#[serde(alias = <span class="string">&quot;AndNot&quot;</span>)]
+    </span>AndNot(Box&lt;Filter&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;self&quot;</span>, alias = <span class="string">&quot;Self&quot;</span>)]
+    </span>SelfUuid,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Modify</span> {
-    <span class="ident">Present</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="ident">Removed</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="ident">Purged</span>(<span class="ident">String</span>),
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>Modify {
+    Present(String, String),
+    Removed(String, String),
+    Purged(String),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyList</span> {
-    <span class="kw">pub</span> <span class="ident">mods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Modify</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, Clone)]
+</span><span class="kw">pub struct </span>ModifyList {
+    <span class="kw">pub </span>mods: Vec&lt;Modify&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ModifyList</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_list</span>(<span class="ident">mods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Modify</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ModifyList</span> { <span class="ident">mods</span> }
+<span class="kw">impl </span>ModifyList {
+    <span class="kw">pub fn </span>new_list(mods: Vec&lt;Modify&gt;) -&gt; <span class="self">Self </span>{
+        ModifyList { mods }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchRequest</span> {
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>SearchRequest {
+    <span class="kw">pub </span>filter: Filter,
 }
 
-<span class="kw">impl</span> <span class="ident">SearchRequest</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">filter</span>: <span class="ident">Filter</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchRequest</span> { <span class="ident">filter</span> }
+<span class="kw">impl </span>SearchRequest {
+    <span class="kw">pub fn </span>new(filter: Filter) -&gt; <span class="self">Self </span>{
+        SearchRequest { filter }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SearchResponse</span> {
-    <span class="kw">pub</span> <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>SearchResponse {
+    <span class="kw">pub </span>entries: Vec&lt;Entry&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">SearchResponse</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">SearchResponse</span> { <span class="ident">entries</span> }
+<span class="kw">impl </span>SearchResponse {
+    <span class="kw">pub fn </span>new(entries: Vec&lt;Entry&gt;) -&gt; <span class="self">Self </span>{
+        SearchResponse { entries }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CreateRequest</span> {
-    <span class="kw">pub</span> <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>CreateRequest {
+    <span class="kw">pub </span>entries: Vec&lt;Entry&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">CreateRequest</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CreateRequest</span> { <span class="ident">entries</span> }
+<span class="kw">impl </span>CreateRequest {
+    <span class="kw">pub fn </span>new(entries: Vec&lt;Entry&gt;) -&gt; <span class="self">Self </span>{
+        CreateRequest { entries }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DeleteRequest</span> {
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>DeleteRequest {
+    <span class="kw">pub </span>filter: Filter,
 }
 
-<span class="kw">impl</span> <span class="ident">DeleteRequest</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">filter</span>: <span class="ident">Filter</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">DeleteRequest</span> { <span class="ident">filter</span> }
+<span class="kw">impl </span>DeleteRequest {
+    <span class="kw">pub fn </span>new(filter: Filter) -&gt; <span class="self">Self </span>{
+        DeleteRequest { filter }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyRequest</span> {
-    <span class="comment">// Probably needs a modlist?</span>
-    <span class="kw">pub</span> <span class="ident">filter</span>: <span class="ident">Filter</span>,
-    <span class="kw">pub</span> <span class="ident">modlist</span>: <span class="ident">ModifyList</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>ModifyRequest {
+    <span class="comment">// Probably needs a modlist?
+    </span><span class="kw">pub </span>filter: Filter,
+    <span class="kw">pub </span>modlist: ModifyList,
 }
 
-<span class="kw">impl</span> <span class="ident">ModifyRequest</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">filter</span>: <span class="ident">Filter</span>, <span class="ident">modlist</span>: <span class="ident">ModifyList</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ModifyRequest</span> { <span class="ident">filter</span>, <span class="ident">modlist</span> }
+<span class="kw">impl </span>ModifyRequest {
+    <span class="kw">pub fn </span>new(filter: Filter, modlist: ModifyList) -&gt; <span class="self">Self </span>{
+        ModifyRequest { filter, modlist }
     }
 }
 
-<span class="comment">// Login is a multi-step process potentially. First the client says who they</span>
-<span class="comment">// want to request</span>
-<span class="comment">//</span>
-<span class="comment">// we respond with a set of possible authentications that can proceed, and perhaps</span>
-<span class="comment">// we indicate which options must/may?</span>
-<span class="comment">//</span>
-<span class="comment">// The client can then step and negotiate each.</span>
-<span class="comment">//</span>
-<span class="comment">// This continues until a LoginSuccess, or LoginFailure is returned.</span>
-<span class="comment">//</span>
-<span class="comment">// On loginSuccess, we send a cookie, and that allows the token to be</span>
-<span class="comment">// generated. The cookie can be shared between servers.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthCredential</span> {
-    <span class="ident">Anonymous</span>,
-    <span class="ident">Password</span>(<span class="ident">String</span>),
-    <span class="ident">Totp</span>(<span class="ident">u32</span>),
-    <span class="ident">SecurityKey</span>(<span class="ident">PublicKeyCredential</span>),
-    <span class="ident">BackupCode</span>(<span class="ident">String</span>),
-    <span class="comment">// Should this just be discoverable?</span>
-    <span class="ident">Passkey</span>(<span class="ident">PublicKeyCredential</span>),
+<span class="comment">// Login is a multi-step process potentially. First the client says who they
+// want to request
+//
+// we respond with a set of possible authentications that can proceed, and perhaps
+// we indicate which options must/may?
+//
+// The client can then step and negotiate each.
+//
+// This continues until a LoginSuccess, or LoginFailure is returned.
+//
+// On loginSuccess, we send a cookie, and that allows the token to be
+// generated. The cookie can be shared between servers.
+</span><span class="attribute">#[derive(Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>AuthCredential {
+    Anonymous,
+    Password(String),
+    Totp(u32),
+    SecurityKey(PublicKeyCredential),
+    BackupCode(String),
+    <span class="comment">// Should this just be discoverable?
+    </span>Passkey(PublicKeyCredential),
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">AuthCredential</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fmt</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AuthCredential::Anonymous</span> =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Anonymous&quot;</span>),
-            <span class="ident">AuthCredential::Password</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Password(_)&quot;</span>),
-            <span class="ident">AuthCredential::Totp</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;TOTP(_)&quot;</span>),
-            <span class="ident">AuthCredential::SecurityKey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;SecurityKey(_)&quot;</span>),
-            <span class="ident">AuthCredential::BackupCode</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;BackupCode(_)&quot;</span>),
-            <span class="ident">AuthCredential::Passkey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">fmt</span>, <span class="string">&quot;Passkey(_)&quot;</span>),
-        }
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthMech</span> {
-    <span class="ident">Anonymous</span>,
-    <span class="ident">Password</span>,
-    <span class="ident">PasswordMfa</span>,
-    <span class="ident">Passkey</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">AuthMech</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">std::mem::discriminant</span>(<span class="self">self</span>) <span class="op">==</span> <span class="ident">std::mem::discriminant</span>(<span class="ident">other</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">AuthMech</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AuthMech::Anonymous</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Anonymous (no credentials)&quot;</span>),
-            <span class="ident">AuthMech::Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Password&quot;</span>),
-            <span class="ident">AuthMech::PasswordMfa</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;TOTP/Backup Code and Password&quot;</span>),
-            <span class="ident">AuthMech::Passkey</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Passkey&quot;</span>),
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>AuthCredential {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            AuthCredential::Anonymous =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;Anonymous&quot;</span>),
+            AuthCredential::Password(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;Password(_)&quot;</span>),
+            AuthCredential::Totp(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;TOTP(_)&quot;</span>),
+            AuthCredential::SecurityKey(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;SecurityKey(_)&quot;</span>),
+            AuthCredential::BackupCode(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;BackupCode(_)&quot;</span>),
+            AuthCredential::Passkey(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot;Passkey(_)&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthIssueSession</span> {
-    <span class="ident">Token</span>,
-    <span class="ident">Cookie</span>,
+<span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>AuthMech {
+    Anonymous,
+    Password,
+    PasswordMfa,
+    Passkey,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthStep</span> {
-    <span class="comment">// name</span>
-    <span class="ident">Init</span>(<span class="ident">String</span>),
-    <span class="comment">// A new way to issue sessions. Doing this as a new init type</span>
-    <span class="comment">// to prevent breaking existing clients.</span>
-    <span class="ident">Init2</span> {
-        <span class="ident">username</span>: <span class="ident">String</span>,
-        <span class="ident">issue</span>: <span class="ident">AuthIssueSession</span>,
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>AuthMech {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        std::mem::discriminant(<span class="self">self</span>) == std::mem::discriminant(other)
+    }
+}
+
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>AuthMech {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            AuthMech::Anonymous =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Anonymous (no credentials)&quot;</span>),
+            AuthMech::Password =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Password&quot;</span>),
+            AuthMech::PasswordMfa =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;TOTP/Backup Code and Password&quot;</span>),
+            AuthMech::Passkey =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Passkey&quot;</span>),
+        }
+    }
+}
+
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>AuthIssueSession {
+    Token,
+    Cookie,
+}
+
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>AuthStep {
+    <span class="comment">// name
+    </span>Init(String),
+    <span class="comment">// A new way to issue sessions. Doing this as a new init type
+    // to prevent breaking existing clients.
+    </span>Init2 {
+        username: String,
+        issue: AuthIssueSession,
     },
-    <span class="comment">// We want to talk to you like this.</span>
-    <span class="ident">Begin</span>(<span class="ident">AuthMech</span>),
-    <span class="comment">// Step</span>
-    <span class="ident">Cred</span>(<span class="ident">AuthCredential</span>),
-    <span class="comment">// Should we have a &quot;finalise&quot; type to attempt to finish based on</span>
-    <span class="comment">// what we have given?</span>
+    <span class="comment">// We want to talk to you like this.
+    </span>Begin(AuthMech),
+    <span class="comment">// Step
+    </span>Cred(AuthCredential),
+    <span class="comment">// Should we have a &quot;finalise&quot; type to attempt to finish based on
+    // what we have given?
+</span>}
+
+<span class="comment">// Request auth for identity X with roles Y?
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>AuthRequest {
+    <span class="kw">pub </span>step: AuthStep,
 }
 
-<span class="comment">// Request auth for identity X with roles Y?</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthRequest</span> {
-    <span class="kw">pub</span> <span class="ident">step</span>: <span class="ident">AuthStep</span>,
+<span class="comment">// Respond with the list of auth types and nonce, etc.
+// It can also contain a denied, or success.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>AuthAllowed {
+    Anonymous,
+    BackupCode,
+    Password,
+    Totp,
+    SecurityKey(RequestChallengeResponse),
+    Passkey(RequestChallengeResponse),
 }
 
-<span class="comment">// Respond with the list of auth types and nonce, etc.</span>
-<span class="comment">// It can also contain a denied, or success.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthAllowed</span> {
-    <span class="ident">Anonymous</span>,
-    <span class="ident">BackupCode</span>,
-    <span class="ident">Password</span>,
-    <span class="ident">Totp</span>,
-    <span class="ident">SecurityKey</span>(<span class="ident">RequestChallengeResponse</span>),
-    <span class="ident">Passkey</span>(<span class="ident">RequestChallengeResponse</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">AuthAllowed</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">std::mem::discriminant</span>(<span class="self">self</span>) <span class="op">==</span> <span class="ident">std::mem::discriminant</span>(<span class="ident">other</span>)
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>AuthAllowed {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        std::mem::discriminant(<span class="self">self</span>) == std::mem::discriminant(other)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Eq</span> <span class="kw">for</span> <span class="ident">AuthAllowed</span> {}
+<span class="kw">impl </span>Eq <span class="kw">for </span>AuthAllowed {}
 
-<span class="kw">impl</span> <span class="ident">Ord</span> <span class="kw">for</span> <span class="ident">AuthAllowed</span> {
-    <span class="kw">fn</span> <span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">Ordering</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">eq</span>(<span class="ident">other</span>) {
-            <span class="ident">Ordering::Equal</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// Relies on the fact that match is executed in order!</span>
-            <span class="kw">match</span> (<span class="self">self</span>, <span class="ident">other</span>) {
-                (<span class="ident">AuthAllowed::Anonymous</span>, <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
-                (<span class="kw">_</span>, <span class="ident">AuthAllowed::Anonymous</span>) =&gt; <span class="ident">Ordering::Greater</span>,
-                (<span class="ident">AuthAllowed::Password</span>, <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
-                (<span class="kw">_</span>, <span class="ident">AuthAllowed::Password</span>) =&gt; <span class="ident">Ordering::Greater</span>,
-                (<span class="ident">AuthAllowed::BackupCode</span>, <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
-                (<span class="kw">_</span>, <span class="ident">AuthAllowed::BackupCode</span>) =&gt; <span class="ident">Ordering::Greater</span>,
-                (<span class="ident">AuthAllowed::Totp</span>, <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
-                (<span class="kw">_</span>, <span class="ident">AuthAllowed::Totp</span>) =&gt; <span class="ident">Ordering::Greater</span>,
-                (<span class="ident">AuthAllowed::SecurityKey</span>(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
-                (<span class="kw">_</span>, <span class="ident">AuthAllowed::SecurityKey</span>(<span class="kw">_</span>)) =&gt; <span class="ident">Ordering::Greater</span>,
-                (<span class="ident">AuthAllowed::Passkey</span>(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="ident">Ordering::Less</span>,
-                <span class="comment">// Unreachable</span>
-                <span class="comment">// (_, AuthAllowed::Passkey(_)) =&gt; Ordering::Greater,</span>
-            }
+<span class="kw">impl </span>Ord <span class="kw">for </span>AuthAllowed {
+    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
+        <span class="kw">if </span><span class="self">self</span>.eq(other) {
+            Ordering::Equal
+        } <span class="kw">else </span>{
+            <span class="comment">// Relies on the fact that match is executed in order!
+            </span><span class="kw">match </span>(<span class="self">self</span>, other) {
+                (AuthAllowed::Anonymous, <span class="kw">_</span>) =&gt; Ordering::Less,
+                (<span class="kw">_</span>, AuthAllowed::Anonymous) =&gt; Ordering::Greater,
+                (AuthAllowed::Password, <span class="kw">_</span>) =&gt; Ordering::Less,
+                (<span class="kw">_</span>, AuthAllowed::Password) =&gt; Ordering::Greater,
+                (AuthAllowed::BackupCode, <span class="kw">_</span>) =&gt; Ordering::Less,
+                (<span class="kw">_</span>, AuthAllowed::BackupCode) =&gt; Ordering::Greater,
+                (AuthAllowed::Totp, <span class="kw">_</span>) =&gt; Ordering::Less,
+                (<span class="kw">_</span>, AuthAllowed::Totp) =&gt; Ordering::Greater,
+                (AuthAllowed::SecurityKey(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; Ordering::Less,
+                (<span class="kw">_</span>, AuthAllowed::SecurityKey(<span class="kw">_</span>)) =&gt; Ordering::Greater,
+                (AuthAllowed::Passkey(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; Ordering::Less,
+                <span class="comment">// Unreachable
+                // (_, AuthAllowed::Passkey(_)) =&gt; Ordering::Greater,
+            </span>}
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialOrd</span> <span class="kw">for</span> <span class="ident">AuthAllowed</span> {
-    <span class="kw">fn</span> <span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Ordering</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">cmp</span>(<span class="ident">other</span>))
+<span class="kw">impl </span>PartialOrd <span class="kw">for </span>AuthAllowed {
+    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">AuthAllowed</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AuthAllowed::Anonymous</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Anonymous (no credentials)&quot;</span>),
-            <span class="ident">AuthAllowed::Password</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Password&quot;</span>),
-            <span class="ident">AuthAllowed::BackupCode</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Backup Code&quot;</span>),
-            <span class="ident">AuthAllowed::Totp</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;TOTP&quot;</span>),
-            <span class="ident">AuthAllowed::SecurityKey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Security Token&quot;</span>),
-            <span class="ident">AuthAllowed::Passkey</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Passkey&quot;</span>),
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>AuthAllowed {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            AuthAllowed::Anonymous =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Anonymous (no credentials)&quot;</span>),
+            AuthAllowed::Password =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Password&quot;</span>),
+            AuthAllowed::BackupCode =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Backup Code&quot;</span>),
+            AuthAllowed::Totp =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;TOTP&quot;</span>),
+            AuthAllowed::SecurityKey(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Security Token&quot;</span>),
+            AuthAllowed::Passkey(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Passkey&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AuthState</span> {
-    <span class="comment">// You need to select how you want to talk to me.</span>
-    <span class="ident">Choose</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>),
-    <span class="comment">// Continue to auth, allowed mechanisms/challenges listed.</span>
-    <span class="ident">Continue</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>),
-    <span class="comment">// Something was bad, your session is terminated and no cookie.</span>
-    <span class="ident">Denied</span>(<span class="ident">String</span>),
-    <span class="comment">// Everything is good, your bearer token has been issued and is within</span>
-    <span class="comment">// the result.</span>
-    <span class="ident">Success</span>(<span class="ident">String</span>),
-    <span class="comment">// Everything is good, your cookie has been issued.</span>
-    <span class="ident">SuccessCookie</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>AuthState {
+    <span class="comment">// You need to select how you want to talk to me.
+    </span>Choose(Vec&lt;AuthMech&gt;),
+    <span class="comment">// Continue to auth, allowed mechanisms/challenges listed.
+    </span>Continue(Vec&lt;AuthAllowed&gt;),
+    <span class="comment">// Something was bad, your session is terminated and no cookie.
+    </span>Denied(String),
+    <span class="comment">// Everything is good, your bearer token has been issued and is within
+    // the result.
+    </span>Success(String),
+    <span class="comment">// Everything is good, your cookie has been issued.
+    </span>SuccessCookie,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthResponse</span> {
-    <span class="kw">pub</span> <span class="ident">sessionid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">AuthState</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>AuthResponse {
+    <span class="kw">pub </span>sessionid: Uuid,
+    <span class="kw">pub </span>state: AuthState,
 }
 
-<span class="comment">// Types needed for setting credentials</span>
-<span class="comment">/*
+<span class="comment">// Types needed for setting credentials
+/*
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = &quot;lowercase&quot;)]
 pub enum SetCredentialRequest {
@@ -2211,54 +2211,54 @@ pub enum SetCredentialRequest {
     BackupCodeGenerate,
     BackupCodeRemove,
 }
-*/</span>
+*/
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TotpAlgo</span> {
-    <span class="ident">Sha1</span>,
-    <span class="ident">Sha256</span>,
-    <span class="ident">Sha512</span>,
+</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>TotpAlgo {
+    Sha1,
+    Sha256,
+    Sha512,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">TotpAlgo</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TotpAlgo::Sha1</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;SHA1&quot;</span>),
-            <span class="ident">TotpAlgo::Sha256</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;SHA256&quot;</span>),
-            <span class="ident">TotpAlgo::Sha512</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;SHA512&quot;</span>),
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>TotpAlgo {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            TotpAlgo::Sha1 =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;SHA1&quot;</span>),
+            TotpAlgo::Sha256 =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;SHA256&quot;</span>),
+            TotpAlgo::Sha512 =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;SHA512&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TotpSecret</span> {
-    <span class="kw">pub</span> <span class="ident">accountname</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// User-facing name of the system, issuer of the TOTP</span>
-    <span class="kw">pub</span> <span class="ident">issuer</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">secret</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">algo</span>: <span class="ident">TotpAlgo</span>,
-    <span class="kw">pub</span> <span class="ident">step</span>: <span class="ident">u64</span>,
+<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>TotpSecret {
+    <span class="kw">pub </span>accountname: String,
+    <span class="doccomment">/// User-facing name of the system, issuer of the TOTP
+    </span><span class="kw">pub </span>issuer: String,
+    <span class="kw">pub </span>secret: Vec&lt;u8&gt;,
+    <span class="kw">pub </span>algo: TotpAlgo,
+    <span class="kw">pub </span>step: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">TotpSecret</span> {
-    <span class="doccomment">/// &lt;https://github.com/google/google-authenticator/wiki/Key-Uri-Format&gt;</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_uri</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">accountname</span> <span class="op">=</span> <span class="ident">urlencoding::Encoded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">accountname</span>);
-        <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="ident">urlencoding::Encoded</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">issuer</span>);
-        <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}:{}&quot;</span>, <span class="ident">issuer</span>, <span class="ident">accountname</span>);
-        <span class="kw">let</span> <span class="ident">algo</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">algo</span>.<span class="ident">to_string</span>();
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_secret</span>();
-        <span class="kw">let</span> <span class="ident">period</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">step</span>;
+<span class="kw">impl </span>TotpSecret {
+    <span class="doccomment">/// &lt;https://github.com/google/google-authenticator/wiki/Key-Uri-Format&gt;
+    </span><span class="kw">pub fn </span>to_uri(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span>accountname = urlencoding::Encoded(<span class="kw-2">&amp;</span><span class="self">self</span>.accountname);
+        <span class="kw">let </span>issuer = urlencoding::Encoded(<span class="kw-2">&amp;</span><span class="self">self</span>.issuer);
+        <span class="kw">let </span>label = <span class="macro">format!</span>(<span class="string">&quot;{}:{}&quot;</span>, issuer, accountname);
+        <span class="kw">let </span>algo = <span class="self">self</span>.algo.to_string();
+        <span class="kw">let </span>secret = <span class="self">self</span>.get_secret();
+        <span class="kw">let </span>period = <span class="self">self</span>.step;
 
         <span class="macro">format!</span>(
             <span class="string">&quot;otpauth://totp/{}?secret={}&amp;issuer={}&amp;algorithm={}&amp;digits=6&amp;period={}&quot;</span>,
-            <span class="ident">label</span>, <span class="ident">secret</span>, <span class="ident">issuer</span>, <span class="ident">algo</span>, <span class="ident">period</span>
+            label, secret, issuer, algo, period
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="ident">base32::encode</span>(<span class="ident">base32::Alphabet::RFC4648</span> { <span class="ident">padding</span>: <span class="bool-val">false</span> }, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>)
+    <span class="kw">pub fn </span>get_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        base32::encode(base32::Alphabet::RFC4648 { padding: <span class="bool-val">false </span>}, <span class="kw-2">&amp;</span><span class="self">self</span>.secret)
     }
 }
 
@@ -2273,136 +2273,136 @@ pub enum SetCredentialResponse {
     SecurityKeyCreateChallenge(Uuid, CreationChallengeResponse),
     BackupCodes(Vec&lt;String&gt;),
 }
-*/</span>
+*/
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUIntentToken</span> {
-    <span class="kw">pub</span> <span class="ident">token</span>: <span class="ident">String</span>,
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>CUIntentToken {
+    <span class="kw">pub </span>token: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUSessionToken</span> {
-    <span class="kw">pub</span> <span class="ident">token</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>CUSessionToken {
+    <span class="kw">pub </span>token: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CURequest</span> {
-    <span class="ident">PrimaryRemove</span>,
-    <span class="ident">Password</span>(<span class="ident">String</span>),
-    <span class="ident">CancelMFAReg</span>,
-    <span class="ident">TotpGenerate</span>,
-    <span class="ident">TotpVerify</span>(<span class="ident">u32</span>),
-    <span class="ident">TotpAcceptSha1</span>,
-    <span class="ident">TotpRemove</span>,
-    <span class="ident">BackupCodeGenerate</span>,
-    <span class="ident">BackupCodeRemove</span>,
-    <span class="ident">PasskeyInit</span>,
-    <span class="ident">PasskeyFinish</span>(<span class="ident">String</span>, <span class="ident">RegisterPublicKeyCredential</span>),
-    <span class="ident">PasskeyRemove</span>(<span class="ident">Uuid</span>),
+<span class="attribute">#[derive(Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>CURequest {
+    PrimaryRemove,
+    Password(String),
+    CancelMFAReg,
+    TotpGenerate,
+    TotpVerify(u32),
+    TotpAcceptSha1,
+    TotpRemove,
+    BackupCodeGenerate,
+    BackupCodeRemove,
+    PasskeyInit,
+    PasskeyFinish(String, RegisterPublicKeyCredential),
+    PasskeyRemove(Uuid),
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">CURequest</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">CURequest::PrimaryRemove</span> =&gt; <span class="string">&quot;CURequest::PrimaryRemove&quot;</span>,
-            <span class="ident">CURequest::Password</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::Password&quot;</span>,
-            <span class="ident">CURequest::CancelMFAReg</span> =&gt; <span class="string">&quot;CURequest::CancelMFAReg&quot;</span>,
-            <span class="ident">CURequest::TotpGenerate</span> =&gt; <span class="string">&quot;CURequest::TotpGenerate&quot;</span>,
-            <span class="ident">CURequest::TotpVerify</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::TotpVerify&quot;</span>,
-            <span class="ident">CURequest::TotpAcceptSha1</span> =&gt; <span class="string">&quot;CURequest::TotpAcceptSha1&quot;</span>,
-            <span class="ident">CURequest::TotpRemove</span> =&gt; <span class="string">&quot;CURequest::TotpRemove&quot;</span>,
-            <span class="ident">CURequest::BackupCodeGenerate</span> =&gt; <span class="string">&quot;CURequest::BackupCodeGenerate&quot;</span>,
-            <span class="ident">CURequest::BackupCodeRemove</span> =&gt; <span class="string">&quot;CURequest::BackupCodeRemove&quot;</span>,
-            <span class="ident">CURequest::PasskeyInit</span> =&gt; <span class="string">&quot;CURequest::PasskeyInit&quot;</span>,
-            <span class="ident">CURequest::PasskeyFinish</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::PasskeyFinish&quot;</span>,
-            <span class="ident">CURequest::PasskeyRemove</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::PasskeyRemove&quot;</span>,
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>CURequest {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">let </span>t = <span class="kw">match </span><span class="self">self </span>{
+            CURequest::PrimaryRemove =&gt; <span class="string">&quot;CURequest::PrimaryRemove&quot;</span>,
+            CURequest::Password(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::Password&quot;</span>,
+            CURequest::CancelMFAReg =&gt; <span class="string">&quot;CURequest::CancelMFAReg&quot;</span>,
+            CURequest::TotpGenerate =&gt; <span class="string">&quot;CURequest::TotpGenerate&quot;</span>,
+            CURequest::TotpVerify(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::TotpVerify&quot;</span>,
+            CURequest::TotpAcceptSha1 =&gt; <span class="string">&quot;CURequest::TotpAcceptSha1&quot;</span>,
+            CURequest::TotpRemove =&gt; <span class="string">&quot;CURequest::TotpRemove&quot;</span>,
+            CURequest::BackupCodeGenerate =&gt; <span class="string">&quot;CURequest::BackupCodeGenerate&quot;</span>,
+            CURequest::BackupCodeRemove =&gt; <span class="string">&quot;CURequest::BackupCodeRemove&quot;</span>,
+            CURequest::PasskeyInit =&gt; <span class="string">&quot;CURequest::PasskeyInit&quot;</span>,
+            CURequest::PasskeyFinish(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::PasskeyFinish&quot;</span>,
+            CURequest::PasskeyRemove(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::PasskeyRemove&quot;</span>,
         };
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">t</span>)
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, t)
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CURegState</span> {
-    <span class="comment">// Nothing in progress.</span>
-    <span class="prelude-val">None</span>,
-    <span class="ident">TotpCheck</span>(<span class="ident">TotpSecret</span>),
-    <span class="ident">TotpTryAgain</span>,
-    <span class="ident">TotpInvalidSha1</span>,
-    <span class="ident">BackupCodes</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="ident">Passkey</span>(<span class="ident">CreationChallengeResponse</span>),
+<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>CURegState {
+    <span class="comment">// Nothing in progress.
+    </span><span class="prelude-val">None</span>,
+    TotpCheck(TotpSecret),
+    TotpTryAgain,
+    TotpInvalidSha1,
+    BackupCodes(Vec&lt;String&gt;),
+    Passkey(CreationChallengeResponse),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUStatus</span> {
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">can_commit</span>: <span class="ident">bool</span>,
-    <span class="kw">pub</span> <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CredentialDetail</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">passkeys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PasskeyDetail</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">mfaregstate</span>: <span class="ident">CURegState</span>,
+<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>CUStatus {
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>displayname: String,
+    <span class="kw">pub </span>can_commit: bool,
+    <span class="kw">pub </span>primary: <span class="prelude-ty">Option</span>&lt;CredentialDetail&gt;,
+    <span class="kw">pub </span>passkeys: Vec&lt;PasskeyDetail&gt;,
+    <span class="kw">pub </span>mfaregstate: CURegState,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WhoamiResponse</span> {
-    <span class="comment">// Should we just embed the entry? Or destructure it?</span>
-    <span class="kw">pub</span> <span class="ident">youare</span>: <span class="ident">Entry</span>,
+<span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>WhoamiResponse {
+    <span class="comment">// Should we just embed the entry? Or destructure it?
+    </span><span class="kw">pub </span>youare: Entry,
 }
 
-<span class="kw">impl</span> <span class="ident">WhoamiResponse</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">youare</span>: <span class="ident">Entry</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">WhoamiResponse</span> { <span class="ident">youare</span> }
+<span class="kw">impl </span>WhoamiResponse {
+    <span class="kw">pub fn </span>new(youare: Entry) -&gt; <span class="self">Self </span>{
+        WhoamiResponse { youare }
     }
 }
 
-<span class="comment">// Simple string value provision.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SingleStringRequest</span> {
-    <span class="kw">pub</span> <span class="ident">value</span>: <span class="ident">String</span>,
+<span class="comment">// Simple string value provision.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>SingleStringRequest {
+    <span class="kw">pub </span>value: String,
 }
 
-<span class="kw">impl</span> <span class="ident">SingleStringRequest</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">s</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">SingleStringRequest</span> { <span class="ident">value</span>: <span class="ident">s</span> }
+<span class="kw">impl </span>SingleStringRequest {
+    <span class="kw">pub fn </span>new(s: String) -&gt; <span class="self">Self </span>{
+        SingleStringRequest { value: s }
     }
 }
-<span class="comment">// Use OperationResponse here ...</span>
+<span class="comment">// Use OperationResponse here ...
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::v1</span>::{<span class="ident">Filter</span> <span class="kw">as</span> <span class="ident">ProtoFilter</span>, <span class="ident">TotpAlgo</span>, <span class="ident">TotpSecret</span>};
+</span><span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::v1::{Filter <span class="kw">as </span>ProtoFilter, TotpAlgo, TotpSecret};
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_protofilter_simple</span>() {
-        <span class="kw">let</span> <span class="ident">pf</span>: <span class="ident">ProtoFilter</span> <span class="op">=</span> <span class="ident">ProtoFilter::Pres</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>());
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_protofilter_simple() {
+        <span class="kw">let </span>pf: ProtoFilter = ProtoFilter::Pres(<span class="string">&quot;class&quot;</span>.to_string());
 
-        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">pf</span>).<span class="ident">expect</span>(<span class="string">&quot;JSON failure&quot;</span>));
+        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, serde_json::to_string(<span class="kw-2">&amp;</span>pf).expect(<span class="string">&quot;JSON failure&quot;</span>));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">totp_to_string</span>() {
-        <span class="kw">let</span> <span class="ident">totp</span> <span class="op">=</span> <span class="ident">TotpSecret</span> {
-            <span class="ident">accountname</span>: <span class="string">&quot;william&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">issuer</span>: <span class="string">&quot;blackhats&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">secret</span>: <span class="macro">vec!</span>[<span class="number">0xaa</span>, <span class="number">0xbb</span>, <span class="number">0xcc</span>, <span class="number">0xdd</span>],
-            <span class="ident">step</span>: <span class="number">30</span>,
-            <span class="ident">algo</span>: <span class="ident">TotpAlgo::Sha256</span>,
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>totp_to_string() {
+        <span class="kw">let </span>totp = TotpSecret {
+            accountname: <span class="string">&quot;william&quot;</span>.to_string(),
+            issuer: <span class="string">&quot;blackhats&quot;</span>.to_string(),
+            secret: <span class="macro">vec!</span>[<span class="number">0xaa</span>, <span class="number">0xbb</span>, <span class="number">0xcc</span>, <span class="number">0xdd</span>],
+            step: <span class="number">30</span>,
+            algo: TotpAlgo::Sha256,
         };
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">totp</span>.<span class="ident">to_uri</span>();
-        <span class="macro">assert!</span>(<span class="ident">s</span> <span class="op">==</span> <span class="string">&quot;otpauth://totp/blackhats:william?secret=VK54ZXI&amp;issuer=blackhats&amp;algorithm=SHA256&amp;digits=6&amp;period=30&quot;</span>);
+        <span class="kw">let </span>s = totp.to_uri();
+        <span class="macro">assert!</span>(s == <span class="string">&quot;otpauth://totp/blackhats:william?secret=VK54ZXI&amp;issuer=blackhats&amp;algorithm=SHA256&amp;digits=6&amp;period=30&quot;</span>);
 
-        <span class="comment">// check that invalid issuer/accounts are cleaned up.</span>
-        <span class="kw">let</span> <span class="ident">totp</span> <span class="op">=</span> <span class="ident">TotpSecret</span> {
-            <span class="ident">accountname</span>: <span class="string">&quot;william:%3A&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">issuer</span>: <span class="string">&quot;blackhats australia&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">secret</span>: <span class="macro">vec!</span>[<span class="number">0xaa</span>, <span class="number">0xbb</span>, <span class="number">0xcc</span>, <span class="number">0xdd</span>],
-            <span class="ident">step</span>: <span class="number">30</span>,
-            <span class="ident">algo</span>: <span class="ident">TotpAlgo::Sha256</span>,
+        <span class="comment">// check that invalid issuer/accounts are cleaned up.
+        </span><span class="kw">let </span>totp = TotpSecret {
+            accountname: <span class="string">&quot;william:%3A&quot;</span>.to_string(),
+            issuer: <span class="string">&quot;blackhats australia&quot;</span>.to_string(),
+            secret: <span class="macro">vec!</span>[<span class="number">0xaa</span>, <span class="number">0xbb</span>, <span class="number">0xcc</span>, <span class="number">0xdd</span>],
+            step: <span class="number">30</span>,
+            algo: TotpAlgo::Sha256,
         };
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">totp</span>.<span class="ident">to_uri</span>();
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">s</span>);
-        <span class="macro">assert!</span>(<span class="ident">s</span> <span class="op">==</span> <span class="string">&quot;otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&amp;issuer=blackhats%20australia&amp;algorithm=SHA256&amp;digits=6&amp;period=30&quot;</span>);
+        <span class="kw">let </span>s = totp.to_uri();
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, s);
+        <span class="macro">assert!</span>(s == <span class="string">&quot;otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&amp;issuer=blackhats%20australia&amp;algorithm=SHA256&amp;digits=6&amp;period=30&quot;</span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_proto" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_proto" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

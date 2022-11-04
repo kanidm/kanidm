@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/daemon.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>daemon.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unixd/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unixd/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unixd/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/daemon.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>daemon.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unixd/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unixd/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unixd/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -745,741 +745,741 @@
 <span id="745">745</span>
 <span id="746">746</span>
 <span id="747">747</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unimplemented</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::expect_used</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::panic</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unreachable</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::await_holding_lock</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
 
-<span class="kw">use</span> <span class="ident">std::error::Error</span>;
-<span class="kw">use</span> <span class="ident">std::fs::metadata</span>;
-<span class="kw">use</span> <span class="ident">std::io</span>;
-<span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Error</span> <span class="kw">as</span> <span class="ident">IoError</span>, <span class="ident">ErrorKind</span>};
-<span class="kw">use</span> <span class="ident">std::os::unix::fs::MetadataExt</span>;
-<span class="kw">use</span> <span class="ident">std::path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</span><span class="kw">use </span>std::error::Error;
+<span class="kw">use </span>std::fs::metadata;
+<span class="kw">use </span>std::io;
+<span class="kw">use </span>std::io::{Error <span class="kw">as </span>IoError, ErrorKind};
+<span class="kw">use </span>std::os::unix::fs::MetadataExt;
+<span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">bytes</span>::{<span class="ident">BufMut</span>, <span class="ident">BytesMut</span>};
-<span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Arg</span>, <span class="ident">ArgAction</span>, <span class="ident">Command</span>};
-<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">SinkExt</span>, <span class="ident">StreamExt</span>};
-<span class="kw">use</span> <span class="ident">kanidm_client::KanidmClientBuilder</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::cache::CacheLayer</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::constants::DEFAULT_CONFIG_PATH</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
-<span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>, <span class="ident">TaskRequest</span>, <span class="ident">TaskResponse</span>};
-<span class="kw">use</span> <span class="ident">kanidmd_lib::utils::file_permissions_readonly</span>;
-<span class="kw">use</span> <span class="ident">libc::umask</span>;
-<span class="kw">use</span> <span class="ident">sketching::tracing_forest::traits</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">sketching::tracing_forest::util</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">sketching::tracing_forest</span>::{<span class="self">self</span>};
-<span class="kw">use</span> <span class="ident">tokio::net</span>::{<span class="ident">UnixListener</span>, <span class="ident">UnixStream</span>};
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>::{<span class="ident">channel</span>, <span class="ident">Receiver</span>, <span class="ident">Sender</span>};
-<span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
-<span class="kw">use</span> <span class="ident">tokio::time</span>;
-<span class="kw">use</span> <span class="ident">tokio_util::codec</span>::{<span class="ident">Decoder</span>, <span class="ident">Encoder</span>, <span class="ident">Framed</span>};
-<span class="kw">use</span> <span class="ident">users</span>::{<span class="ident">get_current_gid</span>, <span class="ident">get_current_uid</span>, <span class="ident">get_effective_gid</span>, <span class="ident">get_effective_uid</span>};
+<span class="kw">use </span>bytes::{BufMut, BytesMut};
+<span class="kw">use </span>clap::{Arg, ArgAction, Command};
+<span class="kw">use </span>futures::{SinkExt, StreamExt};
+<span class="kw">use </span>kanidm_client::KanidmClientBuilder;
+<span class="kw">use </span>kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
+<span class="kw">use </span>kanidm_unix_common::cache::CacheLayer;
+<span class="kw">use </span>kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+<span class="kw">use </span>kanidm_unix_common::unix_config::KanidmUnixdConfig;
+<span class="kw">use </span>kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
+<span class="kw">use </span>kanidmd_lib::utils::file_permissions_readonly;
+<span class="kw">use </span>libc::umask;
+<span class="kw">use </span>sketching::tracing_forest::traits::<span class="kw-2">*</span>;
+<span class="kw">use </span>sketching::tracing_forest::util::<span class="kw-2">*</span>;
+<span class="kw">use </span>sketching::tracing_forest::{<span class="self">self</span>};
+<span class="kw">use </span>tokio::net::{UnixListener, UnixStream};
+<span class="kw">use </span>tokio::sync::mpsc::{channel, Receiver, Sender};
+<span class="kw">use </span>tokio::sync::oneshot;
+<span class="kw">use </span>tokio::time;
+<span class="kw">use </span>tokio_util::codec::{Decoder, Encoder, Framed};
+<span class="kw">use </span>users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-<span class="comment">//=== the codec</span>
+<span class="comment">//=== the codec
 
-<span class="kw">type</span> <span class="ident">AsyncTaskRequest</span> <span class="op">=</span> (<span class="ident">TaskRequest</span>, <span class="ident">oneshot::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>);
+</span><span class="kw">type </span>AsyncTaskRequest = (TaskRequest, oneshot::Sender&lt;()&gt;);
 
-<span class="kw">struct</span> <span class="ident">ClientCodec</span>;
+<span class="kw">struct </span>ClientCodec;
 
-<span class="kw">impl</span> <span class="ident">Decoder</span> <span class="kw">for</span> <span class="ident">ClientCodec</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">io::Error</span>;
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">ClientRequest</span>;
+<span class="kw">impl </span>Decoder <span class="kw">for </span>ClientCodec {
+    <span class="kw">type </span>Error = io::Error;
+    <span class="kw">type </span>Item = ClientRequest;
 
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BytesMut</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">ClientRequest</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">src</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">msg</span>) =&gt; {
-                <span class="comment">// Clear the buffer for the next message.</span>
-                <span class="ident">src</span>.<span class="ident">clear</span>();
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">msg</span>))
+    <span class="kw">fn </span>decode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;mut </span>BytesMut) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">match </span>serde_json::from_slice::&lt;ClientRequest&gt;(<span class="kw-2">&amp;</span>src) {
+            <span class="prelude-val">Ok</span>(msg) =&gt; {
+                <span class="comment">// Clear the buffer for the next message.
+                </span>src.clear();
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(msg))
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Encoder</span><span class="op">&lt;</span><span class="ident">ClientResponse</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ClientCodec</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">io::Error</span>;
+<span class="kw">impl </span>Encoder&lt;ClientResponse&gt; <span class="kw">for </span>ClientCodec {
+    <span class="kw">type </span>Error = io::Error;
 
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">ClientResponse</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BytesMut</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to send response -&gt; {:?} ...&quot;</span>, <span class="ident">msg</span>);
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_json::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">io::Error::new</span>(<span class="ident">io::ErrorKind::Other</span>, <span class="string">&quot;JSON encode error&quot;</span>)
+    <span class="kw">fn </span>encode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: ClientResponse, dst: <span class="kw-2">&amp;mut </span>BytesMut) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to send response -&gt; {:?} ...&quot;</span>, msg);
+        <span class="kw">let </span>data = serde_json::to_vec(<span class="kw-2">&amp;</span>msg).map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, e);
+            io::Error::new(io::ErrorKind::Other, <span class="string">&quot;JSON encode error&quot;</span>)
         })<span class="question-mark">?</span>;
-        <span class="ident">dst</span>.<span class="ident">put</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>());
+        dst.put(data.as_slice());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ClientCodec</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">ClientCodec</span>
+<span class="kw">impl </span>ClientCodec {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        ClientCodec
     }
 }
 
-<span class="kw">struct</span> <span class="ident">TaskCodec</span>;
+<span class="kw">struct </span>TaskCodec;
 
-<span class="kw">impl</span> <span class="ident">Decoder</span> <span class="kw">for</span> <span class="ident">TaskCodec</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">io::Error</span>;
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">TaskResponse</span>;
+<span class="kw">impl </span>Decoder <span class="kw">for </span>TaskCodec {
+    <span class="kw">type </span>Error = io::Error;
+    <span class="kw">type </span>Item = TaskResponse;
 
-    <span class="kw">fn</span> <span class="ident">decode</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BytesMut</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">TaskResponse</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">src</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">msg</span>) =&gt; {
-                <span class="comment">// Clear the buffer for the next message.</span>
-                <span class="ident">src</span>.<span class="ident">clear</span>();
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">msg</span>))
+    <span class="kw">fn </span>decode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;mut </span>BytesMut) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">match </span>serde_json::from_slice::&lt;TaskResponse&gt;(<span class="kw-2">&amp;</span>src) {
+            <span class="prelude-val">Ok</span>(msg) =&gt; {
+                <span class="comment">// Clear the buffer for the next message.
+                </span>src.clear();
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(msg))
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Encoder</span><span class="op">&lt;</span><span class="ident">TaskRequest</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TaskCodec</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">io::Error</span>;
+<span class="kw">impl </span>Encoder&lt;TaskRequest&gt; <span class="kw">for </span>TaskCodec {
+    <span class="kw">type </span>Error = io::Error;
 
-    <span class="kw">fn</span> <span class="ident">encode</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">TaskRequest</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BytesMut</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to send request -&gt; {:?} ...&quot;</span>, <span class="ident">msg</span>);
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_json::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">io::Error::new</span>(<span class="ident">io::ErrorKind::Other</span>, <span class="string">&quot;JSON encode error&quot;</span>)
+    <span class="kw">fn </span>encode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: TaskRequest, dst: <span class="kw-2">&amp;mut </span>BytesMut) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to send request -&gt; {:?} ...&quot;</span>, msg);
+        <span class="kw">let </span>data = serde_json::to_vec(<span class="kw-2">&amp;</span>msg).map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, e);
+            io::Error::new(io::ErrorKind::Other, <span class="string">&quot;JSON encode error&quot;</span>)
         })<span class="question-mark">?</span>;
-        <span class="ident">dst</span>.<span class="ident">put</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>());
+        dst.put(data.as_slice());
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TaskCodec</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">TaskCodec</span>
+<span class="kw">impl </span>TaskCodec {
+    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+        TaskCodec
     }
 }
 
-<span class="doccomment">/// Pass this a file path and it&#39;ll look for the file and remove it if it&#39;s there.</span>
-<span class="kw">fn</span> <span class="ident">rm_if_exist</span>(<span class="ident">p</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-    <span class="kw">if</span> <span class="ident">Path::new</span>(<span class="ident">p</span>).<span class="ident">exists</span>() {
-        <span class="macro">debug!</span>(<span class="string">&quot;Removing requested file {:?}&quot;</span>, <span class="ident">p</span>);
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">std::fs::remove_file</span>(<span class="ident">p</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+<span class="doccomment">/// Pass this a file path and it&#39;ll look for the file and remove it if it&#39;s there.
+</span><span class="kw">fn </span>rm_if_exist(p: <span class="kw-2">&amp;</span>str) {
+    <span class="kw">if </span>Path::new(p).exists() {
+        <span class="macro">debug!</span>(<span class="string">&quot;Removing requested file {:?}&quot;</span>, p);
+        <span class="kw">let _ </span>= std::fs::remove_file(p).map_err(|e| {
             <span class="macro">error!</span>(
                 <span class="string">&quot;Failure while attempting to attempting to remove {:?} -&gt; {:?}&quot;</span>,
-                <span class="ident">p</span>, <span class="ident">e</span>
+                p, e
             );
         });
-    } <span class="kw">else</span> {
-        <span class="macro">debug!</span>(<span class="string">&quot;Path {:?} doesn&#39;t exist, not attempting to remove.&quot;</span>, <span class="ident">p</span>);
+    } <span class="kw">else </span>{
+        <span class="macro">debug!</span>(<span class="string">&quot;Path {:?} doesn&#39;t exist, not attempting to remove.&quot;</span>, p);
     }
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_task_client</span>(
-    <span class="ident">stream</span>: <span class="ident">UnixStream</span>,
-    <span class="ident">task_channel_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">AsyncTaskRequest</span><span class="op">&gt;</span>,
-    <span class="ident">task_channel_rx</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">AsyncTaskRequest</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="comment">// setup the codec</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">reqs</span> <span class="op">=</span> <span class="ident">Framed::new</span>(<span class="ident">stream</span>, <span class="ident">TaskCodec::new</span>());
+<span class="kw">async fn </span>handle_task_client(
+    stream: UnixStream,
+    task_channel_tx: <span class="kw-2">&amp;</span>Sender&lt;AsyncTaskRequest&gt;,
+    task_channel_rx: <span class="kw-2">&amp;mut </span>Receiver&lt;AsyncTaskRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>Error&gt;&gt; {
+    <span class="comment">// setup the codec
+    </span><span class="kw">let </span><span class="kw-2">mut </span>reqs = Framed::new(stream, TaskCodec::new());
 
-    <span class="kw">loop</span> {
-        <span class="comment">// TODO wait on the channel OR the task handler, so we know</span>
-        <span class="comment">// when it closes.</span>
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">task_channel_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
+    <span class="kw">loop </span>{
+        <span class="comment">// TODO wait on the channel OR the task handler, so we know
+        // when it closes.
+        </span><span class="kw">let </span>v = <span class="kw">match </span>task_channel_rx.recv().<span class="kw">await </span>{
+            <span class="prelude-val">Some</span>(v) =&gt; v,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
         };
 
-        <span class="macro">debug!</span>(<span class="string">&quot;Sending Task -&gt; {:?}&quot;</span>, <span class="ident">v</span>.<span class="number">0</span>);
+        <span class="macro">debug!</span>(<span class="string">&quot;Sending Task -&gt; {:?}&quot;</span>, v.<span class="number">0</span>);
 
-        <span class="comment">// Write the req to the socket.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">_e</span>) <span class="op">=</span> <span class="ident">reqs</span>.<span class="ident">send</span>(<span class="ident">v</span>.<span class="number">0</span>.<span class="ident">clone</span>()).<span class="kw">await</span> {
-            <span class="comment">// re-queue the event if not timed out.</span>
-            <span class="comment">// This is indicated by the one shot being dropped.</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">v</span>.<span class="number">1</span>.<span class="ident">is_closed</span>() {
-                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">task_channel_tx</span>
-                    .<span class="ident">send_timeout</span>(<span class="ident">v</span>, <span class="ident">Duration::from_millis</span>(<span class="number">100</span>))
+        <span class="comment">// Write the req to the socket.
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(_e) = reqs.send(v.<span class="number">0</span>.clone()).<span class="kw">await </span>{
+            <span class="comment">// re-queue the event if not timed out.
+            // This is indicated by the one shot being dropped.
+            </span><span class="kw">if </span>!v.<span class="number">1</span>.is_closed() {
+                <span class="kw">let _ </span>= task_channel_tx
+                    .send_timeout(v, Duration::from_millis(<span class="number">100</span>))
                     .<span class="kw">await</span>;
             }
-            <span class="comment">// now return the error.</span>
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;oh no!&quot;</span>)));
+            <span class="comment">// now return the error.
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(IoError::new(ErrorKind::Other, <span class="string">&quot;oh no!&quot;</span>)));
         }
 
-        <span class="kw">match</span> <span class="ident">reqs</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">TaskResponse::Success</span>)) =&gt; {
+        <span class="kw">match </span>reqs.next().<span class="kw">await </span>{
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(TaskResponse::Success)) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;Task was acknowledged and completed.&quot;</span>);
-                <span class="comment">// Send a result back via the one-shot</span>
-                <span class="comment">// Ignore if it fails.</span>
-                <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">v</span>.<span class="number">1</span>.<span class="ident">send</span>(());
+                <span class="comment">// Send a result back via the one-shot
+                // Ignore if it fails.
+                </span><span class="kw">let _ </span>= v.<span class="number">1</span>.send(());
             }
-            <span class="ident">other</span> =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">other</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;oh no!&quot;</span>)));
+            other =&gt; {
+                <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, other);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Box::new(IoError::new(ErrorKind::Other, <span class="string">&quot;oh no!&quot;</span>)));
             }
         }
     }
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_client</span>(
-    <span class="ident">sock</span>: <span class="ident">UnixStream</span>,
-    <span class="ident">cachelayer</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CacheLayer</span><span class="op">&gt;</span>,
-    <span class="ident">task_channel_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">AsyncTaskRequest</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+<span class="kw">async fn </span>handle_client(
+    sock: UnixStream,
+    cachelayer: Arc&lt;CacheLayer&gt;,
+    task_channel_tx: <span class="kw-2">&amp;</span>Sender&lt;AsyncTaskRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>Error&gt;&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;Accepted connection&quot;</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">reqs</span> <span class="op">=</span> <span class="ident">Framed::new</span>(<span class="ident">sock</span>, <span class="ident">ClientCodec::new</span>());
+    <span class="kw">let </span><span class="kw-2">mut </span>reqs = Framed::new(sock, ClientCodec::new());
 
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">req</span>)) <span class="op">=</span> <span class="ident">reqs</span>.<span class="ident">next</span>().<span class="kw">await</span> {
-        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">req</span> {
-            <span class="ident">ClientRequest::SshKey</span>(<span class="ident">account_id</span>) =&gt; {
+    <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(req)) = reqs.next().<span class="kw">await </span>{
+        <span class="kw">let </span>resp = <span class="kw">match </span>req {
+            ClientRequest::SshKey(account_id) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;sshkey req&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">get_sshkeys</span>(<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::SshKeys</span>)
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                cachelayer
+                    .get_sshkeys(account_id.as_str())
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::SshKeys)
+                    .unwrap_or_else(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;unable to load keys, returning empty set.&quot;</span>);
-                        <span class="ident">ClientResponse::SshKeys</span>(<span class="macro">vec!</span>[])
+                        ClientResponse::SshKeys(<span class="macro">vec!</span>[])
                     })
             }
-            <span class="ident">ClientRequest::NssAccounts</span> =&gt; {
+            ClientRequest::NssAccounts =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;nssaccounts req&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">get_nssaccounts</span>()
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::NssAccounts</span>)
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                cachelayer
+                    .get_nssaccounts()
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::NssAccounts)
+                    .unwrap_or_else(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;unable to enum accounts&quot;</span>);
-                        <span class="ident">ClientResponse::NssAccounts</span>(<span class="ident">Vec::new</span>())
+                        ClientResponse::NssAccounts(Vec::new())
                     })
             }
-            <span class="ident">ClientRequest::NssAccountByUid</span>(<span class="ident">gid</span>) =&gt; {
+            ClientRequest::NssAccountByUid(gid) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;nssaccountbyuid req&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">get_nssaccount_gid</span>(<span class="ident">gid</span>)
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::NssAccount</span>)
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                cachelayer
+                    .get_nssaccount_gid(gid)
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::NssAccount)
+                    .unwrap_or_else(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;unable to load account, returning empty.&quot;</span>);
-                        <span class="ident">ClientResponse::NssAccount</span>(<span class="prelude-val">None</span>)
+                        ClientResponse::NssAccount(<span class="prelude-val">None</span>)
                     })
             }
-            <span class="ident">ClientRequest::NssAccountByName</span>(<span class="ident">account_id</span>) =&gt; {
+            ClientRequest::NssAccountByName(account_id) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;nssaccountbyname req&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">get_nssaccount_name</span>(<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::NssAccount</span>)
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                cachelayer
+                    .get_nssaccount_name(account_id.as_str())
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::NssAccount)
+                    .unwrap_or_else(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;unable to load account, returning empty.&quot;</span>);
-                        <span class="ident">ClientResponse::NssAccount</span>(<span class="prelude-val">None</span>)
+                        ClientResponse::NssAccount(<span class="prelude-val">None</span>)
                     })
             }
-            <span class="ident">ClientRequest::NssGroups</span> =&gt; {
+            ClientRequest::NssGroups =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;nssgroups req&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">get_nssgroups</span>()
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::NssGroups</span>)
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                cachelayer
+                    .get_nssgroups()
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::NssGroups)
+                    .unwrap_or_else(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;unable to enum groups&quot;</span>);
-                        <span class="ident">ClientResponse::NssGroups</span>(<span class="ident">Vec::new</span>())
+                        ClientResponse::NssGroups(Vec::new())
                     })
             }
-            <span class="ident">ClientRequest::NssGroupByGid</span>(<span class="ident">gid</span>) =&gt; {
+            ClientRequest::NssGroupByGid(gid) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;nssgroupbygid req&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">get_nssgroup_gid</span>(<span class="ident">gid</span>)
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::NssGroup</span>)
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                cachelayer
+                    .get_nssgroup_gid(gid)
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::NssGroup)
+                    .unwrap_or_else(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;unable to load group, returning empty.&quot;</span>);
-                        <span class="ident">ClientResponse::NssGroup</span>(<span class="prelude-val">None</span>)
+                        ClientResponse::NssGroup(<span class="prelude-val">None</span>)
                     })
             }
-            <span class="ident">ClientRequest::NssGroupByName</span>(<span class="ident">grp_id</span>) =&gt; {
+            ClientRequest::NssGroupByName(grp_id) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;nssgroupbyname req&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">get_nssgroup_name</span>(<span class="ident">grp_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::NssGroup</span>)
-                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                cachelayer
+                    .get_nssgroup_name(grp_id.as_str())
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::NssGroup)
+                    .unwrap_or_else(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;unable to load group, returning empty.&quot;</span>);
-                        <span class="ident">ClientResponse::NssGroup</span>(<span class="prelude-val">None</span>)
+                        ClientResponse::NssGroup(<span class="prelude-val">None</span>)
                     })
             }
-            <span class="ident">ClientRequest::PamAuthenticate</span>(<span class="ident">account_id</span>, <span class="ident">cred</span>) =&gt; {
+            ClientRequest::PamAuthenticate(account_id, cred) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;pam authenticate&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">pam_account_authenticate</span>(<span class="ident">account_id</span>.<span class="ident">as_str</span>(), <span class="ident">cred</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::PamStatus</span>)
-                    .<span class="ident">unwrap_or</span>(<span class="ident">ClientResponse::Error</span>)
+                cachelayer
+                    .pam_account_authenticate(account_id.as_str(), cred.as_str())
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::PamStatus)
+                    .unwrap_or(ClientResponse::Error)
             }
-            <span class="ident">ClientRequest::PamAccountAllowed</span>(<span class="ident">account_id</span>) =&gt; {
+            ClientRequest::PamAccountAllowed(account_id) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;pam account allowed&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">pam_account_allowed</span>(<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">ClientResponse::PamStatus</span>)
-                    .<span class="ident">unwrap_or</span>(<span class="ident">ClientResponse::Error</span>)
+                cachelayer
+                    .pam_account_allowed(account_id.as_str())
+                    .<span class="kw">await
+                    </span>.map(ClientResponse::PamStatus)
+                    .unwrap_or(ClientResponse::Error)
             }
-            <span class="ident">ClientRequest::PamAccountBeginSession</span>(<span class="ident">account_id</span>) =&gt; {
+            ClientRequest::PamAccountBeginSession(account_id) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;pam account begin session&quot;</span>);
-                <span class="kw">match</span> <span class="ident">cachelayer</span>
-                    .<span class="ident">pam_account_beginsession</span>(<span class="ident">account_id</span>.<span class="ident">as_str</span>())
-                    .<span class="kw">await</span>
-                {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">info</span>)) =&gt; {
-                        <span class="kw">let</span> (<span class="ident">tx</span>, <span class="ident">rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
+                <span class="kw">match </span>cachelayer
+                    .pam_account_beginsession(account_id.as_str())
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(info)) =&gt; {
+                        <span class="kw">let </span>(tx, rx) = oneshot::channel();
 
-                        <span class="kw">match</span> <span class="ident">task_channel_tx</span>
-                            .<span class="ident">send_timeout</span>(
-                                (<span class="ident">TaskRequest::HomeDirectory</span>(<span class="ident">info</span>), <span class="ident">tx</span>),
-                                <span class="ident">Duration::from_millis</span>(<span class="number">100</span>),
+                        <span class="kw">match </span>task_channel_tx
+                            .send_timeout(
+                                (TaskRequest::HomeDirectory(info), tx),
+                                Duration::from_millis(<span class="number">100</span>),
                             )
-                            .<span class="kw">await</span>
-                        {
+                            .<span class="kw">await
+                        </span>{
                             <span class="prelude-val">Ok</span>(()) =&gt; {
-                                <span class="comment">// Now wait for the other end OR timeout.</span>
-                                <span class="kw">match</span> <span class="ident">time::timeout_at</span>(
-                                    <span class="ident">time::Instant::now</span>() <span class="op">+</span> <span class="ident">Duration::from_millis</span>(<span class="number">1000</span>),
-                                    <span class="ident">rx</span>,
+                                <span class="comment">// Now wait for the other end OR timeout.
+                                </span><span class="kw">match </span>time::timeout_at(
+                                    time::Instant::now() + Duration::from_millis(<span class="number">1000</span>),
+                                    rx,
                                 )
-                                .<span class="kw">await</span>
-                                {
+                                .<span class="kw">await
+                                </span>{
                                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; {
                                         <span class="macro">debug!</span>(<span class="string">&quot;Task completed, returning to pam ...&quot;</span>);
-                                        <span class="ident">ClientResponse::Ok</span>
+                                        ClientResponse::Ok
                                     }
-                                    <span class="kw">_</span> =&gt; {
-                                        <span class="comment">// Timeout or other error.</span>
-                                        <span class="ident">ClientResponse::Error</span>
+                                    <span class="kw">_ </span>=&gt; {
+                                        <span class="comment">// Timeout or other error.
+                                        </span>ClientResponse::Error
                                     }
                                 }
                             }
                             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                                <span class="comment">// We could not submit the req. Move on!</span>
-                                <span class="ident">ClientResponse::Error</span>
+                                <span class="comment">// We could not submit the req. Move on!
+                                </span>ClientResponse::Error
                             }
                         }
                     }
-                    <span class="kw">_</span> =&gt; <span class="ident">ClientResponse::Error</span>,
+                    <span class="kw">_ </span>=&gt; ClientResponse::Error,
                 }
             }
-            <span class="ident">ClientRequest::InvalidateCache</span> =&gt; {
+            ClientRequest::InvalidateCache =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;invalidate cache&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">invalidate</span>()
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ClientResponse::Ok</span>)
-                    .<span class="ident">unwrap_or</span>(<span class="ident">ClientResponse::Error</span>)
+                cachelayer
+                    .invalidate()
+                    .<span class="kw">await
+                    </span>.map(|<span class="kw">_</span>| ClientResponse::Ok)
+                    .unwrap_or(ClientResponse::Error)
             }
-            <span class="ident">ClientRequest::ClearCache</span> =&gt; {
+            ClientRequest::ClearCache =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;clear cache&quot;</span>);
-                <span class="ident">cachelayer</span>
-                    .<span class="ident">clear_cache</span>()
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ClientResponse::Ok</span>)
-                    .<span class="ident">unwrap_or</span>(<span class="ident">ClientResponse::Error</span>)
+                cachelayer
+                    .clear_cache()
+                    .<span class="kw">await
+                    </span>.map(|<span class="kw">_</span>| ClientResponse::Ok)
+                    .unwrap_or(ClientResponse::Error)
             }
-            <span class="ident">ClientRequest::Status</span> =&gt; {
+            ClientRequest::Status =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;status check&quot;</span>);
-                <span class="kw">if</span> <span class="ident">cachelayer</span>.<span class="ident">test_connection</span>().<span class="kw">await</span> {
-                    <span class="ident">ClientResponse::Ok</span>
-                } <span class="kw">else</span> {
-                    <span class="ident">ClientResponse::Error</span>
+                <span class="kw">if </span>cachelayer.test_connection().<span class="kw">await </span>{
+                    ClientResponse::Ok
+                } <span class="kw">else </span>{
+                    ClientResponse::Error
                 }
             }
         };
-        <span class="ident">reqs</span>.<span class="ident">send</span>(<span class="ident">resp</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="ident">reqs</span>.<span class="ident">flush</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+        reqs.send(resp).<span class="kw">await</span><span class="question-mark">?</span>;
+        reqs.flush().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="macro">debug!</span>(<span class="string">&quot;flushed response!&quot;</span>);
     }
 
-    <span class="comment">// Disconnect them</span>
-    <span class="macro">debug!</span>(<span class="string">&quot;Disconnecting client ...&quot;</span>);
+    <span class="comment">// Disconnect them
+    </span><span class="macro">debug!</span>(<span class="string">&quot;Disconnecting client ...&quot;</span>);
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="kw">let</span> <span class="ident">cuid</span> <span class="op">=</span> <span class="ident">get_current_uid</span>();
-    <span class="kw">let</span> <span class="ident">ceuid</span> <span class="op">=</span> <span class="ident">get_effective_uid</span>();
-    <span class="kw">let</span> <span class="ident">cgid</span> <span class="op">=</span> <span class="ident">get_current_gid</span>();
-    <span class="kw">let</span> <span class="ident">cegid</span> <span class="op">=</span> <span class="ident">get_effective_gid</span>();
+<span class="attribute">#[tokio::main]
+</span><span class="kw">async fn </span>main() {
+    <span class="kw">let </span>cuid = get_current_uid();
+    <span class="kw">let </span>ceuid = get_effective_uid();
+    <span class="kw">let </span>cgid = get_current_gid();
+    <span class="kw">let </span>cegid = get_effective_gid();
 
-    <span class="kw">let</span> <span class="ident">clap_args</span> <span class="op">=</span> <span class="ident">Command::new</span>(<span class="string">&quot;kanidm_unixd&quot;</span>)
-        .<span class="ident">version</span>(<span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>))
-        .<span class="ident">about</span>(<span class="string">&quot;Kanidm Unix daemon&quot;</span>)
-        .<span class="ident">arg</span>(
-            <span class="ident">Arg::new</span>(<span class="string">&quot;skip-root-check&quot;</span>)
-                .<span class="ident">help</span>(<span class="string">&quot;Allow running as root. Don&#39;t use this in production as it is risky!&quot;</span>)
-                .<span class="ident">short</span>(<span class="string">&#39;r&#39;</span>)
-                .<span class="ident">long</span>(<span class="string">&quot;skip-root-check&quot;</span>)
-                .<span class="ident">action</span>(<span class="ident">ArgAction::SetTrue</span>),
+    <span class="kw">let </span>clap_args = Command::new(<span class="string">&quot;kanidm_unixd&quot;</span>)
+        .version(<span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>))
+        .about(<span class="string">&quot;Kanidm Unix daemon&quot;</span>)
+        .arg(
+            Arg::new(<span class="string">&quot;skip-root-check&quot;</span>)
+                .help(<span class="string">&quot;Allow running as root. Don&#39;t use this in production as it is risky!&quot;</span>)
+                .short(<span class="string">&#39;r&#39;</span>)
+                .long(<span class="string">&quot;skip-root-check&quot;</span>)
+                .action(ArgAction::SetTrue),
         )
-        .<span class="ident">arg</span>(
-            <span class="ident">Arg::new</span>(<span class="string">&quot;debug&quot;</span>)
-                .<span class="ident">help</span>(<span class="string">&quot;Show extra debug information&quot;</span>)
-                .<span class="ident">short</span>(<span class="string">&#39;d&#39;</span>)
-                .<span class="ident">long</span>(<span class="string">&quot;debug&quot;</span>)
-                .<span class="ident">action</span>(<span class="ident">ArgAction::SetTrue</span>),
+        .arg(
+            Arg::new(<span class="string">&quot;debug&quot;</span>)
+                .help(<span class="string">&quot;Show extra debug information&quot;</span>)
+                .short(<span class="string">&#39;d&#39;</span>)
+                .long(<span class="string">&quot;debug&quot;</span>)
+                .action(ArgAction::SetTrue),
         )
-        .<span class="ident">arg</span>(
-            <span class="ident">Arg::new</span>(<span class="string">&quot;configtest&quot;</span>)
-                .<span class="ident">help</span>(<span class="string">&quot;Display the configuration and exit&quot;</span>)
-                .<span class="ident">short</span>(<span class="string">&#39;t&#39;</span>)
-                .<span class="ident">long</span>(<span class="string">&quot;configtest&quot;</span>)
-                .<span class="ident">action</span>(<span class="ident">ArgAction::SetTrue</span>),
+        .arg(
+            Arg::new(<span class="string">&quot;configtest&quot;</span>)
+                .help(<span class="string">&quot;Display the configuration and exit&quot;</span>)
+                .short(<span class="string">&#39;t&#39;</span>)
+                .long(<span class="string">&quot;configtest&quot;</span>)
+                .action(ArgAction::SetTrue),
         )
-        .<span class="ident">arg</span>(
-            <span class="ident">Arg::new</span>(<span class="string">&quot;unixd-config&quot;</span>)
-                .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                .<span class="ident">help</span>(<span class="string">&quot;Set the unixd config file path&quot;</span>)
-                .<span class="ident">short</span>(<span class="string">&#39;u&#39;</span>)
-                .<span class="ident">long</span>(<span class="string">&quot;unixd-config&quot;</span>)
-                .<span class="ident">default_value</span>(<span class="ident">DEFAULT_CONFIG_PATH</span>)
-                .<span class="ident">env</span>(<span class="string">&quot;KANIDM_UNIX_CONFIG&quot;</span>)
-                .<span class="ident">action</span>(<span class="ident">ArgAction::StoreValue</span>),
+        .arg(
+            Arg::new(<span class="string">&quot;unixd-config&quot;</span>)
+                .takes_value(<span class="bool-val">true</span>)
+                .help(<span class="string">&quot;Set the unixd config file path&quot;</span>)
+                .short(<span class="string">&#39;u&#39;</span>)
+                .long(<span class="string">&quot;unixd-config&quot;</span>)
+                .default_value(DEFAULT_CONFIG_PATH)
+                .env(<span class="string">&quot;KANIDM_UNIX_CONFIG&quot;</span>)
+                .action(ArgAction::StoreValue),
         )
-        .<span class="ident">arg</span>(
-            <span class="ident">Arg::new</span>(<span class="string">&quot;client-config&quot;</span>)
-                .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                .<span class="ident">help</span>(<span class="string">&quot;Set the client config file path&quot;</span>)
-                .<span class="ident">short</span>(<span class="string">&#39;c&#39;</span>)
-                .<span class="ident">long</span>(<span class="string">&quot;client-config&quot;</span>)
-                .<span class="ident">default_value</span>(<span class="ident">DEFAULT_CLIENT_CONFIG_PATH</span>)
-                .<span class="ident">env</span>(<span class="string">&quot;KANIDM_CLIENT_CONFIG&quot;</span>)
-                .<span class="ident">action</span>(<span class="ident">ArgAction::StoreValue</span>),
+        .arg(
+            Arg::new(<span class="string">&quot;client-config&quot;</span>)
+                .takes_value(<span class="bool-val">true</span>)
+                .help(<span class="string">&quot;Set the client config file path&quot;</span>)
+                .short(<span class="string">&#39;c&#39;</span>)
+                .long(<span class="string">&quot;client-config&quot;</span>)
+                .default_value(DEFAULT_CLIENT_CONFIG_PATH)
+                .env(<span class="string">&quot;KANIDM_CLIENT_CONFIG&quot;</span>)
+                .action(ArgAction::StoreValue),
         )
-        .<span class="ident">get_matches</span>();
+        .get_matches();
 
-    <span class="kw">if</span> <span class="ident">clap_args</span>.<span class="ident">get_flag</span>(<span class="string">&quot;skip-root-check&quot;</span>) {
+    <span class="kw">if </span>clap_args.get_flag(<span class="string">&quot;skip-root-check&quot;</span>) {
         <span class="macro">warn!</span>(<span class="string">&quot;Skipping root user check, if you&#39;re running this for testing, ensure you clean up temporary files.&quot;</span>)
-        <span class="comment">// TODO: this wording is not great m&#39;kay.</span>
-    } <span class="kw">else</span> {
-        <span class="kw">if</span> <span class="ident">cuid</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">ceuid</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">cgid</span> <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">cegid</span> <span class="op">==</span> <span class="number">0</span> {
+        <span class="comment">// TODO: this wording is not great m&#39;kay.
+    </span>} <span class="kw">else </span>{
+        <span class="kw">if </span>cuid == <span class="number">0 </span>|| ceuid == <span class="number">0 </span>|| cgid == <span class="number">0 </span>|| cegid == <span class="number">0 </span>{
             <span class="macro">error!</span>(<span class="string">&quot;Refusing to run - this process must not operate as root.&quot;</span>);
             <span class="kw">return</span>;
         }
     };
-    <span class="kw">if</span> <span class="ident">clap_args</span>.<span class="ident">get_flag</span>(<span class="string">&quot;debug&quot;</span>) {
-        <span class="ident">std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;debug&quot;</span>);
+    <span class="kw">if </span>clap_args.get_flag(<span class="string">&quot;debug&quot;</span>) {
+        std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;debug&quot;</span>);
     }
 
-    <span class="ident">tracing_forest::worker_task</span>()
-        .<span class="ident">set_global</span>(<span class="bool-val">true</span>)
-        <span class="comment">// Fall back to stderr</span>
-        .<span class="ident">map_sender</span>(<span class="op">|</span><span class="ident">sender</span><span class="op">|</span> <span class="ident">sender</span>.<span class="ident">or_stderr</span>())
-        .<span class="ident">build_on</span>(<span class="op">|</span><span class="ident">subscriber</span><span class="op">|</span> <span class="ident">subscriber</span>
-            .<span class="ident">with</span>(<span class="ident">EnvFilter::try_from_default_env</span>()
-                .<span class="ident">or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">EnvFilter::try_new</span>(<span class="string">&quot;info&quot;</span>))
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to init envfilter&quot;</span>)
+    tracing_forest::worker_task()
+        .set_global(<span class="bool-val">true</span>)
+        <span class="comment">// Fall back to stderr
+        </span>.map_sender(|sender| sender.or_stderr())
+        .build_on(|subscriber| subscriber
+            .with(EnvFilter::try_from_default_env()
+                .or_else(|<span class="kw">_</span>| EnvFilter::try_new(<span class="string">&quot;info&quot;</span>))
+                .expect(<span class="string">&quot;Failed to init envfilter&quot;</span>)
             )
         )
-        .<span class="ident">on</span>(<span class="kw">async</span> {
+        .on(<span class="kw">async </span>{
             <span class="macro">debug!</span>(<span class="string">&quot;Profile -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_PROFILE_NAME&quot;</span>));
             <span class="macro">debug!</span>(<span class="string">&quot;CPU Flags -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_CPU_FLAGS&quot;</span>));
 
 
-            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-            <span class="kw">let</span> <span class="ident">cfg_path_str</span> <span class="op">=</span> <span class="ident">clap_args</span>.<span class="ident">get_one</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(<span class="string">&quot;client-config&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to pull the client config path&quot;</span>);
-            <span class="kw">let</span> <span class="ident">cfg_path</span>: <span class="ident">PathBuf</span> <span class="op">=</span>  <span class="ident">PathBuf::from</span>(<span class="ident">cfg_path_str</span>);
+            <span class="attribute">#[allow(clippy::expect_used)]
+            </span><span class="kw">let </span>cfg_path_str = clap_args.get_one::&lt;String&gt;(<span class="string">&quot;client-config&quot;</span>).expect(<span class="string">&quot;Failed to pull the client config path&quot;</span>);
+            <span class="kw">let </span>cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">cfg_path</span>.<span class="ident">exists</span>() {
-                <span class="comment">// there&#39;s no point trying to start up if we can&#39;t read a usable config!</span>
-                <span class="macro">error!</span>(
+            <span class="kw">if </span>!cfg_path.exists() {
+                <span class="comment">// there&#39;s no point trying to start up if we can&#39;t read a usable config!
+                </span><span class="macro">error!</span>(
                     <span class="string">&quot;Client config missing from {} - cannot start up. Quitting.&quot;</span>,
-                    <span class="ident">cfg_path_str</span>
+                    cfg_path_str
                 );
-                <span class="kw">return</span>
-            } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">cfg_meta</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">metadata</span>(<span class="kw-2">&amp;</span><span class="ident">cfg_path</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>, <span class="ident">cfg_path_str</span>, <span class="ident">e</span>);
-                        <span class="kw">return</span>
-                    }
+                <span class="kw">return
+            </span>} <span class="kw">else </span>{
+                <span class="kw">let </span>cfg_meta = <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>cfg_path) {
+                    <span class="prelude-val">Ok</span>(v) =&gt; v,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>, cfg_path_str, e);
+                        <span class="kw">return
+                    </span>}
                 };
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">cfg_meta</span>) {
+                <span class="kw">if </span>!file_permissions_readonly(<span class="kw-2">&amp;</span>cfg_meta) {
                     <span class="macro">warn!</span>(<span class="string">&quot;permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>,
-                        <span class="ident">cfg_path_str</span>
+                        cfg_path_str
                         );
                 }
 
-                <span class="kw">if</span> <span class="ident">cfg_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">cuid</span> <span class="op">|</span><span class="op">|</span> <span class="ident">cfg_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">ceuid</span> {
+                <span class="kw">if </span>cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
                     <span class="macro">warn!</span>(<span class="string">&quot;WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...&quot;</span>,
-                        <span class="ident">cfg_path_str</span>
+                        cfg_path_str
                     );
                 }
             }
 
-            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-            <span class="kw">let</span> <span class="ident">unixd_path_str</span> <span class="op">=</span> <span class="ident">clap_args</span>.<span class="ident">get_one</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(<span class="string">&quot;unixd-config&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to pull the unixd config path&quot;</span>);
-            <span class="kw">let</span> <span class="ident">unixd_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">unixd_path_str</span>);
+            <span class="attribute">#[allow(clippy::expect_used)]
+            </span><span class="kw">let </span>unixd_path_str = clap_args.get_one::&lt;String&gt;(<span class="string">&quot;unixd-config&quot;</span>).expect(<span class="string">&quot;Failed to pull the unixd config path&quot;</span>);
+            <span class="kw">let </span>unixd_path = PathBuf::from(unixd_path_str);
 
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">unixd_path</span>.<span class="ident">exists</span>() {
-                <span class="comment">// there&#39;s no point trying to start up if we can&#39;t read a usable config!</span>
-                <span class="macro">error!</span>(
+            <span class="kw">if </span>!unixd_path.exists() {
+                <span class="comment">// there&#39;s no point trying to start up if we can&#39;t read a usable config!
+                </span><span class="macro">error!</span>(
                     <span class="string">&quot;unixd config missing from {} - cannot start up. Quitting.&quot;</span>,
-                    <span class="ident">unixd_path_str</span>
+                    unixd_path_str
                 );
-                <span class="kw">return</span>
-            } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">unixd_meta</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">metadata</span>(<span class="kw-2">&amp;</span><span class="ident">unixd_path</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>, <span class="ident">unixd_path_str</span>, <span class="ident">e</span>);
-                        <span class="kw">return</span>
-                    }
+                <span class="kw">return
+            </span>} <span class="kw">else </span>{
+                <span class="kw">let </span>unixd_meta = <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>unixd_path) {
+                    <span class="prelude-val">Ok</span>(v) =&gt; v,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>, unixd_path_str, e);
+                        <span class="kw">return
+                    </span>}
                 };
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">unixd_meta</span>) {
+                <span class="kw">if </span>!file_permissions_readonly(<span class="kw-2">&amp;</span>unixd_meta) {
                     <span class="macro">warn!</span>(<span class="string">&quot;permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>,
-                        <span class="ident">unixd_path_str</span>);
+                        unixd_path_str);
                 }
 
-                <span class="kw">if</span> <span class="ident">unixd_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">cuid</span> <span class="op">|</span><span class="op">|</span> <span class="ident">unixd_meta</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="ident">ceuid</span> {
+                <span class="kw">if </span>unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
                     <span class="macro">warn!</span>(<span class="string">&quot;WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...&quot;</span>,
-                        <span class="ident">unixd_path_str</span>
+                        unixd_path_str
                     );
                 }
             }
 
-            <span class="comment">// setup</span>
-            <span class="kw">let</span> <span class="ident">cb</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmClientBuilder::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="kw-2">&amp;</span><span class="ident">cfg_path</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+            <span class="comment">// setup
+            </span><span class="kw">let </span>cb = <span class="kw">match </span>KanidmClientBuilder::new().read_options_from_optional_config(<span class="kw-2">&amp;</span>cfg_path) {
+                <span class="prelude-val">Ok</span>(v) =&gt; v,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, <span class="ident">cfg_path_str</span>);
-                    <span class="kw">return</span>
-                }
+                    <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, cfg_path_str);
+                    <span class="kw">return
+                </span>}
             };
 
-            <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="kw-2">&amp;</span><span class="ident">unixd_path</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+            <span class="kw">let </span>cfg = <span class="kw">match </span>KanidmUnixdConfig::new().read_options_from_optional_config(<span class="kw-2">&amp;</span>unixd_path) {
+                <span class="prelude-val">Ok</span>(v) =&gt; v,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, <span class="ident">unixd_path_str</span>);
-                    <span class="kw">return</span>
-                }
+                    <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, unixd_path_str);
+                    <span class="kw">return
+                </span>}
             };
 
-            <span class="kw">if</span> <span class="ident">clap_args</span>.<span class="ident">get_flag</span>(<span class="string">&quot;configtest&quot;</span>) {
+            <span class="kw">if </span>clap_args.get_flag(<span class="string">&quot;configtest&quot;</span>) {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;###################################&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;Dumping configs:\n###################################&quot;</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;kanidm_unixd config (from {:#?})&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">unixd_path</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">cfg</span>);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;kanidm_unixd config (from {:#?})&quot;</span>, <span class="kw-2">&amp;</span>unixd_path);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, cfg);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;###################################&quot;</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Client config (from {:#?})&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">cfg_path</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">cb</span>);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Client config (from {:#?})&quot;</span>, <span class="kw-2">&amp;</span>cfg_path);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, cb);
                 <span class="kw">return</span>;
             }
 
             <span class="macro">debug!</span>(<span class="string">&quot;🧹 Cleaning up sockets from previous invocations&quot;</span>);
-            <span class="ident">rm_if_exist</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>());
-            <span class="ident">rm_if_exist</span>(<span class="ident">cfg</span>.<span class="ident">task_sock_path</span>.<span class="ident">as_str</span>());
+            rm_if_exist(cfg.sock_path.as_str());
+            rm_if_exist(cfg.task_sock_path.as_str());
 
 
 
-            <span class="comment">// Check the db path will be okay.</span>
-            <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">db_path</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;&quot;</span> {
-                <span class="kw">let</span> <span class="ident">db_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="ident">cfg</span>.<span class="ident">db_path</span>.<span class="ident">as_str</span>());
-                <span class="comment">// We only need to check the parent folder path permissions as the db itself may not exist yet.</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">db_parent_path</span>) <span class="op">=</span> <span class="ident">db_path</span>.<span class="ident">parent</span>() {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">db_parent_path</span>.<span class="ident">exists</span>() {
+            <span class="comment">// Check the db path will be okay.
+            </span><span class="kw">if </span>cfg.db_path != <span class="string">&quot;&quot; </span>{
+                <span class="kw">let </span>db_path = PathBuf::from(cfg.db_path.as_str());
+                <span class="comment">// We only need to check the parent folder path permissions as the db itself may not exist yet.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(db_parent_path) = db_path.parent() {
+                    <span class="kw">if </span>!db_parent_path.exists() {
                         <span class="macro">error!</span>(
                             <span class="string">&quot;Refusing to run, DB folder {} does not exist&quot;</span>,
-                            <span class="ident">db_parent_path</span>
-                                .<span class="ident">to_str</span>()
-                                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&lt;db_parent_path invalid&gt;&quot;</span>)
+                            db_parent_path
+                                .to_str()
+                                .unwrap_or_else(|| <span class="string">&quot;&lt;db_parent_path invalid&gt;&quot;</span>)
                         );
-                        <span class="kw">return</span>
-                    }
+                        <span class="kw">return
+                    </span>}
 
-                    <span class="kw">let</span> <span class="ident">db_par_path_buf</span> <span class="op">=</span> <span class="ident">db_parent_path</span>.<span class="ident">to_path_buf</span>();
+                    <span class="kw">let </span>db_par_path_buf = db_parent_path.to_path_buf();
 
-                    <span class="kw">let</span> <span class="ident">i_meta</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">metadata</span>(<span class="kw-2">&amp;</span><span class="ident">db_par_path_buf</span>) {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                    <span class="kw">let </span>i_meta = <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>db_par_path_buf) {
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(e) =&gt; {
                             <span class="macro">error!</span>(
                                 <span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>,
-                                <span class="ident">db_par_path_buf</span>
-                                    .<span class="ident">to_str</span>()
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>),
-                                <span class="ident">e</span>
+                                db_par_path_buf
+                                    .to_str()
+                                    .unwrap_or_else(|| <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>),
+                                e
                             );
-                            <span class="kw">return</span>
-                        }
+                            <span class="kw">return
+                        </span>}
                     };
 
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">i_meta</span>.<span class="ident">is_dir</span>() {
+                    <span class="kw">if </span>!i_meta.is_dir() {
                         <span class="macro">error!</span>(
                             <span class="string">&quot;Refusing to run - DB folder {} may not be a directory&quot;</span>,
-                            <span class="ident">db_par_path_buf</span>
-                                .<span class="ident">to_str</span>()
-                                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
+                            db_par_path_buf
+                                .to_str()
+                                .unwrap_or_else(|| <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
                         );
-                        <span class="kw">return</span>
-                    }
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">file_permissions_readonly</span>(<span class="kw-2">&amp;</span><span class="ident">i_meta</span>) {
-                        <span class="macro">warn!</span>(<span class="string">&quot;WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!&quot;</span>, <span class="ident">db_par_path_buf</span>.<span class="ident">to_str</span>()
-                        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
+                        <span class="kw">return
+                    </span>}
+                    <span class="kw">if </span>!file_permissions_readonly(<span class="kw-2">&amp;</span>i_meta) {
+                        <span class="macro">warn!</span>(<span class="string">&quot;WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!&quot;</span>, db_par_path_buf.to_str()
+                        .unwrap_or_else(|| <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
                         );
                     }
 
-                    <span class="kw">if</span> <span class="ident">i_meta</span>.<span class="ident">mode</span>() <span class="op">&amp;</span> <span class="number">0o007</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-                        <span class="macro">warn!</span>(<span class="string">&quot;WARNING: DB folder {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>, <span class="ident">db_par_path_buf</span>.<span class="ident">to_str</span>()
-                        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
+                    <span class="kw">if </span>i_meta.mode() &amp; <span class="number">0o007 </span>!= <span class="number">0 </span>{
+                        <span class="macro">warn!</span>(<span class="string">&quot;WARNING: DB folder {} has &#39;everyone&#39; permission bits in the mode. This could be a security risk ...&quot;</span>, db_par_path_buf.to_str()
+                        .unwrap_or_else(|| <span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
                         );
                     }
                 }
 
-                <span class="comment">// check to see if the db&#39;s already there</span>
-                <span class="kw">if</span> <span class="ident">db_path</span>.<span class="ident">exists</span>() {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">db_path</span>.<span class="ident">is_file</span>() {
+                <span class="comment">// check to see if the db&#39;s already there
+                </span><span class="kw">if </span>db_path.exists() {
+                    <span class="kw">if </span>!db_path.is_file() {
                         <span class="macro">error!</span>(
                             <span class="string">&quot;Refusing to run - DB path {} already exists and is not a file.&quot;</span>,
-                            <span class="ident">db_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&lt;db_path invalid&gt;&quot;</span>)
+                            db_path.to_str().unwrap_or_else(|| <span class="string">&quot;&lt;db_path invalid&gt;&quot;</span>)
                         );
-                        <span class="kw">return</span>
-                    };
+                        <span class="kw">return
+                    </span>};
 
-                    <span class="kw">match</span> <span class="ident">metadata</span>(<span class="kw-2">&amp;</span><span class="ident">db_path</span>) {
-                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                    <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>db_path) {
+                        <span class="prelude-val">Ok</span>(v) =&gt; v,
+                        <span class="prelude-val">Err</span>(e) =&gt; {
                             <span class="macro">error!</span>(
                                 <span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>,
-                                <span class="ident">db_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&lt;db_path invalid&gt;&quot;</span>),
-                                <span class="ident">e</span>
+                                db_path.to_str().unwrap_or_else(|| <span class="string">&quot;&lt;db_path invalid&gt;&quot;</span>),
+                                e
                             );
-                            <span class="kw">return</span>
-                        }
+                            <span class="kw">return
+                        </span>}
                     };
-                    <span class="comment">// TODO: permissions dance to enumerate the user&#39;s ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.</span>
-                };
+                    <span class="comment">// TODO: permissions dance to enumerate the user&#39;s ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
+                </span>};
             }
 
-            <span class="kw">let</span> <span class="ident">cb</span> <span class="op">=</span> <span class="ident">cb</span>.<span class="ident">connect_timeout</span>(<span class="ident">cfg</span>.<span class="ident">conn_timeout</span>);
+            <span class="kw">let </span>cb = cb.connect_timeout(cfg.conn_timeout);
 
-            <span class="kw">let</span> <span class="ident">rsclient</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">cb</span>.<span class="ident">build</span>() {
-                <span class="prelude-val">Ok</span>(<span class="ident">rsc</span>) =&gt; <span class="ident">rsc</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">_e</span>) =&gt; {
+            <span class="kw">let </span>rsclient = <span class="kw">match </span>cb.build() {
+                <span class="prelude-val">Ok</span>(rsc) =&gt; rsc,
+                <span class="prelude-val">Err</span>(_e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to build async client&quot;</span>);
-                    <span class="kw">return</span>
-                }
+                    <span class="kw">return
+                </span>}
             };
 
 
-            <span class="kw">let</span> <span class="ident">cl_inner</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">CacheLayer::new</span>(
-                <span class="ident">cfg</span>.<span class="ident">db_path</span>.<span class="ident">as_str</span>(), <span class="comment">// The sqlite db path</span>
-                <span class="ident">cfg</span>.<span class="ident">cache_timeout</span>,
-                <span class="ident">rsclient</span>,
-                <span class="ident">cfg</span>.<span class="ident">pam_allowed_login_groups</span>.<span class="ident">clone</span>(),
-                <span class="ident">cfg</span>.<span class="ident">default_shell</span>.<span class="ident">clone</span>(),
-                <span class="ident">cfg</span>.<span class="ident">home_prefix</span>.<span class="ident">clone</span>(),
-                <span class="ident">cfg</span>.<span class="ident">home_attr</span>,
-                <span class="ident">cfg</span>.<span class="ident">home_alias</span>,
-                <span class="ident">cfg</span>.<span class="ident">uid_attr_map</span>,
-                <span class="ident">cfg</span>.<span class="ident">gid_attr_map</span>,
+            <span class="kw">let </span>cl_inner = <span class="kw">match </span>CacheLayer::new(
+                cfg.db_path.as_str(), <span class="comment">// The sqlite db path
+                </span>cfg.cache_timeout,
+                rsclient,
+                cfg.pam_allowed_login_groups.clone(),
+                cfg.default_shell.clone(),
+                cfg.home_prefix.clone(),
+                cfg.home_attr,
+                cfg.home_alias,
+                cfg.uid_attr_map,
+                cfg.gid_attr_map,
             )
-            .<span class="kw">await</span>
-            {
-                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">_e</span>) =&gt; {
+            .<span class="kw">await
+            </span>{
+                <span class="prelude-val">Ok</span>(c) =&gt; c,
+                <span class="prelude-val">Err</span>(_e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to build cache layer.&quot;</span>);
-                    <span class="kw">return</span>
-                }
+                    <span class="kw">return
+                </span>}
             };
 
-            <span class="kw">let</span> <span class="ident">cachelayer</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">cl_inner</span>);
+            <span class="kw">let </span>cachelayer = Arc::new(cl_inner);
 
-            <span class="comment">// Set the umask while we open the path for most clients.</span>
-            <span class="kw">let</span> <span class="ident">before</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="number">0</span>) };
-            <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">UnixListener::bind</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>()) {
-                <span class="prelude-val">Ok</span>(<span class="ident">l</span>) =&gt; <span class="ident">l</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">_e</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;Failed to bind UNIX socket at {}&quot;</span>, <span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>());
-                    <span class="kw">return</span>
-                }
+            <span class="comment">// Set the umask while we open the path for most clients.
+            </span><span class="kw">let </span>before = <span class="kw">unsafe </span>{ umask(<span class="number">0</span>) };
+            <span class="kw">let </span>listener = <span class="kw">match </span>UnixListener::bind(cfg.sock_path.as_str()) {
+                <span class="prelude-val">Ok</span>(l) =&gt; l,
+                <span class="prelude-val">Err</span>(_e) =&gt; {
+                    <span class="macro">error!</span>(<span class="string">&quot;Failed to bind UNIX socket at {}&quot;</span>, cfg.sock_path.as_str());
+                    <span class="kw">return
+                </span>}
             };
-            <span class="comment">// Setup the root-only socket. Take away all others.</span>
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="number">0o0077</span>) };
-            <span class="kw">let</span> <span class="ident">task_listener</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">UnixListener::bind</span>(<span class="ident">cfg</span>.<span class="ident">task_sock_path</span>.<span class="ident">as_str</span>()) {
-                <span class="prelude-val">Ok</span>(<span class="ident">l</span>) =&gt; <span class="ident">l</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">_e</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;Failed to bind UNIX socket {}&quot;</span>, <span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>());
-                    <span class="kw">return</span>
-                }
+            <span class="comment">// Setup the root-only socket. Take away all others.
+            </span><span class="kw">let _ </span>= <span class="kw">unsafe </span>{ umask(<span class="number">0o0077</span>) };
+            <span class="kw">let </span>task_listener = <span class="kw">match </span>UnixListener::bind(cfg.task_sock_path.as_str()) {
+                <span class="prelude-val">Ok</span>(l) =&gt; l,
+                <span class="prelude-val">Err</span>(_e) =&gt; {
+                    <span class="macro">error!</span>(<span class="string">&quot;Failed to bind UNIX socket {}&quot;</span>, cfg.sock_path.as_str());
+                    <span class="kw">return
+                </span>}
             };
 
-            <span class="comment">// Undo it.</span>
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">umask</span>(<span class="ident">before</span>) };
+            <span class="comment">// Undo it.
+            </span><span class="kw">let _ </span>= <span class="kw">unsafe </span>{ umask(before) };
 
-            <span class="kw">let</span> (<span class="ident">task_channel_tx</span>, <span class="kw-2">mut</span> <span class="ident">task_channel_rx</span>) <span class="op">=</span> <span class="ident">channel</span>(<span class="number">16</span>);
-            <span class="kw">let</span> <span class="ident">task_channel_tx</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">task_channel_tx</span>);
+            <span class="kw">let </span>(task_channel_tx, <span class="kw-2">mut </span>task_channel_rx) = channel(<span class="number">16</span>);
+            <span class="kw">let </span>task_channel_tx = Arc::new(task_channel_tx);
 
-            <span class="kw">let</span> <span class="ident">task_channel_tx_cln</span> <span class="op">=</span> <span class="ident">task_channel_tx</span>.<span class="ident">clone</span>();
+            <span class="kw">let </span>task_channel_tx_cln = task_channel_tx.clone();
 
-            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-                <span class="kw">loop</span> {
-                    <span class="kw">match</span> <span class="ident">task_listener</span>.<span class="ident">accept</span>().<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>((<span class="ident">socket</span>, <span class="ident">_addr</span>)) =&gt; {
-                            <span class="comment">// Did it come from root?</span>
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">ucred</span>) <span class="op">=</span> <span class="ident">socket</span>.<span class="ident">peer_cred</span>() {
-                                <span class="kw">if</span> <span class="ident">ucred</span>.<span class="ident">uid</span>() <span class="op">==</span> <span class="number">0</span> {
-                                    <span class="comment">// all good!</span>
-                                } <span class="kw">else</span> {
-                                    <span class="comment">// move along.</span>
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Task handler not running as root, ignoring ...&quot;</span>);
+            tokio::spawn(<span class="kw">async move </span>{
+                <span class="kw">loop </span>{
+                    <span class="kw">match </span>task_listener.accept().<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>((socket, _addr)) =&gt; {
+                            <span class="comment">// Did it come from root?
+                            </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(ucred) = socket.peer_cred() {
+                                <span class="kw">if </span>ucred.uid() == <span class="number">0 </span>{
+                                    <span class="comment">// all good!
+                                </span>} <span class="kw">else </span>{
+                                    <span class="comment">// move along.
+                                    </span><span class="macro">debug!</span>(<span class="string">&quot;Task handler not running as root, ignoring ...&quot;</span>);
                                     <span class="kw">continue</span>;
                                 }
-                            } <span class="kw">else</span> {
-                                <span class="comment">// move along.</span>
-                                <span class="macro">debug!</span>(<span class="string">&quot;Task handler not running as root, ignoring ...&quot;</span>);
+                            } <span class="kw">else </span>{
+                                <span class="comment">// move along.
+                                </span><span class="macro">debug!</span>(<span class="string">&quot;Task handler not running as root, ignoring ...&quot;</span>);
                                 <span class="kw">continue</span>;
                             };
                             <span class="macro">debug!</span>(<span class="string">&quot;A task handler has connected.&quot;</span>);
-                            <span class="comment">// It did? Great, now we can wait and spin on that one</span>
-                            <span class="comment">// client.</span>
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span>
-                                <span class="ident">handle_task_client</span>(<span class="ident">socket</span>, <span class="kw-2">&amp;</span><span class="ident">task_channel_tx</span>, <span class="kw-2">&amp;mut</span> <span class="ident">task_channel_rx</span>).<span class="kw">await</span>
-                            {
-                                <span class="macro">error!</span>(<span class="string">&quot;Task client error occured; error = {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="comment">// It did? Great, now we can wait and spin on that one
+                            // client.
+                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) =
+                                handle_task_client(socket, <span class="kw-2">&amp;</span>task_channel_tx, <span class="kw-2">&amp;mut </span>task_channel_rx).<span class="kw">await
+                            </span>{
+                                <span class="macro">error!</span>(<span class="string">&quot;Task client error occured; error = {:?}&quot;</span>, e);
                             }
-                            <span class="comment">// If they DC we go back to accept.</span>
-                        }
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Task Accept error -&gt; {:?}&quot;</span>, <span class="ident">err</span>);
+                            <span class="comment">// If they DC we go back to accept.
+                        </span>}
+                        <span class="prelude-val">Err</span>(err) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Task Accept error -&gt; {:?}&quot;</span>, err);
                         }
                     }
-                    <span class="comment">// done</span>
-                }
+                    <span class="comment">// done
+                </span>}
             });
 
-            <span class="comment">// TODO: Setup a task that handles pre-fetching here.</span>
+            <span class="comment">// TODO: Setup a task that handles pre-fetching here.
 
-            <span class="kw">let</span> <span class="ident">server</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
-                <span class="kw">loop</span> {
-                    <span class="kw">let</span> <span class="ident">tc_tx</span> <span class="op">=</span> <span class="ident">task_channel_tx_cln</span>.<span class="ident">clone</span>();
-                    <span class="kw">match</span> <span class="ident">listener</span>.<span class="ident">accept</span>().<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>((<span class="ident">socket</span>, <span class="ident">_addr</span>)) =&gt; {
-                            <span class="kw">let</span> <span class="ident">cachelayer_ref</span> <span class="op">=</span> <span class="ident">cachelayer</span>.<span class="ident">clone</span>();
-                            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">handle_client</span>(<span class="ident">socket</span>, <span class="ident">cachelayer_ref</span>.<span class="ident">clone</span>(), <span class="kw-2">&amp;</span><span class="ident">tc_tx</span>).<span class="kw">await</span>
-                                {
-                                    <span class="macro">error!</span>(<span class="string">&quot;handle_client error occured; error = {:?}&quot;</span>, <span class="ident">e</span>);
+            </span><span class="kw">let </span>server = <span class="kw">async move </span>{
+                <span class="kw">loop </span>{
+                    <span class="kw">let </span>tc_tx = task_channel_tx_cln.clone();
+                    <span class="kw">match </span>listener.accept().<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>((socket, _addr)) =&gt; {
+                            <span class="kw">let </span>cachelayer_ref = cachelayer.clone();
+                            tokio::spawn(<span class="kw">async move </span>{
+                                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = handle_client(socket, cachelayer_ref.clone(), <span class="kw-2">&amp;</span>tc_tx).<span class="kw">await
+                                </span>{
+                                    <span class="macro">error!</span>(<span class="string">&quot;handle_client error occured; error = {:?}&quot;</span>, e);
                                 }
                             });
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Error while handling connection -&gt; {:?}&quot;</span>, <span class="ident">err</span>);
+                        <span class="prelude-val">Err</span>(err) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Error while handling connection -&gt; {:?}&quot;</span>, err);
                         }
                     }
                 }
@@ -1487,10 +1487,10 @@
 
             <span class="macro">info!</span>(<span class="string">&quot;Server started ...&quot;</span>);
 
-            <span class="ident">server</span>.<span class="kw">await</span>;
+            server.<span class="kw">await</span>;
     })
     .<span class="kw">await</span>;
-    <span class="comment">// TODO: can we catch signals to clean up sockets etc, especially handy when running as root</span>
-}
+    <span class="comment">// TODO: can we catch signals to clean up sockets etc, especially handy when running as root
+</span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unixd" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unixd" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

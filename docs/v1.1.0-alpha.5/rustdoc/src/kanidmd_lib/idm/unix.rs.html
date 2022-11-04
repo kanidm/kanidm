@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/unix.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>unix.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/unix.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>unix.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -435,136 +435,136 @@
 <span id="435">435</span>
 <span id="436">436</span>
 <span id="437">437</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::iter</span>;
-<span class="comment">// use crossbeam::channel::Sender;</span>
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::iter;
+<span class="comment">// use crossbeam::channel::Sender;
+</span><span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>};
-<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc::UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
+<span class="kw">use </span>time::OffsetDateTime;
+<span class="kw">use </span>tokio::sync::mpsc::UnboundedSender <span class="kw">as </span>Sender;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLockPolicy</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::Credential</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::delayed</span>::{<span class="ident">DelayedAction</span>, <span class="ident">UnixPasswordUpgrade</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">ModifyInvalid</span>, <span class="ident">ModifyList</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::credential::policy::CryptoPolicy;
+<span class="kw">use </span><span class="kw">crate</span>::credential::softlock::CredSoftLockPolicy;
+<span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
+<span class="kw">use </span><span class="kw">crate</span>::idm::delayed::{DelayedAction, UnixPasswordUpgrade};
+<span class="kw">use </span><span class="kw">crate</span>::modify::{ModifyInvalid, ModifyList};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">UnixUserAccount</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">gidnumber</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">sshkeys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UnixGroup</span><span class="op">&gt;</span>,
-    <span class="ident">cred</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">valid_from</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">expire</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">radius_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">mail</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnixUserAccount {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>displayname: String,
+    <span class="kw">pub </span>gidnumber: u32,
+    <span class="kw">pub </span>uuid: Uuid,
+    <span class="kw">pub </span>shell: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>sshkeys: Vec&lt;String&gt;,
+    <span class="kw">pub </span>groups: Vec&lt;UnixGroup&gt;,
+    cred: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+    <span class="kw">pub </span>valid_from: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>expire: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>radius_secret: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>mail: Vec&lt;String&gt;,
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">try_from_entry</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">groups</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_ACCOUNT</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: account&quot;</span>.<span class="ident">to_string</span>(),
+<span class="macro">macro_rules! </span>try_from_entry {
+    (<span class="macro-nonterminal">$value</span>:expr, <span class="macro-nonterminal">$groups</span>:expr) =&gt; {{
+        <span class="kw">if </span>!<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: account&quot;</span>.to_string(),
             ));
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_POSIXACCOUNT</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: posixaccount&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="kw">if </span>!<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXACCOUNT) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: posixaccount&quot;</span>.to_string(),
             ));
         }
 
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>name = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: name&quot;</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>spn = <span class="macro-nonterminal">$value</span>.get_ava_single_proto_string(<span class="string">&quot;spn&quot;</span>).ok_or_else(|| {
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: spn&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let </span>uuid = <span class="macro-nonterminal">$value</span>.get_uuid();
 
-        <span class="kw">let</span> <span class="ident">displayname</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;displayname&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: displayname&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>displayname = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: displayname&quot;</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">gidnumber</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;gidnumber&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>gidnumber = <span class="macro-nonterminal">$value</span>.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).ok_or_else(|| {
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">shell</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_iutf8</span>(<span class="string">&quot;loginshell&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>());
+        <span class="kw">let </span>shell = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_iutf8(<span class="string">&quot;loginshell&quot;</span>)
+            .map(|s| s.to_string());
 
-        <span class="kw">let</span> <span class="ident">sshkeys</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_iter_sshpubkeys</span>(<span class="string">&quot;ssh_publickey&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>()).<span class="ident">collect</span>())
-            .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
+        <span class="kw">let </span>sshkeys = <span class="macro-nonterminal">$value
+            </span>.get_ava_iter_sshpubkeys(<span class="string">&quot;ssh_publickey&quot;</span>)
+            .map(|i| i.map(|s| s.to_string()).collect())
+            .unwrap_or_else(Vec::new);
 
-        <span class="kw">let</span> <span class="ident">cred</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_credential</span>(<span class="string">&quot;unix_password&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span>cred = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_credential(<span class="string">&quot;unix_password&quot;</span>)
+            .map(|v| v.clone());
 
-        <span class="kw">let</span> <span class="ident">radius_secret</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;radius_secret&quot;</span>)
-            .<span class="ident">map</span>(<span class="ident">str::to_string</span>);
+        <span class="kw">let </span>radius_secret = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_secret(<span class="string">&quot;radius_secret&quot;</span>)
+            .map(str::to_string);
 
-        <span class="kw">let</span> <span class="ident">mail</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_iter_mail</span>(<span class="string">&quot;mail&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>())
-            .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
+        <span class="kw">let </span>mail = <span class="macro-nonterminal">$value
+            </span>.get_ava_iter_mail(<span class="string">&quot;mail&quot;</span>)
+            .map(|i| i.map(str::to_string).collect())
+            .unwrap_or_else(Vec::new);
 
-        <span class="kw">let</span> <span class="ident">valid_from</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_valid_from&quot;</span>);
+        <span class="kw">let </span>valid_from = <span class="macro-nonterminal">$value</span>.get_ava_single_datetime(<span class="string">&quot;account_valid_from&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">expire</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_expire&quot;</span>);
+        <span class="kw">let </span>expire = <span class="macro-nonterminal">$value</span>.get_ava_single_datetime(<span class="string">&quot;account_expire&quot;</span>);
 
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixUserAccount</span> {
-            <span class="ident">name</span>,
-            <span class="ident">spn</span>,
-            <span class="ident">uuid</span>,
-            <span class="ident">displayname</span>,
-            <span class="ident">gidnumber</span>,
-            <span class="ident">shell</span>,
-            <span class="ident">sshkeys</span>,
-            <span class="ident">groups</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">groups</span>,
-            <span class="ident">cred</span>,
-            <span class="ident">valid_from</span>,
-            <span class="ident">expire</span>,
-            <span class="ident">radius_secret</span>,
-            <span class="ident">mail</span>,
+        <span class="prelude-val">Ok</span>(UnixUserAccount {
+            name,
+            spn,
+            uuid,
+            displayname,
+            gidnumber,
+            shell,
+            sshkeys,
+            groups: <span class="macro-nonterminal">$groups</span>,
+            cred,
+            valid_from,
+            expire,
+            radius_secret,
+            mail,
         })
     }};
 }
 
-<span class="kw">impl</span> <span class="ident">UnixUserAccount</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_rw</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">UnixGroup::try_from_account_entry_rw</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
+<span class="kw">impl </span>UnixUserAccount {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_rw(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>groups = UnixGroup::try_from_account_entry_rw(value, qs)<span class="question-mark">?</span>;
+        <span class="macro">try_from_entry!</span>(value, groups)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_ro</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">UnixGroup::try_from_account_entry_ro</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_ro(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">let </span>groups = UnixGroup::try_from_account_entry_ro(value, qs)<span class="question-mark">?</span>;
+        <span class="macro">try_from_entry!</span>(value, groups)
     }
 
     <span class="comment">/*
@@ -575,271 +575,271 @@
         let groups = UnixGroup::try_from_account_entry_red_ro(au, value, qs)?;
         try_from_entry!(value, groups)
     }
-    */</span>
+    */
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_unixusertoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">groups</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">to_unixgrouptoken</span>()).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">groups</span><span class="question-mark">?</span>;
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_unixusertoken(<span class="kw-2">&amp;</span><span class="self">self</span>, ct: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;UnixUserToken, OperationError&gt; {
+        <span class="kw">let </span>groups: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = <span class="self">self</span>.groups.iter().map(|g| g.to_unixgrouptoken()).collect();
+        <span class="kw">let </span>groups = groups<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixUserToken</span> {
-            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
-            <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
-            <span class="ident">displayname</span>: <span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
-            <span class="ident">gidnumber</span>: <span class="self">self</span>.<span class="ident">gidnumber</span>,
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
-            <span class="ident">shell</span>: <span class="self">self</span>.<span class="ident">shell</span>.<span class="ident">clone</span>(),
-            <span class="ident">groups</span>,
-            <span class="ident">sshkeys</span>: <span class="self">self</span>.<span class="ident">sshkeys</span>.<span class="ident">clone</span>(),
-            <span class="ident">valid</span>: <span class="self">self</span>.<span class="ident">is_within_valid_time</span>(<span class="ident">ct</span>),
+        <span class="prelude-val">Ok</span>(UnixUserToken {
+            name: <span class="self">self</span>.name.clone(),
+            spn: <span class="self">self</span>.spn.clone(),
+            displayname: <span class="self">self</span>.displayname.clone(),
+            gidnumber: <span class="self">self</span>.gidnumber,
+            uuid: <span class="self">self</span>.uuid.as_hyphenated().to_string(),
+            shell: <span class="self">self</span>.shell.clone(),
+            groups,
+            sshkeys: <span class="self">self</span>.sshkeys.clone(),
+            valid: <span class="self">self</span>.is_within_valid_time(ct),
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unix_cred_uuid_and_policy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">CredSoftLockPolicy</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">cred</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> (<span class="ident">cred</span>.<span class="ident">uuid</span>, <span class="ident">cred</span>.<span class="ident">softlock_policy</span>()))
+    <span class="kw">pub fn </span>unix_cred_uuid_and_policy(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(Uuid, CredSoftLockPolicy)&gt; {
+        <span class="self">self</span>.cred
+            .as_ref()
+            .map(|cred| (cred.uuid, cred.softlock_policy()))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="ident">UUID_ANONYMOUS</span>
+    <span class="kw">pub fn </span>is_anonymous(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.uuid == UUID_ANONYMOUS
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_password_mod</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>gen_password_mod(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="ident">CryptoPolicy</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">Credential::new_password_only</span>(<span class="ident">crypto_policy</span>, <span class="ident">cleartext</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;unix&quot;</span>, <span class="ident">ncred</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;unix_password&quot;</span>, <span class="ident">vcred</span>))
+        cleartext: <span class="kw-2">&amp;</span>str,
+        crypto_policy: <span class="kw-2">&amp;</span>CryptoPolicy,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ModifyList&lt;ModifyInvalid&gt;, OperationError&gt; {
+        <span class="kw">let </span>ncred = Credential::new_password_only(crypto_policy, cleartext)<span class="question-mark">?</span>;
+        <span class="kw">let </span>vcred = Value::new_credential(<span class="string">&quot;unix&quot;</span>, ncred);
+        <span class="prelude-val">Ok</span>(ModifyList::new_purge_and_set(<span class="string">&quot;unix_password&quot;</span>, vcred))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_within_valid_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">cot</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
+    <span class="kw">pub fn </span>is_within_valid_time(<span class="kw-2">&amp;</span><span class="self">self</span>, ct: Duration) -&gt; bool {
+        <span class="kw">let </span>cot = OffsetDateTime::unix_epoch() + ct;
 
-        <span class="kw">let</span> <span class="ident">vmin</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vft</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">valid_from</span> {
-            <span class="comment">// If current time greater than start time window</span>
-            <span class="ident">vft</span> <span class="op">&lt;</span> <span class="kw-2">&amp;</span><span class="ident">cot</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// We have no time, not expired.</span>
-            <span class="bool-val">true</span>
-        };
-        <span class="kw">let</span> <span class="ident">vmax</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ext</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">expire</span> {
-            <span class="comment">// If exp greater than ct then expired.</span>
-            <span class="kw-2">&amp;</span><span class="ident">cot</span> <span class="op">&lt;</span> <span class="ident">ext</span>
-        } <span class="kw">else</span> {
-            <span class="comment">// If not present, we are not expired</span>
-            <span class="bool-val">true</span>
-        };
-        <span class="comment">// Mix the results</span>
-        <span class="ident">vmin</span> <span class="op">&amp;&amp;</span> <span class="ident">vmax</span>
+        <span class="kw">let </span>vmin = <span class="kw">if let </span><span class="prelude-val">Some</span>(vft) = <span class="kw-2">&amp;</span><span class="self">self</span>.valid_from {
+            <span class="comment">// If current time greater than start time window
+            </span>vft &lt; <span class="kw-2">&amp;</span>cot
+        } <span class="kw">else </span>{
+            <span class="comment">// We have no time, not expired.
+            </span><span class="bool-val">true
+        </span>};
+        <span class="kw">let </span>vmax = <span class="kw">if let </span><span class="prelude-val">Some</span>(ext) = <span class="kw-2">&amp;</span><span class="self">self</span>.expire {
+            <span class="comment">// If exp greater than ct then expired.
+            </span><span class="kw-2">&amp;</span>cot &lt; ext
+        } <span class="kw">else </span>{
+            <span class="comment">// If not present, we are not expired
+            </span><span class="bool-val">true
+        </span>};
+        <span class="comment">// Mix the results
+        </span>vmin &amp;&amp; vmax
     }
 
-    <span class="comment">// Get related inputs, such as account name, email, etc.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">related_inputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">4</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">mail</span>.<span class="ident">len</span>());
-        <span class="self">self</span>.<span class="ident">mail</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">m</span><span class="op">|</span> {
-            <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="ident">m</span>.<span class="ident">as_str</span>());
+    <span class="comment">// Get related inputs, such as account name, email, etc.
+    </span><span class="kw">pub fn </span>related_inputs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>inputs = Vec::with_capacity(<span class="number">4 </span>+ <span class="self">self</span>.mail.len());
+        <span class="self">self</span>.mail.iter().for_each(|m| {
+            inputs.push(m.as_str());
         });
-        <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">name</span>.<span class="ident">as_str</span>());
-        <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>());
-        <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">as_str</span>());
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">radius_secret</span>.<span class="ident">as_deref</span>() {
-            <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="ident">s</span>);
+        inputs.push(<span class="self">self</span>.name.as_str());
+        inputs.push(<span class="self">self</span>.spn.as_str());
+        inputs.push(<span class="self">self</span>.displayname.as_str());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(s) = <span class="self">self</span>.radius_secret.as_deref() {
+            inputs.push(s);
         }
-        <span class="ident">inputs</span>
+        inputs
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">verify_unix_credential</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verify_unix_credential(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">async_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
-        <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Is the cred locked?</span>
-        <span class="comment">// NOW checked by the caller!</span>
+        cleartext: <span class="kw-2">&amp;</span>str,
+        async_tx: <span class="kw-2">&amp;</span>Sender&lt;DelayedAction&gt;,
+        ct: Duration,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;UnixUserToken&gt;, OperationError&gt; {
+        <span class="comment">// Is the cred locked?
+        // NOW checked by the caller!
 
-        <span class="comment">/*
+        /*
         if !self.is_within_valid_time(ct) {
             lsecurity!(au, &quot;Account is not within valid time period&quot;);
             return Ok(None);
         }
-        */</span>
+        */
 
-        <span class="comment">// is the cred some or none?</span>
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cred</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">cred</span>) =&gt; {
-                <span class="ident">cred</span>.<span class="ident">password_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">pw</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">verify</span>(<span class="ident">cleartext</span>)<span class="question-mark">?</span> {
+        // is the cred some or none?
+        </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.cred {
+            <span class="prelude-val">Some</span>(cred) =&gt; {
+                cred.password_ref().and_then(|pw| {
+                    <span class="kw">if </span>pw.verify(cleartext)<span class="question-mark">? </span>{
                         <span class="macro">security_info!</span>(<span class="string">&quot;Successful unix cred handling&quot;</span>);
-                        <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">requires_upgrade</span>() {
-                            <span class="ident">async_tx</span>
-                                .<span class="ident">send</span>(<span class="ident">DelayedAction::UnixPwUpgrade</span>(<span class="ident">UnixPasswordUpgrade</span> {
-                                    <span class="ident">target_uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>,
-                                    <span class="ident">existing_password</span>: <span class="ident">cleartext</span>.<span class="ident">to_string</span>(),
+                        <span class="kw">if </span>pw.requires_upgrade() {
+                            async_tx
+                                .send(DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
+                                    target_uuid: <span class="self">self</span>.uuid,
+                                    existing_password: cleartext.to_string(),
                                 }))
-                                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                                .map_err(|<span class="kw">_</span>| {
                                     <span class="macro">admin_error!</span>(
-                                        <span class="string">&quot;failed to queue delayed action - unix password upgrade&quot;</span>
-                                    );
-                                    <span class="ident">OperationError::InvalidState</span>
+                                        <span class="string">&quot;failed to queue delayed action - unix password upgrade&quot;
+                                    </span>);
+                                    OperationError::InvalidState
                                 })<span class="question-mark">?</span>;
                         }
 
-                        <span class="comment">// Technically this means we check the times twice, but that doesn&#39;t</span>
-                        <span class="comment">// seem like a big deal when we want to short cut return on invalid.</span>
-                        <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">to_unixusertoken</span>(<span class="ident">ct</span>)).<span class="ident">transpose</span>()
-                    } <span class="kw">else</span> {
-                        <span class="comment">// Failed to auth</span>
-                        <span class="macro">security_info!</span>(<span class="string">&quot;Failed unix cred handling (denied)&quot;</span>);
+                        <span class="comment">// Technically this means we check the times twice, but that doesn&#39;t
+                        // seem like a big deal when we want to short cut return on invalid.
+                        </span><span class="prelude-val">Some</span>(<span class="self">self</span>.to_unixusertoken(ct)).transpose()
+                    } <span class="kw">else </span>{
+                        <span class="comment">// Failed to auth
+                        </span><span class="macro">security_info!</span>(<span class="string">&quot;Failed unix cred handling (denied)&quot;</span>);
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
                     }
                 })
             }
-            <span class="comment">// They don&#39;t have a unix cred, fail the auth.</span>
-            <span class="prelude-val">None</span> =&gt; {
+            <span class="comment">// They don&#39;t have a unix cred, fail the auth.
+            </span><span class="prelude-val">None </span>=&gt; {
                 <span class="macro">security_info!</span>(<span class="string">&quot;Failed unix cred handling (no cred present)&quot;</span>);
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">check_existing_pw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cred</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">cred</span>) =&gt; <span class="ident">cred</span>.<span class="ident">password_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">pw</span><span class="op">|</span> <span class="ident">pw</span>.<span class="ident">verify</span>(<span class="ident">cleartext</span>)),
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_existing_pw(<span class="kw-2">&amp;</span><span class="self">self</span>, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.cred {
+            <span class="prelude-val">Some</span>(cred) =&gt; cred.password_ref().and_then(|pw| pw.verify(cleartext)),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidState),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">UnixGroup</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">gidnumber</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnixGroup {
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>gidnumber: u32,
+    <span class="kw">pub </span>uuid: Uuid,
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">try_from_group_e</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="comment">// We could be looking at a user for their UPG, OR a true group.</span>
+<span class="macro">macro_rules! </span>try_from_group_e {
+    (<span class="macro-nonterminal">$value</span>:expr) =&gt; {{
+        <span class="comment">// We could be looking at a user for their UPG, OR a true group.
 
-        <span class="kw">if</span> <span class="op">!</span>((<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_ACCOUNT</span>)
-            <span class="op">&amp;&amp;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_POSIXACCOUNT</span>))
-            <span class="op">|</span><span class="op">|</span> (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_GROUP</span>)
-                <span class="op">&amp;&amp;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_POSIXGROUP</span>)))
+        </span><span class="kw">if </span>!((<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT)
+            &amp;&amp; <span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXACCOUNT))
+            || (<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP)
+                &amp;&amp; <span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXGROUP)))
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;</span>.to_string(),
             ));
         }
 
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>name = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: name&quot;</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>spn = <span class="macro-nonterminal">$value</span>.get_ava_single_proto_string(<span class="string">&quot;spn&quot;</span>).ok_or_else(|| {
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: spn&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let </span>uuid = <span class="macro-nonterminal">$value</span>.get_uuid();
 
-        <span class="kw">let</span> <span class="ident">gidnumber</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;gidnumber&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>gidnumber = <span class="macro-nonterminal">$value</span>.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).ok_or_else(|| {
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixGroup</span> {
-            <span class="ident">name</span>,
-            <span class="ident">spn</span>,
-            <span class="ident">gidnumber</span>,
-            <span class="ident">uuid</span>,
+        <span class="prelude-val">Ok</span>(UnixGroup {
+            name,
+            spn,
+            gidnumber,
+            uuid,
         })
     }};
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">try_from_account_group_e</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="comment">// First synthesise the self-group from the account.</span>
-        <span class="comment">// We have already checked these, but paranoia is better than</span>
-        <span class="comment">// complacency.</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_ACCOUNT</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: account&quot;</span>.<span class="ident">to_string</span>(),
+<span class="macro">macro_rules! </span>try_from_account_group_e {
+    (<span class="macro-nonterminal">$value</span>:expr, <span class="macro-nonterminal">$qs</span>:expr) =&gt; {{
+        <span class="comment">// First synthesise the self-group from the account.
+        // We have already checked these, but paranoia is better than
+        // complacency.
+        </span><span class="kw">if </span>!<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: account&quot;</span>.to_string(),
             ));
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_POSIXACCOUNT</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: posixaccount&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="kw">if </span>!<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXACCOUNT) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: posixaccount&quot;</span>.to_string(),
             ));
         }
 
-        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>name = <span class="macro-nonterminal">$value
+            </span>.get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: name&quot;</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>spn = <span class="macro-nonterminal">$value</span>.get_ava_single_proto_string(<span class="string">&quot;spn&quot;</span>).ok_or_else(|| {
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: spn&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let </span>uuid = <span class="macro-nonterminal">$value</span>.get_uuid();
 
-        <span class="kw">let</span> <span class="ident">gidnumber</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;gidnumber&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.<span class="ident">to_string</span>())
+        <span class="kw">let </span>gidnumber = <span class="macro-nonterminal">$value</span>.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).ok_or_else(|| {
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
 
-        <span class="comment">// This is the user private group.</span>
-        <span class="kw">let</span> <span class="ident">upg</span> <span class="op">=</span> <span class="ident">UnixGroup</span> {
-            <span class="ident">name</span>,
-            <span class="ident">spn</span>,
-            <span class="ident">gidnumber</span>,
-            <span class="ident">uuid</span>,
+        <span class="comment">// This is the user private group.
+        </span><span class="kw">let </span>upg = UnixGroup {
+            name,
+            spn,
+            gidnumber,
+            uuid,
         };
 
-        <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_as_refuuid</span>(<span class="string">&quot;memberof&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">riter</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
-                    <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PVCLASS_POSIXGROUP</span>.<span class="ident">clone</span>()),
-                    <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PVCLASS_GROUP</span>.<span class="ident">clone</span>()),
-                    <span class="ident">f_or</span>(
-                        <span class="ident">riter</span>
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">u</span>)))
-                            .<span class="ident">collect</span>()
+        <span class="kw">match </span><span class="macro-nonterminal">$value</span>.get_ava_as_refuuid(<span class="string">&quot;memberof&quot;</span>) {
+            <span class="prelude-val">Some</span>(riter) =&gt; {
+                <span class="kw">let </span>f = <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
+                    f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_POSIXGROUP.clone()),
+                    f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_GROUP.clone()),
+                    f_or(
+                        riter
+                            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+                            .collect()
                     )
                 ]));
-                <span class="kw">let</span> <span class="ident">ges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>.<span class="ident">internal_search</span>(<span class="ident">f</span>)<span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">groups</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter::once</span>(<span class="prelude-val">Ok</span>(<span class="ident">upg</span>))
-                    .<span class="ident">chain</span>(<span class="ident">ges</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">UnixGroup::try_from_entry</span>(<span class="ident">e</span>.<span class="ident">as_ref</span>())))
-                    .<span class="ident">collect</span>();
-                <span class="ident">groups</span>
+                <span class="kw">let </span>ges: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro-nonterminal">$qs</span>.internal_search(f)<span class="question-mark">?</span>;
+                <span class="kw">let </span>groups: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = iter::once(<span class="prelude-val">Ok</span>(upg))
+                    .chain(ges.iter().map(|e| UnixGroup::try_from_entry(e.as_ref())))
+                    .collect();
+                groups
             }
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="comment">// No memberof, no groups!</span>
-                <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="ident">upg</span>])
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// No memberof, no groups!
+                </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[upg])
             }
         }
     }};
 }
 
-<span class="kw">impl</span> <span class="ident">UnixGroup</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_rw</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_account_group_e!</span>(<span class="ident">value</span>, <span class="ident">qs</span>)
+<span class="kw">impl </span>UnixGroup {
+    <span class="kw">pub fn </span>try_from_account_entry_rw(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, OperationError&gt; {
+        <span class="macro">try_from_account_group_e!</span>(value, qs)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_ro</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_account_group_e!</span>(<span class="ident">value</span>, <span class="ident">qs</span>)
+    <span class="kw">pub fn </span>try_from_account_entry_ro(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, OperationError&gt; {
+        <span class="macro">try_from_account_group_e!</span>(value, qs)
     }
 
     <span class="comment">/*
@@ -849,28 +849,28 @@
     ) -&gt; Result&lt;Vec&lt;Self&gt;, OperationError&gt; {
         try_from_account_group_e!(au, value, qs)
     }
-    */</span>
+    */
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_entry_reduced</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_group_e!</span>(<span class="ident">value</span>)
+    </span><span class="kw">pub fn </span>try_from_entry_reduced(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntryReduced, EntryCommitted&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="macro">try_from_group_e!</span>(value)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_entry</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_group_e!</span>(<span class="ident">value</span>)
+    <span class="kw">pub fn </span>try_from_entry(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="macro">try_from_group_e!</span>(value)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_unixgrouptoken</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">UnixGroupToken</span> {
-            <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
-            <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
-            <span class="ident">gidnumber</span>: <span class="self">self</span>.<span class="ident">gidnumber</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_unixgrouptoken(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;UnixGroupToken, OperationError&gt; {
+        <span class="prelude-val">Ok</span>(UnixGroupToken {
+            name: <span class="self">self</span>.name.clone(),
+            spn: <span class="self">self</span>.spn.clone(),
+            uuid: <span class="self">self</span>.uuid.as_hyphenated().to_string(),
+            gidnumber: <span class="self">self</span>.gidnumber,
         })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/valueset/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/valueset/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -651,658 +651,658 @@
 <span id="651">651</span>
 <span id="652">652</span>
 <span id="653">653</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
-<span class="kw">use</span> <span class="ident">compact_jwt::JwsSigner</span>;
-<span class="kw">use</span> <span class="ident">dyn_clone::DynClone</span>;
-<span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1::Filter</span> <span class="kw">as</span> <span class="ident">ProtoFilter</span>;
-<span class="kw">use</span> <span class="ident">smolset::SmolSet</span>;
-<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
-<span class="comment">// use std::fmt::Debug;</span>
-<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::DeviceKey</span> <span class="kw">as</span> <span class="ident">DeviceKeyV4</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::Passkey</span> <span class="kw">as</span> <span class="ident">PasskeyV4</span>;
+<span class="kw">use </span>compact_jwt::JwsSigner;
+<span class="kw">use </span>dyn_clone::DynClone;
+<span class="kw">use </span>hashbrown::HashSet;
+<span class="kw">use </span>kanidm_proto::v1::Filter <span class="kw">as </span>ProtoFilter;
+<span class="kw">use </span>smolset::SmolSet;
+<span class="kw">use </span>time::OffsetDateTime;
+<span class="comment">// use std::fmt::Debug;
+</span><span class="kw">use </span>webauthn_rs::prelude::DeviceKey <span class="kw">as </span>DeviceKeyV4;
+<span class="kw">use </span>webauthn_rs::prelude::Passkey <span class="kw">as </span>PasskeyV4;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue::DbValueSetV2</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::Credential</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::cid::Cid</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaAttribute</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value</span>::{<span class="ident">Address</span>, <span class="ident">IntentTokenState</span>, <span class="ident">Session</span>};
+<span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::DbValueSetV2;
+<span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
+<span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
+<span class="kw">use </span><span class="kw">crate</span>::value::{Address, IntentTokenState, Session};
 
-<span class="kw">mod</span> <span class="ident">address</span>;
-<span class="kw">mod</span> <span class="ident">binary</span>;
-<span class="kw">mod</span> <span class="ident">bool</span>;
-<span class="kw">mod</span> <span class="ident">cid</span>;
-<span class="kw">mod</span> <span class="ident">cred</span>;
-<span class="kw">mod</span> <span class="ident">datetime</span>;
-<span class="kw">mod</span> <span class="ident">iname</span>;
-<span class="kw">mod</span> <span class="ident">index</span>;
-<span class="kw">mod</span> <span class="ident">iutf8</span>;
-<span class="kw">mod</span> <span class="ident">json</span>;
-<span class="kw">mod</span> <span class="ident">jws</span>;
-<span class="kw">mod</span> <span class="ident">nsuniqueid</span>;
-<span class="kw">mod</span> <span class="ident">oauth</span>;
-<span class="kw">mod</span> <span class="ident">restricted</span>;
-<span class="kw">mod</span> <span class="ident">secret</span>;
-<span class="kw">mod</span> <span class="ident">session</span>;
-<span class="kw">mod</span> <span class="ident">spn</span>;
-<span class="kw">mod</span> <span class="ident">ssh</span>;
-<span class="kw">mod</span> <span class="ident">syntax</span>;
-<span class="kw">mod</span> <span class="ident">uint32</span>;
-<span class="kw">mod</span> <span class="ident">url</span>;
-<span class="kw">mod</span> <span class="ident">utf8</span>;
-<span class="kw">mod</span> <span class="ident">uuid</span>;
+<span class="kw">mod </span>address;
+<span class="kw">mod </span>binary;
+<span class="kw">mod </span>bool;
+<span class="kw">mod </span>cid;
+<span class="kw">mod </span>cred;
+<span class="kw">mod </span>datetime;
+<span class="kw">mod </span>iname;
+<span class="kw">mod </span>index;
+<span class="kw">mod </span>iutf8;
+<span class="kw">mod </span>json;
+<span class="kw">mod </span>jws;
+<span class="kw">mod </span>nsuniqueid;
+<span class="kw">mod </span>oauth;
+<span class="kw">mod </span>restricted;
+<span class="kw">mod </span>secret;
+<span class="kw">mod </span>session;
+<span class="kw">mod </span>spn;
+<span class="kw">mod </span>ssh;
+<span class="kw">mod </span>syntax;
+<span class="kw">mod </span>uint32;
+<span class="kw">mod </span>url;
+<span class="kw">mod </span>utf8;
+<span class="kw">mod </span>uuid;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::address</span>::{<span class="ident">ValueSetAddress</span>, <span class="ident">ValueSetEmailAddress</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::binary</span>::{<span class="ident">ValueSetPrivateBinary</span>, <span class="ident">ValueSetPublicBinary</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::bool::ValueSetBool</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::cid::ValueSetCid</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::cred</span>::{<span class="ident">ValueSetCredential</span>, <span class="ident">ValueSetDeviceKey</span>, <span class="ident">ValueSetIntentToken</span>, <span class="ident">ValueSetPasskey</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::datetime::ValueSetDateTime</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::iname::ValueSetIname</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::index::ValueSetIndex</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::iutf8::ValueSetIutf8</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::json::ValueSetJsonFilter</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::jws</span>::{<span class="ident">ValueSetJwsKeyEs256</span>, <span class="ident">ValueSetJwsKeyRs256</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::nsuniqueid::ValueSetNsUniqueId</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::oauth</span>::{<span class="ident">ValueSetOauthScope</span>, <span class="ident">ValueSetOauthScopeMap</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::restricted::ValueSetRestricted</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::secret::ValueSetSecret</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::session::ValueSetSession</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::spn::ValueSetSpn</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::ssh::ValueSetSshKey</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::syntax::ValueSetSyntax</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::uint32::ValueSetUint32</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::url::ValueSetUrl</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::utf8::ValueSetUtf8</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::uuid</span>::{<span class="ident">ValueSetRefer</span>, <span class="ident">ValueSetUuid</span>};
+<span class="kw">pub use </span><span class="self">self</span>::address::{ValueSetAddress, ValueSetEmailAddress};
+<span class="kw">pub use </span><span class="self">self</span>::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
+<span class="kw">pub use </span><span class="self">self</span>::bool::ValueSetBool;
+<span class="kw">pub use </span><span class="self">self</span>::cid::ValueSetCid;
+<span class="kw">pub use </span><span class="self">self</span>::cred::{ValueSetCredential, ValueSetDeviceKey, ValueSetIntentToken, ValueSetPasskey};
+<span class="kw">pub use </span><span class="self">self</span>::datetime::ValueSetDateTime;
+<span class="kw">pub use </span><span class="self">self</span>::iname::ValueSetIname;
+<span class="kw">pub use </span><span class="self">self</span>::index::ValueSetIndex;
+<span class="kw">pub use </span><span class="self">self</span>::iutf8::ValueSetIutf8;
+<span class="kw">pub use </span><span class="self">self</span>::json::ValueSetJsonFilter;
+<span class="kw">pub use </span><span class="self">self</span>::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
+<span class="kw">pub use </span><span class="self">self</span>::nsuniqueid::ValueSetNsUniqueId;
+<span class="kw">pub use </span><span class="self">self</span>::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
+<span class="kw">pub use </span><span class="self">self</span>::restricted::ValueSetRestricted;
+<span class="kw">pub use </span><span class="self">self</span>::secret::ValueSetSecret;
+<span class="kw">pub use </span><span class="self">self</span>::session::ValueSetSession;
+<span class="kw">pub use </span><span class="self">self</span>::spn::ValueSetSpn;
+<span class="kw">pub use </span><span class="self">self</span>::ssh::ValueSetSshKey;
+<span class="kw">pub use </span><span class="self">self</span>::syntax::ValueSetSyntax;
+<span class="kw">pub use </span><span class="self">self</span>::uint32::ValueSetUint32;
+<span class="kw">pub use </span><span class="self">self</span>::url::ValueSetUrl;
+<span class="kw">pub use </span><span class="self">self</span>::utf8::ValueSetUtf8;
+<span class="kw">pub use </span><span class="self">self</span>::uuid::{ValueSetRefer, ValueSetUuid};
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ValueSet</span> <span class="op">=</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ValueSetT</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span>;
+<span class="kw">pub type </span>ValueSet = Box&lt;<span class="kw">dyn </span>ValueSetT + Send + Sync + <span class="lifetime">&#39;static</span>&gt;;
 
-<span class="macro">dyn_clone::clone_trait_object!</span>(<span class="ident">ValueSetT</span>);
+<span class="macro">dyn_clone::clone_trait_object!</span>(ValueSetT);
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ValueSetT</span>: <span class="ident">std::fmt::Debug</span> <span class="op">+</span> <span class="ident">DynClone</span> {
-    <span class="doccomment">/// # Safety</span>
-    <span class="doccomment">/// This is unsafe as you are unable to distinguish the case between</span>
-    <span class="doccomment">/// the value already existing, OR the value being an incorrect type to add</span>
-    <span class="doccomment">/// to the set.</span>
-    <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">insert</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">insert_checked</span>(<span class="ident">value</span>).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
+<span class="kw">pub trait </span>ValueSetT: std::fmt::Debug + DynClone {
+    <span class="doccomment">/// # Safety
+    /// This is unsafe as you are unable to distinguish the case between
+    /// the value already existing, OR the value being an incorrect type to add
+    /// to the set.
+    </span><span class="kw">unsafe fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; bool {
+        <span class="self">self</span>.insert_checked(value).unwrap_or(<span class="bool-val">false</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">insert_checked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>insert_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>);
+    <span class="kw">fn </span>clear(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="kw">fn</span> <span class="ident">remove</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool;
 
-    <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool;
 
-    <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn </span>substring(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool;
 
-    <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pv</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn </span>lessthan(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool;
 
-    <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span>;
+    <span class="kw">fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
-    <span class="kw">fn</span> <span class="ident">generate_idx_eq_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>generate_idx_eq_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;String&gt;;
 
-    <span class="kw">fn</span> <span class="ident">syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SyntaxType</span>;
+    <span class="kw">fn </span>syntax(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SyntaxType;
 
-    <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">schema_attr</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool;
 
-    <span class="kw">fn</span> <span class="ident">to_proto_string_clone_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">String</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt;;
 
-    <span class="kw">fn</span> <span class="ident">to_db_valueset_v2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DbValueSetV2</span>;
+    <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2;
 
-    <span class="kw">fn</span> <span class="ident">to_partialvalue_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt;;
 
-    <span class="kw">fn</span> <span class="ident">to_value_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt;;
 
-    <span class="kw">fn</span> <span class="ident">equal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool;
 
-    <span class="kw">fn</span> <span class="ident">merge</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>;
+    <span class="kw">fn </span>merge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt;;
 
-    <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>
-    }
+    <span class="kw">fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.len() == <span class="number">0
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">migrate_iutf8_iname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>migrate_iutf8_iname(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;ValueSet&gt;, OperationError&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_ssh_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>get_ssh_tag(<span class="kw-2">&amp;</span><span class="self">self</span>, _tag: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_ref_uuid_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>as_ref_uuid_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Uuid&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_utf8_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;as_utf8_iter should not be called on {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">syntax</span>());
+    <span class="kw">fn </span>as_utf8_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
+        <span class="macro">error!</span>(<span class="string">&quot;as_utf8_iter should not be called on {:?}&quot;</span>, <span class="self">self</span>.syntax());
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_iutf8_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;as_iutf8_iter should not be called on {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">syntax</span>());
+    <span class="kw">fn </span>as_iutf8_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
+        <span class="macro">error!</span>(<span class="string">&quot;as_iutf8_iter should not be called on {:?}&quot;</span>, <span class="self">self</span>.syntax());
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_iname_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;as_iname_iter should not be called on {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">syntax</span>());
+    <span class="kw">fn </span>as_iname_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
+        <span class="macro">error!</span>(<span class="string">&quot;as_iname_iter should not be called on {:?}&quot;</span>, <span class="self">self</span>.syntax());
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_indextype_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">IndexType</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_indextype_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = IndexType&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;as_indextype_set should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_restricted_string_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_restricted_string_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;as_restricted_string_iter should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_oauthscope_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_oauthscope_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;as_oauthscope_iter should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_sshpubkey_str_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>as_sshpubkey_str_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_email_str_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>as_email_str_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_utf8_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_utf8_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_iutf8_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_iutf8_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_iname_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_iname_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_uuid_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">Uuid</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>as_uuid_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[Uuid; <span class="number">1</span>]&gt;&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_refer_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>as_refer_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;Uuid&gt;&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_bool_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">bool</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_bool_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[bool; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_uint32_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">u32</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_uint32_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[u32; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_syntax_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">SyntaxType</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_syntax_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[SyntaxType; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_index_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">IndexType</span>; <span class="number">3</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_index_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[IndexType; <span class="number">3</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_secret_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">String</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_secret_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[String; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_restricted_string_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_restricted_string_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_spn_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[(<span class="ident">String</span>, <span class="ident">String</span>); <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_spn_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[(String, String); <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_cid_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">Cid</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_cid_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[Cid; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_json_filter_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">ProtoFilter</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_json_filter_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[ProtoFilter; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_nsuniqueid_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">String</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_nsuniqueid_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[String; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_url_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">Url</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_url_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[Url; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_datetime_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">OffsetDateTime</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_datetime_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[OffsetDateTime; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_private_binary_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_private_binary_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[Vec&lt;u8&gt;; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_oauthscope_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_oauthscope_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_address_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SmolSet</span><span class="op">&lt;</span>[<span class="ident">Address</span>; <span class="number">1</span>]<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_address_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SmolSet&lt;[Address; <span class="number">1</span>]&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_credential_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Credential</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_credential_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, Credential&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_emailaddress_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_emailaddress_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>String, <span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;)&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_sshkey_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>as_sshkey_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, String&gt;&gt; {
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_oauthscopemap</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_oauthscopemap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, BTreeSet&lt;String&gt;&gt;&gt; {
         <span class="comment">/*
         error!(
             &quot;as_oauthscopemap should not be called on {:?}&quot;,
             self.syntax()
         );
-        */</span>
-        <span class="prelude-val">None</span>
-    }
+        */
+        </span><span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_publicbinary_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_publicbinary_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, Vec&lt;u8&gt;&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_intenttoken_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">IntentTokenState</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_intenttoken_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, IntentTokenState&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_passkey_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_passkey_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, (String, PasskeyV4)&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_devicekey_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, (<span class="ident">String</span>, <span class="ident">DeviceKeyV4</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_devicekey_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, (String, DeviceKeyV4)&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_value_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">1</span> {
-            <span class="prelude-val">None</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">to_value_iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>()
+    <span class="kw">fn </span>to_value_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Value&gt; {
+        <span class="kw">if </span><span class="self">self</span>.len() != <span class="number">1 </span>{
+            <span class="prelude-val">None
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.to_value_iter().take(<span class="number">1</span>).next()
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">to_proto_string_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">1</span> {
-            <span class="prelude-val">None</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">to_proto_string_clone_iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>()
+    <span class="kw">fn </span>to_proto_string_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="kw">if </span><span class="self">self</span>.len() != <span class="number">1 </span>{
+            <span class="prelude-val">None
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.to_proto_string_clone_iter().take(<span class="number">1</span>).next()
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">to_uuid_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;to_uuid_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">syntax</span>());
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>to_uuid_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
+        <span class="macro">error!</span>(<span class="string">&quot;to_uuid_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.syntax());
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_refer_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_refer_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_refer_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_bool_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;to_bool_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">syntax</span>());
-        <span class="prelude-val">None</span>
-    }
+    <span class="kw">fn </span>to_bool_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;bool&gt; {
+        <span class="macro">error!</span>(<span class="string">&quot;to_bool_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.syntax());
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_uint32_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_uint32_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u32&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_uint32_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_syntaxtype_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SyntaxType</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_syntaxtype_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;SyntaxType&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_syntaxtype_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_credential_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_credential_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_credential_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_secret_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_secret_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_secret_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_restricted_string_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_restricted_string_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_restricted_string_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_utf8_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;to_utf8_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">syntax</span>());
+    <span class="kw">fn </span>to_utf8_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+        <span class="macro">error!</span>(<span class="string">&quot;to_utf8_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.syntax());
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_iutf8_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_iutf8_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_iutf8_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_iname_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_iname_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_iname_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_datetime_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_datetime_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_datetime_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_url_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Url</span><span class="op">&gt;</span> {
-        <span class="macro">error!</span>(<span class="string">&quot;to_url_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">syntax</span>());
+    <span class="kw">fn </span>to_url_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Url&gt; {
+        <span class="macro">error!</span>(<span class="string">&quot;to_url_single should not be called on {:?}&quot;</span>, <span class="self">self</span>.syntax());
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_json_filter_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ProtoFilter</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_json_filter_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ProtoFilter&gt; {
         <span class="macro">error!</span>(
             <span class="string">&quot;to_json_filter_single should not be called on {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">syntax</span>()
+            <span class="self">self</span>.syntax()
         );
-        <span class="comment">// debug_assert!(false);</span>
-        <span class="prelude-val">None</span>
-    }
+        <span class="comment">// debug_assert!(false);
+        </span><span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_email_address_primary_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_email_address_primary_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_private_binary_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_private_binary_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_passkey_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PasskeyV4</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_passkey_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PasskeyV4&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_devicekey_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">DeviceKeyV4</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_devicekey_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DeviceKeyV4&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_session_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Session</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_session_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, Session&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_jws_key_es256_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_jws_key_es256_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>JwsSigner&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_jws_key_es256_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_jws_key_es256_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HashSet&lt;JwsSigner&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">to_jws_key_rs256_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>to_jws_key_rs256_single(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>JwsSigner&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
-    }
+        <span class="prelude-val">None
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">as_jws_key_rs256_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn </span>as_jws_key_rs256_set(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HashSet&lt;JwsSigner&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-        <span class="prelude-val">None</span>
+        <span class="prelude-val">None
+    </span>}
+}
+
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>ValueSet {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
+        <span class="self">self</span>.equal(other)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">ValueSet</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">equal</span>(<span class="ident">other</span>)
-    }
+<span class="kw">pub fn </span>uuid_to_proto_string(u: Uuid) -&gt; String {
+    u.as_hyphenated().to_string()
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">uuid_to_proto_string</span>(<span class="ident">u</span>: <span class="ident">Uuid</span>) -&gt; <span class="ident">String</span> {
-    <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>()
-}
-
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_result_value_iter</span>(
-    <span class="kw-2">mut</span> <span class="ident">iter</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Value</span>, <span class="ident">OperationError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">init</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">next</span>() {
-        <span class="ident">v</span>
-    } <span class="kw">else</span> {
+<span class="kw">pub fn </span>from_result_value_iter(
+    <span class="kw-2">mut </span>iter: <span class="kw">impl </span>Iterator&lt;Item = <span class="prelude-ty">Result</span>&lt;Value, OperationError&gt;&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+    <span class="kw">let </span>init = <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = iter.next() {
+        v
+    } <span class="kw">else </span>{
         <span class="macro">admin_error!</span>(<span class="string">&quot;Empty value iterator&quot;</span>);
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidValueState);
     };
 
-    <span class="kw">let</span> <span class="ident">init</span> <span class="op">=</span> <span class="ident">init</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>init = init<span class="question-mark">?</span>;
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vs</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">init</span> {
-        <span class="ident">Value::Utf8</span>(<span class="ident">s</span>) =&gt; <span class="ident">ValueSetUtf8::new</span>(<span class="ident">s</span>),
-        <span class="ident">Value::Iutf8</span>(<span class="ident">s</span>) =&gt; <span class="ident">ValueSetIutf8::new</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>),
-        <span class="ident">Value::Iname</span>(<span class="ident">s</span>) =&gt; <span class="ident">ValueSetIname::new</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>),
-        <span class="ident">Value::Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetUuid::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Refer</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetRefer::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Bool</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetBool::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Uint32</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetUint32::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Syntax</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetSyntax::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Index</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetIndex::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::SecretValue</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetSecret::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::RestrictedString</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetRestricted::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Spn</span>(<span class="ident">n</span>, <span class="ident">d</span>) =&gt; <span class="ident">ValueSetSpn::new</span>((<span class="ident">n</span>, <span class="ident">d</span>)),
-        <span class="ident">Value::Cid</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetCid::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::JsonFilt</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetJsonFilter::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Nsuniqueid</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetNsUniqueId::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Url</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetUrl::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::DateTime</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetDateTime::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::PrivateBinary</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetPrivateBinary::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::OauthScope</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetOauthScope::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Address</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetAddress::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Cred</span>(<span class="ident">t</span>, <span class="ident">c</span>) =&gt; <span class="ident">ValueSetCredential::new</span>(<span class="ident">t</span>, <span class="ident">c</span>),
-        <span class="ident">Value::SshKey</span>(<span class="ident">t</span>, <span class="ident">k</span>) =&gt; <span class="ident">ValueSetSshKey::new</span>(<span class="ident">t</span>, <span class="ident">k</span>),
-        <span class="ident">Value::OauthScopeMap</span>(<span class="ident">u</span>, <span class="ident">m</span>) =&gt; <span class="ident">ValueSetOauthScopeMap::new</span>(<span class="ident">u</span>, <span class="ident">m</span>),
-        <span class="ident">Value::PublicBinary</span>(<span class="ident">t</span>, <span class="ident">b</span>) =&gt; <span class="ident">ValueSetPublicBinary::new</span>(<span class="ident">t</span>, <span class="ident">b</span>),
-        <span class="ident">Value::IntentToken</span>(<span class="ident">u</span>, <span class="ident">s</span>) =&gt; <span class="ident">ValueSetIntentToken::new</span>(<span class="ident">u</span>, <span class="ident">s</span>),
-        <span class="ident">Value::EmailAddress</span>(<span class="ident">a</span>, <span class="kw">_</span>) =&gt; <span class="ident">ValueSetEmailAddress::new</span>(<span class="ident">a</span>),
-        <span class="ident">Value::PhoneNumber</span>(<span class="kw">_</span>, <span class="kw">_</span>)
-        <span class="op">|</span> <span class="ident">Value::Passkey</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
-        <span class="op">|</span> <span class="ident">Value::DeviceKey</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
-        <span class="op">|</span> <span class="ident">Value::TrustedDeviceEnrollment</span>(<span class="kw">_</span>)
-        <span class="op">|</span> <span class="ident">Value::Session</span>(<span class="kw">_</span>, <span class="kw">_</span>)
-        <span class="op">|</span> <span class="ident">Value::JwsKeyEs256</span>(<span class="kw">_</span>)
-        <span class="op">|</span> <span class="ident">Value::JwsKeyRs256</span>(<span class="kw">_</span>) =&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>vs: ValueSet = <span class="kw">match </span>init {
+        Value::Utf8(s) =&gt; ValueSetUtf8::new(s),
+        Value::Iutf8(s) =&gt; ValueSetIutf8::new(<span class="kw-2">&amp;</span>s),
+        Value::Iname(s) =&gt; ValueSetIname::new(<span class="kw-2">&amp;</span>s),
+        Value::Uuid(u) =&gt; ValueSetUuid::new(u),
+        Value::Refer(u) =&gt; ValueSetRefer::new(u),
+        Value::Bool(u) =&gt; ValueSetBool::new(u),
+        Value::Uint32(u) =&gt; ValueSetUint32::new(u),
+        Value::Syntax(u) =&gt; ValueSetSyntax::new(u),
+        Value::Index(u) =&gt; ValueSetIndex::new(u),
+        Value::SecretValue(u) =&gt; ValueSetSecret::new(u),
+        Value::RestrictedString(u) =&gt; ValueSetRestricted::new(u),
+        Value::Spn(n, d) =&gt; ValueSetSpn::new((n, d)),
+        Value::Cid(u) =&gt; ValueSetCid::new(u),
+        Value::JsonFilt(u) =&gt; ValueSetJsonFilter::new(u),
+        Value::Nsuniqueid(u) =&gt; ValueSetNsUniqueId::new(u),
+        Value::Url(u) =&gt; ValueSetUrl::new(u),
+        Value::DateTime(u) =&gt; ValueSetDateTime::new(u),
+        Value::PrivateBinary(u) =&gt; ValueSetPrivateBinary::new(u),
+        Value::OauthScope(u) =&gt; ValueSetOauthScope::new(u),
+        Value::Address(u) =&gt; ValueSetAddress::new(u),
+        Value::Cred(t, c) =&gt; ValueSetCredential::new(t, c),
+        Value::SshKey(t, k) =&gt; ValueSetSshKey::new(t, k),
+        Value::OauthScopeMap(u, m) =&gt; ValueSetOauthScopeMap::new(u, m),
+        Value::PublicBinary(t, b) =&gt; ValueSetPublicBinary::new(t, b),
+        Value::IntentToken(u, s) =&gt; ValueSetIntentToken::new(u, s),
+        Value::EmailAddress(a, <span class="kw">_</span>) =&gt; ValueSetEmailAddress::new(a),
+        Value::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>)
+        | Value::Passkey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
+        | Value::DeviceKey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
+        | Value::TrustedDeviceEnrollment(<span class="kw">_</span>)
+        | Value::Session(<span class="kw">_</span>, <span class="kw">_</span>)
+        | Value::JwsKeyEs256(<span class="kw">_</span>)
+        | Value::JwsKeyRs256(<span class="kw">_</span>) =&gt; {
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidValueState);
         }
     };
 
-    <span class="kw">for</span> <span class="ident">maybe_v</span> <span class="kw">in</span> <span class="ident">iter</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">maybe_v</span><span class="question-mark">?</span>;
-        <span class="comment">// Need to error if wrong type (but shouldn&#39;t be due to the way qs works)</span>
-        <span class="ident">vs</span>.<span class="ident">insert_checked</span>(<span class="ident">v</span>)<span class="question-mark">?</span>;
+    <span class="kw">for </span>maybe_v <span class="kw">in </span>iter {
+        <span class="kw">let </span>v = maybe_v<span class="question-mark">?</span>;
+        <span class="comment">// Need to error if wrong type (but shouldn&#39;t be due to the way qs works)
+        </span>vs.insert_checked(v)<span class="question-mark">?</span>;
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">vs</span>)
+    <span class="prelude-val">Ok</span>(vs)
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_value_iter</span>(<span class="kw-2">mut</span> <span class="ident">iter</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">init</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">next</span>() {
-        <span class="ident">v</span>
-    } <span class="kw">else</span> {
+<span class="kw">pub fn </span>from_value_iter(<span class="kw-2">mut </span>iter: <span class="kw">impl </span>Iterator&lt;Item = Value&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+    <span class="kw">let </span>init = <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = iter.next() {
+        v
+    } <span class="kw">else </span>{
         <span class="macro">admin_error!</span>(<span class="string">&quot;Empty value iterator&quot;</span>);
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidValueState);
     };
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vs</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">init</span> {
-        <span class="ident">Value::Utf8</span>(<span class="ident">s</span>) =&gt; <span class="ident">ValueSetUtf8::new</span>(<span class="ident">s</span>),
-        <span class="ident">Value::Iutf8</span>(<span class="ident">s</span>) =&gt; <span class="ident">ValueSetIutf8::new</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>),
-        <span class="ident">Value::Iname</span>(<span class="ident">s</span>) =&gt; <span class="ident">ValueSetIname::new</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>),
-        <span class="ident">Value::Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetUuid::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Refer</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetRefer::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Bool</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetBool::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Uint32</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetUint32::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Syntax</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetSyntax::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Index</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetIndex::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::SecretValue</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetSecret::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::RestrictedString</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetRestricted::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Spn</span>(<span class="ident">n</span>, <span class="ident">d</span>) =&gt; <span class="ident">ValueSetSpn::new</span>((<span class="ident">n</span>, <span class="ident">d</span>)),
-        <span class="ident">Value::Cid</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetCid::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::JsonFilt</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetJsonFilter::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Nsuniqueid</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetNsUniqueId::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Url</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetUrl::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::DateTime</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetDateTime::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::PrivateBinary</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetPrivateBinary::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::OauthScope</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetOauthScope::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Address</span>(<span class="ident">u</span>) =&gt; <span class="ident">ValueSetAddress::new</span>(<span class="ident">u</span>),
-        <span class="ident">Value::Cred</span>(<span class="ident">t</span>, <span class="ident">c</span>) =&gt; <span class="ident">ValueSetCredential::new</span>(<span class="ident">t</span>, <span class="ident">c</span>),
-        <span class="ident">Value::SshKey</span>(<span class="ident">t</span>, <span class="ident">k</span>) =&gt; <span class="ident">ValueSetSshKey::new</span>(<span class="ident">t</span>, <span class="ident">k</span>),
-        <span class="ident">Value::OauthScopeMap</span>(<span class="ident">u</span>, <span class="ident">m</span>) =&gt; <span class="ident">ValueSetOauthScopeMap::new</span>(<span class="ident">u</span>, <span class="ident">m</span>),
-        <span class="ident">Value::PublicBinary</span>(<span class="ident">t</span>, <span class="ident">b</span>) =&gt; <span class="ident">ValueSetPublicBinary::new</span>(<span class="ident">t</span>, <span class="ident">b</span>),
-        <span class="ident">Value::IntentToken</span>(<span class="ident">u</span>, <span class="ident">s</span>) =&gt; <span class="ident">ValueSetIntentToken::new</span>(<span class="ident">u</span>, <span class="ident">s</span>),
-        <span class="ident">Value::EmailAddress</span>(<span class="ident">a</span>, <span class="kw">_</span>) =&gt; <span class="ident">ValueSetEmailAddress::new</span>(<span class="ident">a</span>),
-        <span class="ident">Value::Passkey</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>) =&gt; <span class="ident">ValueSetPasskey::new</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>),
-        <span class="ident">Value::DeviceKey</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>) =&gt; <span class="ident">ValueSetDeviceKey::new</span>(<span class="ident">u</span>, <span class="ident">t</span>, <span class="ident">k</span>),
-        <span class="ident">Value::JwsKeyEs256</span>(<span class="ident">k</span>) =&gt; <span class="ident">ValueSetJwsKeyEs256::new</span>(<span class="ident">k</span>),
-        <span class="ident">Value::JwsKeyRs256</span>(<span class="ident">k</span>) =&gt; <span class="ident">ValueSetJwsKeyRs256::new</span>(<span class="ident">k</span>),
-        <span class="ident">Value::Session</span>(<span class="ident">u</span>, <span class="ident">m</span>) =&gt; <span class="ident">ValueSetSession::new</span>(<span class="ident">u</span>, <span class="ident">m</span>),
-        <span class="ident">Value::PhoneNumber</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Value::TrustedDeviceEnrollment</span>(<span class="kw">_</span>) =&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>vs: ValueSet = <span class="kw">match </span>init {
+        Value::Utf8(s) =&gt; ValueSetUtf8::new(s),
+        Value::Iutf8(s) =&gt; ValueSetIutf8::new(<span class="kw-2">&amp;</span>s),
+        Value::Iname(s) =&gt; ValueSetIname::new(<span class="kw-2">&amp;</span>s),
+        Value::Uuid(u) =&gt; ValueSetUuid::new(u),
+        Value::Refer(u) =&gt; ValueSetRefer::new(u),
+        Value::Bool(u) =&gt; ValueSetBool::new(u),
+        Value::Uint32(u) =&gt; ValueSetUint32::new(u),
+        Value::Syntax(u) =&gt; ValueSetSyntax::new(u),
+        Value::Index(u) =&gt; ValueSetIndex::new(u),
+        Value::SecretValue(u) =&gt; ValueSetSecret::new(u),
+        Value::RestrictedString(u) =&gt; ValueSetRestricted::new(u),
+        Value::Spn(n, d) =&gt; ValueSetSpn::new((n, d)),
+        Value::Cid(u) =&gt; ValueSetCid::new(u),
+        Value::JsonFilt(u) =&gt; ValueSetJsonFilter::new(u),
+        Value::Nsuniqueid(u) =&gt; ValueSetNsUniqueId::new(u),
+        Value::Url(u) =&gt; ValueSetUrl::new(u),
+        Value::DateTime(u) =&gt; ValueSetDateTime::new(u),
+        Value::PrivateBinary(u) =&gt; ValueSetPrivateBinary::new(u),
+        Value::OauthScope(u) =&gt; ValueSetOauthScope::new(u),
+        Value::Address(u) =&gt; ValueSetAddress::new(u),
+        Value::Cred(t, c) =&gt; ValueSetCredential::new(t, c),
+        Value::SshKey(t, k) =&gt; ValueSetSshKey::new(t, k),
+        Value::OauthScopeMap(u, m) =&gt; ValueSetOauthScopeMap::new(u, m),
+        Value::PublicBinary(t, b) =&gt; ValueSetPublicBinary::new(t, b),
+        Value::IntentToken(u, s) =&gt; ValueSetIntentToken::new(u, s),
+        Value::EmailAddress(a, <span class="kw">_</span>) =&gt; ValueSetEmailAddress::new(a),
+        Value::Passkey(u, t, k) =&gt; ValueSetPasskey::new(u, t, k),
+        Value::DeviceKey(u, t, k) =&gt; ValueSetDeviceKey::new(u, t, k),
+        Value::JwsKeyEs256(k) =&gt; ValueSetJwsKeyEs256::new(k),
+        Value::JwsKeyRs256(k) =&gt; ValueSetJwsKeyRs256::new(k),
+        Value::Session(u, m) =&gt; ValueSetSession::new(u, m),
+        Value::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) | Value::TrustedDeviceEnrollment(<span class="kw">_</span>) =&gt; {
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidValueState);
         }
     };
 
-    <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="ident">iter</span> {
-        <span class="ident">vs</span>.<span class="ident">insert_checked</span>(<span class="ident">v</span>)<span class="question-mark">?</span>;
+    <span class="kw">for </span>v <span class="kw">in </span>iter {
+        vs.insert_checked(v)<span class="question-mark">?</span>;
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">vs</span>)
+    <span class="prelude-val">Ok</span>(vs)
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_db_valueset_v2</span>(<span class="ident">dbvs</span>: <span class="ident">DbValueSetV2</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="kw">match</span> <span class="ident">dbvs</span> {
-        <span class="ident">DbValueSetV2::Utf8</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetUtf8::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Iutf8</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetIutf8::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Iname</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetIname::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Uuid</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetUuid::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Reference</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetRefer::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Bool</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetBool::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Uint32</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetUint32::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::SyntaxType</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetSyntax::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::IndexType</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetIndex::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::SecretValue</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetSecret::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::RestrictedString</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetRestricted::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Spn</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetSpn::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Cid</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetCid::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::JsonFilter</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetJsonFilter::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::NsUniqueId</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetNsUniqueId::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Url</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetUrl::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::DateTime</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetDateTime::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::PrivateBinary</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetPrivateBinary::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::OauthScope</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetOauthScope::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Address</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetAddress::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Credential</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetCredential::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::SshKey</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetSshKey::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::OauthScopeMap</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetOauthScopeMap::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::PublicBinary</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetPublicBinary::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::IntentToken</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetIntentToken::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::EmailAddress</span>(<span class="ident">primary</span>, <span class="ident">set</span>) =&gt; <span class="ident">ValueSetEmailAddress::from_dbvs2</span>(<span class="ident">primary</span>, <span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Passkey</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetPasskey::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::DeviceKey</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetDeviceKey::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::Session</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetSession::from_dbvs2</span>(<span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::JwsKeyEs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetJwsKeyEs256::from_dbvs2</span>(<span class="kw-2">&amp;</span><span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::JwsKeyRs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">ValueSetJwsKeyEs256::from_dbvs2</span>(<span class="kw-2">&amp;</span><span class="ident">set</span>),
-        <span class="ident">DbValueSetV2::PhoneNumber</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">DbValueSetV2::TrustedDeviceEnrollment</span>(<span class="kw">_</span>) =&gt; {
+<span class="kw">pub fn </span>from_db_valueset_v2(dbvs: DbValueSetV2) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+    <span class="kw">match </span>dbvs {
+        DbValueSetV2::Utf8(set) =&gt; ValueSetUtf8::from_dbvs2(set),
+        DbValueSetV2::Iutf8(set) =&gt; ValueSetIutf8::from_dbvs2(set),
+        DbValueSetV2::Iname(set) =&gt; ValueSetIname::from_dbvs2(set),
+        DbValueSetV2::Uuid(set) =&gt; ValueSetUuid::from_dbvs2(set),
+        DbValueSetV2::Reference(set) =&gt; ValueSetRefer::from_dbvs2(set),
+        DbValueSetV2::Bool(set) =&gt; ValueSetBool::from_dbvs2(set),
+        DbValueSetV2::Uint32(set) =&gt; ValueSetUint32::from_dbvs2(set),
+        DbValueSetV2::SyntaxType(set) =&gt; ValueSetSyntax::from_dbvs2(set),
+        DbValueSetV2::IndexType(set) =&gt; ValueSetIndex::from_dbvs2(set),
+        DbValueSetV2::SecretValue(set) =&gt; ValueSetSecret::from_dbvs2(set),
+        DbValueSetV2::RestrictedString(set) =&gt; ValueSetRestricted::from_dbvs2(set),
+        DbValueSetV2::Spn(set) =&gt; ValueSetSpn::from_dbvs2(set),
+        DbValueSetV2::Cid(set) =&gt; ValueSetCid::from_dbvs2(set),
+        DbValueSetV2::JsonFilter(set) =&gt; ValueSetJsonFilter::from_dbvs2(set),
+        DbValueSetV2::NsUniqueId(set) =&gt; ValueSetNsUniqueId::from_dbvs2(set),
+        DbValueSetV2::Url(set) =&gt; ValueSetUrl::from_dbvs2(set),
+        DbValueSetV2::DateTime(set) =&gt; ValueSetDateTime::from_dbvs2(set),
+        DbValueSetV2::PrivateBinary(set) =&gt; ValueSetPrivateBinary::from_dbvs2(set),
+        DbValueSetV2::OauthScope(set) =&gt; ValueSetOauthScope::from_dbvs2(set),
+        DbValueSetV2::Address(set) =&gt; ValueSetAddress::from_dbvs2(set),
+        DbValueSetV2::Credential(set) =&gt; ValueSetCredential::from_dbvs2(set),
+        DbValueSetV2::SshKey(set) =&gt; ValueSetSshKey::from_dbvs2(set),
+        DbValueSetV2::OauthScopeMap(set) =&gt; ValueSetOauthScopeMap::from_dbvs2(set),
+        DbValueSetV2::PublicBinary(set) =&gt; ValueSetPublicBinary::from_dbvs2(set),
+        DbValueSetV2::IntentToken(set) =&gt; ValueSetIntentToken::from_dbvs2(set),
+        DbValueSetV2::EmailAddress(primary, set) =&gt; ValueSetEmailAddress::from_dbvs2(primary, set),
+        DbValueSetV2::Passkey(set) =&gt; ValueSetPasskey::from_dbvs2(set),
+        DbValueSetV2::DeviceKey(set) =&gt; ValueSetDeviceKey::from_dbvs2(set),
+        DbValueSetV2::Session(set) =&gt; ValueSetSession::from_dbvs2(set),
+        DbValueSetV2::JwsKeyEs256(set) =&gt; ValueSetJwsKeyEs256::from_dbvs2(<span class="kw-2">&amp;</span>set),
+        DbValueSetV2::JwsKeyRs256(set) =&gt; ValueSetJwsKeyEs256::from_dbvs2(<span class="kw-2">&amp;</span>set),
+        DbValueSetV2::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) | DbValueSetV2::TrustedDeviceEnrollment(<span class="kw">_</span>) =&gt; {
             <span class="macro">unimplemented!</span>()
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/unix_config.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>unix_config.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unix_common/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_unix_int/src/unix_config.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>unix_config.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_unix_common/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_unix_common/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -245,252 +245,260 @@
 <span id="245">245</span>
 <span id="246">246</span>
 <span id="247">247</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::env</span>;
-<span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Display</span>, <span class="ident">Formatter</span>};
-<span class="kw">use</span> <span class="ident">std::fs::File</span>;
-<span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">ErrorKind</span>, <span class="ident">Read</span>};
-<span class="kw">use</span> <span class="ident">std::path::Path</span>;
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+</pre><pre class="rust"><code><span class="kw">use </span>std::env;
+<span class="kw">use </span>std::fmt::{Display, Formatter};
+<span class="kw">use </span>std::fs::File;
+<span class="kw">use </span>std::io::{ErrorKind, Read};
+<span class="kw">use </span>std::path::Path;
 
-<span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
+<span class="kw">use </span>serde::Deserialize;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{
-    <span class="ident">DEFAULT_CACHE_TIMEOUT</span>, <span class="ident">DEFAULT_CONN_TIMEOUT</span>, <span class="ident">DEFAULT_DB_PATH</span>, <span class="ident">DEFAULT_GID_ATTR_MAP</span>,
-    <span class="ident">DEFAULT_HOME_ALIAS</span>, <span class="ident">DEFAULT_HOME_ATTR</span>, <span class="ident">DEFAULT_HOME_PREFIX</span>, <span class="ident">DEFAULT_SHELL</span>, <span class="ident">DEFAULT_SOCK_PATH</span>,
-    <span class="ident">DEFAULT_TASK_SOCK_PATH</span>, <span class="ident">DEFAULT_UID_ATTR_MAP</span>,
+<span class="kw">use </span><span class="kw">crate</span>::constants::{
+    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
+    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH,
+    DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP, DEFAULT_USE_ETC_SKEL,
 };
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">struct</span> <span class="ident">ConfigInt</span> {
-    <span class="ident">db_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">sock_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">task_sock_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">conn_timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">cache_timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
-    <span class="ident">pam_allowed_login_groups</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">default_shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">home_prefix</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">home_attr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">home_alias</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">uid_attr_map</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">gid_attr_map</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">struct </span>ConfigInt {
+    db_path: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    sock_path: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    task_sock_path: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    conn_timeout: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    cache_timeout: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    pam_allowed_login_groups: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    default_shell: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    home_prefix: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    home_attr: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    home_alias: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    use_etc_skel: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    uid_attr_map: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    gid_attr_map: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">HomeAttr</span> {
-    <span class="ident">Uuid</span>,
-    <span class="ident">Spn</span>,
-    <span class="ident">Name</span>,
+<span class="attribute">#[derive(Debug, Copy, Clone)]
+</span><span class="kw">pub enum </span>HomeAttr {
+    Uuid,
+    Spn,
+    Name,
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">HomeAttr</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+<span class="kw">impl </span>Display <span class="kw">for </span>HomeAttr {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;{}&quot;</span>,
-            <span class="kw">match</span> <span class="self">self</span> {
-                <span class="ident">HomeAttr::Uuid</span> =&gt; <span class="string">&quot;UUID&quot;</span>,
-                <span class="ident">HomeAttr::Spn</span> =&gt; <span class="string">&quot;SPN&quot;</span>,
-                <span class="ident">HomeAttr::Name</span> =&gt; <span class="string">&quot;Name&quot;</span>,
+            <span class="kw">match </span><span class="self">self </span>{
+                HomeAttr::Uuid =&gt; <span class="string">&quot;UUID&quot;</span>,
+                HomeAttr::Spn =&gt; <span class="string">&quot;SPN&quot;</span>,
+                HomeAttr::Name =&gt; <span class="string">&quot;Name&quot;</span>,
             }
         )
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UidAttr</span> {
-    <span class="ident">Name</span>,
-    <span class="ident">Spn</span>,
+<span class="attribute">#[derive(Debug, Copy, Clone)]
+</span><span class="kw">pub enum </span>UidAttr {
+    Name,
+    Spn,
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">UidAttr</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+<span class="kw">impl </span>Display <span class="kw">for </span>UidAttr {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;{}&quot;</span>,
-            <span class="kw">match</span> <span class="self">self</span> {
-                <span class="ident">UidAttr::Name</span> =&gt; <span class="string">&quot;Name&quot;</span>,
-                <span class="ident">UidAttr::Spn</span> =&gt; <span class="string">&quot;SPN&quot;</span>,
+            <span class="kw">match </span><span class="self">self </span>{
+                UidAttr::Name =&gt; <span class="string">&quot;Name&quot;</span>,
+                UidAttr::Spn =&gt; <span class="string">&quot;SPN&quot;</span>,
             }
         )
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KanidmUnixdConfig</span> {
-    <span class="kw">pub</span> <span class="ident">db_path</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">sock_path</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">task_sock_path</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">conn_timeout</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">cache_timeout</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">unix_sock_timeout</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">pam_allowed_login_groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">default_shell</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">home_prefix</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">home_attr</span>: <span class="ident">HomeAttr</span>,
-    <span class="kw">pub</span> <span class="ident">home_alias</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HomeAttr</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">uid_attr_map</span>: <span class="ident">UidAttr</span>,
-    <span class="kw">pub</span> <span class="ident">gid_attr_map</span>: <span class="ident">UidAttr</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>KanidmUnixdConfig {
+    <span class="kw">pub </span>db_path: String,
+    <span class="kw">pub </span>sock_path: String,
+    <span class="kw">pub </span>task_sock_path: String,
+    <span class="kw">pub </span>conn_timeout: u64,
+    <span class="kw">pub </span>cache_timeout: u64,
+    <span class="kw">pub </span>unix_sock_timeout: u64,
+    <span class="kw">pub </span>pam_allowed_login_groups: Vec&lt;String&gt;,
+    <span class="kw">pub </span>default_shell: String,
+    <span class="kw">pub </span>home_prefix: String,
+    <span class="kw">pub </span>home_attr: HomeAttr,
+    <span class="kw">pub </span>home_alias: <span class="prelude-ty">Option</span>&lt;HomeAttr&gt;,
+    <span class="kw">pub </span>use_etc_skel: bool,
+    <span class="kw">pub </span>uid_attr_map: UidAttr,
+    <span class="kw">pub </span>gid_attr_map: UidAttr,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">KanidmUnixdConfig</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">KanidmUnixdConfig::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>KanidmUnixdConfig {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        KanidmUnixdConfig::new()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">KanidmUnixdConfig</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;db_path: {}&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">db_path</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;sock_path: {}&quot;</span>, <span class="self">self</span>.<span class="ident">sock_path</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;task_sock_path: {}&quot;</span>, <span class="self">self</span>.<span class="ident">task_sock_path</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;conn_timeout: {}&quot;</span>, <span class="self">self</span>.<span class="ident">conn_timeout</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;unix_sock_timeout: {}&quot;</span>, <span class="self">self</span>.<span class="ident">unix_sock_timeout</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;cache_timeout: {}&quot;</span>, <span class="self">self</span>.<span class="ident">cache_timeout</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>Display <span class="kw">for </span>KanidmUnixdConfig {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;db_path: {}&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.db_path)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;sock_path: {}&quot;</span>, <span class="self">self</span>.sock_path)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;task_sock_path: {}&quot;</span>, <span class="self">self</span>.task_sock_path)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;conn_timeout: {}&quot;</span>, <span class="self">self</span>.conn_timeout)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;unix_sock_timeout: {}&quot;</span>, <span class="self">self</span>.unix_sock_timeout)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;cache_timeout: {}&quot;</span>, <span class="self">self</span>.cache_timeout)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
-            <span class="ident">f</span>,
+            f,
             <span class="string">&quot;pam_allowed_login_groups: {:#?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">pam_allowed_login_groups</span>
+            <span class="self">self</span>.pam_allowed_login_groups
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;default_shell: {}&quot;</span>, <span class="self">self</span>.<span class="ident">default_shell</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;home_prefix: {}&quot;</span>, <span class="self">self</span>.<span class="ident">home_prefix</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;home_attr: {}&quot;</span>, <span class="self">self</span>.<span class="ident">home_attr</span>)<span class="question-mark">?</span>;
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">home_alias</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">val</span>) =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;home_alias: {}&quot;</span>, <span class="ident">val</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;home_alias: unset&quot;</span>)<span class="question-mark">?</span>,
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;default_shell: {}&quot;</span>, <span class="self">self</span>.default_shell)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;home_prefix: {}&quot;</span>, <span class="self">self</span>.home_prefix)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;home_attr: {}&quot;</span>, <span class="self">self</span>.home_attr)<span class="question-mark">?</span>;
+        <span class="kw">match </span><span class="self">self</span>.home_alias {
+            <span class="prelude-val">Some</span>(val) =&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;home_alias: {}&quot;</span>, val)<span class="question-mark">?</span>,
+            <span class="prelude-val">None </span>=&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;home_alias: unset&quot;</span>)<span class="question-mark">?</span>,
         }
 
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;uid_attr_map: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uid_attr_map</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;gid_attr_map: {}&quot;</span>, <span class="self">self</span>.<span class="ident">gid_attr_map</span>)
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;uid_attr_map: {}&quot;</span>, <span class="self">self</span>.uid_attr_map)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;gid_attr_map: {}&quot;</span>, <span class="self">self</span>.gid_attr_map)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">KanidmUnixdConfig</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">db_path</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">env::var</span>(<span class="string">&quot;KANIDM_DB_PATH&quot;</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">val</span>) =&gt; <span class="ident">val</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="ident">DEFAULT_DB_PATH</span>.<span class="ident">into</span>(),
+<span class="kw">impl </span>KanidmUnixdConfig {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>db_path = <span class="kw">match </span>env::var(<span class="string">&quot;KANIDM_DB_PATH&quot;</span>) {
+            <span class="prelude-val">Ok</span>(val) =&gt; val,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; DEFAULT_DB_PATH.into(),
         };
-        <span class="ident">KanidmUnixdConfig</span> {
-            <span class="ident">db_path</span>,
-            <span class="ident">sock_path</span>: <span class="ident">DEFAULT_SOCK_PATH</span>.<span class="ident">to_string</span>(),
-            <span class="ident">task_sock_path</span>: <span class="ident">DEFAULT_TASK_SOCK_PATH</span>.<span class="ident">to_string</span>(),
-            <span class="ident">conn_timeout</span>: <span class="ident">DEFAULT_CONN_TIMEOUT</span>,
-            <span class="ident">unix_sock_timeout</span>: <span class="ident">DEFAULT_CONN_TIMEOUT</span> <span class="op">*</span> <span class="number">2</span>,
-            <span class="ident">cache_timeout</span>: <span class="ident">DEFAULT_CACHE_TIMEOUT</span>,
-            <span class="ident">pam_allowed_login_groups</span>: <span class="ident">Vec::new</span>(),
-            <span class="ident">default_shell</span>: <span class="ident">DEFAULT_SHELL</span>.<span class="ident">to_string</span>(),
-            <span class="ident">home_prefix</span>: <span class="ident">DEFAULT_HOME_PREFIX</span>.<span class="ident">to_string</span>(),
-            <span class="ident">home_attr</span>: <span class="ident">DEFAULT_HOME_ATTR</span>,
-            <span class="ident">home_alias</span>: <span class="ident">DEFAULT_HOME_ALIAS</span>,
-            <span class="ident">uid_attr_map</span>: <span class="ident">DEFAULT_UID_ATTR_MAP</span>,
-            <span class="ident">gid_attr_map</span>: <span class="ident">DEFAULT_GID_ATTR_MAP</span>,
+        KanidmUnixdConfig {
+            db_path,
+            sock_path: DEFAULT_SOCK_PATH.to_string(),
+            task_sock_path: DEFAULT_TASK_SOCK_PATH.to_string(),
+            conn_timeout: DEFAULT_CONN_TIMEOUT,
+            unix_sock_timeout: DEFAULT_CONN_TIMEOUT * <span class="number">2</span>,
+            cache_timeout: DEFAULT_CACHE_TIMEOUT,
+            pam_allowed_login_groups: Vec::new(),
+            default_shell: DEFAULT_SHELL.to_string(),
+            home_prefix: DEFAULT_HOME_PREFIX.to_string(),
+            home_attr: DEFAULT_HOME_ATTR,
+            home_alias: DEFAULT_HOME_ALIAS,
+            use_etc_skel: DEFAULT_USE_ETC_SKEL,
+            uid_attr_map: DEFAULT_UID_ATTR_MAP,
+            gid_attr_map: DEFAULT_GID_ATTR_MAP,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_options_from_optional_config</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">std::fmt::Debug</span><span class="op">&gt;</span>(
+    <span class="kw">pub fn </span>read_options_from_optional_config&lt;P: AsRef&lt;Path&gt; + std::fmt::Debug&gt;(
         <span class="self">self</span>,
-        <span class="ident">config_path</span>: <span class="ident">P</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
-        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to load configuration from {:#?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">config_path</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::open</span>(<span class="kw-2">&amp;</span><span class="ident">config_path</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; {
-                <span class="macro">debug!</span>(<span class="string">&quot;Successfully opened configuration file {:#?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">config_path</span>);
-                <span class="ident">f</span>
+        config_path: P,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;Attempting to load configuration from {:#?}&quot;</span>, <span class="kw-2">&amp;</span>config_path);
+        <span class="kw">let </span><span class="kw-2">mut </span>f = <span class="kw">match </span>File::open(<span class="kw-2">&amp;</span>config_path) {
+            <span class="prelude-val">Ok</span>(f) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;Successfully opened configuration file {:#?}&quot;</span>, <span class="kw-2">&amp;</span>config_path);
+                f
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">kind</span>() {
-                    <span class="ident">ErrorKind::NotFound</span> =&gt; {
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">match </span>e.kind() {
+                    ErrorKind::NotFound =&gt; {
                         <span class="macro">debug!</span>(
                             <span class="string">&quot;Configuration file {:#?} not found, skipping.&quot;</span>,
-                            <span class="kw-2">&amp;</span><span class="ident">config_path</span>
+                            <span class="kw-2">&amp;</span>config_path
                         );
                     }
-                    <span class="ident">ErrorKind::PermissionDenied</span> =&gt; {
+                    ErrorKind::PermissionDenied =&gt; {
                         <span class="macro">warn!</span>(
                             <span class="string">&quot;Permission denied loading configuration file {:#?}, skipping.&quot;</span>,
-                            <span class="kw-2">&amp;</span><span class="ident">config_path</span>
+                            <span class="kw-2">&amp;</span>config_path
                         );
                     }
-                    <span class="kw">_</span> =&gt; {
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">debug!</span>(
                             <span class="string">&quot;Unable to open config file {:#?} [{:?}], skipping ...&quot;</span>,
-                            <span class="kw-2">&amp;</span><span class="ident">config_path</span>, <span class="ident">e</span>
+                            <span class="kw-2">&amp;</span>config_path, e
                         );
                     }
                 };
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="self">self</span>);
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">self</span>);
             }
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">contents</span> <span class="op">=</span> <span class="ident">String::new</span>();
-        <span class="ident">f</span>.<span class="ident">read_to_string</span>(<span class="kw-2">&amp;mut</span> <span class="ident">contents</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>contents = String::new();
+        f.read_to_string(<span class="kw-2">&amp;mut </span>contents)
+            .map_err(|e| <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, e))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">config</span>: <span class="ident">ConfigInt</span> <span class="op">=</span>
-            <span class="ident">toml::from_str</span>(<span class="ident">contents</span>.<span class="ident">as_str</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>config: ConfigInt =
+            toml::from_str(contents.as_str()).map_err(|e| <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, e))<span class="question-mark">?</span>;
 
-        <span class="comment">// Now map the values into our config.</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">KanidmUnixdConfig</span> {
-            <span class="ident">db_path</span>: <span class="ident">config</span>.<span class="ident">db_path</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">db_path</span>),
-            <span class="ident">sock_path</span>: <span class="ident">config</span>.<span class="ident">sock_path</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">sock_path</span>),
-            <span class="ident">task_sock_path</span>: <span class="ident">config</span>.<span class="ident">task_sock_path</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">task_sock_path</span>),
-            <span class="ident">conn_timeout</span>: <span class="ident">config</span>.<span class="ident">conn_timeout</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">conn_timeout</span>),
-            <span class="ident">unix_sock_timeout</span>: <span class="ident">config</span>.<span class="ident">conn_timeout</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">conn_timeout</span>) <span class="op">*</span> <span class="number">2</span>,
-            <span class="ident">cache_timeout</span>: <span class="ident">config</span>.<span class="ident">cache_timeout</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">cache_timeout</span>),
-            <span class="ident">pam_allowed_login_groups</span>: <span class="ident">config</span>
-                .<span class="ident">pam_allowed_login_groups</span>
-                .<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">pam_allowed_login_groups</span>),
-            <span class="ident">default_shell</span>: <span class="ident">config</span>.<span class="ident">default_shell</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">default_shell</span>),
-            <span class="ident">home_prefix</span>: <span class="ident">config</span>.<span class="ident">home_prefix</span>.<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">home_prefix</span>),
-            <span class="ident">home_attr</span>: <span class="ident">config</span>
-                .<span class="ident">home_attr</span>
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_str</span>() {
-                    <span class="string">&quot;uuid&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">HomeAttr::Uuid</span>),
-                    <span class="string">&quot;spn&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">HomeAttr::Spn</span>),
-                    <span class="string">&quot;name&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">HomeAttr::Name</span>),
-                    <span class="kw">_</span> =&gt; {
+        <span class="comment">// Now map the values into our config.
+        </span><span class="prelude-val">Ok</span>(KanidmUnixdConfig {
+            db_path: config.db_path.unwrap_or(<span class="self">self</span>.db_path),
+            sock_path: config.sock_path.unwrap_or(<span class="self">self</span>.sock_path),
+            task_sock_path: config.task_sock_path.unwrap_or(<span class="self">self</span>.task_sock_path),
+            conn_timeout: config.conn_timeout.unwrap_or(<span class="self">self</span>.conn_timeout),
+            unix_sock_timeout: config.conn_timeout.unwrap_or(<span class="self">self</span>.conn_timeout) * <span class="number">2</span>,
+            cache_timeout: config.cache_timeout.unwrap_or(<span class="self">self</span>.cache_timeout),
+            pam_allowed_login_groups: config
+                .pam_allowed_login_groups
+                .unwrap_or(<span class="self">self</span>.pam_allowed_login_groups),
+            default_shell: config.default_shell.unwrap_or(<span class="self">self</span>.default_shell),
+            home_prefix: config.home_prefix.unwrap_or(<span class="self">self</span>.home_prefix),
+            home_attr: config
+                .home_attr
+                .and_then(|v| <span class="kw">match </span>v.as_str() {
+                    <span class="string">&quot;uuid&quot; </span>=&gt; <span class="prelude-val">Some</span>(HomeAttr::Uuid),
+                    <span class="string">&quot;spn&quot; </span>=&gt; <span class="prelude-val">Some</span>(HomeAttr::Spn),
+                    <span class="string">&quot;name&quot; </span>=&gt; <span class="prelude-val">Some</span>(HomeAttr::Name),
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">warn!</span>(<span class="string">&quot;Invalid home_attr configured, using default ...&quot;</span>);
-                        <span class="prelude-val">None</span>
-                    }
+                        <span class="prelude-val">None
+                    </span>}
                 })
-                .<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">home_attr</span>),
-            <span class="ident">home_alias</span>: <span class="ident">config</span>
-                .<span class="ident">home_alias</span>
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_str</span>() {
-                    <span class="string">&quot;none&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">None</span>),
-                    <span class="string">&quot;uuid&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(<span class="ident">HomeAttr::Uuid</span>)),
-                    <span class="string">&quot;spn&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(<span class="ident">HomeAttr::Spn</span>)),
-                    <span class="string">&quot;name&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(<span class="ident">HomeAttr::Name</span>)),
-                    <span class="kw">_</span> =&gt; {
+                .unwrap_or(<span class="self">self</span>.home_attr),
+            home_alias: config
+                .home_alias
+                .and_then(|v| <span class="kw">match </span>v.as_str() {
+                    <span class="string">&quot;none&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">None</span>),
+                    <span class="string">&quot;uuid&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(HomeAttr::Uuid)),
+                    <span class="string">&quot;spn&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(HomeAttr::Spn)),
+                    <span class="string">&quot;name&quot; </span>=&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(HomeAttr::Name)),
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">warn!</span>(<span class="string">&quot;Invalid home_alias configured, using default ...&quot;</span>);
-                        <span class="prelude-val">None</span>
-                    }
+                        <span class="prelude-val">None
+                    </span>}
                 })
-                .<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">home_alias</span>),
-            <span class="ident">uid_attr_map</span>: <span class="ident">config</span>
-                .<span class="ident">uid_attr_map</span>
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_str</span>() {
-                    <span class="string">&quot;spn&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UidAttr::Spn</span>),
-                    <span class="string">&quot;name&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UidAttr::Name</span>),
-                    <span class="kw">_</span> =&gt; {
+                .unwrap_or(<span class="self">self</span>.home_alias),
+            use_etc_skel: config.use_etc_skel.unwrap_or(<span class="self">self</span>.use_etc_skel),
+            uid_attr_map: config
+                .uid_attr_map
+                .and_then(|v| <span class="kw">match </span>v.as_str() {
+                    <span class="string">&quot;spn&quot; </span>=&gt; <span class="prelude-val">Some</span>(UidAttr::Spn),
+                    <span class="string">&quot;name&quot; </span>=&gt; <span class="prelude-val">Some</span>(UidAttr::Name),
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">warn!</span>(<span class="string">&quot;Invalid uid_attr_map configured, using default ...&quot;</span>);
-                        <span class="prelude-val">None</span>
-                    }
+                        <span class="prelude-val">None
+                    </span>}
                 })
-                .<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">uid_attr_map</span>),
-            <span class="ident">gid_attr_map</span>: <span class="ident">config</span>
-                .<span class="ident">gid_attr_map</span>
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_str</span>() {
-                    <span class="string">&quot;spn&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UidAttr::Spn</span>),
-                    <span class="string">&quot;name&quot;</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UidAttr::Name</span>),
-                    <span class="kw">_</span> =&gt; {
+                .unwrap_or(<span class="self">self</span>.uid_attr_map),
+            gid_attr_map: config
+                .gid_attr_map
+                .and_then(|v| <span class="kw">match </span>v.as_str() {
+                    <span class="string">&quot;spn&quot; </span>=&gt; <span class="prelude-val">Some</span>(UidAttr::Spn),
+                    <span class="string">&quot;name&quot; </span>=&gt; <span class="prelude-val">Some</span>(UidAttr::Name),
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">warn!</span>(<span class="string">&quot;Invalid gid_attr_map configured, using default ...&quot;</span>);
-                        <span class="prelude-val">None</span>
-                    }
+                        <span class="prelude-val">None
+                    </span>}
                 })
-                .<span class="ident">unwrap_or</span>(<span class="self">self</span>.<span class="ident">gid_attr_map</span>),
+                .unwrap_or(<span class="self">self</span>.gid_attr_map),
         })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unix_common" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_unix_common" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/utils.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>utils.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/utils.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>utils.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -221,137 +221,137 @@
 <span id="221">221</span>
 <span id="222">222</span>
 <span id="223">223</span>
-</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>))]</span>
-<span class="kw">use</span> <span class="ident">std::fs::Metadata</span>;
-<span class="kw">use</span> <span class="ident">std::io::ErrorKind</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">std::os::linux::fs::MetadataExt</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;macos&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">std::os::macos::fs::MetadataExt</span>;
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>};
+</pre><pre class="rust"><code><span class="attribute">#[cfg(not(target_family = <span class="string">&quot;windows&quot;</span>))]
+</span><span class="kw">use </span>std::fs::Metadata;
+<span class="kw">use </span>std::io::ErrorKind;
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
+</span><span class="kw">use </span>std::os::linux::fs::MetadataExt;
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;macos&quot;</span>)]
+</span><span class="kw">use </span>std::os::macos::fs::MetadataExt;
+<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::time::{Duration, SystemTime};
 
-<span class="kw">use</span> <span class="ident">filetime::FileTime</span>;
-<span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
-<span class="kw">use</span> <span class="ident">rand::distributions::Distribution</span>;
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">thread_rng</span>, <span class="ident">Rng</span>};
-<span class="kw">use</span> <span class="ident">touch::file</span> <span class="kw">as</span> <span class="ident">touch_file</span>;
-<span class="comment">// #[cfg(target_os = &quot;windows&quot;)]</span>
-<span class="comment">// use std::os::windows::fs::MetadataExt;</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">users</span>::{<span class="ident">get_current_gid</span>, <span class="ident">get_current_uid</span>};
-<span class="kw">use</span> <span class="ident">uuid</span>::{<span class="ident">Builder</span>, <span class="ident">Uuid</span>};
+<span class="kw">use </span>filetime::FileTime;
+<span class="kw">use </span>hashbrown::HashSet;
+<span class="kw">use </span>rand::distributions::Distribution;
+<span class="kw">use </span>rand::{thread_rng, Rng};
+<span class="kw">use </span>touch::file <span class="kw">as </span>touch_file;
+<span class="comment">// #[cfg(target_os = &quot;windows&quot;)]
+// use std::os::windows::fs::MetadataExt;
+</span><span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">use </span>users::{get_current_gid, get_current_uid};
+<span class="kw">use </span>uuid::{Builder, Uuid};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DistinctAlpha</span>;
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>DistinctAlpha;
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Sid</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="number">4</span>];
+<span class="kw">pub type </span>Sid = [u8; <span class="number">4</span>];
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">uuid_to_gid_u32</span>(<span class="ident">u</span>: <span class="ident">Uuid</span>) -&gt; <span class="ident">u32</span> {
-    <span class="kw">let</span> <span class="ident">b_ref</span> <span class="op">=</span> <span class="ident">u</span>.<span class="ident">as_bytes</span>();
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
-    <span class="ident">x</span>.<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">b_ref</span>[<span class="number">12</span>..<span class="number">16</span>]);
-    <span class="ident">u32::from_be_bytes</span>(<span class="ident">x</span>)
+<span class="kw">pub fn </span>uuid_to_gid_u32(u: Uuid) -&gt; u32 {
+    <span class="kw">let </span>b_ref = u.as_bytes();
+    <span class="kw">let </span><span class="kw-2">mut </span>x: [u8; <span class="number">4</span>] = [<span class="number">0</span>; <span class="number">4</span>];
+    x.clone_from_slice(<span class="kw-2">&amp;</span>b_ref[<span class="number">12</span>..<span class="number">16</span>]);
+    u32::from_be_bytes(x)
 }
 
-<span class="kw">fn</span> <span class="ident">uuid_from_u64_u32</span>(<span class="ident">a</span>: <span class="ident">u64</span>, <span class="ident">b</span>: <span class="ident">u32</span>, <span class="ident">sid</span>: <span class="ident">Sid</span>) -&gt; <span class="ident">Uuid</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">16</span>);
-    <span class="ident">v</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">to_be_bytes</span>());
-    <span class="ident">v</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">to_be_bytes</span>());
-    <span class="ident">v</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">sid</span>);
+<span class="kw">fn </span>uuid_from_u64_u32(a: u64, b: u32, sid: Sid) -&gt; Uuid {
+    <span class="kw">let </span><span class="kw-2">mut </span>v: Vec&lt;u8&gt; = Vec::with_capacity(<span class="number">16</span>);
+    v.extend_from_slice(<span class="kw-2">&amp;</span>a.to_be_bytes());
+    v.extend_from_slice(<span class="kw-2">&amp;</span>b.to_be_bytes());
+    v.extend_from_slice(<span class="kw-2">&amp;</span>sid);
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-    <span class="ident">Builder::from_slice</span>(<span class="ident">v</span>.<span class="ident">as_slice</span>())
-        .<span class="ident">expect</span>(<span class="string">&quot;invalid slice for uuid builder&quot;</span>)
-        .<span class="ident">into_uuid</span>()
+    <span class="attribute">#[allow(clippy::expect_used)]
+    </span>Builder::from_slice(v.as_slice())
+        .expect(<span class="string">&quot;invalid slice for uuid builder&quot;</span>)
+        .into_uuid()
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">uuid_from_duration</span>(<span class="ident">d</span>: <span class="ident">Duration</span>, <span class="ident">sid</span>: <span class="ident">Sid</span>) -&gt; <span class="ident">Uuid</span> {
-    <span class="ident">uuid_from_u64_u32</span>(<span class="ident">d</span>.<span class="ident">as_secs</span>(), <span class="ident">d</span>.<span class="ident">subsec_nanos</span>(), <span class="ident">sid</span>)
+<span class="kw">pub fn </span>uuid_from_duration(d: Duration, sid: Sid) -&gt; Uuid {
+    uuid_from_u64_u32(d.as_secs(), d.subsec_nanos(), sid)
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">password_from_random</span>() -&gt; <span class="ident">String</span> {
-    <span class="kw">let</span> <span class="ident">rand_string</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">thread_rng</span>().<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">DistinctAlpha</span>).<span class="ident">take</span>(<span class="number">48</span>).<span class="ident">collect</span>();
-    <span class="ident">rand_string</span>
+<span class="kw">pub fn </span>password_from_random() -&gt; String {
+    <span class="kw">let </span>rand_string: String = thread_rng().sample_iter(<span class="kw-2">&amp;</span>DistinctAlpha).take(<span class="number">48</span>).collect();
+    rand_string
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">backup_code_from_random</span>() -&gt; <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+<span class="kw">pub fn </span>backup_code_from_random() -&gt; HashSet&lt;String&gt; {
     (<span class="number">0</span>..<span class="number">8</span>)
-        .<span class="ident">into_iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">readable_password_from_random</span>())
-        .<span class="ident">collect</span>()
+        .into_iter()
+        .map(|<span class="kw">_</span>| readable_password_from_random())
+        .collect()
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">readable_password_from_random</span>() -&gt; <span class="ident">String</span> {
-    <span class="comment">// 2^112 bits, means we need at least 55^20 to have as many bits of entropy.</span>
-    <span class="comment">// this leads us to 4 groups of 5 to create 55^20</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">trng</span> <span class="op">=</span> <span class="ident">thread_rng</span>();
+<span class="kw">pub fn </span>readable_password_from_random() -&gt; String {
+    <span class="comment">// 2^112 bits, means we need at least 55^20 to have as many bits of entropy.
+    // this leads us to 4 groups of 5 to create 55^20
+    </span><span class="kw">let </span><span class="kw-2">mut </span>trng = thread_rng();
     <span class="macro">format!</span>(
         <span class="string">&quot;{}-{}-{}-{}&quot;</span>,
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">DistinctAlpha</span>)
-            .<span class="ident">take</span>(<span class="number">5</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">DistinctAlpha</span>)
-            .<span class="ident">take</span>(<span class="number">5</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">DistinctAlpha</span>)
-            .<span class="ident">take</span>(<span class="number">5</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
-        (<span class="kw-2">&amp;mut</span> <span class="ident">trng</span>)
-            .<span class="ident">sample_iter</span>(<span class="kw-2">&amp;</span><span class="ident">DistinctAlpha</span>)
-            .<span class="ident">take</span>(<span class="number">5</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>DistinctAlpha)
+            .take(<span class="number">5</span>)
+            .collect::&lt;String&gt;(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>DistinctAlpha)
+            .take(<span class="number">5</span>)
+            .collect::&lt;String&gt;(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>DistinctAlpha)
+            .take(<span class="number">5</span>)
+            .collect::&lt;String&gt;(),
+        (<span class="kw-2">&amp;mut </span>trng)
+            .sample_iter(<span class="kw-2">&amp;</span>DistinctAlpha)
+            .take(<span class="number">5</span>)
+            .collect::&lt;String&gt;(),
     )
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">duration_from_epoch_now</span>() -&gt; <span class="ident">Duration</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-    <span class="ident">SystemTime::now</span>()
-        .<span class="ident">duration_since</span>(<span class="ident">SystemTime::UNIX_EPOCH</span>)
-        .<span class="ident">expect</span>(<span class="string">&quot;invalid duration from epoch now&quot;</span>)
+<span class="kw">pub fn </span>duration_from_epoch_now() -&gt; Duration {
+    <span class="attribute">#[allow(clippy::expect_used)]
+    </span>SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect(<span class="string">&quot;invalid duration from epoch now&quot;</span>)
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">touch_file_or_quit</span>(<span class="ident">file_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
+<span class="kw">pub fn </span>touch_file_or_quit(file_path: <span class="kw-2">&amp;</span>str) {
     <span class="comment">/*
     Attempt to touch the file file_path, will quit the application if it fails for any reason.
 
     Will also create a new file if it doesn&#39;t already exist.
-    */</span>
-    <span class="kw">if</span> <span class="ident">PathBuf::from</span>(<span class="ident">file_path</span>).<span class="ident">exists</span>() {
-        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">FileTime::from_system_time</span>(<span class="ident">SystemTime::now</span>());
-        <span class="kw">match</span> <span class="ident">filetime::set_file_times</span>(<span class="ident">file_path</span>, <span class="ident">t</span>, <span class="ident">t</span>) {
+    */
+    </span><span class="kw">if </span>PathBuf::from(file_path).exists() {
+        <span class="kw">let </span>t = FileTime::from_system_time(SystemTime::now());
+        <span class="kw">match </span>filetime::set_file_times(file_path, t, t) {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">debug!</span>(
                 <span class="string">&quot;Successfully touched existing file {}, can continue&quot;</span>,
-                <span class="ident">file_path</span>
+                file_path
             ),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">kind</span>() {
-                    <span class="ident">ErrorKind::PermissionDenied</span> =&gt; {
-                        <span class="comment">// we bail here because you won&#39;t be able to write them back...</span>
-                        <span class="macro">error!</span>(<span class="string">&quot;Permission denied writing to {}, quitting.&quot;</span>, <span class="ident">file_path</span>)
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="kw">match </span>e.kind() {
+                    ErrorKind::PermissionDenied =&gt; {
+                        <span class="comment">// we bail here because you won&#39;t be able to write them back...
+                        </span><span class="macro">error!</span>(<span class="string">&quot;Permission denied writing to {}, quitting.&quot;</span>, file_path)
                     }
-                    <span class="kw">_</span> =&gt; {
+                    <span class="kw">_ </span>=&gt; {
                         <span class="macro">error!</span>(
                             <span class="string">&quot;Failed to write to {} due to error: {:?} ... quitting.&quot;</span>,
-                            <span class="ident">file_path</span>, <span class="ident">e</span>
+                            file_path, e
                         )
                     }
                 }
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                std::process::exit(<span class="number">1</span>);
             }
         }
-    } <span class="kw">else</span> {
-        <span class="kw">match</span> <span class="ident">touch_file::write</span>(<span class="ident">file_path</span>, <span class="string">&quot;&quot;</span>, <span class="bool-val">false</span>) {
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;Successfully touched new file {}&quot;</span>, <span class="ident">file_path</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+    } <span class="kw">else </span>{
+        <span class="kw">match </span>touch_file::write(file_path, <span class="string">&quot;&quot;</span>, <span class="bool-val">false</span>) {
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;Successfully touched new file {}&quot;</span>, file_path),
+            <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">error!</span>(
                     <span class="string">&quot;Failed to write to {} due to error: {:?} ... quitting.&quot;</span>,
-                    <span class="ident">file_path</span>, <span class="ident">e</span>
+                    file_path, e
                 );
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                std::process::exit(<span class="number">1</span>);
             }
         };
     }
@@ -365,84 +365,84 @@ pub fn uuid_from_now(sid: Sid) -&gt; Uuid {
         .unwrap();
     uuid_from_duration(d, sid)
 }
-*/</span>
+*/
 
-<span class="kw">impl</span> <span class="ident">Distribution</span><span class="op">&lt;</span><span class="ident">char</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DistinctAlpha</span> {
-    <span class="kw">fn</span> <span class="ident">sample</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="ident">R</span>) -&gt; <span class="ident">char</span> {
-        <span class="kw">const</span> <span class="ident">RANGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">55</span>;
-        <span class="kw">const</span> <span class="ident">GEN_ASCII_STR_CHARSET</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] <span class="op">=</span> <span class="string">b&quot;ABCDEFGHJKLMNPQRSTUVWXYZ\
+</span><span class="kw">impl </span>Distribution&lt;char&gt; <span class="kw">for </span>DistinctAlpha {
+    <span class="kw">fn </span>sample&lt;R: Rng + <span class="question-mark">?</span>Sized&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, rng: <span class="kw-2">&amp;mut </span>R) -&gt; char {
+        <span class="kw">const </span>RANGE: u32 = <span class="number">55</span>;
+        <span class="kw">const </span>GEN_ASCII_STR_CHARSET: <span class="kw-2">&amp;</span>[u8] = <span class="string">b&quot;ABCDEFGHJKLMNPQRSTUVWXYZ\
                 abcdefghjkpqrstuvwxyz\
                 0123456789&quot;</span>;
-        <span class="comment">// This probably needs to be checked for entropy/quality</span>
-        <span class="kw">loop</span> {
-            <span class="kw">let</span> <span class="ident">var</span> <span class="op">=</span> <span class="ident">rng</span>.<span class="ident">next_u32</span>() <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="number">32</span> <span class="op">-</span> <span class="number">6</span>);
-            <span class="kw">if</span> <span class="ident">var</span> <span class="op">&lt;</span> <span class="ident">RANGE</span> {
-                <span class="kw">return</span> <span class="ident">GEN_ASCII_STR_CHARSET</span>[<span class="ident">var</span> <span class="kw">as</span> <span class="ident">usize</span>] <span class="kw">as</span> <span class="ident">char</span>;
+        <span class="comment">// This probably needs to be checked for entropy/quality
+        </span><span class="kw">loop </span>{
+            <span class="kw">let </span>var = rng.next_u32() &gt;&gt; (<span class="number">32 </span>- <span class="number">6</span>);
+            <span class="kw">if </span>var &lt; RANGE {
+                <span class="kw">return </span>GEN_ASCII_STR_CHARSET[var <span class="kw">as </span>usize] <span class="kw">as </span>char;
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">file_permissions_readonly</span>(<span class="ident">meta</span>: <span class="kw-2">&amp;</span><span class="ident">Metadata</span>) -&gt; <span class="ident">bool</span> {
-    <span class="comment">// Who are we running as?</span>
-    <span class="kw">let</span> <span class="ident">cuid</span> <span class="op">=</span> <span class="ident">get_current_uid</span>();
-    <span class="kw">let</span> <span class="ident">cgid</span> <span class="op">=</span> <span class="ident">get_current_gid</span>();
+<span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub fn </span>file_permissions_readonly(meta: <span class="kw-2">&amp;</span>Metadata) -&gt; bool {
+    <span class="comment">// Who are we running as?
+    </span><span class="kw">let </span>cuid = get_current_uid();
+    <span class="kw">let </span>cgid = get_current_gid();
 
-    <span class="comment">// Who owns the file?</span>
-    <span class="comment">// Who is the group owner of the file?</span>
-    <span class="kw">let</span> <span class="ident">f_gid</span> <span class="op">=</span> <span class="ident">meta</span>.<span class="ident">st_gid</span>();
-    <span class="kw">let</span> <span class="ident">f_uid</span> <span class="op">=</span> <span class="ident">meta</span>.<span class="ident">st_uid</span>();
+    <span class="comment">// Who owns the file?
+    // Who is the group owner of the file?
+    </span><span class="kw">let </span>f_gid = meta.st_gid();
+    <span class="kw">let </span>f_uid = meta.st_uid();
 
-    <span class="kw">let</span> <span class="ident">f_mode</span> <span class="op">=</span> <span class="ident">meta</span>.<span class="ident">st_mode</span>();
+    <span class="kw">let </span>f_mode = meta.st_mode();
 
-    <span class="op">!</span>(
-        <span class="comment">// If we are the owner, we have write perms as we can alter the DAC rights</span>
-        <span class="ident">cuid</span> <span class="op">==</span> <span class="ident">f_uid</span> <span class="op">|</span><span class="op">|</span>
-        <span class="comment">// If we are the group owner, check the mode bits do not have write.</span>
-        (<span class="ident">cgid</span> <span class="op">==</span> <span class="ident">f_gid</span> <span class="op">&amp;&amp;</span> (<span class="ident">f_mode</span> <span class="op">&amp;</span> <span class="number">0o0020</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span>) <span class="op">|</span><span class="op">|</span>
-        <span class="comment">// Finally, check that everyone bits don&#39;t have write.</span>
-        ((<span class="ident">f_mode</span> <span class="op">&amp;</span> <span class="number">0o0002</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span>)
+    !(
+        <span class="comment">// If we are the owner, we have write perms as we can alter the DAC rights
+        </span>cuid == f_uid ||
+        <span class="comment">// If we are the group owner, check the mode bits do not have write.
+        </span>(cgid == f_gid &amp;&amp; (f_mode &amp; <span class="number">0o0020</span>) != <span class="number">0</span>) ||
+        <span class="comment">// Finally, check that everyone bits don&#39;t have write.
+        </span>((f_mode &amp; <span class="number">0o0002</span>) != <span class="number">0</span>)
     )
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::time::Duration;
 
-    <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+    <span class="kw">use </span>uuid::Uuid;
 
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::{<span class="ident">uuid_from_duration</span>, <span class="ident">uuid_to_gid_u32</span>};
+    <span class="kw">use </span><span class="kw">crate</span>::utils::{uuid_from_duration, uuid_to_gid_u32};
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_utils_uuid_from_duration</span>() {
-        <span class="kw">let</span> <span class="ident">u1</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1</span>), [<span class="number">0xff</span>; <span class="number">4</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_utils_uuid_from_duration() {
+        <span class="kw">let </span>u1 = uuid_from_duration(Duration::from_secs(<span class="number">1</span>), [<span class="number">0xff</span>; <span class="number">4</span>]);
         <span class="macro">assert_eq!</span>(
             <span class="string">&quot;00000000-0000-0001-0000-0000ffffffff&quot;</span>,
-            <span class="ident">u1</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>()
+            u1.as_hyphenated().to_string()
         );
 
-        <span class="kw">let</span> <span class="ident">u2</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1000</span>), [<span class="number">0xff</span>; <span class="number">4</span>]);
+        <span class="kw">let </span>u2 = uuid_from_duration(Duration::from_secs(<span class="number">1000</span>), [<span class="number">0xff</span>; <span class="number">4</span>]);
         <span class="macro">assert_eq!</span>(
             <span class="string">&quot;00000000-0000-03e8-0000-0000ffffffff&quot;</span>,
-            <span class="ident">u2</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>()
+            u2.as_hyphenated().to_string()
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_utils_uuid_to_gid_u32</span>() {
-        <span class="kw">let</span> <span class="ident">u1</span> <span class="op">=</span> <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;00000000-0000-0001-0000-000000000000&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">uuid_to_gid_u32</span>(<span class="ident">u1</span>);
-        <span class="macro">assert!</span>(<span class="ident">r1</span> <span class="op">==</span> <span class="number">0</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_utils_uuid_to_gid_u32() {
+        <span class="kw">let </span>u1 = Uuid::parse_str(<span class="string">&quot;00000000-0000-0001-0000-000000000000&quot;</span>).unwrap();
+        <span class="kw">let </span>r1 = uuid_to_gid_u32(u1);
+        <span class="macro">assert!</span>(r1 == <span class="number">0</span>);
 
-        <span class="kw">let</span> <span class="ident">u2</span> <span class="op">=</span> <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;00000000-0000-0001-0000-0000ffffffff&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">r2</span> <span class="op">=</span> <span class="ident">uuid_to_gid_u32</span>(<span class="ident">u2</span>);
-        <span class="macro">assert!</span>(<span class="ident">r2</span> <span class="op">==</span> <span class="number">0xffffffff</span>);
+        <span class="kw">let </span>u2 = Uuid::parse_str(<span class="string">&quot;00000000-0000-0001-0000-0000ffffffff&quot;</span>).unwrap();
+        <span class="kw">let </span>r2 = uuid_to_gid_u32(u2);
+        <span class="macro">assert!</span>(r2 == <span class="number">0xffffffff</span>);
 
-        <span class="kw">let</span> <span class="ident">u3</span> <span class="op">=</span> <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;00000000-0000-0001-0000-ffff12345678&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">uuid_to_gid_u32</span>(<span class="ident">u3</span>);
-        <span class="macro">assert!</span>(<span class="ident">r3</span> <span class="op">==</span> <span class="number">0x12345678</span>);
+        <span class="kw">let </span>u3 = Uuid::parse_str(<span class="string">&quot;00000000-0000-0001-0000-ffff12345678&quot;</span>).unwrap();
+        <span class="kw">let </span>r3 = uuid_to_gid_u32(u3);
+        <span class="macro">assert!</span>(r3 == <span class="number">0x12345678</span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/raw.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>raw.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cli/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/raw.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>raw.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidm_cli/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -102,109 +102,109 @@
 <span id="102">102</span>
 <span id="103">103</span>
 <span id="104">104</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-<span class="kw">use</span> <span class="ident">std::error::Error</span>;
-<span class="kw">use</span> <span class="ident">std::fs::File</span>;
-<span class="kw">use</span> <span class="ident">std::io::BufReader</span>;
-<span class="kw">use</span> <span class="ident">std::path::Path</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::error::Error;
+<span class="kw">use </span>std::fs::File;
+<span class="kw">use </span>std::io::BufReader;
+<span class="kw">use </span>std::path::Path;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">Entry</span>, <span class="ident">Filter</span>, <span class="ident">Modify</span>, <span class="ident">ModifyList</span>};
-<span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
+<span class="kw">use </span>kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
+<span class="kw">use </span>serde::de::DeserializeOwned;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::RawOpt</span>;
+<span class="kw">use </span><span class="kw">crate</span>::RawOpt;
 
-<span class="kw">fn</span> <span class="ident">read_file</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">DeserializeOwned</span>, <span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">path</span>: <span class="ident">P</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">path</span>)<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">BufReader::new</span>(<span class="ident">f</span>);
+<span class="kw">fn </span>read_file&lt;T: DeserializeOwned, P: AsRef&lt;Path&gt;&gt;(path: P) -&gt; <span class="prelude-ty">Result</span>&lt;T, Box&lt;<span class="kw">dyn </span>Error&gt;&gt; {
+    <span class="kw">let </span>f = File::open(path)<span class="question-mark">?</span>;
+    <span class="kw">let </span>r = BufReader::new(f);
 
-    <span class="prelude-val">Ok</span>(<span class="ident">serde_json::from_reader</span>(<span class="ident">r</span>)<span class="question-mark">?</span>)
+    <span class="prelude-val">Ok</span>(serde_json::from_reader(r)<span class="question-mark">?</span>)
 }
 
-<span class="kw">impl</span> <span class="ident">RawOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">RawOpt::Search</span>(<span class="ident">sopt</span>) =&gt; <span class="ident">sopt</span>.<span class="ident">commonopts</span>.<span class="ident">debug</span>,
-            <span class="ident">RawOpt::Create</span>(<span class="ident">copt</span>) =&gt; <span class="ident">copt</span>.<span class="ident">commonopts</span>.<span class="ident">debug</span>,
-            <span class="ident">RawOpt::Modify</span>(<span class="ident">mopt</span>) =&gt; <span class="ident">mopt</span>.<span class="ident">commonopts</span>.<span class="ident">debug</span>,
-            <span class="ident">RawOpt::Delete</span>(<span class="ident">dopt</span>) =&gt; <span class="ident">dopt</span>.<span class="ident">commonopts</span>.<span class="ident">debug</span>,
+<span class="kw">impl </span>RawOpt {
+    <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            RawOpt::Search(sopt) =&gt; sopt.commonopts.debug,
+            RawOpt::Create(copt) =&gt; copt.commonopts.debug,
+            RawOpt::Modify(mopt) =&gt; mopt.commonopts.debug,
+            RawOpt::Delete(dopt) =&gt; dopt.commonopts.debug,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">RawOpt::Search</span>(<span class="ident">sopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">sopt</span>.<span class="ident">commonopts</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
+    <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self </span>{
+            RawOpt::Search(sopt) =&gt; {
+                <span class="kw">let </span>client = sopt.commonopts.to_client().<span class="kw">await</span>;
 
-                <span class="kw">let</span> <span class="ident">filter</span>: <span class="ident">Filter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serde_json::from_str</span>(<span class="ident">sopt</span>.<span class="ident">filter</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">let </span>filter: Filter = <span class="kw">match </span>serde_json::from_str(sopt.filter.as_str()) {
+                    <span class="prelude-val">Ok</span>(f) =&gt; f,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         <span class="kw">return</span>;
                     }
                 };
 
-                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">search</span>(<span class="ident">filter</span>).<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">rset</span>) =&gt; <span class="ident">rset</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>)),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                <span class="kw">match </span>client.search(filter).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(rset) =&gt; rset.iter().for_each(|e| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e)),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
-            <span class="ident">RawOpt::Create</span>(<span class="ident">copt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">commonopts</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="comment">// Read the file?</span>
-                <span class="kw">let</span> <span class="ident">r_entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">read_file</span>(<span class="kw-2">&amp;</span><span class="ident">copt</span>.<span class="ident">file</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            RawOpt::Create(copt) =&gt; {
+                <span class="kw">let </span>client = copt.commonopts.to_client().<span class="kw">await</span>;
+                <span class="comment">// Read the file?
+                </span><span class="kw">let </span>r_entries: Vec&lt;BTreeMap&lt;String, Vec&lt;String&gt;&gt;&gt; = <span class="kw">match </span>read_file(<span class="kw-2">&amp;</span>copt.file) {
+                    <span class="prelude-val">Ok</span>(r) =&gt; r,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         <span class="kw">return</span>;
                     }
                 };
 
-                <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="ident">r_entries</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="ident">Entry</span> { <span class="ident">attrs</span>: <span class="ident">b</span> }).<span class="ident">collect</span>();
+                <span class="kw">let </span>entries = r_entries.into_iter().map(|b| Entry { attrs: b }).collect();
 
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">create</span>(<span class="ident">entries</span>).<span class="kw">await</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client.create(entries).<span class="kw">await </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                 }
             }
-            <span class="ident">RawOpt::Modify</span>(<span class="ident">mopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">mopt</span>.<span class="ident">commonopts</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="comment">// Read the file?</span>
-                <span class="kw">let</span> <span class="ident">filter</span>: <span class="ident">Filter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serde_json::from_str</span>(<span class="ident">mopt</span>.<span class="ident">filter</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            RawOpt::Modify(mopt) =&gt; {
+                <span class="kw">let </span>client = mopt.commonopts.to_client().<span class="kw">await</span>;
+                <span class="comment">// Read the file?
+                </span><span class="kw">let </span>filter: Filter = <span class="kw">match </span>serde_json::from_str(mopt.filter.as_str()) {
+                    <span class="prelude-val">Ok</span>(f) =&gt; f,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         <span class="kw">return</span>;
                     }
                 };
 
-                <span class="kw">let</span> <span class="ident">r_list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Modify</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">read_file</span>(<span class="kw-2">&amp;</span><span class="ident">mopt</span>.<span class="ident">file</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">let </span>r_list: Vec&lt;Modify&gt; = <span class="kw">match </span>read_file(<span class="kw-2">&amp;</span>mopt.file) {
+                    <span class="prelude-val">Ok</span>(r) =&gt; r,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         <span class="kw">return</span>;
                     }
                 };
 
-                <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_list</span>(<span class="ident">r_list</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">modify</span>(<span class="ident">filter</span>, <span class="ident">modlist</span>).<span class="kw">await</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">let </span>modlist = ModifyList::new_list(r_list);
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client.modify(filter, modlist).<span class="kw">await </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                 }
             }
-            <span class="ident">RawOpt::Delete</span>(<span class="ident">dopt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">dopt</span>.<span class="ident">commonopts</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">filter</span>: <span class="ident">Filter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serde_json::from_str</span>(<span class="ident">dopt</span>.<span class="ident">filter</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            RawOpt::Delete(dopt) =&gt; {
+                <span class="kw">let </span>client = dopt.commonopts.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>filter: Filter = <span class="kw">match </span>serde_json::from_str(dopt.filter.as_str()) {
+                    <span class="prelude-val">Ok</span>(f) =&gt; f,
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                         <span class="kw">return</span>;
                     }
                 };
 
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">delete</span>(<span class="ident">filter</span>).<span class="kw">await</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client.delete(filter).<span class="kw">await </span>{
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                 }
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

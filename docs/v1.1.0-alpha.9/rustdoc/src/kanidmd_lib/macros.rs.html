@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/macros.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>macros.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/macros.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>macros.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -676,90 +676,90 @@
 <span id="676">676</span>
 <span id="677">677</span>
 <span id="678">678</span>
-</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">setup_test</span> {
+</pre><pre class="rust"><code><span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>setup_test {
     () =&gt; {{
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
+        <span class="kw">let _ </span>= sketching::test_init();
 
-        <span class="comment">// Create an in memory BE</span>
-        <span class="kw">let</span> <span class="ident">schema_outer</span> <span class="op">=</span> <span class="ident">Schema::new</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to init schema&quot;</span>);
-        <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">schema_txn</span> <span class="op">=</span> <span class="ident">schema_outer</span>.<span class="ident">write_blocking</span>();
-            <span class="ident">schema_txn</span>.<span class="ident">reload_idxmeta</span>()
+        <span class="comment">// Create an in memory BE
+        </span><span class="kw">let </span>schema_outer = Schema::new().expect(<span class="string">&quot;Failed to init schema&quot;</span>);
+        <span class="kw">let </span>idxmeta = {
+            <span class="kw">let </span>schema_txn = schema_outer.write_blocking();
+            schema_txn.reload_idxmeta()
         };
-        <span class="kw">let</span> <span class="ident">be</span> <span class="op">=</span>
-            <span class="ident">Backend::new</span>(<span class="ident">BackendConfig::new_test</span>(), <span class="ident">idxmeta</span>, <span class="bool-val">false</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to init BE&quot;</span>);
+        <span class="kw">let </span>be =
+            Backend::new(BackendConfig::new_test(), idxmeta, <span class="bool-val">false</span>).expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="ident">QueryServer::new</span>(<span class="ident">be</span>, <span class="ident">schema_outer</span>, <span class="string">&quot;example.com&quot;</span>.<span class="ident">to_string</span>());
-        <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">initialise_helper</span>(<span class="ident">duration_from_epoch_now</span>()))
-            .<span class="ident">expect</span>(<span class="string">&quot;init failed!&quot;</span>);
-        <span class="ident">qs</span>
+        <span class="kw">let </span>qs = QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string());
+        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+            .expect(<span class="string">&quot;init failed!&quot;</span>);
+        qs
     }};
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$preload_entries</span>:expr
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::duration_from_epoch_now</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::utils::duration_from_epoch_now;
 
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
+        <span class="kw">let _ </span>= sketching::test_init();
 
-        <span class="comment">// Create an in memory BE</span>
-        <span class="kw">let</span> <span class="ident">schema_outer</span> <span class="op">=</span> <span class="ident">Schema::new</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to init schema&quot;</span>);
-        <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">schema_txn</span> <span class="op">=</span> <span class="ident">schema_outer</span>.<span class="ident">write</span>();
-            <span class="ident">schema_txn</span>.<span class="ident">reload_idxmeta</span>()
+        <span class="comment">// Create an in memory BE
+        </span><span class="kw">let </span>schema_outer = Schema::new().expect(<span class="string">&quot;Failed to init schema&quot;</span>);
+        <span class="kw">let </span>idxmeta = {
+            <span class="kw">let </span>schema_txn = schema_outer.write();
+            schema_txn.reload_idxmeta()
         };
-        <span class="kw">let</span> <span class="ident">be</span> <span class="op">=</span>
-            <span class="ident">Backend::new</span>(<span class="ident">BackendConfig::new_test</span>(), <span class="ident">idxmeta</span>, <span class="bool-val">false</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to init BE&quot;</span>);
+        <span class="kw">let </span>be =
+            Backend::new(BackendConfig::new_test(), idxmeta, <span class="bool-val">false</span>).expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="ident">QueryServer::new</span>(<span class="ident">be</span>, <span class="ident">schema_outer</span>, <span class="string">&quot;example.com&quot;</span>.<span class="ident">to_string</span>());
-        <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">initialise_helper</span>(<span class="ident">duration_from_epoch_now</span>()))
-            .<span class="ident">expect</span>(<span class="string">&quot;init failed!&quot;</span>);
+        <span class="kw">let </span>qs = QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string());
+        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+            .expect(<span class="string">&quot;init failed!&quot;</span>);
 
-        <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>()));
-            <span class="ident">qs_write</span>
-                .<span class="ident">internal_create</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to preload entries&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">qs_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
+        <span class="kw">if </span>!<span class="macro-nonterminal">$preload_entries</span>.is_empty() {
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            qs_write
+                .internal_create(<span class="macro-nonterminal">$preload_entries</span>)
+                .expect(<span class="string">&quot;Failed to preload entries&quot;</span>);
+            <span class="macro">assert!</span>(qs_write.commit().is_ok());
         }
-        <span class="ident">qs</span>
+        qs
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">entry_str_to_account</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">entry_str</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="kw">use</span> <span class="ident">std::iter::once</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>entry_str_to_account {
+    (<span class="macro-nonterminal">$entry_str</span>:expr) =&gt; {{
+        <span class="kw">use </span>std::iter::once;
 
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::account::Account</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::Value</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryInvalid, EntryNew};
+        <span class="kw">use </span><span class="kw">crate</span>::idm::account::Account;
+        <span class="kw">use </span><span class="kw">crate</span>::value::Value;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="kw">unsafe</span> { <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">entry_str</span>).<span class="ident">into_invalid_new</span>() };
-        <span class="comment">// Add spn, because normally this is generated but in tests we can&#39;t.</span>
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">e</span>
-            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">Value::new_spn_str</span>(<span class="ident">s</span>, <span class="string">&quot;example.com&quot;</span>))
-            .<span class="ident">expect</span>(<span class="string">&quot;Failed to munge spn from name!&quot;</span>);
-        <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;spn&quot;</span>, <span class="ident">once</span>(<span class="ident">spn</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>e: Entry&lt;EntryInvalid, EntryNew&gt; =
+            <span class="kw">unsafe </span>{ Entry::unsafe_from_entry_str(<span class="macro-nonterminal">$entry_str</span>).into_invalid_new() };
+        <span class="comment">// Add spn, because normally this is generated but in tests we can&#39;t.
+        </span><span class="kw">let </span>spn = e
+            .get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
+            .map(|s| Value::new_spn_str(s, <span class="string">&quot;example.com&quot;</span>))
+            .expect(<span class="string">&quot;Failed to munge spn from name!&quot;</span>);
+        e.set_ava(<span class="string">&quot;spn&quot;</span>, once(spn));
 
-        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e</span>.<span class="ident">into_sealed_committed</span>() };
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{ e.into_sealed_committed() };
 
-        <span class="ident">Account::try_from_entry_no_groups</span>(<span class="kw-2">&amp;</span><span class="ident">e</span>).<span class="ident">expect</span>(<span class="string">&quot;Account conversion failure&quot;</span>)
+        Account::try_from_entry_no_groups(<span class="kw-2">&amp;</span>e).expect(<span class="string">&quot;Account conversion failure&quot;</span>)
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">run_idm_test_inner</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">Backend</span>, <span class="ident">BackendConfig</span>};
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerDelayed</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::Schema</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>run_idm_test_inner {
+    (<span class="macro-nonterminal">$test_fn</span>:expr) =&gt; {{
+        <span class="attribute">#[allow(unused_imports)]
+        </span><span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
+        <span class="attribute">#[allow(unused_imports)]
+        </span><span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServer, IdmServerDelayed};
+        <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+        <span class="attribute">#[allow(unused_imports)]
+        </span><span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
         <span class="comment">/*
         use env_logger;
         ::std::env::set_var(&quot;RUST_LOG&quot;, &quot;actix_web=debug,kanidm=debug&quot;);
@@ -768,591 +768,591 @@
             .format_level(false)
             .is_test(true)
             .try_init();
-        */</span>
+        */
 
-        <span class="kw">let</span> <span class="ident">test_server</span> <span class="op">=</span> <span class="macro">setup_test!</span>();
+        </span><span class="kw">let </span>test_server = <span class="macro">setup_test!</span>();
 
-        <span class="kw">let</span> (<span class="ident">test_idm_server</span>, <span class="kw-2">mut</span> <span class="ident">idms_delayed</span>) <span class="op">=</span>
-            <span class="ident">IdmServer::new</span>(<span class="ident">test_server</span>.<span class="ident">clone</span>(), <span class="string">&quot;https://idm.example.com&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to setup idms&quot;</span>);
+        <span class="kw">let </span>(test_idm_server, <span class="kw-2">mut </span>idms_delayed) =
+            IdmServer::new(test_server.clone(), <span class="string">&quot;https://idm.example.com&quot;</span>)
+                .expect(<span class="string">&quot;Failed to setup idms&quot;</span>);
 
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>(<span class="kw-2">&amp;</span><span class="ident">test_server</span>, <span class="kw-2">&amp;</span><span class="ident">test_idm_server</span>, <span class="kw-2">&amp;mut</span> <span class="ident">idms_delayed</span>);
-        <span class="comment">// Any needed teardown?</span>
-        <span class="comment">// Make sure there are no errors.</span>
-        <span class="macro">assert!</span>(<span class="ident">async_std::task::block_on</span>(<span class="ident">test_server</span>.<span class="ident">verify</span>()).<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>);
-        <span class="ident">idms_delayed</span>.<span class="ident">check_is_empty_or_panic</span>();
+        <span class="macro-nonterminal">$test_fn</span>(<span class="kw-2">&amp;</span>test_server, <span class="kw-2">&amp;</span>test_idm_server, <span class="kw-2">&amp;mut </span>idms_delayed);
+        <span class="comment">// Any needed teardown?
+        // Make sure there are no errors.
+        </span><span class="macro">assert!</span>(async_std::task::block_on(test_server.verify()).len() == <span class="number">0</span>);
+        idms_delayed.check_is_empty_or_panic();
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">run_idm_test</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
-        <span class="macro">run_idm_test_inner!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>);
+<span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>run_idm_test {
+    (<span class="macro-nonterminal">$test_fn</span>:expr) =&gt; {{
+        <span class="kw">let _ </span>= sketching::test_init();
+        <span class="macro">run_idm_test_inner!</span>(<span class="macro-nonterminal">$test_fn</span>);
     }};
 }
 
-<span class="comment">// Test helpers for all plugins.</span>
-<span class="comment">// #[macro_export]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">run_create_test</span> {
+<span class="comment">// Test helpers for all plugins.
+// #[macro_export]
+</span><span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>run_create_test {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>:<span class="ident">ident</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">create_entries</span>:<span class="ident">ident</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$expect</span>:expr,
+        <span class="macro-nonterminal">$preload_entries</span>:ident,
+        <span class="macro-nonterminal">$create_entries</span>:ident,
+        <span class="macro-nonterminal">$internal</span>:expr,
+        <span class="macro-nonterminal">$check</span>:expr
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">Backend</span>, <span class="ident">BackendConfig</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event::CreateEvent</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::Schema</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::duration_from_epoch_now</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
+        <span class="kw">use </span><span class="kw">crate</span>::event::CreateEvent;
+        <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
+        <span class="kw">use </span><span class="kw">crate</span>::utils::duration_from_epoch_now;
 
-        <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>);
+        <span class="kw">let </span>qs = <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$preload_entries</span>);
 
-        <span class="kw">let</span> <span class="ident">ce</span> <span class="op">=</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span> {
-            <span class="prelude-val">None</span> =&gt; <span class="ident">CreateEvent::new_internal</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">create_entries</span>.<span class="ident">clone</span>()),
-            <span class="prelude-val">Some</span>(<span class="ident">e_str</span>) =&gt; <span class="kw">unsafe</span> {
-                <span class="ident">CreateEvent::new_impersonate_entry_ser</span>(<span class="ident">e_str</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">create_entries</span>.<span class="ident">clone</span>())
+        <span class="kw">let </span>ce = <span class="kw">match </span><span class="macro-nonterminal">$internal </span>{
+            <span class="prelude-val">None </span>=&gt; CreateEvent::new_internal(<span class="macro-nonterminal">$create_entries</span>.clone()),
+            <span class="prelude-val">Some</span>(e_str) =&gt; <span class="kw">unsafe </span>{
+                CreateEvent::new_impersonate_entry_ser(e_str, <span class="macro-nonterminal">$create_entries</span>.clone())
             },
         };
 
         {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>()));
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">ce</span>);
-            <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
-            <span class="macro">assert!</span>(<span class="ident">r</span> <span class="op">==</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>);
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>(<span class="kw-2">&amp;</span><span class="ident">qs_write</span>);
-            <span class="kw">match</span> <span class="ident">r</span> {
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span>r = qs_write.create(<span class="kw-2">&amp;</span>ce);
+            <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, r);
+            <span class="macro">assert!</span>(r == <span class="macro-nonterminal">$expect</span>);
+            <span class="macro-nonterminal">$check</span>(<span class="kw-2">&amp;</span>qs_write);
+            <span class="kw">match </span>r {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="ident">qs_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;commit failure!&quot;</span>);
+                    qs_write.commit().expect(<span class="string">&quot;commit failure!&quot;</span>);
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Rolling back =&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Rolling back =&gt; {:?}&quot;</span>, e);
                 }
             }
         }
-        <span class="comment">// Make sure there are no errors.</span>
-        <span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
-        <span class="kw">let</span> <span class="ident">ver</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">verify</span>());
-        <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
-        <span class="macro">assert!</span>(<span class="ident">ver</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>);
+        <span class="comment">// Make sure there are no errors.
+        </span><span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
+        <span class="kw">let </span>ver = async_std::task::block_on(qs.verify());
+        <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, ver);
+        <span class="macro">assert!</span>(ver.len() == <span class="number">0</span>);
     }};
 }
 
-<span class="comment">// #[macro_export]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">run_modify_test</span> {
+<span class="comment">// #[macro_export]
+</span><span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>run_modify_test {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>:<span class="ident">ident</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_filter</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_list</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">pre_hook</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$expect</span>:expr,
+        <span class="macro-nonterminal">$preload_entries</span>:ident,
+        <span class="macro-nonterminal">$modify_filter</span>:expr,
+        <span class="macro-nonterminal">$modify_list</span>:expr,
+        <span class="macro-nonterminal">$internal</span>:expr,
+        <span class="macro-nonterminal">$pre_hook</span>:expr,
+        <span class="macro-nonterminal">$check</span>:expr
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">Backend</span>, <span class="ident">BackendConfig</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event::ModifyEvent</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::Schema</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
+        <span class="kw">use </span><span class="kw">crate</span>::event::ModifyEvent;
+        <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
 
-        <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>);
+        <span class="kw">let </span>qs = <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$preload_entries</span>);
 
         {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>()));
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">pre_hook</span>(<span class="kw-2">&amp;mut</span> <span class="ident">qs_write</span>);
-            <span class="ident">qs_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;commit failure!&quot;</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="macro-nonterminal">$pre_hook</span>(<span class="kw-2">&amp;mut </span>qs_write);
+            qs_write.commit().expect(<span class="string">&quot;commit failure!&quot;</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">me</span> <span class="op">=</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span> {
-            <span class="prelude-val">None</span> =&gt; <span class="kw">unsafe</span> { <span class="ident">ModifyEvent::new_internal_invalid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_filter</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_list</span>) },
-            <span class="prelude-val">Some</span>(<span class="ident">e_str</span>) =&gt; <span class="kw">unsafe</span> {
-                <span class="ident">ModifyEvent::new_impersonate_entry_ser</span>(<span class="ident">e_str</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_filter</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">modify_list</span>)
+        <span class="kw">let </span>me = <span class="kw">match </span><span class="macro-nonterminal">$internal </span>{
+            <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{ ModifyEvent::new_internal_invalid(<span class="macro-nonterminal">$modify_filter</span>, <span class="macro-nonterminal">$modify_list</span>) },
+            <span class="prelude-val">Some</span>(e_str) =&gt; <span class="kw">unsafe </span>{
+                ModifyEvent::new_impersonate_entry_ser(e_str, <span class="macro-nonterminal">$modify_filter</span>, <span class="macro-nonterminal">$modify_list</span>)
             },
         };
 
         {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>()));
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me</span>);
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>(<span class="kw-2">&amp;</span><span class="ident">qs_write</span>);
-            <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
-            <span class="macro">assert!</span>(<span class="ident">r</span> <span class="op">==</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>);
-            <span class="kw">match</span> <span class="ident">r</span> {
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span>r = qs_write.modify(<span class="kw-2">&amp;</span>me);
+            <span class="macro-nonterminal">$check</span>(<span class="kw-2">&amp;</span>qs_write);
+            <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, r);
+            <span class="macro">assert!</span>(r == <span class="macro-nonterminal">$expect</span>);
+            <span class="kw">match </span>r {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="ident">qs_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;commit failure!&quot;</span>);
+                    qs_write.commit().expect(<span class="string">&quot;commit failure!&quot;</span>);
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Rolling back =&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Rolling back =&gt; {:?}&quot;</span>, e);
                 }
             }
         }
-        <span class="comment">// Make sure there are no errors.</span>
-        <span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
-        <span class="kw">let</span> <span class="ident">ver</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">verify</span>());
-        <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
-        <span class="macro">assert!</span>(<span class="ident">ver</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>);
+        <span class="comment">// Make sure there are no errors.
+        </span><span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
+        <span class="kw">let </span>ver = async_std::task::block_on(qs.verify());
+        <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, ver);
+        <span class="macro">assert!</span>(ver.len() == <span class="number">0</span>);
     }};
 }
 
-<span class="comment">// #[macro_export]</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">run_delete_test</span> {
+<span class="comment">// #[macro_export]
+</span><span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>run_delete_test {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>:<span class="ident">ident</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">delete_filter</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$expect</span>:expr,
+        <span class="macro-nonterminal">$preload_entries</span>:ident,
+        <span class="macro-nonterminal">$delete_filter</span>:expr,
+        <span class="macro-nonterminal">$internal</span>:expr,
+        <span class="macro-nonterminal">$check</span>:expr
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">Backend</span>, <span class="ident">BackendConfig</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event::DeleteEvent</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::Schema</span>;
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::duration_from_epoch_now</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
+        <span class="kw">use </span><span class="kw">crate</span>::event::DeleteEvent;
+        <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+        <span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
+        <span class="kw">use </span><span class="kw">crate</span>::utils::duration_from_epoch_now;
 
-        <span class="kw">let</span> <span class="ident">qs</span> <span class="op">=</span> <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">preload_entries</span>);
+        <span class="kw">let </span>qs = <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$preload_entries</span>);
 
-        <span class="kw">let</span> <span class="ident">de</span> <span class="op">=</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">internal</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">e_str</span>) =&gt; <span class="kw">unsafe</span> {
-                <span class="ident">DeleteEvent::new_impersonate_entry_ser</span>(<span class="ident">e_str</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">delete_filter</span>.<span class="ident">clone</span>())
+        <span class="kw">let </span>de = <span class="kw">match </span><span class="macro-nonterminal">$internal </span>{
+            <span class="prelude-val">Some</span>(e_str) =&gt; <span class="kw">unsafe </span>{
+                DeleteEvent::new_impersonate_entry_ser(e_str, <span class="macro-nonterminal">$delete_filter</span>.clone())
             },
-            <span class="prelude-val">None</span> =&gt; <span class="kw">unsafe</span> { <span class="ident">DeleteEvent::new_internal_invalid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">delete_filter</span>.<span class="ident">clone</span>()) },
+            <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{ DeleteEvent::new_internal_invalid(<span class="macro-nonterminal">$delete_filter</span>.clone()) },
         };
 
         {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>()));
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="ident">de</span>);
-            <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>(<span class="kw-2">&amp;mut</span> <span class="ident">qs_write</span>);
-            <span class="macro">assert!</span>(<span class="ident">r</span> <span class="op">==</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>);
-            <span class="kw">match</span> <span class="ident">r</span> {
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span>r = qs_write.delete(<span class="kw-2">&amp;</span>de);
+            <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, r);
+            <span class="macro-nonterminal">$check</span>(<span class="kw-2">&amp;mut </span>qs_write);
+            <span class="macro">assert!</span>(r == <span class="macro-nonterminal">$expect</span>);
+            <span class="kw">match </span>r {
                 <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="ident">qs_write</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;commit failure!&quot;</span>);
+                    qs_write.commit().expect(<span class="string">&quot;commit failure!&quot;</span>);
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Rolling back =&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Rolling back =&gt; {:?}&quot;</span>, e);
                 }
             }
         }
-        <span class="comment">// Make sure there are no errors.</span>
-        <span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
-        <span class="kw">let</span> <span class="ident">ver</span> <span class="op">=</span> <span class="ident">async_std::task::block_on</span>(<span class="ident">qs</span>.<span class="ident">verify</span>());
-        <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
-        <span class="macro">assert!</span>(<span class="ident">ver</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>);
+        <span class="comment">// Make sure there are no errors.
+        </span><span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
+        <span class="kw">let </span>ver = async_std::task::block_on(qs.verify());
+        <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, ver);
+        <span class="macro">assert!</span>(ver.len() == <span class="number">0</span>);
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">macro_rules!</span> <span class="ident">run_entrychangelog_test</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">sketching::test_init</span>();
-        <span class="kw">let</span> <span class="ident">schema_outer</span> <span class="op">=</span> <span class="ident">Schema::new</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to init schema&quot;</span>);
+<span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>run_entrychangelog_test {
+    (<span class="macro-nonterminal">$test_fn</span>:expr) =&gt; {{
+        <span class="kw">let _ </span>= sketching::test_init();
+        <span class="kw">let </span>schema_outer = Schema::new().expect(<span class="string">&quot;Failed to init schema&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">schema_txn</span> <span class="op">=</span> <span class="ident">schema_outer</span>.<span class="ident">read</span>();
+        <span class="kw">let </span>schema_txn = schema_outer.read();
 
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>(<span class="kw-2">&amp;</span><span class="ident">schema_txn</span>)
+        <span class="macro-nonterminal">$test_fn</span>(<span class="kw-2">&amp;</span>schema_txn)
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">modlist</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>modlist {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$vs</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">Modify</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
-        <span class="ident">ModifyList::new_list</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
+        <span class="kw">let </span>s: Box&lt;[Modify]&gt; = Box::new(<span class="macro-nonterminal">$vs</span>);
+        ModifyList::new_list(s.into_vec())
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">f_and</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>f_and {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$vs</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">FC</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
-        <span class="ident">f_and</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
+        <span class="kw">let </span>s: Box&lt;[FC]&gt; = Box::new(<span class="macro-nonterminal">$vs</span>);
+        f_and(s.into_vec())
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">f_inc</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>f_inc {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$vs</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">FC</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
-        <span class="ident">f_inc</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
+        <span class="kw">let </span>s: Box&lt;[FC]&gt; = Box::new(<span class="macro-nonterminal">$vs</span>);
+        f_inc(s.into_vec())
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">f_or</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>f_or {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$vs</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">FC</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
-        <span class="ident">f_or</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
+        <span class="kw">let </span>s: Box&lt;[FC]&gt; = Box::new(<span class="macro-nonterminal">$vs</span>);
+        f_or(s.into_vec())
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">filter</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>filter {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$fc</span>:expr
     ) =&gt; {{
-        <span class="ident">Filter::new_ignore_hidden</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>)
+        Filter::new_ignore_hidden(<span class="macro-nonterminal">$fc</span>)
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">filter_rec</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>filter_rec {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$fc</span>:expr
     ) =&gt; {{
-        <span class="ident">Filter::new_recycled</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>)
+        Filter::new_recycled(<span class="macro-nonterminal">$fc</span>)
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">filter_all</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>filter_all {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$fc</span>:expr
     ) =&gt; {{
-        <span class="ident">Filter::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>)
+        Filter::new(<span class="macro-nonterminal">$fc</span>)
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">filter_valid</span> {
+<span class="attribute">#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>filter_valid {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$fc</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">f</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Filter::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>);
-        <span class="comment">// Create a resolved filter, via the most unsafe means possible!</span>
-        <span class="ident">f</span>.<span class="ident">into_valid</span>()
+        <span class="kw">let </span>f: Filter&lt;FilterInvalid&gt; = Filter::new(<span class="macro-nonterminal">$fc</span>);
+        <span class="comment">// Create a resolved filter, via the most unsafe means possible!
+        </span>f.into_valid()
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">filter_resolved</span> {
+<span class="attribute">#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>filter_resolved {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$fc</span>:expr
     ) =&gt; {{
-        <span class="kw">let</span> <span class="ident">f</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Filter::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>);
-        <span class="comment">// Create a resolved filter, via the most unsafe means possible!</span>
-        <span class="ident">f</span>.<span class="ident">into_valid_resolved</span>()
+        <span class="kw">let </span>f: Filter&lt;FilterInvalid&gt; = Filter::new(<span class="macro-nonterminal">$fc</span>);
+        <span class="comment">// Create a resolved filter, via the most unsafe means possible!
+        </span>f.into_valid_resolved()
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">pvalue_utf8</span> {
+<span class="attribute">#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>pvalue_utf8 {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">v</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$v</span>:expr
     ) =&gt; {{
-        <span class="ident">PartialValue::new_utf8</span>(<span class="ident">v</span>.<span class="ident">to_string</span>())
+        PartialValue::new_utf8(v.to_string())
     }};
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">pvalue_iutf8</span> {
+<span class="attribute">#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>pvalue_iutf8 {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">v</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$v</span>:expr
     ) =&gt; {{
-        <span class="ident">PartialValue::new_iutf8</span>(<span class="ident">v</span>.<span class="ident">to_string</span>())
+        PartialValue::new_iutf8(v.to_string())
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">btreeset</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>btreeset {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;BTreeSet needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
-        <span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">insert</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>));
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        <span class="kw">use </span>std::collections::BTreeSet;
+        <span class="kw">let </span><span class="kw-2">mut </span>x: BTreeSet&lt;<span class="kw">_</span>&gt; = BTreeSet::new();
+        <span class="macro">assert!</span>(x.insert(<span class="macro-nonterminal">$e</span>));
+        x
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>,) =&gt; ({
-        <span class="macro">btreeset!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr,) =&gt; ({
+        <span class="macro">btreeset!</span>(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
-        <span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">insert</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>));
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">insert</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">use </span>std::collections::BTreeSet;
+        <span class="kw">let </span><span class="kw-2">mut </span>x: BTreeSet&lt;<span class="kw">_</span>&gt; = BTreeSet::new();
+        <span class="macro">assert!</span>(x.insert(<span class="macro-nonterminal">$e</span>));
+        $(<span class="macro">assert!</span>(x.insert(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">smolset</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>smolset {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;SmolSet needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident">smolset::SmolSet</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: <span class="ident">SmolSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">SmolSet::new</span>();
-        <span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">insert</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>));
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        <span class="kw">use </span>smolset::SmolSet;
+        <span class="kw">let </span><span class="kw-2">mut </span>x: SmolSet&lt;<span class="kw">_</span>&gt; = SmolSet::new();
+        <span class="macro">assert!</span>(x.insert(<span class="macro-nonterminal">$e</span>));
+        x
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>,) =&gt; ({
-        <span class="macro">smolset!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr,) =&gt; ({
+        <span class="macro">smolset!</span>(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident">smolset::SmolSet</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: <span class="ident">SmolSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">SmolSet::new</span>();
-        <span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">insert</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>));
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">insert</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">use </span>smolset::SmolSet;
+        <span class="kw">let </span><span class="kw-2">mut </span>x: SmolSet&lt;<span class="kw">_</span>&gt; = SmolSet::new();
+        <span class="macro">assert!</span>(x.insert(<span class="macro-nonterminal">$e</span>));
+        $(<span class="macro">assert!</span>(x.insert(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">btreemap</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>btreemap {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;BTreeSet needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-        <span class="kw">let</span> (<span class="ident">a</span>, <span class="ident">b</span>) <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>;
-        <span class="ident">x</span>.<span class="ident">insert</span>(<span class="ident">a</span>, <span class="ident">b</span>);
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        <span class="kw">use </span>std::collections::BTreeMap;
+        <span class="kw">let </span><span class="kw-2">mut </span>x: BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = BTreeMap::new();
+        <span class="kw">let </span>(a, b) = <span class="macro-nonterminal">$e</span>;
+        x.insert(a, b);
+        x
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>,) =&gt; ({
-        <span class="macro">btreemap!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr,) =&gt; ({
+        <span class="macro">btreemap!</span>(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
-        <span class="kw">let</span> (<span class="ident">a</span>, <span class="ident">b</span>) <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>;
-        <span class="ident">x</span>.<span class="ident">insert</span>(<span class="ident">a</span>, <span class="ident">b</span>);
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">use </span>std::collections::BTreeMap;
+        <span class="kw">let </span><span class="kw-2">mut </span>x: BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = BTreeMap::new();
+        <span class="kw">let </span>(a, b) = <span class="macro-nonterminal">$e</span>;
+        x.insert(a, b);
         $(
-            <span class="kw">let</span> (<span class="ident">a</span>, <span class="ident">b</span>) <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>;
-            <span class="ident">x</span>.<span class="ident">insert</span>(<span class="ident">a</span>, <span class="ident">b</span>);
-        )<span class="op">*</span>
-        <span class="ident">x</span>
+            <span class="kw">let </span>(a, b) = <span class="macro-nonterminal">$item</span>;
+            x.insert(a, b);
+        )*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">entry_init</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>entry_init {
     () =&gt; ({
-        <span class="kw">let</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-        <span class="ident">e1</span>
+        <span class="kw">let </span>e1: Entry&lt;EntryInit, EntryNew&gt; = Entry::new();
+        e1
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ava</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-        <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ava</span>.<span class="number">0</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ava</span>.<span class="number">1</span>);
-        <span class="ident">e1</span>
+    (<span class="macro-nonterminal">$ava</span>:expr) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>e1: Entry&lt;EntryInit, EntryNew&gt; = Entry::new();
+        e1.add_ava(<span class="macro-nonterminal">$ava</span>.<span class="number">0</span>, <span class="macro-nonterminal">$ava</span>.<span class="number">1</span>);
+        e1
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ava</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-        <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ava</span>.<span class="number">0</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ava</span>.<span class="number">1</span>);
-        $(<span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>.<span class="number">0</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>.<span class="number">1</span>);)<span class="op">*</span>
-        <span class="ident">e1</span>
+    (<span class="macro-nonterminal">$ava</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>e1: Entry&lt;EntryInit, EntryNew&gt; = Entry::new();
+        e1.add_ava(<span class="macro-nonterminal">$ava</span>.<span class="number">0</span>, <span class="macro-nonterminal">$ava</span>.<span class="number">1</span>);
+        $(e1.add_ava(<span class="macro-nonterminal">$item</span>.<span class="number">0</span>, <span class="macro-nonterminal">$item</span>.<span class="number">1</span>);)*
+        e1
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">mergesets</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>mergesets {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">a</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$a</span>:expr,
+        <span class="macro-nonterminal">$b</span>:expr
     ) =&gt; {{
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">a</span>.<span class="ident">insert</span>(<span class="ident">v</span>.<span class="ident">clone</span>());
+        <span class="macro-nonterminal">$b</span>.iter().for_each(|v| {
+            <span class="macro-nonterminal">$a</span>.insert(v.clone());
         });
         <span class="prelude-val">Ok</span>(())
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">mergemaps</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>mergemaps {
     (
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">a</span>:<span class="ident">expr</span>,
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span>:<span class="ident">expr</span>
+        <span class="macro-nonterminal">$a</span>:expr,
+        <span class="macro-nonterminal">$b</span>:expr
     ) =&gt; {{
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
-            <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">a</span>.<span class="ident">contains_key</span>(<span class="ident">k</span>) {
-                <span class="macro-nonterminal">$</span><span class="macro-nonterminal">a</span>.<span class="ident">insert</span>(<span class="ident">k</span>.<span class="ident">clone</span>(), <span class="ident">v</span>.<span class="ident">clone</span>());
+        <span class="macro-nonterminal">$b</span>.iter().for_each(|(k, v)| {
+            <span class="kw">if </span>!<span class="macro-nonterminal">$a</span>.contains_key(k) {
+                <span class="macro-nonterminal">$a</span>.insert(k.clone(), v.clone());
             }
         });
         <span class="prelude-val">Ok</span>(())
     }};
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_utf8</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_utf8 {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetUtf8 needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetUtf8::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetUtf8::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetUtf8::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetUtf8::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_iutf8</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_iutf8 {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetIutf8 needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetIutf8::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetIutf8::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetIutf8::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetIutf8::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_iname</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_iname {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetIname needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetIname::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetIname::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetIname::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetIname::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_uuid</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_uuid {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetUuid needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetUuid::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetUuid::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetUuid::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetUuid::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_refer</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_refer {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetRefer needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetRefer::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetRefer::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetRefer::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetRefer::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_bool</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_bool {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetBool needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetBool::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetBool::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetBool::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetBool::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_syntax</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_syntax {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetSyntax needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetSyntax::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetSyntax::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetSyntax::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetSyntax::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_index</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_index {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetIndex needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetIndex::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetIndex::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetIndex::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetIndex::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_macros</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">vs_cid</span> {
+<span class="attribute">#[allow(unused_macros)]
+#[macro_export]
+</span><span class="macro">macro_rules! </span>vs_cid {
     () =&gt; (
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSetCid needs at least 1 element&quot;</span>)
     );
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="ident">ValueSetCid::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
+    (<span class="macro-nonterminal">$e</span>:expr) =&gt; ({
+        ValueSetCid::new(<span class="macro-nonterminal">$e</span>)
     });
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ValueSetCid::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
-        $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">push</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
-        <span class="ident">x</span>
+    (<span class="macro-nonterminal">$e</span>:expr, $(<span class="macro-nonterminal">$item</span>:expr),<span class="kw-2">*</span>) =&gt; ({
+        <span class="kw">let </span><span class="kw-2">mut </span>x = ValueSetCid::new(<span class="macro-nonterminal">$e</span>);
+        $(<span class="macro">assert!</span>(x.push(<span class="macro-nonterminal">$item</span>));)*
+        x
     });
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">limmediate_warning</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; ({
-        <span class="macro">eprint!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>)
+<span class="macro">macro_rules! </span>limmediate_warning {
+    ($(<span class="macro-nonterminal">$arg</span>:tt)<span class="kw-2">*</span>) =&gt; ({
+        <span class="macro">eprint!</span>($(<span class="macro-nonterminal">$arg</span>)<span class="kw-2">*</span>)
     })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

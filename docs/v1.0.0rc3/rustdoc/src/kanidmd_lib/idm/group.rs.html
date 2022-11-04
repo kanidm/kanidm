@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/group.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>group.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/group.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>group.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -121,22 +121,22 @@
 <span id="121">121</span>
 <span id="122">122</span>
 <span id="123">123</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">Group</span> <span class="kw">as</span> <span class="ident">ProtoGroup</span>, <span class="ident">OperationError</span>};
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>kanidm_proto::v1::{Group <span class="kw">as </span>ProtoGroup, OperationError};
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntryReduced</span>, <span class="ident">EntrySealed</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::PartialValue</span>;
+<span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::value::PartialValue;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Group</span> {
-    <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="comment">// We&#39;ll probably add policy and claims later to this</span>
-}
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>Group {
+    spn: String,
+    uuid: Uuid,
+    <span class="comment">// We&#39;ll probably add policy and claims later to this
+</span>}
 
-<span class="macro">macro_rules!</span> <span class="ident">try_from_account_e</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>) =&gt; {{
+<span class="macro">macro_rules! </span>try_from_account_e {
+    (<span class="macro-nonterminal">$value</span>:expr, <span class="macro-nonterminal">$qs</span>:expr) =&gt; {{
         <span class="comment">/*
         let name = $value
             .get_ava_single_iname(&quot;name&quot;)
@@ -144,105 +144,105 @@
             .ok_or_else(|| {
                 OperationError::InvalidAccountState(&quot;Missing attribute: name&quot;.to_string())
             })?;
-        */</span>
+        */
 
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or</span>(
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>()),
+        </span><span class="kw">let </span>spn = <span class="macro-nonterminal">$value</span>.get_ava_single_proto_string(<span class="string">&quot;spn&quot;</span>).ok_or(
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: spn&quot;</span>.to_string()),
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let </span>uuid = <span class="macro-nonterminal">$value</span>.get_uuid();
 
-        <span class="kw">let</span> <span class="ident">upg</span> <span class="op">=</span> <span class="ident">Group</span> { <span class="ident">spn</span>, <span class="ident">uuid</span> };
+        <span class="kw">let </span>upg = Group { spn, uuid };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_as_refuuid</span>(<span class="string">&quot;memberof&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">riter</span>) =&gt; {
-                <span class="comment">// given a list of uuid, make a filter: even if this is empty, the be will</span>
-                <span class="comment">// just give and empty result set.</span>
-                <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_or</span>(
-                    <span class="ident">riter</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">u</span>)))
-                        .<span class="ident">collect</span>()
+        <span class="kw">let </span><span class="kw-2">mut </span>groups: Vec&lt;Group&gt; = <span class="kw">match </span><span class="macro-nonterminal">$value</span>.get_ava_as_refuuid(<span class="string">&quot;memberof&quot;</span>) {
+            <span class="prelude-val">Some</span>(riter) =&gt; {
+                <span class="comment">// given a list of uuid, make a filter: even if this is empty, the be will
+                // just give and empty result set.
+                </span><span class="kw">let </span>f = <span class="macro">filter!</span>(f_or(
+                    riter
+                        .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+                        .collect()
                 ));
-                <span class="kw">let</span> <span class="ident">ges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>.<span class="ident">internal_search</span>(<span class="ident">f</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;internal search failed&quot;</span>);
-                    <span class="ident">e</span>
+                <span class="kw">let </span>ges: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro-nonterminal">$qs</span>.internal_search(f).map_err(|e| {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;internal search failed&quot;</span>);
+                    e
                 })<span class="question-mark">?</span>;
-                <span class="comment">// Now convert the group entries to groups.</span>
-                <span class="kw">let</span> <span class="ident">groups</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ges</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Group::try_from_entry</span>(<span class="ident">e</span>.<span class="ident">as_ref</span>()))
-                    .<span class="ident">collect</span>();
+                <span class="comment">// Now convert the group entries to groups.
+                </span><span class="kw">let </span>groups: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = ges
+                    .iter()
+                    .map(|e| Group::try_from_entry(e.as_ref()))
+                    .collect();
 
-                <span class="ident">groups</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;failed to transform group entries to groups&quot;</span>);
-                    <span class="ident">e</span>
-                })<span class="question-mark">?</span>
-            }
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="comment">// No memberof, no groups!</span>
-                <span class="macro">vec!</span>[]
+                groups.map_err(|e| {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;failed to transform group entries to groups&quot;</span>);
+                    e
+                })<span class="question-mark">?
+            </span>}
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// No memberof, no groups!
+                </span><span class="macro">vec!</span>[]
             }
         };
-        <span class="ident">groups</span>.<span class="ident">push</span>(<span class="ident">upg</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">groups</span>)
+        groups.push(upg);
+        <span class="prelude-val">Ok</span>(groups)
     }};
 }
 
-<span class="kw">impl</span> <span class="ident">Group</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_red_ro</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_account_e!</span>(<span class="ident">value</span>, <span class="ident">qs</span>)
+<span class="kw">impl </span>Group {
+    <span class="kw">pub fn </span>try_from_account_entry_red_ro(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntryReduced, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, OperationError&gt; {
+        <span class="macro">try_from_account_e!</span>(value, qs)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_ro</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_account_e!</span>(<span class="ident">value</span>, <span class="ident">qs</span>)
+    <span class="kw">pub fn </span>try_from_account_entry_ro(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, OperationError&gt; {
+        <span class="macro">try_from_account_e!</span>(value, qs)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_rw</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_account_e!</span>(<span class="ident">value</span>, <span class="ident">qs</span>)
+    <span class="kw">pub fn </span>try_from_account_entry_rw(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, OperationError&gt; {
+        <span class="macro">try_from_account_e!</span>(value, qs)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_entry</span>(
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_GROUP</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
-                <span class="string">&quot;Missing class: group&quot;</span>.<span class="ident">to_string</span>(),
+    <span class="kw">pub fn </span>try_from_entry(
+        value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="kw">if </span>!value.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAccountState(
+                <span class="string">&quot;Missing class: group&quot;</span>.to_string(),
             ));
         }
 
-        <span class="comment">// Now extract our needed attributes</span>
-        <span class="comment">/*
+        <span class="comment">// Now extract our needed attributes
+        /*
         let name = value
             .get_ava_single_iname(&quot;name&quot;)
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState(&quot;Missing attribute: name&quot;.to_string())
             })?;
-        */</span>
-        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_ava_single_proto_string</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
+        */
+        </span><span class="kw">let </span>spn = value.get_ava_single_proto_string(<span class="string">&quot;spn&quot;</span>).ok_or_else(|| {
+            OperationError::InvalidAccountState(<span class="string">&quot;Missing attribute: spn&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let </span>uuid = value.get_uuid();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Group</span> { <span class="ident">spn</span>, <span class="ident">uuid</span> })
+        <span class="prelude-val">Ok</span>(Group { spn, uuid })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_proto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProtoGroup</span> {
-        <span class="ident">ProtoGroup</span> {
-            <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
+    <span class="kw">pub fn </span>to_proto(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtoGroup {
+        ProtoGroup {
+            spn: <span class="self">self</span>.spn.clone(),
+            uuid: <span class="self">self</span>.uuid.as_hyphenated().to_string(),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

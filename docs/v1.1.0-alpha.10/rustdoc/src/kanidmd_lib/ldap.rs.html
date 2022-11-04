@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/ldap.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ldap.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/ldap.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ldap.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_lib/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1016,796 +1016,796 @@
 <span id="1016">1016</span>
 <span id="1017">1017</span>
 <span id="1018">1018</span>
-</pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations</span>
-<span class="doccomment">//! are sent to for processing.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations
+//! are sent to for processing.
 
-<span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::iter</span>;
+</span><span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::iter;
 
-<span class="kw">use</span> <span class="ident">async_std::task</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ApiToken</span>, <span class="ident">OperationError</span>, <span class="ident">UserAuthToken</span>};
-<span class="kw">use</span> <span class="ident">ldap3_proto::simple</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">regex::Regex</span>;
-<span class="kw">use</span> <span class="ident">tracing::trace</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="kw">use </span>async_std::task;
+<span class="kw">use </span>kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
+<span class="kw">use </span>ldap3_proto::simple::<span class="kw-2">*</span>;
+<span class="kw">use </span>regex::Regex;
+<span class="kw">use </span>tracing::trace;
+<span class="kw">use </span>uuid::Uuid;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event::SearchEvent</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event</span>::{<span class="ident">LdapAuthEvent</span>, <span class="ident">LdapTokenAuthEvent</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerTransaction</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::event::SearchEvent;
+<span class="kw">use </span><span class="kw">crate</span>::idm::event::{LdapAuthEvent, LdapTokenAuthEvent};
+<span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServer, IdmServerTransaction};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="comment">// Clippy doesn&#39;t like Bind here. But proto needs unboxed ldapmsg,</span>
-<span class="comment">// and ldapboundtoken is moved. Really, it&#39;s not too bad, every message here is pretty sucky.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LdapResponseState</span> {
-    <span class="ident">Unbind</span>,
-    <span class="ident">Disconnect</span>(<span class="ident">LdapMsg</span>),
-    <span class="ident">Bind</span>(<span class="ident">LdapBoundToken</span>, <span class="ident">LdapMsg</span>),
-    <span class="ident">Respond</span>(<span class="ident">LdapMsg</span>),
-    <span class="ident">MultiPartResponse</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LdapMsg</span><span class="op">&gt;</span>),
-    <span class="ident">BindMultiPartResponse</span>(<span class="ident">LdapBoundToken</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LdapMsg</span><span class="op">&gt;</span>),
+<span class="comment">// Clippy doesn&#39;t like Bind here. But proto needs unboxed ldapmsg,
+// and ldapboundtoken is moved. Really, it&#39;s not too bad, every message here is pretty sucky.
+</span><span class="attribute">#[allow(clippy::large_enum_variant)]
+</span><span class="kw">pub enum </span>LdapResponseState {
+    Unbind,
+    Disconnect(LdapMsg),
+    Bind(LdapBoundToken, LdapMsg),
+    Respond(LdapMsg),
+    MultiPartResponse(Vec&lt;LdapMsg&gt;),
+    BindMultiPartResponse(LdapBoundToken, Vec&lt;LdapMsg&gt;),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LdapSession</span> {
-    <span class="comment">// Maps through and provides anon read, but allows us to check the validity</span>
-    <span class="comment">// of the account still.</span>
-    <span class="ident">UnixBind</span>(<span class="ident">Uuid</span>),
-    <span class="ident">UserAuthToken</span>(<span class="ident">UserAuthToken</span>),
-    <span class="ident">ApiToken</span>(<span class="ident">ApiToken</span>),
+<span class="attribute">#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>LdapSession {
+    <span class="comment">// Maps through and provides anon read, but allows us to check the validity
+    // of the account still.
+    </span>UnixBind(Uuid),
+    UserAuthToken(UserAuthToken),
+    ApiToken(ApiToken),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LdapBoundToken</span> {
-    <span class="comment">// Used to help ID the user doing the action, makes logging nicer.</span>
-    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
-    <span class="comment">// This is the effective session permission. This is generated from either:</span>
-    <span class="comment">// * A valid anonymous bind</span>
-    <span class="comment">// * A valid unix pw bind</span>
-    <span class="comment">// * A valid ApiToken</span>
-    <span class="comment">// In a way, this is a stepping stone to an &quot;ident&quot; but allows us to check</span>
-    <span class="comment">// the session is still &quot;valid&quot; depending on it&#39;s origin.</span>
-    <span class="kw">pub</span> <span class="ident">effective_session</span>: <span class="ident">LdapSession</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>LdapBoundToken {
+    <span class="comment">// Used to help ID the user doing the action, makes logging nicer.
+    </span><span class="kw">pub </span>spn: String,
+    <span class="kw">pub </span>session_id: Uuid,
+    <span class="comment">// This is the effective session permission. This is generated from either:
+    // * A valid anonymous bind
+    // * A valid unix pw bind
+    // * A valid ApiToken
+    // In a way, this is a stepping stone to an &quot;ident&quot; but allows us to check
+    // the session is still &quot;valid&quot; depending on it&#39;s origin.
+    </span><span class="kw">pub </span>effective_session: LdapSession,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LdapServer</span> {
-    <span class="ident">rootdse</span>: <span class="ident">LdapSearchResultEntry</span>,
-    <span class="ident">basedn</span>: <span class="ident">String</span>,
-    <span class="ident">dnre</span>: <span class="ident">Regex</span>,
-    <span class="ident">binddnre</span>: <span class="ident">Regex</span>,
+<span class="kw">pub struct </span>LdapServer {
+    rootdse: LdapSearchResultEntry,
+    basedn: String,
+    dnre: Regex,
+    binddnre: Regex,
 }
 
-<span class="kw">impl</span> <span class="ident">LdapServer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// let ct = duration_from_epoch_now();</span>
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read</span>());
-        <span class="comment">// This is the rootdse path.</span>
-        <span class="comment">// get the domain_info item</span>
-        <span class="kw">let</span> <span class="ident">domain_entry</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
-            .<span class="ident">qs_read</span>
-            .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>LdapServer {
+    <span class="kw">pub fn </span>new(idms: <span class="kw-2">&amp;</span>IdmServer) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="comment">// let ct = duration_from_epoch_now();
+        </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+        <span class="comment">// This is the rootdse path.
+        // get the domain_info item
+        </span><span class="kw">let </span>domain_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="ident">domain_entry</span>
-            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;domain_name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
-            .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>domain_name = domain_entry
+            .get_ava_single_iname(<span class="string">&quot;domain_name&quot;</span>)
+            .map(|s| s.to_string())
+            .ok_or(OperationError::InvalidEntryState)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">basedn</span> <span class="op">=</span> <span class="ident">ldap_domain_to_dc</span>(<span class="ident">domain_name</span>.<span class="ident">as_str</span>());
+        <span class="kw">let </span>basedn = ldap_domain_to_dc(domain_name.as_str());
 
-        <span class="kw">let</span> <span class="ident">dnre</span> <span class="op">=</span> <span class="ident">Regex::new</span>(<span class="macro">format!</span>(<span class="string">&quot;^((?P&lt;attr&gt;[^=]+)=(?P&lt;val&gt;[^=]+),)?{}$&quot;</span>, <span class="ident">basedn</span>).<span class="ident">as_str</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::InvalidEntryState</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>dnre = Regex::new(<span class="macro">format!</span>(<span class="string">&quot;^((?P&lt;attr&gt;[^=]+)=(?P&lt;val&gt;[^=]+),)?{}$&quot;</span>, basedn).as_str())
+            .map_err(|<span class="kw">_</span>| OperationError::InvalidEntryState)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">binddnre</span> <span class="op">=</span> <span class="ident">Regex::new</span>(<span class="macro">format!</span>(<span class="string">&quot;^(([^=,]+)=)?(?P&lt;val&gt;[^=,]+)(,{})?$&quot;</span>, <span class="ident">basedn</span>).<span class="ident">as_str</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::InvalidEntryState</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>binddnre = Regex::new(<span class="macro">format!</span>(<span class="string">&quot;^(([^=,]+)=)?(?P&lt;val&gt;[^=,]+)(,{})?$&quot;</span>, basedn).as_str())
+            .map_err(|<span class="kw">_</span>| OperationError::InvalidEntryState)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">rootdse</span> <span class="op">=</span> <span class="ident">LdapSearchResultEntry</span> {
-            <span class="ident">dn</span>: <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">attributes</span>: <span class="macro">vec!</span>[
-                <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;objectClass&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.<span class="ident">to_string</span>()],
+        <span class="kw">let </span>rootdse = LdapSearchResultEntry {
+            dn: <span class="string">&quot;&quot;</span>.to_string(),
+            attributes: <span class="macro">vec!</span>[
+                LdapPartialAttribute {
+                    atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string()],
                 },
-                <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;vendorName&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;Kanidm Project&quot;</span>.<span class="ident">to_string</span>()],
+                LdapPartialAttribute {
+                    atype: <span class="string">&quot;vendorName&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;Kanidm Project&quot;</span>.to_string()],
                 },
-                <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;vendorVersion&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;kanidm_ldap_1.0.0&quot;</span>.<span class="ident">to_string</span>()],
+                LdapPartialAttribute {
+                    atype: <span class="string">&quot;vendorVersion&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;kanidm_ldap_1.0.0&quot;</span>.to_string()],
                 },
-                <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;supportedLDAPVersion&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;3&quot;</span>.<span class="ident">to_string</span>()],
+                LdapPartialAttribute {
+                    atype: <span class="string">&quot;supportedLDAPVersion&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;3&quot;</span>.to_string()],
                 },
-                <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;supportedExtension&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.11.3&quot;</span>.<span class="ident">to_string</span>()],
+                LdapPartialAttribute {
+                    atype: <span class="string">&quot;supportedExtension&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.11.3&quot;</span>.to_string()],
                 },
-                <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;supportedFeatures&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.5.1&quot;</span>.<span class="ident">to_string</span>()],
+                LdapPartialAttribute {
+                    atype: <span class="string">&quot;supportedFeatures&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.5.1&quot;</span>.to_string()],
                 },
-                <span class="ident">LdapPartialAttribute</span> {
-                    <span class="ident">atype</span>: <span class="string">&quot;defaultnamingcontext&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">vals</span>: <span class="macro">vec!</span>[<span class="ident">basedn</span>.<span class="ident">clone</span>()],
+                LdapPartialAttribute {
+                    atype: <span class="string">&quot;defaultnamingcontext&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[basedn.clone()],
                 },
             ],
         };
 
-        <span class="prelude-val">Ok</span>(<span class="ident">LdapServer</span> {
-            <span class="ident">rootdse</span>,
-            <span class="ident">basedn</span>,
-            <span class="ident">dnre</span>,
-            <span class="ident">binddnre</span>,
+        <span class="prelude-val">Ok</span>(LdapServer {
+            rootdse,
+            basedn,
+            dnre,
+            binddnre,
         })
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">skip_all</span>)]</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_search</span>(
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
+    </span><span class="kw">async fn </span>do_search(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
-        <span class="ident">sr</span>: <span class="kw-2">&amp;</span><span class="ident">SearchRequest</span>,
-        <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">LdapBoundToken</span>,
-        <span class="comment">// eventid: &amp;Uuid,</span>
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LdapMsg</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">admin_info!</span>(<span class="string">&quot;Attempt LDAP Search for {}&quot;</span>, <span class="ident">uat</span>.<span class="ident">spn</span>);
-        <span class="comment">// If the request is &quot;&quot;, Base, Present(&quot;objectclass&quot;), [], then we want the rootdse.</span>
-        <span class="kw">if</span> <span class="ident">sr</span>.<span class="ident">base</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="ident">sr</span>.<span class="ident">scope</span> <span class="op">==</span> <span class="ident">LdapSearchScope::Base</span> {
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        sr: <span class="kw-2">&amp;</span>SearchRequest,
+        uat: <span class="kw-2">&amp;</span>LdapBoundToken,
+        <span class="comment">// eventid: &amp;Uuid,
+    </span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LdapMsg&gt;, OperationError&gt; {
+        <span class="macro">admin_info!</span>(<span class="string">&quot;Attempt LDAP Search for {}&quot;</span>, uat.spn);
+        <span class="comment">// If the request is &quot;&quot;, Base, Present(&quot;objectclass&quot;), [], then we want the rootdse.
+        </span><span class="kw">if </span>sr.base.is_empty() &amp;&amp; sr.scope == LdapSearchScope::Base {
             <span class="macro">admin_info!</span>(<span class="string">&quot;LDAP Search success - RootDSE&quot;</span>);
             <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[
-                <span class="ident">sr</span>.<span class="ident">gen_result_entry</span>(<span class="self">self</span>.<span class="ident">rootdse</span>.<span class="ident">clone</span>()),
-                <span class="ident">sr</span>.<span class="ident">gen_success</span>(),
+                sr.gen_result_entry(<span class="self">self</span>.rootdse.clone()),
+                sr.gen_success(),
             ])
-        } <span class="kw">else</span> {
-            <span class="comment">// We want something else apparently. Need to do some more work ...</span>
-            <span class="comment">// Parse the operation and make sure it&#39;s sane before we start the txn.</span>
+        } <span class="kw">else </span>{
+            <span class="comment">// We want something else apparently. Need to do some more work ...
+            // Parse the operation and make sure it&#39;s sane before we start the txn.
 
-            <span class="comment">// This scoping returns an extra filter component.</span>
+            // This scoping returns an extra filter component.
 
-            <span class="kw">let</span> (<span class="ident">opt_attr</span>, <span class="ident">opt_value</span>) <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">dnre</span>.<span class="ident">captures</span>(<span class="ident">sr</span>.<span class="ident">base</span>.<span class="ident">as_str</span>()) {
-                <span class="prelude-val">Some</span>(<span class="ident">caps</span>) =&gt; (
-                    <span class="ident">caps</span>.<span class="ident">name</span>(<span class="string">&quot;attr&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>()),
-                    <span class="ident">caps</span>.<span class="ident">name</span>(<span class="string">&quot;val&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>()),
+            </span><span class="kw">let </span>(opt_attr, opt_value) = <span class="kw">match </span><span class="self">self</span>.dnre.captures(sr.base.as_str()) {
+                <span class="prelude-val">Some</span>(caps) =&gt; (
+                    caps.name(<span class="string">&quot;attr&quot;</span>).map(|v| v.as_str().to_string()),
+                    caps.name(<span class="string">&quot;val&quot;</span>).map(|v| v.as_str().to_string()),
                 ),
-                <span class="prelude-val">None</span> =&gt; {
+                <span class="prelude-val">None </span>=&gt; {
                     <span class="macro">request_error!</span>(<span class="string">&quot;LDAP Search failure - invalid basedn&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidRequestState);
                 }
             };
 
-            <span class="kw">let</span> <span class="ident">req_dn</span> <span class="op">=</span> <span class="kw">match</span> (<span class="ident">opt_attr</span>, <span class="ident">opt_value</span>) {
-                (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">v</span>)) =&gt; <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>)),
+            <span class="kw">let </span>req_dn = <span class="kw">match </span>(opt_attr, opt_value) {
+                (<span class="prelude-val">Some</span>(a), <span class="prelude-val">Some</span>(v)) =&gt; <span class="prelude-val">Some</span>((a, v)),
                 (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
-                <span class="kw">_</span> =&gt; {
+                <span class="kw">_ </span>=&gt; {
                     <span class="macro">request_error!</span>(<span class="string">&quot;LDAP Search failure - invalid rdn&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidRequestState);
                 }
             };
 
-            <span class="macro">trace!</span>(<span class="ident">rdn</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">req_dn</span>);
+            <span class="macro">trace!</span>(rdn = <span class="question-mark">?</span>req_dn);
 
-            <span class="comment">// Map the Some(a,v) to ...?</span>
+            <span class="comment">// Map the Some(a,v) to ...?
 
-            <span class="kw">let</span> <span class="ident">ext_filter</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">sr</span>.<span class="ident">scope</span>, <span class="ident">req_dn</span>) {
-                (<span class="ident">LdapSearchScope::OneLevel</span>, <span class="prelude-val">Some</span>(<span class="ident">_r</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="ident">sr</span>.<span class="ident">gen_success</span>()]),
-                (<span class="ident">LdapSearchScope::OneLevel</span>, <span class="prelude-val">None</span>) =&gt; {
-                    <span class="comment">// exclude domain_info</span>
-                    <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Not</span>(<span class="ident">Box::new</span>(<span class="ident">LdapFilter::Equality</span>(
-                        <span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">STR_UUID_DOMAIN_INFO</span>.<span class="ident">to_string</span>(),
+            </span><span class="kw">let </span>ext_filter = <span class="kw">match </span>(<span class="kw-2">&amp;</span>sr.scope, req_dn) {
+                (LdapSearchScope::OneLevel, <span class="prelude-val">Some</span>(_r)) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[sr.gen_success()]),
+                (LdapSearchScope::OneLevel, <span class="prelude-val">None</span>) =&gt; {
+                    <span class="comment">// exclude domain_info
+                    </span><span class="prelude-val">Some</span>(LdapFilter::Not(Box::new(LdapFilter::Equality(
+                        <span class="string">&quot;uuid&quot;</span>.to_string(),
+                        STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
-                (<span class="ident">LdapSearchScope::Base</span>, <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>))) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(<span class="ident">a</span>, <span class="ident">v</span>)),
-                (<span class="ident">LdapSearchScope::Base</span>, <span class="prelude-val">None</span>) =&gt; {
-                    <span class="comment">// domain_info</span>
-                    <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(
-                        <span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">STR_UUID_DOMAIN_INFO</span>.<span class="ident">to_string</span>(),
+                (LdapSearchScope::Base, <span class="prelude-val">Some</span>((a, v))) =&gt; <span class="prelude-val">Some</span>(LdapFilter::Equality(a, v)),
+                (LdapSearchScope::Base, <span class="prelude-val">None</span>) =&gt; {
+                    <span class="comment">// domain_info
+                    </span><span class="prelude-val">Some</span>(LdapFilter::Equality(
+                        <span class="string">&quot;uuid&quot;</span>.to_string(),
+                        STR_UUID_DOMAIN_INFO.to_string(),
                     ))
                 }
-                (<span class="ident">LdapSearchScope::Subtree</span>, <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>))) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(<span class="ident">a</span>, <span class="ident">v</span>)),
-                (<span class="ident">LdapSearchScope::Subtree</span>, <span class="prelude-val">None</span>) =&gt; {
-                    <span class="comment">// No filter changes needed.</span>
-                    <span class="prelude-val">None</span>
-                }
+                (LdapSearchScope::Subtree, <span class="prelude-val">Some</span>((a, v))) =&gt; <span class="prelude-val">Some</span>(LdapFilter::Equality(a, v)),
+                (LdapSearchScope::Subtree, <span class="prelude-val">None</span>) =&gt; {
+                    <span class="comment">// No filter changes needed.
+                    </span><span class="prelude-val">None
+                </span>}
             };
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all_attrs</span> <span class="op">=</span> <span class="bool-val">false</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all_op_attrs</span> <span class="op">=</span> <span class="bool-val">false</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>all_attrs = <span class="bool-val">false</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>all_op_attrs = <span class="bool-val">false</span>;
 
-            <span class="comment">// TODO #67: limit the number of attributes here!</span>
-            <span class="kw">if</span> <span class="ident">sr</span>.<span class="ident">attrs</span>.<span class="ident">is_empty</span>() {
-                <span class="comment">// If [], then &quot;all&quot; attrs</span>
-                <span class="ident">all_attrs</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            } <span class="kw">else</span> {
-                <span class="ident">sr</span>.<span class="ident">attrs</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;*&quot;</span> {
-                        <span class="ident">all_attrs</span> <span class="op">=</span> <span class="bool-val">true</span>;
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;+&quot;</span> {
-                        <span class="comment">// This forces the BE to get all the attrs so we can</span>
-                        <span class="comment">// map all vattrs.</span>
-                        <span class="ident">all_attrs</span> <span class="op">=</span> <span class="bool-val">true</span>;
-                        <span class="ident">all_op_attrs</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            <span class="comment">// TODO #67: limit the number of attributes here!
+            </span><span class="kw">if </span>sr.attrs.is_empty() {
+                <span class="comment">// If [], then &quot;all&quot; attrs
+                </span>all_attrs = <span class="bool-val">true</span>;
+            } <span class="kw">else </span>{
+                sr.attrs.iter().for_each(|a| {
+                    <span class="kw">if </span>a == <span class="string">&quot;*&quot; </span>{
+                        all_attrs = <span class="bool-val">true</span>;
+                    } <span class="kw">else if </span>a == <span class="string">&quot;+&quot; </span>{
+                        <span class="comment">// This forces the BE to get all the attrs so we can
+                        // map all vattrs.
+                        </span>all_attrs = <span class="bool-val">true</span>;
+                        all_op_attrs = <span class="bool-val">true</span>;
                     }
                 })
             }
 
-            <span class="comment">// We need to retain this to know what the client requested.</span>
-            <span class="kw">let</span> (<span class="ident">k_attrs</span>, <span class="ident">l_attrs</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">all_op_attrs</span> {
-                <span class="comment">// We need all attrs, and we do a full v_attr map.</span>
-                (<span class="prelude-val">None</span>, <span class="ident">ldap_all_vattrs</span>())
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">all_attrs</span> {
-                (<span class="prelude-val">None</span>, <span class="ident">Vec::new</span>())
-            } <span class="kw">else</span> {
-                <span class="comment">// What the client requested, in LDAP forms.</span>
-                <span class="kw">let</span> <span class="ident">req_attrs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">sr</span>
-                    .<span class="ident">attrs</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;*&quot;</span> <span class="op">|</span><span class="op">|</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;+&quot;</span> {
-                            <span class="prelude-val">None</span>
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">Some</span>(<span class="ident">a</span>.<span class="ident">to_lowercase</span>())
+            <span class="comment">// We need to retain this to know what the client requested.
+            </span><span class="kw">let </span>(k_attrs, l_attrs) = <span class="kw">if </span>all_op_attrs {
+                <span class="comment">// We need all attrs, and we do a full v_attr map.
+                </span>(<span class="prelude-val">None</span>, ldap_all_vattrs())
+            } <span class="kw">else if </span>all_attrs {
+                (<span class="prelude-val">None</span>, Vec::new())
+            } <span class="kw">else </span>{
+                <span class="comment">// What the client requested, in LDAP forms.
+                </span><span class="kw">let </span>req_attrs: Vec&lt;String&gt; = sr
+                    .attrs
+                    .iter()
+                    .filter_map(|a| {
+                        <span class="kw">if </span>a == <span class="string">&quot;*&quot; </span>|| a == <span class="string">&quot;+&quot; </span>{
+                            <span class="prelude-val">None
+                        </span>} <span class="kw">else </span>{
+                            <span class="prelude-val">Some</span>(a.to_lowercase())
                         }
                     })
-                    .<span class="ident">collect</span>();
-                <span class="comment">// This is what the client requested, but mapped to kanidm forms.</span>
-                <span class="comment">// NOTE: All req_attrs are lowercase at this point.</span>
-                <span class="kw">let</span> <span class="ident">mapped_attrs</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">req_attrs</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> {
-                        <span class="comment">// EntryDN and DN have special handling in to_ldap in Entry. We don&#39;t</span>
-                        <span class="comment">// need these here, we know they will be returned as part of the transform.</span>
-                        <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;entrydn&quot;</span> <span class="op">|</span><span class="op">|</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;dn&quot;</span> {
-                            <span class="prelude-val">None</span>
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">Some</span>(<span class="ident">AttrString::from</span>(<span class="ident">ldap_vattr_map</span>(<span class="ident">a</span>)))
+                    .collect();
+                <span class="comment">// This is what the client requested, but mapped to kanidm forms.
+                // NOTE: All req_attrs are lowercase at this point.
+                </span><span class="kw">let </span>mapped_attrs: BTreeSet&lt;<span class="kw">_</span>&gt; = req_attrs
+                    .iter()
+                    .filter_map(|a| {
+                        <span class="comment">// EntryDN and DN have special handling in to_ldap in Entry. We don&#39;t
+                        // need these here, we know they will be returned as part of the transform.
+                        </span><span class="kw">if </span>a == <span class="string">&quot;entrydn&quot; </span>|| a == <span class="string">&quot;dn&quot; </span>{
+                            <span class="prelude-val">None
+                        </span>} <span class="kw">else </span>{
+                            <span class="prelude-val">Some</span>(AttrString::from(ldap_vattr_map(a)))
                         }
                     })
-                    .<span class="ident">collect</span>();
+                    .collect();
 
-                (<span class="prelude-val">Some</span>(<span class="ident">mapped_attrs</span>), <span class="ident">req_attrs</span>)
+                (<span class="prelude-val">Some</span>(mapped_attrs), req_attrs)
             };
 
-            <span class="macro">admin_info!</span>(<span class="ident">attr</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">l_attrs</span>, <span class="string">&quot;LDAP Search Request LDAP Attrs&quot;</span>);
-            <span class="macro">admin_info!</span>(<span class="ident">attr</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">k_attrs</span>, <span class="string">&quot;LDAP Search Request Mapped Attrs&quot;</span>);
+            <span class="macro">admin_info!</span>(attr = <span class="question-mark">?</span>l_attrs, <span class="string">&quot;LDAP Search Request LDAP Attrs&quot;</span>);
+            <span class="macro">admin_info!</span>(attr = <span class="question-mark">?</span>k_attrs, <span class="string">&quot;LDAP Search Request Mapped Attrs&quot;</span>);
 
-            <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-            <span class="kw">let</span> <span class="ident">idm_read</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_read</span>().<span class="kw">await</span>;
-            <span class="comment">// Now start the txn - we need it for resolving filter components.</span>
+            <span class="kw">let </span>ct = duration_from_epoch_now();
+            <span class="kw">let </span>idm_read = idms.proxy_read().<span class="kw">await</span>;
+            <span class="comment">// Now start the txn - we need it for resolving filter components.
 
-            <span class="comment">// join the filter, with ext_filter</span>
-            <span class="kw">let</span> <span class="ident">lfilter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ext_filter</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">ext</span>) =&gt; <span class="ident">LdapFilter::And</span>(<span class="macro">vec!</span>[
-                    <span class="ident">sr</span>.<span class="ident">filter</span>.<span class="ident">clone</span>(),
-                    <span class="ident">ext</span>,
-                    <span class="ident">LdapFilter::Not</span>(<span class="ident">Box::new</span>(<span class="ident">LdapFilter::Or</span>(<span class="macro">vec!</span>[
-                        <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;classtype&quot;</span>.<span class="ident">to_string</span>()),
-                        <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;attributetype&quot;</span>.<span class="ident">to_string</span>()),
-                        <span class="ident">LdapFilter::Equality</span>(
-                            <span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="string">&quot;access_control_profile&quot;</span>.<span class="ident">to_string</span>(),
+            // join the filter, with ext_filter
+            </span><span class="kw">let </span>lfilter = <span class="kw">match </span>ext_filter {
+                <span class="prelude-val">Some</span>(ext) =&gt; LdapFilter::And(<span class="macro">vec!</span>[
+                    sr.filter.clone(),
+                    ext,
+                    LdapFilter::Not(Box::new(LdapFilter::Or(<span class="macro">vec!</span>[
+                        LdapFilter::Equality(<span class="string">&quot;class&quot;</span>.to_string(), <span class="string">&quot;classtype&quot;</span>.to_string()),
+                        LdapFilter::Equality(<span class="string">&quot;class&quot;</span>.to_string(), <span class="string">&quot;attributetype&quot;</span>.to_string()),
+                        LdapFilter::Equality(
+                            <span class="string">&quot;class&quot;</span>.to_string(),
+                            <span class="string">&quot;access_control_profile&quot;</span>.to_string(),
                         ),
                     ]))),
                 ]),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">LdapFilter::And</span>(<span class="macro">vec!</span>[
-                    <span class="ident">sr</span>.<span class="ident">filter</span>.<span class="ident">clone</span>(),
-                    <span class="ident">LdapFilter::Not</span>(<span class="ident">Box::new</span>(<span class="ident">LdapFilter::Or</span>(<span class="macro">vec!</span>[
-                        <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;classtype&quot;</span>.<span class="ident">to_string</span>()),
-                        <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;attributetype&quot;</span>.<span class="ident">to_string</span>()),
-                        <span class="ident">LdapFilter::Equality</span>(
-                            <span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>(),
-                            <span class="string">&quot;access_control_profile&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="prelude-val">None </span>=&gt; LdapFilter::And(<span class="macro">vec!</span>[
+                    sr.filter.clone(),
+                    LdapFilter::Not(Box::new(LdapFilter::Or(<span class="macro">vec!</span>[
+                        LdapFilter::Equality(<span class="string">&quot;class&quot;</span>.to_string(), <span class="string">&quot;classtype&quot;</span>.to_string()),
+                        LdapFilter::Equality(<span class="string">&quot;class&quot;</span>.to_string(), <span class="string">&quot;attributetype&quot;</span>.to_string()),
+                        LdapFilter::Equality(
+                            <span class="string">&quot;class&quot;</span>.to_string(),
+                            <span class="string">&quot;access_control_profile&quot;</span>.to_string(),
                         ),
                     ]))),
                 ]),
             };
 
-            <span class="macro">admin_info!</span>(<span class="ident">filter</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">lfilter</span>, <span class="string">&quot;LDAP Search Filter&quot;</span>);
+            <span class="macro">admin_info!</span>(filter = <span class="question-mark">?</span>lfilter, <span class="string">&quot;LDAP Search Filter&quot;</span>);
 
-            <span class="comment">// Build the event, with the permissions from effective_session</span>
-            <span class="comment">//</span>
-            <span class="comment">// ! Remember, searchEvent wraps to ignore hidden for us.</span>
-            <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idm_read</span>
-                .<span class="ident">validate_ldap_session</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>.<span class="ident">effective_session</span>, <span class="ident">ct</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid identity: {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">e</span>
+            <span class="comment">// Build the event, with the permissions from effective_session
+            //
+            // ! Remember, searchEvent wraps to ignore hidden for us.
+            </span><span class="kw">let </span>ident = idm_read
+                .validate_ldap_session(<span class="kw-2">&amp;</span>uat.effective_session, ct)
+                .map_err(|e| {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid identity: {:?}&quot;</span>, e);
+                    e
                 })<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span>
-                <span class="ident">SearchEvent::new_ext_impersonate_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">idm_read</span>.<span class="ident">qs_read</span>, <span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">lfilter</span>, <span class="ident">k_attrs</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">admin_error!</span>(<span class="string">&quot;failed to create search event -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">e</span>
+            <span class="kw">let </span>se =
+                SearchEvent::new_ext_impersonate_uuid(<span class="kw-2">&amp;</span>idm_read.qs_read, ident, <span class="kw-2">&amp;</span>lfilter, k_attrs)
+                    .map_err(|e| {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;failed to create search event -&gt; {:?}&quot;</span>, e);
+                        e
                     })<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">idm_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">se</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;search failure {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
+            <span class="kw">let </span>res = idm_read.qs_read.search_ext(<span class="kw-2">&amp;</span>se).map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;search failure {:?}&quot;</span>, e);
+                e
             })<span class="question-mark">?</span>;
 
-            <span class="comment">// These have already been fully reduced (access controls applied),</span>
-            <span class="comment">// so we can just transform the values and open palm slam them into</span>
-            <span class="comment">// the result structure.</span>
-            <span class="kw">let</span> <span class="ident">lres</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">res</span>
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="ident">e</span>.<span class="ident">to_ldap</span>(<span class="kw-2">&amp;</span><span class="ident">idm_read</span>.<span class="ident">qs_read</span>, <span class="self">self</span>.<span class="ident">basedn</span>.<span class="ident">as_str</span>(), <span class="ident">all_attrs</span>, <span class="kw-2">&amp;</span><span class="ident">l_attrs</span>)
-                        <span class="comment">// if okay, wrap in a ldap msg.</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">sr</span>.<span class="ident">gen_result_entry</span>(<span class="ident">r</span>))
+            <span class="comment">// These have already been fully reduced (access controls applied),
+            // so we can just transform the values and open palm slam them into
+            // the result structure.
+            </span><span class="kw">let </span>lres: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = res
+                .into_iter()
+                .map(|e| {
+                    e.to_ldap(<span class="kw-2">&amp;</span>idm_read.qs_read, <span class="self">self</span>.basedn.as_str(), all_attrs, <span class="kw-2">&amp;</span>l_attrs)
+                        <span class="comment">// if okay, wrap in a ldap msg.
+                        </span>.map(|r| sr.gen_result_entry(r))
                 })
-                .<span class="ident">chain</span>(<span class="ident">iter::once</span>(<span class="prelude-val">Ok</span>(<span class="ident">sr</span>.<span class="ident">gen_success</span>())))
-                .<span class="ident">collect</span>();
+                .chain(iter::once(<span class="prelude-val">Ok</span>(sr.gen_success())))
+                .collect();
 
-            <span class="kw">let</span> <span class="ident">lres</span> <span class="op">=</span> <span class="ident">lres</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;entry resolve failure {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
+            <span class="kw">let </span>lres = lres.map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;entry resolve failure {:?}&quot;</span>, e);
+                e
             })<span class="question-mark">?</span>;
 
             <span class="macro">admin_info!</span>(
-                <span class="ident">nentries</span> <span class="op">=</span> <span class="op">%</span><span class="ident">lres</span>.<span class="ident">len</span>(),
-                <span class="string">&quot;LDAP Search Success -&gt; number of entries&quot;</span>
-            );
+                nentries = %lres.len(),
+                <span class="string">&quot;LDAP Search Success -&gt; number of entries&quot;
+            </span>);
 
-            <span class="prelude-val">Ok</span>(<span class="ident">lres</span>)
+            <span class="prelude-val">Ok</span>(lres)
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_bind</span>(
+    <span class="kw">async fn </span>do_bind(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
-        <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        dn: <span class="kw-2">&amp;</span>str,
+        pw: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;LdapBoundToken&gt;, OperationError&gt; {
         <span class="macro">security_info!</span>(
             <span class="string">&quot;Attempt LDAP Bind for {}&quot;</span>,
-            <span class="kw">if</span> <span class="ident">dn</span>.<span class="ident">is_empty</span>() { <span class="string">&quot;anonymous&quot;</span> } <span class="kw">else</span> { <span class="ident">dn</span> }
+            <span class="kw">if </span>dn.is_empty() { <span class="string">&quot;anonymous&quot; </span>} <span class="kw">else </span>{ dn }
         );
-        <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
+        <span class="kw">let </span>ct = duration_from_epoch_now();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idm_auth</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">auth_async</span>().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idm_auth = idms.auth_async().<span class="kw">await</span>;
 
-        <span class="kw">let</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">dn</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">let </span>target_uuid: Uuid = <span class="kw">if </span>dn.is_empty() {
+            <span class="kw">if </span>pw.is_empty() {
                 <span class="macro">security_info!</span>(<span class="string">&quot;✅ LDAP Bind success anonymous&quot;</span>);
-                <span class="ident">UUID_ANONYMOUS</span>
-            } <span class="kw">else</span> {
-                <span class="comment">// This is the path to access api-token logins.</span>
-                <span class="kw">let</span> <span class="ident">lae</span> <span class="op">=</span> <span class="ident">LdapTokenAuthEvent::from_parts</span>(<span class="ident">pw</span>.<span class="ident">to_string</span>())<span class="question-mark">?</span>;
-                <span class="kw">return</span> <span class="ident">idm_auth</span>.<span class="ident">token_auth_ldap</span>(<span class="kw-2">&amp;</span><span class="ident">lae</span>, <span class="ident">ct</span>).<span class="kw">await</span>.<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> {
-                    <span class="ident">idm_auth</span>.<span class="ident">commit</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">is_some</span>() {
-                            <span class="macro">security_info!</span>(<span class="op">%</span><span class="ident">dn</span>, <span class="string">&quot;✅ LDAP Bind success&quot;</span>);
-                        } <span class="kw">else</span> {
-                            <span class="macro">security_info!</span>(<span class="op">%</span><span class="ident">dn</span>, <span class="string">&quot;❌ LDAP Bind failure&quot;</span>);
+                UUID_ANONYMOUS
+            } <span class="kw">else </span>{
+                <span class="comment">// This is the path to access api-token logins.
+                </span><span class="kw">let </span>lae = LdapTokenAuthEvent::from_parts(pw.to_string())<span class="question-mark">?</span>;
+                <span class="kw">return </span>idm_auth.token_auth_ldap(<span class="kw-2">&amp;</span>lae, ct).<span class="kw">await</span>.and_then(|r| {
+                    idm_auth.commit().map(|<span class="kw">_</span>| {
+                        <span class="kw">if </span>r.is_some() {
+                            <span class="macro">security_info!</span>(%dn, <span class="string">&quot;✅ LDAP Bind success&quot;</span>);
+                        } <span class="kw">else </span>{
+                            <span class="macro">security_info!</span>(%dn, <span class="string">&quot;❌ LDAP Bind failure&quot;</span>);
                         };
-                        <span class="ident">r</span>
+                        r
                     })
                 });
             }
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">rdn</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>
-                .<span class="ident">binddnre</span>
-                .<span class="ident">captures</span>(<span class="ident">dn</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">caps</span><span class="op">|</span> <span class="ident">caps</span>.<span class="ident">name</span>(<span class="string">&quot;val&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>()))
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>rdn = <span class="kw">match </span><span class="self">self
+                </span>.binddnre
+                .captures(dn)
+                .and_then(|caps| caps.name(<span class="string">&quot;val&quot;</span>).map(|v| v.as_str().to_string()))
             {
-                <span class="prelude-val">Some</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
-                <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
+                <span class="prelude-val">Some</span>(r) =&gt; r,
+                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::NoMatchingEntries),
             };
 
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">rdn</span>, <span class="string">&quot;relative dn&quot;</span>);
+            <span class="macro">trace!</span>(<span class="question-mark">?</span>rdn, <span class="string">&quot;relative dn&quot;</span>);
 
-            <span class="kw">if</span> <span class="ident">rdn</span>.<span class="ident">is_empty</span>() {
-                <span class="comment">// That&#39;s weird ...</span>
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+            <span class="kw">if </span>rdn.is_empty() {
+                <span class="comment">// That&#39;s weird ...
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::NoMatchingEntries);
             }
 
-            <span class="ident">idm_auth</span>.<span class="ident">qs_read</span>.<span class="ident">name_to_uuid</span>(<span class="ident">rdn</span>.<span class="ident">as_str</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">request_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="question-mark">?</span><span class="ident">rdn</span>, <span class="string">&quot;Error resolving rdn to target&quot;</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>
-        };
+            idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
+                <span class="macro">request_error!</span>(err = <span class="question-mark">?</span>e, <span class="question-mark">?</span>rdn, <span class="string">&quot;Error resolving rdn to target&quot;</span>);
+                e
+            })<span class="question-mark">?
+        </span>};
 
-        <span class="kw">let</span> <span class="ident">lae</span> <span class="op">=</span> <span class="ident">LdapAuthEvent::from_parts</span>(<span class="ident">target_uuid</span>, <span class="ident">pw</span>.<span class="ident">to_string</span>())<span class="question-mark">?</span>;
-        <span class="ident">idm_auth</span>.<span class="ident">auth_ldap</span>(<span class="kw-2">&amp;</span><span class="ident">lae</span>, <span class="ident">ct</span>).<span class="kw">await</span>.<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> {
-            <span class="ident">idm_auth</span>.<span class="ident">commit</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">is_some</span>() {
-                    <span class="macro">security_info!</span>(<span class="op">%</span><span class="ident">dn</span>, <span class="string">&quot;✅ LDAP Bind success&quot;</span>);
-                } <span class="kw">else</span> {
-                    <span class="macro">security_info!</span>(<span class="op">%</span><span class="ident">dn</span>, <span class="string">&quot;❌ LDAP Bind failure&quot;</span>);
+        <span class="kw">let </span>lae = LdapAuthEvent::from_parts(target_uuid, pw.to_string())<span class="question-mark">?</span>;
+        idm_auth.auth_ldap(<span class="kw-2">&amp;</span>lae, ct).<span class="kw">await</span>.and_then(|r| {
+            idm_auth.commit().map(|<span class="kw">_</span>| {
+                <span class="kw">if </span>r.is_some() {
+                    <span class="macro">security_info!</span>(%dn, <span class="string">&quot;✅ LDAP Bind success&quot;</span>);
+                } <span class="kw">else </span>{
+                    <span class="macro">security_info!</span>(%dn, <span class="string">&quot;❌ LDAP Bind failure&quot;</span>);
                 };
-                <span class="ident">r</span>
+                r
             })
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_op</span>(
+    <span class="kw">pub async fn </span>do_op(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
-        <span class="ident">server_op</span>: <span class="ident">ServerOps</span>,
-        <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>,
-        <span class="ident">eventid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LdapResponseState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">server_op</span> {
-            <span class="ident">ServerOps::SimpleBind</span>(<span class="ident">sbr</span>) =&gt; <span class="self">self</span>
-                .<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="ident">sbr</span>.<span class="ident">dn</span>.<span class="ident">as_str</span>(), <span class="ident">sbr</span>.<span class="ident">pw</span>.<span class="ident">as_str</span>())
-                .<span class="kw">await</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">lbt</span>) =&gt; <span class="ident">LdapResponseState::Bind</span>(<span class="ident">lbt</span>, <span class="ident">sbr</span>.<span class="ident">gen_success</span>()),
-                    <span class="prelude-val">None</span> =&gt; <span class="ident">LdapResponseState::Respond</span>(<span class="ident">sbr</span>.<span class="ident">gen_invalid_cred</span>()),
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        server_op: ServerOps,
+        uat: <span class="prelude-ty">Option</span>&lt;LdapBoundToken&gt;,
+        eventid: <span class="kw-2">&amp;</span>Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LdapResponseState, OperationError&gt; {
+        <span class="kw">match </span>server_op {
+            ServerOps::SimpleBind(sbr) =&gt; <span class="self">self
+                </span>.do_bind(idms, sbr.dn.as_str(), sbr.pw.as_str())
+                .<span class="kw">await
+                </span>.map(|r| <span class="kw">match </span>r {
+                    <span class="prelude-val">Some</span>(lbt) =&gt; LdapResponseState::Bind(lbt, sbr.gen_success()),
+                    <span class="prelude-val">None </span>=&gt; LdapResponseState::Respond(sbr.gen_invalid_cred()),
                 })
-                .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="kw">let</span> (<span class="ident">rc</span>, <span class="ident">msg</span>) <span class="op">=</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>);
-                    <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">sbr</span>.<span class="ident">gen_error</span>(<span class="ident">rc</span>, <span class="ident">msg</span>)))
+                .or_else(|e| {
+                    <span class="kw">let </span>(rc, msg) = operationerr_to_ldapresultcode(e);
+                    <span class="prelude-val">Ok</span>(LdapResponseState::Respond(sbr.gen_error(rc, msg)))
                 }),
-            <span class="ident">ServerOps::Search</span>(<span class="ident">sr</span>) =&gt; <span class="kw">match</span> <span class="ident">uat</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>
-                    .<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">u</span>)
-                    .<span class="kw">await</span>
-                    .<span class="ident">map</span>(<span class="ident">LdapResponseState::MultiPartResponse</span>)
-                    .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="kw">let</span> (<span class="ident">rc</span>, <span class="ident">msg</span>) <span class="op">=</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>);
-                        <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">sr</span>.<span class="ident">gen_error</span>(<span class="ident">rc</span>, <span class="ident">msg</span>)))
+            ServerOps::Search(sr) =&gt; <span class="kw">match </span>uat {
+                <span class="prelude-val">Some</span>(u) =&gt; <span class="self">self
+                    </span>.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>u)
+                    .<span class="kw">await
+                    </span>.map(LdapResponseState::MultiPartResponse)
+                    .or_else(|e| {
+                        <span class="kw">let </span>(rc, msg) = operationerr_to_ldapresultcode(e);
+                        <span class="prelude-val">Ok</span>(LdapResponseState::Respond(sr.gen_error(rc, msg)))
                     }),
-                <span class="prelude-val">None</span> =&gt; {
-                    <span class="comment">// Search can occur without a bind, so bind first.</span>
-                    <span class="kw">let</span> <span class="ident">lbt</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>).<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">lbt</span>)) =&gt; <span class="ident">lbt</span>,
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="comment">// Search can occur without a bind, so bind first.
+                    </span><span class="kw">let </span>lbt = <span class="kw">match </span><span class="self">self</span>.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(lbt)) =&gt; lbt,
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
-                            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(
-                                <span class="ident">sr</span>.<span class="ident">gen_error</span>(<span class="ident">LdapResultCode::InvalidCredentials</span>, <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>()),
+                            <span class="kw">return </span><span class="prelude-val">Ok</span>(LdapResponseState::Respond(
+                                sr.gen_error(LdapResultCode::InvalidCredentials, <span class="string">&quot;&quot;</span>.to_string()),
                             ))
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                            <span class="kw">let</span> (<span class="ident">rc</span>, <span class="ident">msg</span>) <span class="op">=</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>);
-                            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">sr</span>.<span class="ident">gen_error</span>(<span class="ident">rc</span>, <span class="ident">msg</span>)));
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="kw">let </span>(rc, msg) = operationerr_to_ldapresultcode(e);
+                            <span class="kw">return </span><span class="prelude-val">Ok</span>(LdapResponseState::Respond(sr.gen_error(rc, msg)));
                         }
                     };
-                    <span class="comment">// If okay, do the search.</span>
-                    <span class="self">self</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">lbt</span>)
-                        .<span class="kw">await</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">LdapResponseState::BindMultiPartResponse</span>(<span class="ident">lbt</span>, <span class="ident">r</span>))
-                        .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="kw">let</span> (<span class="ident">rc</span>, <span class="ident">msg</span>) <span class="op">=</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>);
-                            <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">sr</span>.<span class="ident">gen_error</span>(<span class="ident">rc</span>, <span class="ident">msg</span>)))
+                    <span class="comment">// If okay, do the search.
+                    </span><span class="self">self</span>.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>lbt)
+                        .<span class="kw">await
+                        </span>.map(|r| LdapResponseState::BindMultiPartResponse(lbt, r))
+                        .or_else(|e| {
+                            <span class="kw">let </span>(rc, msg) = operationerr_to_ldapresultcode(e);
+                            <span class="prelude-val">Ok</span>(LdapResponseState::Respond(sr.gen_error(rc, msg)))
                         })
                 }
             },
-            <span class="ident">ServerOps::Unbind</span>(<span class="kw">_</span>) =&gt; {
-                <span class="comment">// No need to notify on unbind (per rfc4511)</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Unbind</span>)
+            ServerOps::Unbind(<span class="kw">_</span>) =&gt; {
+                <span class="comment">// No need to notify on unbind (per rfc4511)
+                </span><span class="prelude-val">Ok</span>(LdapResponseState::Unbind)
             }
-            <span class="ident">ServerOps::Whoami</span>(<span class="ident">wr</span>) =&gt; <span class="kw">match</span> <span class="ident">uat</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">u</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(
-                    <span class="ident">wr</span>.<span class="ident">gen_success</span>(<span class="macro">format!</span>(<span class="string">&quot;u: {}&quot;</span>, <span class="ident">u</span>.<span class="ident">spn</span>).<span class="ident">as_str</span>()),
+            ServerOps::Whoami(wr) =&gt; <span class="kw">match </span>uat {
+                <span class="prelude-val">Some</span>(u) =&gt; <span class="prelude-val">Ok</span>(LdapResponseState::Respond(
+                    wr.gen_success(<span class="macro">format!</span>(<span class="string">&quot;u: {}&quot;</span>, u.spn).as_str()),
                 )),
-                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">wr</span>.<span class="ident">gen_operror</span>(
-                    <span class="macro">format!</span>(<span class="string">&quot;Unbound Connection {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">eventid</span>).<span class="ident">as_str</span>(),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(LdapResponseState::Respond(wr.gen_operror(
+                    <span class="macro">format!</span>(<span class="string">&quot;Unbound Connection {:?}&quot;</span>, <span class="kw-2">&amp;</span>eventid).as_str(),
                 ))),
             },
-        } <span class="comment">// end match server op</span>
-    }
+        } <span class="comment">// end match server op
+    </span>}
 }
 
-<span class="kw">fn</span> <span class="ident">ldap_domain_to_dc</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">String::new</span>();
-    <span class="ident">input</span>.<span class="ident">split</span>(<span class="string">&#39;.&#39;</span>).<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">dc</span><span class="op">|</span> {
-        <span class="ident">output</span>.<span class="ident">push_str</span>(<span class="string">&quot;dc=&quot;</span>);
-        <span class="ident">output</span>.<span class="ident">push_str</span>(<span class="ident">dc</span>);
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::single_char_pattern</span>, <span class="ident">clippy::single_char_add_str</span>)]</span>
-        <span class="ident">output</span>.<span class="ident">push_str</span>(<span class="string">&quot;,&quot;</span>);
+<span class="kw">fn </span>ldap_domain_to_dc(input: <span class="kw-2">&amp;</span>str) -&gt; String {
+    <span class="kw">let </span><span class="kw-2">mut </span>output: String = String::new();
+    input.split(<span class="string">&#39;.&#39;</span>).for_each(|dc| {
+        output.push_str(<span class="string">&quot;dc=&quot;</span>);
+        output.push_str(dc);
+        <span class="attribute">#[allow(clippy::single_char_pattern, clippy::single_char_add_str)]
+        </span>output.push_str(<span class="string">&quot;,&quot;</span>);
     });
-    <span class="comment">// Remove the last &#39;,&#39;</span>
-    <span class="ident">output</span>.<span class="ident">pop</span>();
-    <span class="ident">output</span>
+    <span class="comment">// Remove the last &#39;,&#39;
+    </span>output.pop();
+    output
 }
 
-<span class="kw">fn</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>: <span class="ident">OperationError</span>) -&gt; (<span class="ident">LdapResultCode</span>, <span class="ident">String</span>) {
-    <span class="kw">match</span> <span class="ident">e</span> {
-        <span class="ident">OperationError::InvalidRequestState</span> =&gt; {
-            (<span class="ident">LdapResultCode::ConstraintViolation</span>, <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>())
+<span class="kw">fn </span>operationerr_to_ldapresultcode(e: OperationError) -&gt; (LdapResultCode, String) {
+    <span class="kw">match </span>e {
+        OperationError::InvalidRequestState =&gt; {
+            (LdapResultCode::ConstraintViolation, <span class="string">&quot;&quot;</span>.to_string())
         }
-        <span class="ident">OperationError::InvalidAttributeName</span>(<span class="ident">s</span>) <span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="ident">s</span>) =&gt; {
-            (<span class="ident">LdapResultCode::InvalidAttributeSyntax</span>, <span class="ident">s</span>)
+        OperationError::InvalidAttributeName(s) | OperationError::InvalidAttribute(s) =&gt; {
+            (LdapResultCode::InvalidAttributeSyntax, s)
         }
-        <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">se</span>) =&gt; {
-            (<span class="ident">LdapResultCode::UnwillingToPerform</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">se</span>))
+        OperationError::SchemaViolation(se) =&gt; {
+            (LdapResultCode::UnwillingToPerform, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, se))
         }
-        <span class="ident">e</span> =&gt; (<span class="ident">LdapResultCode::Other</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>)),
+        e =&gt; (LdapResultCode::Other, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e)),
     }
 }
 
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_all_vattrs</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+<span class="attribute">#[inline]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ldap_all_vattrs() -&gt; Vec&lt;String&gt; {
     <span class="macro">vec!</span>[
-        <span class="string">&quot;entryuuid&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;objectclass&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;entrydn&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;email&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;emailaddress&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;keys&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;sshpublickey&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;cn&quot;</span>.<span class="ident">to_string</span>(),
-        <span class="string">&quot;uidnumber&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="string">&quot;entryuuid&quot;</span>.to_string(),
+        <span class="string">&quot;objectclass&quot;</span>.to_string(),
+        <span class="string">&quot;entrydn&quot;</span>.to_string(),
+        <span class="string">&quot;email&quot;</span>.to_string(),
+        <span class="string">&quot;emailaddress&quot;</span>.to_string(),
+        <span class="string">&quot;keys&quot;</span>.to_string(),
+        <span class="string">&quot;sshpublickey&quot;</span>.to_string(),
+        <span class="string">&quot;cn&quot;</span>.to_string(),
+        <span class="string">&quot;uidnumber&quot;</span>.to_string(),
     ]
 }
 
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_vattr_map</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
-    <span class="comment">// ⚠️  WARNING ⚠️</span>
-    <span class="comment">// If you modify this list you MUST add these values to</span>
-    <span class="comment">// corresponding phantom attributes in the schema to prevent</span>
-    <span class="comment">// incorrect future or duplicate usage.</span>
-    <span class="comment">//</span>
-    <span class="comment">//   LDAP NAME     KANI ATTR SOURCE NAME</span>
-    <span class="kw">match</span> <span class="ident">input</span> {
-        <span class="string">&quot;entryuuid&quot;</span> =&gt; <span class="string">&quot;uuid&quot;</span>,
-        <span class="string">&quot;objectclass&quot;</span> =&gt; <span class="string">&quot;class&quot;</span>,
-        <span class="string">&quot;email&quot;</span> =&gt; <span class="string">&quot;mail&quot;</span>,
-        <span class="string">&quot;emailaddress&quot;</span> =&gt; <span class="string">&quot;mail&quot;</span>,
-        <span class="string">&quot;keys&quot;</span> =&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
-        <span class="string">&quot;sshpublickey&quot;</span> =&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
-        <span class="string">&quot;cn&quot;</span> =&gt; <span class="string">&quot;name&quot;</span>,
-        <span class="string">&quot;uidnumber&quot;</span> =&gt; <span class="string">&quot;gidnumber&quot;</span>,
-        <span class="ident">a</span> =&gt; <span class="ident">a</span>,
+<span class="attribute">#[inline]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ldap_vattr_map(input: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span>str {
+    <span class="comment">// ⚠️  WARNING ⚠️
+    // If you modify this list you MUST add these values to
+    // corresponding phantom attributes in the schema to prevent
+    // incorrect future or duplicate usage.
+    //
+    //   LDAP NAME     KANI ATTR SOURCE NAME
+    </span><span class="kw">match </span>input {
+        <span class="string">&quot;entryuuid&quot; </span>=&gt; <span class="string">&quot;uuid&quot;</span>,
+        <span class="string">&quot;objectclass&quot; </span>=&gt; <span class="string">&quot;class&quot;</span>,
+        <span class="string">&quot;email&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;emailaddress&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;keys&quot; </span>=&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
+        <span class="string">&quot;sshpublickey&quot; </span>=&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
+        <span class="string">&quot;cn&quot; </span>=&gt; <span class="string">&quot;name&quot;</span>,
+        <span class="string">&quot;uidnumber&quot; </span>=&gt; <span class="string">&quot;gidnumber&quot;</span>,
+        a =&gt; a,
     }
 }
 
-<span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_attr_filter_map</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">AttrString</span> {
-    <span class="ident">AttrString::from</span>(<span class="ident">ldap_vattr_map</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_lowercase</span>()))
+<span class="attribute">#[inline]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ldap_attr_filter_map(input: <span class="kw-2">&amp;</span>str) -&gt; AttrString {
+    AttrString::from(ldap_vattr_map(<span class="kw-2">&amp;</span>input.to_lowercase()))
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="comment">// use crate::prelude::*;</span>
-    <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="comment">// use crate::prelude::*;
+    </span><span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">use</span> <span class="ident">async_std::task</span>;
-    <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsUnverified</span>};
-    <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
-    <span class="kw">use</span> <span class="ident">kanidm_proto::v1::ApiToken</span>;
-    <span class="kw">use</span> <span class="ident">ldap3_proto::proto</span>::{<span class="ident">LdapFilter</span>, <span class="ident">LdapOp</span>, <span class="ident">LdapSearchScope</span>};
-    <span class="kw">use</span> <span class="ident">ldap3_proto::simple</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>async_std::task;
+    <span class="kw">use </span>compact_jwt::{Jws, JwsUnverified};
+    <span class="kw">use </span>hashbrown::HashSet;
+    <span class="kw">use </span>kanidm_proto::v1::ApiToken;
+    <span class="kw">use </span>ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
+    <span class="kw">use </span>ldap3_proto::simple::<span class="kw-2">*</span>;
 
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">CreateEvent</span>, <span class="ident">ModifyEvent</span>};
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event::UnixPasswordChangeEvent</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::serviceaccount::GenerateApiTokenEvent</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap</span>::{<span class="ident">LdapServer</span>, <span class="ident">LdapSession</span>};
+    <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
+    <span class="kw">use </span><span class="kw">crate</span>::idm::event::UnixPasswordChangeEvent;
+    <span class="kw">use </span><span class="kw">crate</span>::idm::serviceaccount::GenerateApiTokenEvent;
+    <span class="kw">use </span><span class="kw">crate</span>::ldap::{LdapServer, LdapSession};
 
-    <span class="kw">const</span> <span class="ident">TEST_PASSWORD</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;ntaoeuntnaoeuhraohuercahu😍&quot;</span>;
+    <span class="kw">const </span>TEST_PASSWORD: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;ntaoeuntnaoeuhraohuercahu😍&quot;</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_ldap_simple_bind</span>() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_ldap_simple_bind() {
         <span class="macro">run_idm_test!</span>(
-            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">ldaps</span> <span class="op">=</span> <span class="ident">LdapServer::new</span>(<span class="ident">idms</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to start ldap&quot;</span>);
+            |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;</span>IdmServerDelayed| {
+                <span class="kw">let </span>ldaps = LdapServer::new(idms).expect(<span class="string">&quot;failed to start ldap&quot;</span>);
 
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span>
-                    <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">duration_from_epoch_now</span>()));
-                <span class="comment">// make the admin a valid posix account</span>
-                <span class="kw">let</span> <span class="ident">me_posix</span> <span class="op">=</span> <span class="kw">unsafe</span> {
-                    <span class="ident">ModifyEvent::new_internal_invalid</span>(
-                        <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;admin&quot;</span>))),
-                        <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[
-                            <span class="ident">Modify::Present</span>(
-                                <span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>),
-                                <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>),
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write =
+                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
+                <span class="comment">// make the admin a valid posix account
+                </span><span class="kw">let </span>me_posix = <span class="kw">unsafe </span>{
+                    ModifyEvent::new_internal_invalid(
+                        <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;admin&quot;</span>))),
+                        ModifyList::new_list(<span class="macro">vec!</span>[
+                            Modify::Present(
+                                AttrString::from(<span class="string">&quot;class&quot;</span>),
+                                Value::new_class(<span class="string">&quot;posixaccount&quot;</span>),
                             ),
-                            <span class="ident">Modify::Present</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;gidnumber&quot;</span>), <span class="ident">Value::new_uint32</span>(<span class="number">2001</span>)),
+                            Modify::Present(AttrString::from(<span class="string">&quot;gidnumber&quot;</span>), Value::new_uint32(<span class="number">2001</span>)),
                         ]),
                     )
                 };
-                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">qs_write</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_posix</span>).<span class="ident">is_ok</span>());
+                <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
 
-                <span class="kw">let</span> <span class="ident">pce</span> <span class="op">=</span> <span class="ident">UnixPasswordChangeEvent::new_internal</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>, <span class="ident">TEST_PASSWORD</span>);
+                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
 
-                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">set_unix_account_password</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>).<span class="ident">is_ok</span>());
-                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
+                <span class="macro">assert!</span>(idms_prox_write.set_unix_account_password(<span class="kw-2">&amp;</span>pce).is_ok());
+                <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-                <span class="kw">let</span> <span class="ident">anon_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">anon_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ANONYMOUS</span>));
+                <span class="kw">let </span>anon_t = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
                 <span class="macro">assert!</span>(
-                    <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;test&quot;</span>)).<span class="ident">unwrap_err</span>()
-                        <span class="op">==</span> <span class="ident">OperationError::NotAuthenticated</span>
+                    task::block_on(ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="string">&quot;test&quot;</span>)).unwrap_err()
+                        == OperationError::NotAuthenticated
                 );
 
-                <span class="comment">// Now test the admin and various DN&#39;s</span>
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
-                    <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin@example.com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="ident">STR_UUID_ADMIN</span>, <span class="ident">TEST_PASSWORD</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
+                <span class="comment">// Now test the admin and various DN&#39;s
+                </span><span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;admin&quot;</span>, TEST_PASSWORD))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t =
+                    task::block_on(ldaps.do_bind(idms, <span class="string">&quot;admin@example.com&quot;</span>, TEST_PASSWORD))
+                        .unwrap()
+                        .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
+                    idms,
                     <span class="string">&quot;name=admin,dc=example,dc=com&quot;</span>,
-                    <span class="ident">TEST_PASSWORD</span>,
+                    TEST_PASSWORD,
                 ))
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
+                .unwrap()
+                .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
+                    idms,
                     <span class="string">&quot;spn=admin@example.com,dc=example,dc=com&quot;</span>,
-                    <span class="ident">TEST_PASSWORD</span>,
+                    TEST_PASSWORD,
                 ))
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
-                    <span class="macro">format!</span>(<span class="string">&quot;uuid={},dc=example,dc=com&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
-                    <span class="ident">TEST_PASSWORD</span>,
+                .unwrap()
+                .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
+                    idms,
+                    <span class="macro">format!</span>(<span class="string">&quot;uuid={},dc=example,dc=com&quot;</span>, STR_UUID_ADMIN).as_str(),
+                    TEST_PASSWORD,
                 ))
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
+                .unwrap()
+                .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;name=admin&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
-                    <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;spn=admin@example.com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
-                    <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
-                    <span class="ident">TEST_PASSWORD</span>,
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;name=admin&quot;</span>, TEST_PASSWORD))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t =
+                    task::block_on(ldaps.do_bind(idms, <span class="string">&quot;spn=admin@example.com&quot;</span>, TEST_PASSWORD))
+                        .unwrap()
+                        .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
+                    idms,
+                    <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, STR_UUID_ADMIN).as_str(),
+                    TEST_PASSWORD,
                 ))
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
+                .unwrap()
+                .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
-                    <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin,dc=example,dc=com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
+                <span class="kw">let </span>admin_t =
+                    task::block_on(ldaps.do_bind(idms, <span class="string">&quot;admin,dc=example,dc=com&quot;</span>, TEST_PASSWORD))
+                        .unwrap()
+                        .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
+                    idms,
                     <span class="string">&quot;admin@example.com,dc=example,dc=com&quot;</span>,
-                    <span class="ident">TEST_PASSWORD</span>,
+                    TEST_PASSWORD,
                 ))
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
-                <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
-                    <span class="macro">format!</span>(<span class="string">&quot;{},dc=example,dc=com&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
-                    <span class="ident">TEST_PASSWORD</span>,
+                .unwrap()
+                .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+                <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
+                    idms,
+                    <span class="macro">format!</span>(<span class="string">&quot;{},dc=example,dc=com&quot;</span>, STR_UUID_ADMIN).as_str(),
+                    TEST_PASSWORD,
                 ))
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ADMIN</span>));
+                .unwrap()
+                .unwrap();
+                <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
-                <span class="comment">// Bad password, check last to prevent softlocking of the admin account.</span>
-                <span class="macro">assert!</span>(<span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin&quot;</span>, <span class="string">&quot;test&quot;</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">is_none</span>());
+                <span class="comment">// Bad password, check last to prevent softlocking of the admin account.
+                </span><span class="macro">assert!</span>(task::block_on(ldaps.do_bind(idms, <span class="string">&quot;admin&quot;</span>, <span class="string">&quot;test&quot;</span>))
+                    .unwrap()
+                    .is_none());
 
-                <span class="comment">// Non-existant and invalid DNs</span>
-                <span class="macro">assert!</span>(<span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
+                <span class="comment">// Non-existant and invalid DNs
+                </span><span class="macro">assert!</span>(task::block_on(ldaps.do_bind(
+                    idms,
                     <span class="string">&quot;spn=admin@example.com,dc=clownshoes,dc=example,dc=com&quot;</span>,
-                    <span class="ident">TEST_PASSWORD</span>
+                    TEST_PASSWORD
                 ))
-                .<span class="ident">is_err</span>());
-                <span class="macro">assert!</span>(<span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
-                    <span class="ident">idms</span>,
+                .is_err());
+                <span class="macro">assert!</span>(task::block_on(ldaps.do_bind(
+                    idms,
                     <span class="string">&quot;spn=claire@example.com,dc=example,dc=com&quot;</span>,
-                    <span class="ident">TEST_PASSWORD</span>
+                    TEST_PASSWORD
                 ))
-                .<span class="ident">is_err</span>());
+                .is_err());
                 <span class="macro">assert!</span>(
-                    <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;,dc=example,dc=com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
-                        .<span class="ident">is_err</span>()
+                    task::block_on(ldaps.do_bind(idms, <span class="string">&quot;,dc=example,dc=com&quot;</span>, TEST_PASSWORD))
+                        .is_err()
                 );
                 <span class="macro">assert!</span>(
-                    <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;dc=example,dc=com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
-                        .<span class="ident">is_err</span>()
+                    task::block_on(ldaps.do_bind(idms, <span class="string">&quot;dc=example,dc=com&quot;</span>, TEST_PASSWORD))
+                        .is_err()
                 );
 
-                <span class="macro">assert!</span>(<span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;claire&quot;</span>, <span class="string">&quot;test&quot;</span>)).<span class="ident">is_err</span>());
+                <span class="macro">assert!</span>(task::block_on(ldaps.do_bind(idms, <span class="string">&quot;claire&quot;</span>, <span class="string">&quot;test&quot;</span>)).is_err());
             }
         )
     }
 
-    <span class="macro">macro_rules!</span> <span class="ident">assert_entry_contains</span> {
+    <span class="macro">macro_rules! </span>assert_entry_contains {
         (
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>,
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dn</span>:<span class="ident">expr</span>,
-            $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="op">*</span>
+            <span class="macro-nonterminal">$e</span>:expr,
+            <span class="macro-nonterminal">$dn</span>:expr,
+            $(<span class="macro-nonterminal">$item</span>:expr),*
         ) =&gt; {{
-            <span class="macro">assert!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>.<span class="ident">dn</span> <span class="op">==</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dn</span>);
-            <span class="comment">// Build a set from the attrs.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-            <span class="kw">for</span> <span class="ident">a</span> <span class="kw">in</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>.<span class="ident">attributes</span>.<span class="ident">iter</span>() {
-                <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="ident">a</span>.<span class="ident">vals</span>.<span class="ident">iter</span>() {
-                    <span class="ident">attrs</span>.<span class="ident">insert</span>((<span class="ident">a</span>.<span class="ident">atype</span>.<span class="ident">as_str</span>(), <span class="ident">v</span>.<span class="ident">as_str</span>()));
+            <span class="macro">assert!</span>(<span class="macro-nonterminal">$e</span>.dn == <span class="macro-nonterminal">$dn</span>);
+            <span class="comment">// Build a set from the attrs.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>attrs = HashSet::new();
+            <span class="kw">for </span>a <span class="kw">in </span><span class="macro-nonterminal">$e</span>.attributes.iter() {
+                <span class="kw">for </span>v <span class="kw">in </span>a.vals.iter() {
+                    attrs.insert((a.atype.as_str(), v.as_str()));
                 }
             };
             $(
-                <span class="macro">assert!</span>(<span class="ident">attrs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span>(
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>.<span class="number">0</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>.<span class="number">1</span>
-                )));
-            )<span class="op">*</span>
+                <span class="macro">assert!</span>(attrs.contains(<span class="kw-2">&amp;</span>(
+                    <span class="macro-nonterminal">$item</span>.<span class="number">0</span>, <span class="macro-nonterminal">$item</span>.<span class="number">1
+                </span>)));
+            )*
 
         }};
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_ldap_virtual_attribute_generation</span>() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_ldap_virtual_attribute_generation() {
         <span class="macro">run_idm_test!</span>(
-            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">ldaps</span> <span class="op">=</span> <span class="ident">LdapServer::new</span>(<span class="ident">idms</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to start ldap&quot;</span>);
+            |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;</span>IdmServerDelayed| {
+                <span class="kw">let </span>ldaps = LdapServer::new(idms).expect(<span class="string">&quot;failed to start ldap&quot;</span>);
 
-                <span class="kw">let</span> <span class="ident">ssh_ed25519</span> <span class="op">=</span> <span class="string">&quot;ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst&quot;</span>;
+                <span class="kw">let </span>ssh_ed25519 = <span class="string">&quot;ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst&quot;</span>;
 
-                <span class="comment">// Setup a user we want to check.</span>
-                {
-                    <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;person&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-                        (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson1&quot;</span>)),
+                <span class="comment">// Setup a user we want to check.
+                </span>{
+                    <span class="kw">let </span>e1 = <span class="macro">entry_init!</span>(
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+                        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
                         (
                             <span class="string">&quot;uuid&quot;</span>,
-                            <span class="ident">Value::new_uuids</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;uuid&quot;</span>)
+                            Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
                         ),
-                        (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson1&quot;</span>)),
-                        (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson1&quot;</span>)),
-                        (<span class="string">&quot;gidnumber&quot;</span>, <span class="ident">Value::new_uint32</span>(<span class="number">12345678</span>)),
-                        (<span class="string">&quot;loginshell&quot;</span>, <span class="ident">Value::new_iutf8</span>(<span class="string">&quot;/bin/zsh&quot;</span>)),
-                        (<span class="string">&quot;ssh_publickey&quot;</span>, <span class="ident">Value::new_sshkey_str</span>(<span class="string">&quot;test&quot;</span>, <span class="ident">ssh_ed25519</span>))
+                        (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
+                        (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
+                        (<span class="string">&quot;gidnumber&quot;</span>, Value::new_uint32(<span class="number">12345678</span>)),
+                        (<span class="string">&quot;loginshell&quot;</span>, Value::new_iutf8(<span class="string">&quot;/bin/zsh&quot;</span>)),
+                        (<span class="string">&quot;ssh_publickey&quot;</span>, Value::new_sshkey_str(<span class="string">&quot;test&quot;</span>, ssh_ed25519))
                     );
 
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server_txn</span> <span class="op">=</span>
-                        <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">duration_from_epoch_now</span>()));
-                    <span class="kw">let</span> <span class="ident">ce</span> <span class="op">=</span> <span class="ident">CreateEvent::new_internal</span>(<span class="macro">vec!</span>[<span class="ident">e1</span>]);
-                    <span class="macro">assert!</span>(<span class="ident">server_txn</span>
-                        .<span class="ident">qs_write</span>
-                        .<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">ce</span>)
-                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">server_txn</span>.<span class="ident">commit</span>())
-                        .<span class="ident">is_ok</span>());
+                    <span class="kw">let </span><span class="kw-2">mut </span>server_txn =
+                        task::block_on(idms.proxy_write(duration_from_epoch_now()));
+                    <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e1]);
+                    <span class="macro">assert!</span>(server_txn
+                        .qs_write
+                        .create(<span class="kw-2">&amp;</span>ce)
+                        .and_then(|<span class="kw">_</span>| server_txn.commit())
+                        .is_ok());
                 }
 
-                <span class="comment">// Setup the anonymous login.</span>
-                <span class="kw">let</span> <span class="ident">anon_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">anon_t</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ANONYMOUS</span>));
+                <span class="comment">// Setup the anonymous login.
+                </span><span class="kw">let </span>anon_t = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
-                <span class="comment">// Check that when we request *, we get default list.</span>
-                <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="ident">SearchRequest</span> {
-                    <span class="ident">msgid</span>: <span class="number">1</span>,
-                    <span class="ident">base</span>: <span class="string">&quot;dc=example,dc=com&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">scope</span>: <span class="ident">LdapSearchScope::Subtree</span>,
-                    <span class="ident">filter</span>: <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;testperson1&quot;</span>.<span class="ident">to_string</span>()),
-                    <span class="ident">attrs</span>: <span class="macro">vec!</span>[<span class="string">&quot;*&quot;</span>.<span class="ident">to_string</span>()],
+                <span class="comment">// Check that when we request *, we get default list.
+                </span><span class="kw">let </span>sr = SearchRequest {
+                    msgid: <span class="number">1</span>,
+                    base: <span class="string">&quot;dc=example,dc=com&quot;</span>.to_string(),
+                    scope: LdapSearchScope::Subtree,
+                    filter: LdapFilter::Equality(<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;testperson1&quot;</span>.to_string()),
+                    attrs: <span class="macro">vec!</span>[<span class="string">&quot;*&quot;</span>.to_string()],
                 };
-                <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">anon_t</span>)).<span class="ident">unwrap</span>();
+                <span class="kw">let </span>r1 = task::block_on(ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>anon_t)).unwrap();
 
-                <span class="comment">// The result, and the ldap proto success msg.</span>
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
+                <span class="comment">// The result, and the ldap proto success msg.
+                </span><span class="macro">assert!</span>(r1.len() == <span class="number">2</span>);
+                <span class="kw">match </span><span class="kw-2">&amp;</span>r1[<span class="number">0</span>].op {
+                    LdapOp::SearchResultEntry(lsre) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
-                            <span class="ident">lsre</span>,
+                            lsre,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
                             (<span class="string">&quot;class&quot;</span>, <span class="string">&quot;object&quot;</span>),
                             (<span class="string">&quot;class&quot;</span>, <span class="string">&quot;person&quot;</span>),
@@ -1815,29 +1815,29 @@
                             (<span class="string">&quot;name&quot;</span>, <span class="string">&quot;testperson1&quot;</span>),
                             (<span class="string">&quot;gidnumber&quot;</span>, <span class="string">&quot;12345678&quot;</span>),
                             (<span class="string">&quot;loginshell&quot;</span>, <span class="string">&quot;/bin/zsh&quot;</span>),
-                            (<span class="string">&quot;ssh_publickey&quot;</span>, <span class="ident">ssh_ed25519</span>),
+                            (<span class="string">&quot;ssh_publickey&quot;</span>, ssh_ed25519),
                             (<span class="string">&quot;uuid&quot;</span>, <span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>)
                         );
                     }
-                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
-                <span class="comment">// Check that when we request +, we get all attrs and the vattrs</span>
-                <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="ident">SearchRequest</span> {
-                    <span class="ident">msgid</span>: <span class="number">1</span>,
-                    <span class="ident">base</span>: <span class="string">&quot;dc=example,dc=com&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">scope</span>: <span class="ident">LdapSearchScope::Subtree</span>,
-                    <span class="ident">filter</span>: <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;testperson1&quot;</span>.<span class="ident">to_string</span>()),
-                    <span class="ident">attrs</span>: <span class="macro">vec!</span>[<span class="string">&quot;+&quot;</span>.<span class="ident">to_string</span>()],
+                <span class="comment">// Check that when we request +, we get all attrs and the vattrs
+                </span><span class="kw">let </span>sr = SearchRequest {
+                    msgid: <span class="number">1</span>,
+                    base: <span class="string">&quot;dc=example,dc=com&quot;</span>.to_string(),
+                    scope: LdapSearchScope::Subtree,
+                    filter: LdapFilter::Equality(<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;testperson1&quot;</span>.to_string()),
+                    attrs: <span class="macro">vec!</span>[<span class="string">&quot;+&quot;</span>.to_string()],
                 };
-                <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">anon_t</span>)).<span class="ident">unwrap</span>();
+                <span class="kw">let </span>r1 = task::block_on(ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>anon_t)).unwrap();
 
-                <span class="comment">// The result, and the ldap proto success msg.</span>
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
+                <span class="comment">// The result, and the ldap proto success msg.
+                </span><span class="macro">assert!</span>(r1.len() == <span class="number">2</span>);
+                <span class="kw">match </span><span class="kw-2">&amp;</span>r1[<span class="number">0</span>].op {
+                    LdapOp::SearchResultEntry(lsre) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
-                            <span class="ident">lsre</span>,
+                            lsre,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
                             (<span class="string">&quot;objectclass&quot;</span>, <span class="string">&quot;object&quot;</span>),
                             (<span class="string">&quot;objectclass&quot;</span>, <span class="string">&quot;person&quot;</span>),
@@ -1847,192 +1847,192 @@
                             (<span class="string">&quot;name&quot;</span>, <span class="string">&quot;testperson1&quot;</span>),
                             (<span class="string">&quot;gidnumber&quot;</span>, <span class="string">&quot;12345678&quot;</span>),
                             (<span class="string">&quot;loginshell&quot;</span>, <span class="string">&quot;/bin/zsh&quot;</span>),
-                            (<span class="string">&quot;ssh_publickey&quot;</span>, <span class="ident">ssh_ed25519</span>),
+                            (<span class="string">&quot;ssh_publickey&quot;</span>, ssh_ed25519),
                             (<span class="string">&quot;entryuuid&quot;</span>, <span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>),
                             (<span class="string">&quot;entrydn&quot;</span>, <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>),
                             (<span class="string">&quot;uidnumber&quot;</span>, <span class="string">&quot;12345678&quot;</span>),
                             (<span class="string">&quot;cn&quot;</span>, <span class="string">&quot;testperson1&quot;</span>),
-                            (<span class="string">&quot;keys&quot;</span>, <span class="ident">ssh_ed25519</span>)
+                            (<span class="string">&quot;keys&quot;</span>, ssh_ed25519)
                         );
                     }
-                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
-                <span class="comment">// Check that when we request an attr by name, we get all of them correctly.</span>
-                <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="ident">SearchRequest</span> {
-                    <span class="ident">msgid</span>: <span class="number">1</span>,
-                    <span class="ident">base</span>: <span class="string">&quot;dc=example,dc=com&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">scope</span>: <span class="ident">LdapSearchScope::Subtree</span>,
-                    <span class="ident">filter</span>: <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;testperson1&quot;</span>.<span class="ident">to_string</span>()),
-                    <span class="ident">attrs</span>: <span class="macro">vec!</span>[
-                        <span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="string">&quot;entrydn&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="string">&quot;keys&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="string">&quot;uidnumber&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="comment">// Check that when we request an attr by name, we get all of them correctly.
+                </span><span class="kw">let </span>sr = SearchRequest {
+                    msgid: <span class="number">1</span>,
+                    base: <span class="string">&quot;dc=example,dc=com&quot;</span>.to_string(),
+                    scope: LdapSearchScope::Subtree,
+                    filter: LdapFilter::Equality(<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;testperson1&quot;</span>.to_string()),
+                    attrs: <span class="macro">vec!</span>[
+                        <span class="string">&quot;name&quot;</span>.to_string(),
+                        <span class="string">&quot;entrydn&quot;</span>.to_string(),
+                        <span class="string">&quot;keys&quot;</span>.to_string(),
+                        <span class="string">&quot;uidnumber&quot;</span>.to_string(),
                     ],
                 };
-                <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">anon_t</span>)).<span class="ident">unwrap</span>();
+                <span class="kw">let </span>r1 = task::block_on(ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>anon_t)).unwrap();
 
-                <span class="comment">// The result, and the ldap proto success msg.</span>
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
+                <span class="comment">// The result, and the ldap proto success msg.
+                </span><span class="macro">assert!</span>(r1.len() == <span class="number">2</span>);
+                <span class="kw">match </span><span class="kw-2">&amp;</span>r1[<span class="number">0</span>].op {
+                    LdapOp::SearchResultEntry(lsre) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
-                            <span class="ident">lsre</span>,
+                            lsre,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
                             (<span class="string">&quot;name&quot;</span>, <span class="string">&quot;testperson1&quot;</span>),
                             (<span class="string">&quot;entrydn&quot;</span>, <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>),
                             (<span class="string">&quot;uidnumber&quot;</span>, <span class="string">&quot;12345678&quot;</span>),
-                            (<span class="string">&quot;keys&quot;</span>, <span class="ident">ssh_ed25519</span>)
+                            (<span class="string">&quot;keys&quot;</span>, ssh_ed25519)
                         );
                     }
-                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
             }
         )
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_ldap_token_privilege_granting</span>() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_ldap_token_privilege_granting() {
         <span class="macro">run_idm_test!</span>(
-            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServerDelayed</span><span class="op">|</span> {
-                <span class="comment">// Setup the ldap server</span>
-                <span class="kw">let</span> <span class="ident">ldaps</span> <span class="op">=</span> <span class="ident">LdapServer::new</span>(<span class="ident">idms</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to start ldap&quot;</span>);
+            |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;</span>IdmServerDelayed| {
+                <span class="comment">// Setup the ldap server
+                </span><span class="kw">let </span>ldaps = LdapServer::new(idms).expect(<span class="string">&quot;failed to start ldap&quot;</span>);
 
-                <span class="comment">// Prebuild the search req we&#39;ll be using this test.</span>
-                <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="ident">SearchRequest</span> {
-                    <span class="ident">msgid</span>: <span class="number">1</span>,
-                    <span class="ident">base</span>: <span class="string">&quot;dc=example,dc=com&quot;</span>.<span class="ident">to_string</span>(),
-                    <span class="ident">scope</span>: <span class="ident">LdapSearchScope::Subtree</span>,
-                    <span class="ident">filter</span>: <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;testperson1&quot;</span>.<span class="ident">to_string</span>()),
-                    <span class="ident">attrs</span>: <span class="macro">vec!</span>[<span class="string">&quot;name&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;mail&quot;</span>.<span class="ident">to_string</span>()],
+                <span class="comment">// Prebuild the search req we&#39;ll be using this test.
+                </span><span class="kw">let </span>sr = SearchRequest {
+                    msgid: <span class="number">1</span>,
+                    base: <span class="string">&quot;dc=example,dc=com&quot;</span>.to_string(),
+                    scope: LdapSearchScope::Subtree,
+                    filter: LdapFilter::Equality(<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;testperson1&quot;</span>.to_string()),
+                    attrs: <span class="macro">vec!</span>[<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;mail&quot;</span>.to_string()],
                 };
 
-                <span class="kw">let</span> <span class="ident">sa_uuid</span> <span class="op">=</span> <span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
+                <span class="kw">let </span>sa_uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
 
-                <span class="comment">// Configure the user account that will have the tokens issued.</span>
-                <span class="comment">// Should be a SERVICE account.</span>
-                <span class="kw">let</span> <span class="ident">apitoken</span> <span class="op">=</span> {
-                    <span class="comment">// Create a service account,</span>
+                <span class="comment">// Configure the user account that will have the tokens issued.
+                // Should be a SERVICE account.
+                </span><span class="kw">let </span>apitoken = {
+                    <span class="comment">// Create a service account,
 
-                    <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;service_account&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-                        (<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::new_uuid</span>(<span class="ident">sa_uuid</span>)),
-                        (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;service_permission_test&quot;</span>)),
-                        (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;service_permission_test&quot;</span>))
+                    </span><span class="kw">let </span>e1 = <span class="macro">entry_init!</span>(
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service_account&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+                        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(sa_uuid)),
+                        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;service_permission_test&quot;</span>)),
+                        (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;service_permission_test&quot;</span>))
                     );
 
-                    <span class="comment">// Setup a person with an email</span>
-                    <span class="kw">let</span> <span class="ident">e2</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;person&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;account&quot;</span>)),
-                        (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;posixaccount&quot;</span>)),
-                        (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson1&quot;</span>)),
+                    <span class="comment">// Setup a person with an email
+                    </span><span class="kw">let </span>e2 = <span class="macro">entry_init!</span>(
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+                        (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+                        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
                         (
                             <span class="string">&quot;mail&quot;</span>,
-                            <span class="ident">Value::EmailAddress</span>(<span class="string">&quot;testperson1@example.com&quot;</span>.<span class="ident">to_string</span>(), <span class="bool-val">true</span>)
+                            Value::EmailAddress(<span class="string">&quot;testperson1@example.com&quot;</span>.to_string(), <span class="bool-val">true</span>)
                         ),
-                        (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson1&quot;</span>)),
-                        (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;testperson1&quot;</span>)),
-                        (<span class="string">&quot;gidnumber&quot;</span>, <span class="ident">Value::new_uint32</span>(<span class="number">12345678</span>)),
-                        (<span class="string">&quot;loginshell&quot;</span>, <span class="ident">Value::new_iutf8</span>(<span class="string">&quot;/bin/zsh&quot;</span>))
+                        (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
+                        (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
+                        (<span class="string">&quot;gidnumber&quot;</span>, Value::new_uint32(<span class="number">12345678</span>)),
+                        (<span class="string">&quot;loginshell&quot;</span>, Value::new_iutf8(<span class="string">&quot;/bin/zsh&quot;</span>))
                     );
 
-                    <span class="comment">// Setup an access control for the service account to view mail attrs.</span>
+                    <span class="comment">// Setup an access control for the service account to view mail attrs.
 
-                    <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
+                    </span><span class="kw">let </span>ct = duration_from_epoch_now();
 
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>));
-                    <span class="kw">let</span> <span class="ident">ce</span> <span class="op">=</span> <span class="ident">CreateEvent::new_internal</span>(<span class="macro">vec!</span>[<span class="ident">e1</span>, <span class="ident">e2</span>]);
-                    <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">qs_write</span>.<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">ce</span>).<span class="ident">is_ok</span>());
+                    <span class="kw">let </span><span class="kw-2">mut </span>server_txn = task::block_on(idms.proxy_write(ct));
+                    <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e1, e2]);
+                    <span class="macro">assert!</span>(server_txn.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
 
-                    <span class="comment">// idm_people_read_priv</span>
-                    <span class="kw">let</span> <span class="ident">me</span> <span class="op">=</span> <span class="kw">unsafe</span> {
-                        <span class="ident">ModifyEvent::new_internal_invalid</span>(
-                            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+                    <span class="comment">// idm_people_read_priv
+                    </span><span class="kw">let </span>me = <span class="kw">unsafe </span>{
+                        ModifyEvent::new_internal_invalid(
+                            <span class="macro">filter!</span>(f_eq(
                                 <span class="string">&quot;name&quot;</span>,
-                                <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;idm_people_read_priv&quot;</span>)
+                                PartialValue::new_iname(<span class="string">&quot;idm_people_read_priv&quot;</span>)
                             )),
-                            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-                                <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
-                                <span class="ident">Value::new_refer</span>(<span class="ident">sa_uuid</span>),
+                            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
+                                AttrString::from(<span class="string">&quot;member&quot;</span>),
+                                Value::new_refer(sa_uuid),
                             )]),
                         )
                     };
-                    <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">qs_write</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me</span>).<span class="ident">is_ok</span>());
+                    <span class="macro">assert!</span>(server_txn.qs_write.modify(<span class="kw-2">&amp;</span>me).is_ok());
 
-                    <span class="comment">// Issue a token</span>
-                    <span class="comment">// make it purpose = ldap &lt;- currently purpose isn&#39;t supported,</span>
-                    <span class="comment">// it&#39;s an idea for future.</span>
-                    <span class="kw">let</span> <span class="ident">gte</span> <span class="op">=</span> <span class="ident">GenerateApiTokenEvent::new_internal</span>(<span class="ident">sa_uuid</span>, <span class="string">&quot;TestToken&quot;</span>, <span class="prelude-val">None</span>);
+                    <span class="comment">// Issue a token
+                    // make it purpose = ldap &lt;- currently purpose isn&#39;t supported,
+                    // it&#39;s an idea for future.
+                    </span><span class="kw">let </span>gte = GenerateApiTokenEvent::new_internal(sa_uuid, <span class="string">&quot;TestToken&quot;</span>, <span class="prelude-val">None</span>);
 
-                    <span class="kw">let</span> <span class="ident">apitoken</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                        .<span class="ident">service_account_generate_api_token</span>(<span class="kw-2">&amp;</span><span class="ident">gte</span>, <span class="ident">ct</span>)
-                        .<span class="ident">expect</span>(<span class="string">&quot;Failed to create new apitoken&quot;</span>);
+                    <span class="kw">let </span>apitoken = server_txn
+                        .service_account_generate_api_token(<span class="kw-2">&amp;</span>gte, ct)
+                        .expect(<span class="string">&quot;Failed to create new apitoken&quot;</span>);
 
-                    <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
+                    <span class="macro">assert!</span>(server_txn.commit().is_ok());
 
-                    <span class="ident">apitoken</span>
+                    apitoken
                 };
 
-                <span class="comment">// assert the token fails on non-ldap events token-xchg &lt;- currently</span>
-                <span class="comment">// we don&#39;t have purpose so this isn&#39;t tested.</span>
+                <span class="comment">// assert the token fails on non-ldap events token-xchg &lt;- currently
+                // we don&#39;t have purpose so this isn&#39;t tested.
 
-                <span class="comment">// Bind with anonymous, search and show mail attr isn&#39;t accessible.</span>
-                <span class="kw">let</span> <span class="ident">anon_lbt</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">anon_lbt</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::UnixBind</span>(<span class="ident">UUID_ANONYMOUS</span>));
+                // Bind with anonymous, search and show mail attr isn&#39;t accessible.
+                </span><span class="kw">let </span>anon_lbt = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(anon_lbt.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
-                <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">anon_lbt</span>)).<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
+                <span class="kw">let </span>r1 = task::block_on(ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>anon_lbt)).unwrap();
+                <span class="macro">assert!</span>(r1.len() == <span class="number">2</span>);
+                <span class="kw">match </span><span class="kw-2">&amp;</span>r1[<span class="number">0</span>].op {
+                    LdapOp::SearchResultEntry(lsre) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
-                            <span class="ident">lsre</span>,
+                            lsre,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
                             (<span class="string">&quot;name&quot;</span>, <span class="string">&quot;testperson1&quot;</span>)
                         );
                     }
-                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
-                <span class="comment">// Inspect the token to get its uuid out.</span>
-                <span class="kw">let</span> <span class="ident">apitoken_unverified</span> <span class="op">=</span>
-                    <span class="ident">JwsUnverified::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">apitoken</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to parse apitoken&quot;</span>);
+                <span class="comment">// Inspect the token to get its uuid out.
+                </span><span class="kw">let </span>apitoken_unverified =
+                    JwsUnverified::from_str(<span class="kw-2">&amp;</span>apitoken).expect(<span class="string">&quot;Failed to parse apitoken&quot;</span>);
 
-                <span class="kw">let</span> <span class="ident">apitoken_inner</span>: <span class="ident">Jws</span><span class="op">&lt;</span><span class="ident">ApiToken</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">apitoken_unverified</span>
-                    .<span class="ident">validate_embeded</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Embedded jwk not found&quot;</span>);
+                <span class="kw">let </span>apitoken_inner: Jws&lt;ApiToken&gt; = apitoken_unverified
+                    .validate_embeded()
+                    .expect(<span class="string">&quot;Embedded jwk not found&quot;</span>);
 
-                <span class="kw">let</span> <span class="ident">apitoken_inner</span> <span class="op">=</span> <span class="ident">apitoken_inner</span>.<span class="ident">into_inner</span>();
+                <span class="kw">let </span>apitoken_inner = apitoken_inner.into_inner();
 
-                <span class="comment">// Bind using the token</span>
-                <span class="kw">let</span> <span class="ident">sa_lbt</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">apitoken</span>))
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">sa_lbt</span>.<span class="ident">effective_session</span> <span class="op">==</span> <span class="ident">LdapSession::ApiToken</span>(<span class="ident">apitoken_inner</span>.<span class="ident">clone</span>()));
+                <span class="comment">// Bind using the token
+                </span><span class="kw">let </span>sa_lbt = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="kw-2">&amp;</span>apitoken))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
 
-                <span class="comment">// Search and retrieve mail that&#39;s now accessible.</span>
-                <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">sa_lbt</span>)).<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
+                <span class="comment">// Search and retrieve mail that&#39;s now accessible.
+                </span><span class="kw">let </span>r1 = task::block_on(ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>sa_lbt)).unwrap();
+                <span class="macro">assert!</span>(r1.len() == <span class="number">2</span>);
+                <span class="kw">match </span><span class="kw-2">&amp;</span>r1[<span class="number">0</span>].op {
+                    LdapOp::SearchResultEntry(lsre) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
-                            <span class="ident">lsre</span>,
+                            lsre,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
                             (<span class="string">&quot;name&quot;</span>, <span class="string">&quot;testperson1&quot;</span>),
                             (<span class="string">&quot;mail&quot;</span>, <span class="string">&quot;testperson1@example.com&quot;</span>)
                         );
                     }
-                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
             }
         )
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

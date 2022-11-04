@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/be/dbvalue.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>dbvalue.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/be/dbvalue.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>dbvalue.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -644,629 +644,629 @@
 <span id="644">644</span>
 <span id="645">645</span>
 <span id="646">646</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::fmt</span>;
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">url::Url</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::prelude</span>::{
-    <span class="ident">DeviceKey</span> <span class="kw">as</span> <span class="ident">DeviceKeyV4</span>, <span class="ident">Passkey</span> <span class="kw">as</span> <span class="ident">PasskeyV4</span>, <span class="ident">SecurityKey</span> <span class="kw">as</span> <span class="ident">SecurityKeyV4</span>,
+<span class="kw">use </span>hashbrown::HashSet;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>url::Url;
+<span class="kw">use </span>uuid::Uuid;
+<span class="kw">use </span>webauthn_rs::prelude::{
+    DeviceKey <span class="kw">as </span>DeviceKeyV4, Passkey <span class="kw">as </span>PasskeyV4, SecurityKey <span class="kw">as </span>SecurityKeyV4,
 };
-<span class="kw">use</span> <span class="ident">webauthn_rs_core::proto</span>::{<span class="ident">COSEKey</span>, <span class="ident">UserVerificationPolicy</span>};
+<span class="kw">use </span>webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbCidV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">domain_id</span>: <span class="ident">Uuid</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">server_id</span>: <span class="ident">Uuid</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;t&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">timestamp</span>: <span class="ident">Duration</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbCidV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;d&quot;</span>)]
+    </span><span class="kw">pub </span>domain_id: Uuid,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;s&quot;</span>)]
+    </span><span class="kw">pub </span>server_id: Uuid,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;t&quot;</span>)]
+    </span><span class="kw">pub </span>timestamp: Duration,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbPasswordV1</span> {
-    <span class="ident">PBKDF2</span>(<span class="ident">usize</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="ident">PBKDF2_SHA1</span>(<span class="ident">usize</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="ident">PBKDF2_SHA512</span>(<span class="ident">usize</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="ident">SSHA512</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="ident">NT_MD4</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
+<span class="attribute">#[derive(Serialize, Deserialize)]
+#[allow(non_camel_case_types)]
+</span><span class="kw">pub enum </span>DbPasswordV1 {
+    PBKDF2(usize, Vec&lt;u8&gt;, Vec&lt;u8&gt;),
+    PBKDF2_SHA1(usize, Vec&lt;u8&gt;, Vec&lt;u8&gt;),
+    PBKDF2_SHA512(usize, Vec&lt;u8&gt;, Vec&lt;u8&gt;),
+    SSHA512(Vec&lt;u8&gt;, Vec&lt;u8&gt;),
+    NT_MD4(Vec&lt;u8&gt;),
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">DbPasswordV1</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">DbPasswordV1::PBKDF2</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;PBKDF2&quot;</span>),
-            <span class="ident">DbPasswordV1::PBKDF2_SHA1</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;PBKDF2_SHA1&quot;</span>),
-            <span class="ident">DbPasswordV1::PBKDF2_SHA512</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;PBKDF2_SHA512&quot;</span>),
-            <span class="ident">DbPasswordV1::SSHA512</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;SSHA512&quot;</span>),
-            <span class="ident">DbPasswordV1::NT_MD4</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;NT_MD4&quot;</span>),
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>DbPasswordV1 {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            DbPasswordV1::PBKDF2(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;PBKDF2&quot;</span>),
+            DbPasswordV1::PBKDF2_SHA1(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;PBKDF2_SHA1&quot;</span>),
+            DbPasswordV1::PBKDF2_SHA512(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;PBKDF2_SHA512&quot;</span>),
+            DbPasswordV1::SSHA512(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;SSHA512&quot;</span>),
+            DbPasswordV1::NT_MD4(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;NT_MD4&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueIntentTokenStateV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v&quot;</span>)]</span>
-    <span class="ident">Valid</span> { <span class="ident">max_ttl</span>: <span class="ident">Duration</span> },
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>)]</span>
-    <span class="ident">InProgress</span> {
-        <span class="ident">max_ttl</span>: <span class="ident">Duration</span>,
-        <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
-        <span class="ident">session_ttl</span>: <span class="ident">Duration</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValueIntentTokenStateV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;v&quot;</span>)]
+    </span>Valid { max_ttl: Duration },
+    <span class="attribute">#[serde(rename = <span class="string">&quot;p&quot;</span>)]
+    </span>InProgress {
+        max_ttl: Duration,
+        session_id: Uuid,
+        session_ttl: Duration,
     },
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;c&quot;</span>)]</span>
-    <span class="ident">Consumed</span> { <span class="ident">max_ttl</span>: <span class="ident">Duration</span> },
+    <span class="attribute">#[serde(rename = <span class="string">&quot;c&quot;</span>)]
+    </span>Consumed { max_ttl: Duration },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbTotpAlgoV1</span> {
-    <span class="ident">S1</span>,
-    <span class="ident">S256</span>,
-    <span class="ident">S512</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbTotpAlgoV1 {
+    S1,
+    S256,
+    S512,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbTotpV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;l&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">label</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;k&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">key</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">step</span>: <span class="ident">u64</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;a&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">algo</span>: <span class="ident">DbTotpAlgoV1</span>,
+<span class="attribute">#[derive(Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>DbTotpV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;l&quot;</span>)]
+    </span><span class="kw">pub </span>label: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;k&quot;</span>)]
+    </span><span class="kw">pub </span>key: Vec&lt;u8&gt;,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;s&quot;</span>)]
+    </span><span class="kw">pub </span>step: u64,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;a&quot;</span>)]
+    </span><span class="kw">pub </span>algo: DbTotpAlgoV1,
 }
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">DbTotpV1</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;DbTotpV1&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;label&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">label</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;step&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">step</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;algo&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">algo</span>)
-            .<span class="ident">finish</span>()
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>DbTotpV1 {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">&quot;DbTotpV1&quot;</span>)
+            .field(<span class="string">&quot;label&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.label)
+            .field(<span class="string">&quot;step&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.step)
+            .field(<span class="string">&quot;algo&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.algo)
+            .finish()
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbWebauthnV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;l&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">label</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;i&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;c&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">cred</span>: <span class="ident">COSEKey</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;t&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">counter</span>: <span class="ident">u32</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">verified</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>, <span class="ident">default</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">registration_policy</span>: <span class="ident">UserVerificationPolicy</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbWebauthnV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;l&quot;</span>)]
+    </span><span class="kw">pub </span>label: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;i&quot;</span>)]
+    </span><span class="kw">pub </span>id: Vec&lt;u8&gt;,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;c&quot;</span>)]
+    </span><span class="kw">pub </span>cred: COSEKey,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;t&quot;</span>)]
+    </span><span class="kw">pub </span>counter: u32,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;v&quot;</span>)]
+    </span><span class="kw">pub </span>verified: bool,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;p&quot;</span>, default)]
+    </span><span class="kw">pub </span>registration_policy: UserVerificationPolicy,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbBackupCodeV1</span> {
-    <span class="kw">pub</span> <span class="ident">code_set</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="comment">// has to use std::HashSet for serde</span>
-}
+<span class="attribute">#[derive(Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>DbBackupCodeV1 {
+    <span class="kw">pub </span>code_set: HashSet&lt;String&gt;, <span class="comment">// has to use std::HashSet for serde
+</span>}
 
-<span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">DbBackupCodeV1</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;codes remaining: {}&quot;</span>, <span class="self">self</span>.<span class="ident">code_set</span>.<span class="ident">len</span>())
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>DbBackupCodeV1 {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;codes remaining: {}&quot;</span>, <span class="self">self</span>.code_set.len())
     }
 }
 
-<span class="comment">// We have to allow this as serde expects &amp;T for the fn sig.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
-<span class="kw">fn</span> <span class="ident">is_false</span>(<span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">bool</span>) -&gt; <span class="ident">bool</span> {
-    <span class="op">!</span><span class="ident">b</span>
+<span class="comment">// We have to allow this as serde expects &amp;T for the fn sig.
+</span><span class="attribute">#[allow(clippy::trivially_copy_pass_by_ref)]
+</span><span class="kw">fn </span>is_false(b: <span class="kw-2">&amp;</span>bool) -&gt; bool {
+    !b
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">tag</span> <span class="op">=</span> <span class="string">&quot;type_&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbCred</span> {
-    <span class="comment">// These are the old v1 versions.</span>
-    <span class="ident">Pw</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbPasswordV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">webauthn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbWebauthnV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">totp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbTotpV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">backup_code</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbBackupCodeV1</span><span class="op">&gt;</span>,
-        <span class="ident">claims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = <span class="string">&quot;type_&quot;</span>)]
+</span><span class="kw">pub enum </span>DbCred {
+    <span class="comment">// These are the old v1 versions.
+    </span>Pw {
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>password: <span class="prelude-ty">Option</span>&lt;DbPasswordV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>webauthn: <span class="prelude-ty">Option</span>&lt;Vec&lt;DbWebauthnV1&gt;&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>totp: <span class="prelude-ty">Option</span>&lt;DbTotpV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>backup_code: <span class="prelude-ty">Option</span>&lt;DbBackupCodeV1&gt;,
+        claims: Vec&lt;String&gt;,
+        uuid: Uuid,
     },
-    <span class="ident">GPw</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbPasswordV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">webauthn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbWebauthnV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">totp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbTotpV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">backup_code</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbBackupCodeV1</span><span class="op">&gt;</span>,
-        <span class="ident">claims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    GPw {
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>password: <span class="prelude-ty">Option</span>&lt;DbPasswordV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>webauthn: <span class="prelude-ty">Option</span>&lt;Vec&lt;DbWebauthnV1&gt;&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>totp: <span class="prelude-ty">Option</span>&lt;DbTotpV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>backup_code: <span class="prelude-ty">Option</span>&lt;DbBackupCodeV1&gt;,
+        claims: Vec&lt;String&gt;,
+        uuid: Uuid,
     },
-    <span class="ident">PwMfa</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbPasswordV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">webauthn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbWebauthnV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">totp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbTotpV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">backup_code</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbBackupCodeV1</span><span class="op">&gt;</span>,
-        <span class="ident">claims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    PwMfa {
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>password: <span class="prelude-ty">Option</span>&lt;DbPasswordV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>webauthn: <span class="prelude-ty">Option</span>&lt;Vec&lt;DbWebauthnV1&gt;&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>totp: <span class="prelude-ty">Option</span>&lt;DbTotpV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>backup_code: <span class="prelude-ty">Option</span>&lt;DbBackupCodeV1&gt;,
+        claims: Vec&lt;String&gt;,
+        uuid: Uuid,
     },
-    <span class="ident">Wn</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbPasswordV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">webauthn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbWebauthnV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">totp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbTotpV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="ident">backup_code</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbBackupCodeV1</span><span class="op">&gt;</span>,
-        <span class="ident">claims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    },
-
-    <span class="ident">TmpWn</span> {
-        <span class="ident">webauthn</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">PasskeyV4</span>)<span class="op">&gt;</span>,
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    Wn {
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>password: <span class="prelude-ty">Option</span>&lt;DbPasswordV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>webauthn: <span class="prelude-ty">Option</span>&lt;Vec&lt;DbWebauthnV1&gt;&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>totp: <span class="prelude-ty">Option</span>&lt;DbTotpV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span>backup_code: <span class="prelude-ty">Option</span>&lt;DbBackupCodeV1&gt;,
+        claims: Vec&lt;String&gt;,
+        uuid: Uuid,
     },
 
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;V2Pw&quot;</span>)]</span>
-    <span class="ident">V2Password</span> { <span class="ident">password</span>: <span class="ident">DbPasswordV1</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span> },
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;V2GPw&quot;</span>)]</span>
-    <span class="ident">V2GenPassword</span> { <span class="ident">password</span>: <span class="ident">DbPasswordV1</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span> },
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;V2PwMfa&quot;</span>)]</span>
-    <span class="ident">V2PasswordMfa</span> {
-        <span class="ident">password</span>: <span class="ident">DbPasswordV1</span>,
-        <span class="ident">totp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbTotpV1</span><span class="op">&gt;</span>,
-        <span class="ident">backup_code</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbBackupCodeV1</span><span class="op">&gt;</span>,
-        <span class="ident">webauthn</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">SecurityKeyV4</span>)<span class="op">&gt;</span>,
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    TmpWn {
+        webauthn: Vec&lt;(String, PasskeyV4)&gt;,
+        uuid: Uuid,
+    },
+
+    <span class="attribute">#[serde(rename = <span class="string">&quot;V2Pw&quot;</span>)]
+    </span>V2Password { password: DbPasswordV1, uuid: Uuid },
+    <span class="attribute">#[serde(rename = <span class="string">&quot;V2GPw&quot;</span>)]
+    </span>V2GenPassword { password: DbPasswordV1, uuid: Uuid },
+    <span class="attribute">#[serde(rename = <span class="string">&quot;V2PwMfa&quot;</span>)]
+    </span>V2PasswordMfa {
+        password: DbPasswordV1,
+        totp: <span class="prelude-ty">Option</span>&lt;DbTotpV1&gt;,
+        backup_code: <span class="prelude-ty">Option</span>&lt;DbBackupCodeV1&gt;,
+        webauthn: Vec&lt;(String, SecurityKeyV4)&gt;,
+        uuid: Uuid,
     },
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">DbCred</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">DbCred::Pw</span> {
-                <span class="ident">password</span>,
-                <span class="ident">webauthn</span>,
-                <span class="ident">totp</span>,
-                <span class="ident">backup_code</span>,
-                <span class="ident">claims</span>,
-                <span class="ident">uuid</span>,
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>DbCred {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="self">self </span>{
+            DbCred::Pw {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
             } =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
+                f,
                 <span class="string">&quot;Pw (p {}, w {}, t {}, b {}, c {}, u {})&quot;</span>,
-                <span class="ident">password</span>.<span class="ident">is_some</span>(),
-                <span class="ident">webauthn</span>.<span class="ident">is_some</span>(),
-                <span class="ident">totp</span>.<span class="ident">is_some</span>(),
-                <span class="ident">backup_code</span>.<span class="ident">is_some</span>(),
-                <span class="ident">claims</span>.<span class="ident">len</span>(),
-                <span class="ident">uuid</span>
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
             ),
-            <span class="ident">DbCred::GPw</span> {
-                <span class="ident">password</span>,
-                <span class="ident">webauthn</span>,
-                <span class="ident">totp</span>,
-                <span class="ident">backup_code</span>,
-                <span class="ident">claims</span>,
-                <span class="ident">uuid</span>,
+            DbCred::GPw {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
             } =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
+                f,
                 <span class="string">&quot;GPw (p {}, w {}, t {}, b {}, c {}, u {})&quot;</span>,
-                <span class="ident">password</span>.<span class="ident">is_some</span>(),
-                <span class="ident">webauthn</span>.<span class="ident">is_some</span>(),
-                <span class="ident">totp</span>.<span class="ident">is_some</span>(),
-                <span class="ident">backup_code</span>.<span class="ident">is_some</span>(),
-                <span class="ident">claims</span>.<span class="ident">len</span>(),
-                <span class="ident">uuid</span>
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
             ),
-            <span class="ident">DbCred::PwMfa</span> {
-                <span class="ident">password</span>,
-                <span class="ident">webauthn</span>,
-                <span class="ident">totp</span>,
-                <span class="ident">backup_code</span>,
-                <span class="ident">claims</span>,
-                <span class="ident">uuid</span>,
+            DbCred::PwMfa {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
             } =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
+                f,
                 <span class="string">&quot;PwMfa (p {}, w {}, t {}, b {}, c {}, u {})&quot;</span>,
-                <span class="ident">password</span>.<span class="ident">is_some</span>(),
-                <span class="ident">webauthn</span>.<span class="ident">is_some</span>(),
-                <span class="ident">totp</span>.<span class="ident">is_some</span>(),
-                <span class="ident">backup_code</span>.<span class="ident">is_some</span>(),
-                <span class="ident">claims</span>.<span class="ident">len</span>(),
-                <span class="ident">uuid</span>
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
             ),
-            <span class="ident">DbCred::Wn</span> {
-                <span class="ident">password</span>,
-                <span class="ident">webauthn</span>,
-                <span class="ident">totp</span>,
-                <span class="ident">backup_code</span>,
-                <span class="ident">claims</span>,
-                <span class="ident">uuid</span>,
+            DbCred::Wn {
+                password,
+                webauthn,
+                totp,
+                backup_code,
+                claims,
+                uuid,
             } =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
+                f,
                 <span class="string">&quot;Wn (p {}, w {}, t {}, b {}, c {}, u {})&quot;</span>,
-                <span class="ident">password</span>.<span class="ident">is_some</span>(),
-                <span class="ident">webauthn</span>.<span class="ident">is_some</span>(),
-                <span class="ident">totp</span>.<span class="ident">is_some</span>(),
-                <span class="ident">backup_code</span>.<span class="ident">is_some</span>(),
-                <span class="ident">claims</span>.<span class="ident">len</span>(),
-                <span class="ident">uuid</span>
+                password.is_some(),
+                webauthn.is_some(),
+                totp.is_some(),
+                backup_code.is_some(),
+                claims.len(),
+                uuid
             ),
-            <span class="ident">DbCred::TmpWn</span> { <span class="ident">webauthn</span>, <span class="ident">uuid</span> } =&gt; {
-                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;TmpWn ( w {}, u {} )&quot;</span>, <span class="ident">webauthn</span>.<span class="ident">len</span>(), <span class="ident">uuid</span>)
+            DbCred::TmpWn { webauthn, uuid } =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;TmpWn ( w {}, u {} )&quot;</span>, webauthn.len(), uuid)
             }
-            <span class="ident">DbCred::V2Password</span> { <span class="ident">password</span>: <span class="kw">_</span>, <span class="ident">uuid</span> } =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;V2Pw ( u {} )&quot;</span>, <span class="ident">uuid</span>),
-            <span class="ident">DbCred::V2GenPassword</span> { <span class="ident">password</span>: <span class="kw">_</span>, <span class="ident">uuid</span> } =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;V2GPw ( u {} )&quot;</span>, <span class="ident">uuid</span>),
-            <span class="ident">DbCred::V2PasswordMfa</span> {
-                <span class="ident">password</span>: <span class="kw">_</span>,
-                <span class="ident">totp</span>,
-                <span class="ident">backup_code</span>,
-                <span class="ident">webauthn</span>,
-                <span class="ident">uuid</span>,
+            DbCred::V2Password { password: <span class="kw">_</span>, uuid } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;V2Pw ( u {} )&quot;</span>, uuid),
+            DbCred::V2GenPassword { password: <span class="kw">_</span>, uuid } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;V2GPw ( u {} )&quot;</span>, uuid),
+            DbCred::V2PasswordMfa {
+                password: <span class="kw">_</span>,
+                totp,
+                backup_code,
+                webauthn,
+                uuid,
             } =&gt; <span class="macro">write!</span>(
-                <span class="ident">f</span>,
+                f,
                 <span class="string">&quot;V2PwMfa (p true, w {}, t {}, b {}, u {})&quot;</span>,
-                <span class="ident">webauthn</span>.<span class="ident">len</span>(),
-                <span class="ident">totp</span>.<span class="ident">is_some</span>(),
-                <span class="ident">backup_code</span>.<span class="ident">is_some</span>(),
-                <span class="ident">uuid</span>
+                webauthn.len(),
+                totp.is_some(),
+                backup_code.is_some(),
+                uuid
             ),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbValueCredV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;t&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">tag</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">DbCred</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbValueCredV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;t&quot;</span>)]
+    </span><span class="kw">pub </span>tag: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;d&quot;</span>)]
+    </span><span class="kw">pub </span>data: DbCred,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbApiToken</span> {
-    <span class="ident">V1</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;u&quot;</span>)]</span>
-        <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>)]</span>
-        <span class="ident">secret</span>: <span class="ident">DbPasswordV1</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbApiToken {
+    V1 {
+        <span class="attribute">#[serde(rename = <span class="string">&quot;u&quot;</span>)]
+        </span>uuid: Uuid,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;s&quot;</span>)]
+        </span>secret: DbPasswordV1,
     },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValuePasskeyV1</span> {
-    <span class="ident">V4</span> { <span class="ident">u</span>: <span class="ident">Uuid</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">k</span>: <span class="ident">PasskeyV4</span> },
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValuePasskeyV1 {
+    V4 { u: Uuid, t: String, k: PasskeyV4 },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueDeviceKeyV1</span> {
-    <span class="ident">V4</span> { <span class="ident">u</span>: <span class="ident">Uuid</span>, <span class="ident">t</span>: <span class="ident">String</span>, <span class="ident">k</span>: <span class="ident">DeviceKeyV4</span> },
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValueDeviceKeyV1 {
+    V4 { u: Uuid, t: String, k: DeviceKeyV4 },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbValueTaggedStringV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;t&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">tag</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbValueTaggedStringV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;t&quot;</span>)]
+    </span><span class="kw">pub </span>tag: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;d&quot;</span>)]
+    </span><span class="kw">pub </span>data: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbValueEmailAddressV1</span> {
-    <span class="kw">pub</span> <span class="ident">d</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;is_false&quot;</span>, <span class="ident">default</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">p</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbValueEmailAddressV1 {
+    <span class="kw">pub </span>d: String,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;is_false&quot;</span>, default)]
+    </span><span class="kw">pub </span>p: bool,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbValuePhoneNumberV1</span> {
-    <span class="kw">pub</span> <span class="ident">d</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;is_false&quot;</span>, <span class="ident">default</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">p</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbValuePhoneNumberV1 {
+    <span class="kw">pub </span>d: String,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;is_false&quot;</span>, default)]
+    </span><span class="kw">pub </span>p: bool,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbValueAddressV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;f&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">formatted</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">street_address</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;l&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">locality</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;r&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">region</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">postal_code</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;c&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">country</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbValueAddressV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;f&quot;</span>)]
+    </span><span class="kw">pub </span>formatted: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;s&quot;</span>)]
+    </span><span class="kw">pub </span>street_address: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;l&quot;</span>)]
+    </span><span class="kw">pub </span>locality: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;r&quot;</span>)]
+    </span><span class="kw">pub </span>region: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;p&quot;</span>)]
+    </span><span class="kw">pub </span>postal_code: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;c&quot;</span>)]
+    </span><span class="kw">pub </span>country: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbValueOauthScopeMapV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;u&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">refer</span>: <span class="ident">Uuid</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;m&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>DbValueOauthScopeMapV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;u&quot;</span>)]
+    </span><span class="kw">pub </span>refer: Uuid,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;m&quot;</span>)]
+    </span><span class="kw">pub </span>data: Vec&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueAccessScopeV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;i&quot;</span>)]</span>
-    <span class="ident">IdentityOnly</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;r&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">default</span>]</span>
-    <span class="ident">ReadOnly</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;w&quot;</span>)]</span>
-    <span class="ident">ReadWrite</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>)]</span>
-    <span class="ident">Synchronise</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug, Default)]
+</span><span class="kw">pub enum </span>DbValueAccessScopeV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;i&quot;</span>)]
+    </span>IdentityOnly,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;r&quot;</span>)]
+    #[default]
+    </span>ReadOnly,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;w&quot;</span>)]
+    </span>ReadWrite,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;s&quot;</span>)]
+    </span>Synchronise,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueIdentityId</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v1i&quot;</span>)]</span>
-    <span class="ident">V1Internal</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v1u&quot;</span>)]</span>
-    <span class="ident">V1Uuid</span>(<span class="ident">Uuid</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v1s&quot;</span>)]</span>
-    <span class="ident">V1Sync</span>(<span class="ident">Uuid</span>),
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValueIdentityId {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;v1i&quot;</span>)]
+    </span>V1Internal,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;v1u&quot;</span>)]
+    </span>V1Uuid(Uuid),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;v1s&quot;</span>)]
+    </span>V1Sync(Uuid),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueSession</span> {
-    <span class="ident">V1</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;u&quot;</span>)]</span>
-        <span class="ident">refer</span>: <span class="ident">Uuid</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;l&quot;</span>)]</span>
-        <span class="ident">label</span>: <span class="ident">String</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;e&quot;</span>)]</span>
-        <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;i&quot;</span>)]</span>
-        <span class="ident">issued_at</span>: <span class="ident">String</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;b&quot;</span>)]</span>
-        <span class="ident">issued_by</span>: <span class="ident">DbValueIdentityId</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;s&quot;</span>, <span class="ident">default</span>)]</span>
-        <span class="ident">scope</span>: <span class="ident">DbValueAccessScopeV1</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValueSession {
+    V1 {
+        <span class="attribute">#[serde(rename = <span class="string">&quot;u&quot;</span>)]
+        </span>refer: Uuid,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;l&quot;</span>)]
+        </span>label: String,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;e&quot;</span>)]
+        </span>expiry: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;i&quot;</span>)]
+        </span>issued_at: String,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;b&quot;</span>)]
+        </span>issued_by: DbValueIdentityId,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;s&quot;</span>, default)]
+        </span>scope: DbValueAccessScopeV1,
     },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueV1</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;U8&quot;</span>)]</span>
-    <span class="ident">Utf8</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;I8&quot;</span>)]</span>
-    <span class="ident">Iutf8</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;N8&quot;</span>)]</span>
-    <span class="ident">Iname</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UU&quot;</span>)]</span>
-    <span class="ident">Uuid</span>(<span class="ident">Uuid</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;BO&quot;</span>)]</span>
-    <span class="ident">Bool</span>(<span class="ident">bool</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SY&quot;</span>)]</span>
-    <span class="ident">SyntaxType</span>(<span class="ident">u16</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;IN&quot;</span>)]</span>
-    <span class="ident">IndexType</span>(<span class="ident">usize</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;RF&quot;</span>)]</span>
-    <span class="ident">Reference</span>(<span class="ident">Uuid</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;JF&quot;</span>)]</span>
-    <span class="ident">JsonFilter</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;CR&quot;</span>)]</span>
-    <span class="ident">Credential</span>(<span class="ident">DbValueCredV1</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;RU&quot;</span>)]</span>
-    <span class="ident">SecretValue</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SK&quot;</span>)]</span>
-    <span class="ident">SshKey</span>(<span class="ident">DbValueTaggedStringV1</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SP&quot;</span>)]</span>
-    <span class="ident">Spn</span>(<span class="ident">String</span>, <span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UI&quot;</span>)]</span>
-    <span class="ident">Uint32</span>(<span class="ident">u32</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;CI&quot;</span>)]</span>
-    <span class="ident">Cid</span>(<span class="ident">DbCidV1</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;NU&quot;</span>)]</span>
-    <span class="ident">NsUniqueId</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;DT&quot;</span>)]</span>
-    <span class="ident">DateTime</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;EM&quot;</span>)]</span>
-    <span class="ident">EmailAddress</span>(<span class="ident">DbValueEmailAddressV1</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;PN&quot;</span>)]</span>
-    <span class="ident">PhoneNumber</span>(<span class="ident">DbValuePhoneNumberV1</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;AD&quot;</span>)]</span>
-    <span class="ident">Address</span>(<span class="ident">DbValueAddressV1</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UR&quot;</span>)]</span>
-    <span class="ident">Url</span>(<span class="ident">Url</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;OS&quot;</span>)]</span>
-    <span class="ident">OauthScope</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;OM&quot;</span>)]</span>
-    <span class="ident">OauthScopeMap</span>(<span class="ident">DbValueOauthScopeMapV1</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;E2&quot;</span>)]</span>
-    <span class="ident">PrivateBinary</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;PB&quot;</span>)]</span>
-    <span class="ident">PublicBinary</span>(<span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;RS&quot;</span>)]</span>
-    <span class="ident">RestrictedString</span>(<span class="ident">String</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;IT&quot;</span>)]</span>
-    <span class="ident">IntentToken</span> {
-        <span class="ident">u</span>: <span class="ident">Uuid</span>,
-        <span class="ident">s</span>: <span class="ident">DbValueIntentTokenStateV1</span>,
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValueV1 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;U8&quot;</span>)]
+    </span>Utf8(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;I8&quot;</span>)]
+    </span>Iutf8(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;N8&quot;</span>)]
+    </span>Iname(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;UU&quot;</span>)]
+    </span>Uuid(Uuid),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;BO&quot;</span>)]
+    </span>Bool(bool),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;SY&quot;</span>)]
+    </span>SyntaxType(u16),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;IN&quot;</span>)]
+    </span>IndexType(usize),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;RF&quot;</span>)]
+    </span>Reference(Uuid),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;JF&quot;</span>)]
+    </span>JsonFilter(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;CR&quot;</span>)]
+    </span>Credential(DbValueCredV1),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;RU&quot;</span>)]
+    </span>SecretValue(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;SK&quot;</span>)]
+    </span>SshKey(DbValueTaggedStringV1),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;SP&quot;</span>)]
+    </span>Spn(String, String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;UI&quot;</span>)]
+    </span>Uint32(u32),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;CI&quot;</span>)]
+    </span>Cid(DbCidV1),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;NU&quot;</span>)]
+    </span>NsUniqueId(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;DT&quot;</span>)]
+    </span>DateTime(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;EM&quot;</span>)]
+    </span>EmailAddress(DbValueEmailAddressV1),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;PN&quot;</span>)]
+    </span>PhoneNumber(DbValuePhoneNumberV1),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;AD&quot;</span>)]
+    </span>Address(DbValueAddressV1),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;UR&quot;</span>)]
+    </span>Url(Url),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;OS&quot;</span>)]
+    </span>OauthScope(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;OM&quot;</span>)]
+    </span>OauthScopeMap(DbValueOauthScopeMapV1),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;E2&quot;</span>)]
+    </span>PrivateBinary(Vec&lt;u8&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;PB&quot;</span>)]
+    </span>PublicBinary(String, Vec&lt;u8&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;RS&quot;</span>)]
+    </span>RestrictedString(String),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;IT&quot;</span>)]
+    </span>IntentToken {
+        u: Uuid,
+        s: DbValueIntentTokenStateV1,
     },
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;TE&quot;</span>)]</span>
-    <span class="ident">TrustedDeviceEnrollment</span> { <span class="ident">u</span>: <span class="ident">Uuid</span> },
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;AS&quot;</span>)]</span>
-    <span class="ident">Session</span> { <span class="ident">u</span>: <span class="ident">Uuid</span> },
+    <span class="attribute">#[serde(rename = <span class="string">&quot;TE&quot;</span>)]
+    </span>TrustedDeviceEnrollment { u: Uuid },
+    <span class="attribute">#[serde(rename = <span class="string">&quot;AS&quot;</span>)]
+    </span>Session { u: Uuid },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueSetV2</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;U8&quot;</span>)]</span>
-    <span class="ident">Utf8</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;I8&quot;</span>)]</span>
-    <span class="ident">Iutf8</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;N8&quot;</span>)]</span>
-    <span class="ident">Iname</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UU&quot;</span>)]</span>
-    <span class="ident">Uuid</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;BO&quot;</span>)]</span>
-    <span class="ident">Bool</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SY&quot;</span>)]</span>
-    <span class="ident">SyntaxType</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;IN&quot;</span>)]</span>
-    <span class="ident">IndexType</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;RF&quot;</span>)]</span>
-    <span class="ident">Reference</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;JF&quot;</span>)]</span>
-    <span class="ident">JsonFilter</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;CR&quot;</span>)]</span>
-    <span class="ident">Credential</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueCredV1</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;RU&quot;</span>)]</span>
-    <span class="ident">SecretValue</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SK&quot;</span>)]</span>
-    <span class="ident">SshKey</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueTaggedStringV1</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SP&quot;</span>)]</span>
-    <span class="ident">Spn</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">String</span>)<span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UI&quot;</span>)]</span>
-    <span class="ident">Uint32</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;CI&quot;</span>)]</span>
-    <span class="ident">Cid</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbCidV1</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;NU&quot;</span>)]</span>
-    <span class="ident">NsUniqueId</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;DT&quot;</span>)]</span>
-    <span class="ident">DateTime</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;EM&quot;</span>)]</span>
-    <span class="ident">EmailAddress</span>(<span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;PN&quot;</span>)]</span>
-    <span class="ident">PhoneNumber</span>(<span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;AD&quot;</span>)]</span>
-    <span class="ident">Address</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueAddressV1</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UR&quot;</span>)]</span>
-    <span class="ident">Url</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;OS&quot;</span>)]</span>
-    <span class="ident">OauthScope</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;OM&quot;</span>)]</span>
-    <span class="ident">OauthScopeMap</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueOauthScopeMapV1</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;E2&quot;</span>)]</span>
-    <span class="ident">PrivateBinary</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;PB&quot;</span>)]</span>
-    <span class="ident">PublicBinary</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)<span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;RS&quot;</span>)]</span>
-    <span class="ident">RestrictedString</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;IT&quot;</span>)]</span>
-    <span class="ident">IntentToken</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">DbValueIntentTokenStateV1</span>)<span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;PK&quot;</span>)]</span>
-    <span class="ident">Passkey</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValuePasskeyV1</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;DK&quot;</span>)]</span>
-    <span class="ident">DeviceKey</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueDeviceKeyV1</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;TE&quot;</span>)]</span>
-    <span class="ident">TrustedDeviceEnrollment</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;AS&quot;</span>)]</span>
-    <span class="ident">Session</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbValueSession</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;JE&quot;</span>)]</span>
-    <span class="ident">JwsKeyEs256</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;JR&quot;</span>)]</span>
-    <span class="ident">JwsKeyRs256</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>),
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValueSetV2 {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;U8&quot;</span>)]
+    </span>Utf8(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;I8&quot;</span>)]
+    </span>Iutf8(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;N8&quot;</span>)]
+    </span>Iname(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;UU&quot;</span>)]
+    </span>Uuid(Vec&lt;Uuid&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;BO&quot;</span>)]
+    </span>Bool(Vec&lt;bool&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;SY&quot;</span>)]
+    </span>SyntaxType(Vec&lt;u16&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;IN&quot;</span>)]
+    </span>IndexType(Vec&lt;usize&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;RF&quot;</span>)]
+    </span>Reference(Vec&lt;Uuid&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;JF&quot;</span>)]
+    </span>JsonFilter(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;CR&quot;</span>)]
+    </span>Credential(Vec&lt;DbValueCredV1&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;RU&quot;</span>)]
+    </span>SecretValue(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;SK&quot;</span>)]
+    </span>SshKey(Vec&lt;DbValueTaggedStringV1&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;SP&quot;</span>)]
+    </span>Spn(Vec&lt;(String, String)&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;UI&quot;</span>)]
+    </span>Uint32(Vec&lt;u32&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;CI&quot;</span>)]
+    </span>Cid(Vec&lt;DbCidV1&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;NU&quot;</span>)]
+    </span>NsUniqueId(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;DT&quot;</span>)]
+    </span>DateTime(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;EM&quot;</span>)]
+    </span>EmailAddress(String, Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;PN&quot;</span>)]
+    </span>PhoneNumber(String, Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;AD&quot;</span>)]
+    </span>Address(Vec&lt;DbValueAddressV1&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;UR&quot;</span>)]
+    </span>Url(Vec&lt;Url&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;OS&quot;</span>)]
+    </span>OauthScope(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;OM&quot;</span>)]
+    </span>OauthScopeMap(Vec&lt;DbValueOauthScopeMapV1&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;E2&quot;</span>)]
+    </span>PrivateBinary(Vec&lt;Vec&lt;u8&gt;&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;PB&quot;</span>)]
+    </span>PublicBinary(Vec&lt;(String, Vec&lt;u8&gt;)&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;RS&quot;</span>)]
+    </span>RestrictedString(Vec&lt;String&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;IT&quot;</span>)]
+    </span>IntentToken(Vec&lt;(String, DbValueIntentTokenStateV1)&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;PK&quot;</span>)]
+    </span>Passkey(Vec&lt;DbValuePasskeyV1&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;DK&quot;</span>)]
+    </span>DeviceKey(Vec&lt;DbValueDeviceKeyV1&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;TE&quot;</span>)]
+    </span>TrustedDeviceEnrollment(Vec&lt;Uuid&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;AS&quot;</span>)]
+    </span>Session(Vec&lt;DbValueSession&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;JE&quot;</span>)]
+    </span>JwsKeyEs256(Vec&lt;Vec&lt;u8&gt;&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;JR&quot;</span>)]
+    </span>JwsKeyRs256(Vec&lt;Vec&lt;u8&gt;&gt;),
 }
 
-<span class="kw">impl</span> <span class="ident">DbValueSetV2</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">DbValueSetV2::Utf8</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Iutf8</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Iname</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Uuid</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Bool</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::SyntaxType</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::IndexType</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Reference</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::JsonFilter</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Credential</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::SecretValue</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::SshKey</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Spn</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Uint32</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Cid</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::NsUniqueId</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::DateTime</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::EmailAddress</span>(<span class="ident">_primary</span>, <span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::PhoneNumber</span>(<span class="ident">_primary</span>, <span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Address</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Url</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::OauthScope</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::OauthScopeMap</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::PrivateBinary</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::PublicBinary</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::RestrictedString</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::IntentToken</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Passkey</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::DeviceKey</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::TrustedDeviceEnrollment</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::Session</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::JwsKeyEs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
-            <span class="ident">DbValueSetV2::JwsKeyRs256</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">len</span>(),
+<span class="kw">impl </span>DbValueSetV2 {
+    <span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
+            DbValueSetV2::Utf8(set) =&gt; set.len(),
+            DbValueSetV2::Iutf8(set) =&gt; set.len(),
+            DbValueSetV2::Iname(set) =&gt; set.len(),
+            DbValueSetV2::Uuid(set) =&gt; set.len(),
+            DbValueSetV2::Bool(set) =&gt; set.len(),
+            DbValueSetV2::SyntaxType(set) =&gt; set.len(),
+            DbValueSetV2::IndexType(set) =&gt; set.len(),
+            DbValueSetV2::Reference(set) =&gt; set.len(),
+            DbValueSetV2::JsonFilter(set) =&gt; set.len(),
+            DbValueSetV2::Credential(set) =&gt; set.len(),
+            DbValueSetV2::SecretValue(set) =&gt; set.len(),
+            DbValueSetV2::SshKey(set) =&gt; set.len(),
+            DbValueSetV2::Spn(set) =&gt; set.len(),
+            DbValueSetV2::Uint32(set) =&gt; set.len(),
+            DbValueSetV2::Cid(set) =&gt; set.len(),
+            DbValueSetV2::NsUniqueId(set) =&gt; set.len(),
+            DbValueSetV2::DateTime(set) =&gt; set.len(),
+            DbValueSetV2::EmailAddress(_primary, set) =&gt; set.len(),
+            DbValueSetV2::PhoneNumber(_primary, set) =&gt; set.len(),
+            DbValueSetV2::Address(set) =&gt; set.len(),
+            DbValueSetV2::Url(set) =&gt; set.len(),
+            DbValueSetV2::OauthScope(set) =&gt; set.len(),
+            DbValueSetV2::OauthScopeMap(set) =&gt; set.len(),
+            DbValueSetV2::PrivateBinary(set) =&gt; set.len(),
+            DbValueSetV2::PublicBinary(set) =&gt; set.len(),
+            DbValueSetV2::RestrictedString(set) =&gt; set.len(),
+            DbValueSetV2::IntentToken(set) =&gt; set.len(),
+            DbValueSetV2::Passkey(set) =&gt; set.len(),
+            DbValueSetV2::DeviceKey(set) =&gt; set.len(),
+            DbValueSetV2::TrustedDeviceEnrollment(set) =&gt; set.len(),
+            DbValueSetV2::Session(set) =&gt; set.len(),
+            DbValueSetV2::JwsKeyEs256(set) =&gt; set.len(),
+            DbValueSetV2::JwsKeyRs256(set) =&gt; set.len(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span>
-    }
+    <span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.len() == <span class="number">0
+    </span>}
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-    <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>serde::{Deserialize, Serialize};
+    <span class="kw">use </span>uuid::Uuid;
 
-    <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">DbBackupCodeV1</span>, <span class="ident">DbCred</span>, <span class="ident">DbPasswordV1</span>, <span class="ident">DbTotpV1</span>, <span class="ident">DbWebauthnV1</span>};
+    <span class="kw">use super</span>::{DbBackupCodeV1, DbCred, DbPasswordV1, DbTotpV1, DbWebauthnV1};
 
-    <span class="kw">fn</span> <span class="ident">dbcred_type_default_pw</span>() -&gt; <span class="ident">DbCredTypeV1</span> {
-        <span class="ident">DbCredTypeV1::Pw</span>
+    <span class="kw">fn </span>dbcred_type_default_pw() -&gt; DbCredTypeV1 {
+        DbCredTypeV1::Pw
     }
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbCredTypeV1</span> {
-        <span class="ident">Pw</span>,
-        <span class="ident">GPw</span>,
-        <span class="ident">PwMfa</span>,
-        <span class="comment">// PwWn,</span>
-        <span class="ident">Wn</span>,
-        <span class="comment">// WnVer,</span>
-        <span class="comment">// PwWnVer,</span>
+    <span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+    </span><span class="kw">pub enum </span>DbCredTypeV1 {
+        Pw,
+        GPw,
+        PwMfa,
+        <span class="comment">// PwWn,
+        </span>Wn,
+        <span class="comment">// WnVer,
+        // PwWnVer,
+    </span>}
+
+    <span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+    </span><span class="kw">pub struct </span>DbCredV1 {
+        <span class="attribute">#[serde(default = <span class="string">&quot;dbcred_type_default_pw&quot;</span>)]
+        </span><span class="kw">pub </span>type_: DbCredTypeV1,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span><span class="kw">pub </span>password: <span class="prelude-ty">Option</span>&lt;DbPasswordV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span><span class="kw">pub </span>webauthn: <span class="prelude-ty">Option</span>&lt;Vec&lt;DbWebauthnV1&gt;&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span><span class="kw">pub </span>totp: <span class="prelude-ty">Option</span>&lt;DbTotpV1&gt;,
+        <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+        </span><span class="kw">pub </span>backup_code: <span class="prelude-ty">Option</span>&lt;DbBackupCodeV1&gt;,
+        <span class="kw">pub </span>claims: Vec&lt;String&gt;,
+        <span class="kw">pub </span>uuid: Uuid,
     }
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbCredV1</span> {
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;dbcred_type_default_pw&quot;</span>)]</span>
-        <span class="kw">pub</span> <span class="ident">type_</span>: <span class="ident">DbCredTypeV1</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="kw">pub</span> <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbPasswordV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="kw">pub</span> <span class="ident">webauthn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbWebauthnV1</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="kw">pub</span> <span class="ident">totp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbTotpV1</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-        <span class="kw">pub</span> <span class="ident">backup_code</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DbBackupCodeV1</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">claims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    }
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_dbcred_pre_totp_decode</span>() {
-        <span class="comment">// This test exists to prove that the previous dbcredv1 format (without totp)</span>
-        <span class="comment">// can still decode into the updated dbcredv1 that does have a TOTP field.</span>
-        <span class="comment">/*
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_dbcred_pre_totp_decode() {
+        <span class="comment">// This test exists to prove that the previous dbcredv1 format (without totp)
+        // can still decode into the updated dbcredv1 that does have a TOTP field.
+        /*
         let dbcred = DbCredV1 {
             password: Some(DbPasswordV1::PBKDF2(0, vec![0], vec![0])),
             claims: vec![],
@@ -1274,21 +1274,21 @@
         };
         let data = serde_cbor::to_vec(&amp;dbcred).unwrap();
         let s = base64::encode(data);
-        */</span>
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="string">&quot;o2hwYXNzd29yZKFmUEJLREYygwCBAIEAZmNsYWltc4BkdXVpZFAjkHFm4q5M86UcNRi4hBjN&quot;</span>;
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">base64::decode</span>(<span class="ident">s</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">dbcred</span>: <span class="ident">DbCredV1</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>()).<span class="ident">unwrap</span>();
+        */
+        </span><span class="kw">let </span>s = <span class="string">&quot;o2hwYXNzd29yZKFmUEJLREYygwCBAIEAZmNsYWltc4BkdXVpZFAjkHFm4q5M86UcNRi4hBjN&quot;</span>;
+        <span class="kw">let </span>data = base64::decode(s).unwrap();
+        <span class="kw">let </span>dbcred: DbCredV1 = serde_cbor::from_slice(data.as_slice()).unwrap();
 
-        <span class="comment">// Test converting to the new enum format</span>
-        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">dbcred</span>];
+        <span class="comment">// Test converting to the new enum format
+        </span><span class="kw">let </span>x = <span class="macro">vec!</span>[dbcred];
 
-        <span class="kw">let</span> <span class="ident">json</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>).<span class="ident">unwrap</span>();
-        <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">json</span>);
+        <span class="kw">let </span>json = serde_json::to_string(<span class="kw-2">&amp;</span>x).unwrap();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, json);
 
-        <span class="kw">let</span> <span class="ident">_e_dbcred</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbCred</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">json</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let </span>_e_dbcred: Vec&lt;DbCred&gt; = serde_json::from_str(<span class="kw-2">&amp;</span>json).unwrap();
 
-        <span class="comment">// assert!(dbcred == e_dbcred);</span>
-    }
+        <span class="comment">// assert!(dbcred == e_dbcred);
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

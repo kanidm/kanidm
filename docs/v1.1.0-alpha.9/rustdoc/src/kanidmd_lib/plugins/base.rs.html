@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/base.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>base.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/base.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>base.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -665,221 +665,221 @@
 <span id="665">665</span>
 <span id="666">666</span>
 <span id="667">667</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="kw">use</span> <span class="ident">std::iter::once</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::iter::once;
 
-<span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ConsistencyError</span>, <span class="ident">PluginError</span>};
+<span class="kw">use </span>hashbrown::HashSet;
+<span class="kw">use </span>kanidm_proto::v1::{ConsistencyError, PluginError};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">CreateEvent</span>, <span class="ident">ModifyEvent</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify::Modify</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plugins::Plugin</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
+<span class="kw">use </span><span class="kw">crate</span>::modify::Modify;
+<span class="kw">use </span><span class="kw">crate</span>::plugins::Plugin;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="comment">// This module has some special properties around it&#39;s operation, namely that it</span>
-<span class="comment">// has to make a certain number of assertions *early* in the entry lifecycle around</span>
-<span class="comment">// names and uuids since these have such signifigance to every other part of the</span>
-<span class="comment">// servers operation. As a result, this is the ONLY PLUGIN that does validation in the</span>
-<span class="comment">// pre_create_transform step, where every other SHOULD use the post_* hooks for all</span>
-<span class="comment">// validation operations.</span>
-<span class="comment">//</span>
-<span class="comment">// Additionally, this plugin WILL block and deny certain modifications to uuids and</span>
-<span class="comment">// more to prevent intentional DB damage.</span>
+<span class="comment">// This module has some special properties around it&#39;s operation, namely that it
+// has to make a certain number of assertions *early* in the entry lifecycle around
+// names and uuids since these have such signifigance to every other part of the
+// servers operation. As a result, this is the ONLY PLUGIN that does validation in the
+// pre_create_transform step, where every other SHOULD use the post_* hooks for all
+// validation operations.
+//
+// Additionally, this plugin WILL block and deny certain modifications to uuids and
+// more to prevent intentional DB damage.
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Base</span> {}
+</span><span class="kw">pub struct </span>Base {}
 
-<span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">Base</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="string">&quot;plugin_base&quot;</span>
-    }
+<span class="kw">impl </span>Plugin <span class="kw">for </span>Base {
+    <span class="kw">fn </span>id() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="string">&quot;plugin_base&quot;
+    </span>}
 
-    <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;base_pre_create_transform&quot;</span>,
-        <span class="ident">skip</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">ce</span>)
-    )]</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cognitive_complexity</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">pre_create_transform</span>(
-        <span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// debug!(&quot;Entering base pre_create_transform&quot;);</span>
-        <span class="comment">// For each candidate</span>
-        <span class="kw">for</span> <span class="ident">entry</span> <span class="kw">in</span> <span class="ident">cand</span>.<span class="ident">iter_mut</span>() {
-            <span class="comment">// First, ensure we have the &#39;object&#39;, class in the class set.</span>
-            <span class="ident">entry</span>.<span class="ident">add_ava</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_OBJECT</span>.<span class="ident">clone</span>());
+    <span class="attribute">#[instrument(
+        level = <span class="string">&quot;debug&quot;</span>,
+        name = <span class="string">&quot;base_pre_create_transform&quot;</span>,
+        skip(qs, cand, ce)
+    )]
+    #[allow(clippy::cognitive_complexity)]
+    </span><span class="kw">fn </span>pre_create_transform(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
+        ce: <span class="kw-2">&amp;</span>CreateEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// debug!(&quot;Entering base pre_create_transform&quot;);
+        // For each candidate
+        </span><span class="kw">for </span>entry <span class="kw">in </span>cand.iter_mut() {
+            <span class="comment">// First, ensure we have the &#39;object&#39;, class in the class set.
+            </span>entry.add_ava(<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone());
 
-            <span class="comment">// if they don&#39;t have uuid, create it.</span>
-            <span class="kw">match</span> <span class="ident">entry</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;uuid&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">len</span>()) {
-                <span class="prelude-val">None</span> =&gt; {
-                    <span class="comment">// Generate</span>
-                    <span class="kw">let</span> <span class="ident">ava_uuid</span> <span class="op">=</span> <span class="ident">Value::new_uuid</span>(<span class="ident">Uuid::new_v4</span>());
-                    <span class="macro">trace!</span>(<span class="string">&quot;Setting temporary UUID {:?} to entry&quot;</span>, <span class="ident">ava_uuid</span>);
-                    <span class="ident">entry</span>.<span class="ident">set_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">once</span>(<span class="ident">ava_uuid</span>));
+            <span class="comment">// if they don&#39;t have uuid, create it.
+            </span><span class="kw">match </span>entry.get_ava_set(<span class="string">&quot;uuid&quot;</span>).map(|s| s.len()) {
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="comment">// Generate
+                    </span><span class="kw">let </span>ava_uuid = Value::new_uuid(Uuid::new_v4());
+                    <span class="macro">trace!</span>(<span class="string">&quot;Setting temporary UUID {:?} to entry&quot;</span>, ava_uuid);
+                    entry.set_ava(<span class="string">&quot;uuid&quot;</span>, once(ava_uuid));
                 }
                 <span class="prelude-val">Some</span>(<span class="number">1</span>) =&gt; {
-                    <span class="comment">// Do nothing</span>
-                }
-                <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; {
-                    <span class="comment">// If we get some it MUST be 2 +</span>
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Entry defines uuid attr, but has multiple ({}) values.&quot;</span>, <span class="ident">x</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                        <span class="string">&quot;Uuid has multiple values&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="comment">// Do nothing
+                </span>}
+                <span class="prelude-val">Some</span>(x) =&gt; {
+                    <span class="comment">// If we get some it MUST be 2 +
+                    </span><span class="macro">admin_error!</span>(<span class="string">&quot;Entry defines uuid attr, but has multiple ({}) values.&quot;</span>, x);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                        <span class="string">&quot;Uuid has multiple values&quot;</span>.to_string(),
                     )));
                 }
             };
         }
 
-        <span class="comment">// Now, every cand has a UUID - create a cand uuid set from it.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cand_uuid</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeSet::new</span>();
+        <span class="comment">// Now, every cand has a UUID - create a cand uuid set from it.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>cand_uuid: BTreeSet&lt;Uuid&gt; = BTreeSet::new();
 
-        <span class="comment">// As we insert into the set, if a duplicate is found, return an error</span>
-        <span class="comment">// that a duplicate exists.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Remember, we have to use the ava here, not the get_uuid types because</span>
-        <span class="comment">// we may not have filled in the uuid field yet.</span>
-        <span class="kw">for</span> <span class="ident">entry</span> <span class="kw">in</span> <span class="ident">cand</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">uuid_ref</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="ident">entry</span>
-                .<span class="ident">get_ava_single_uuid</span>(<span class="string">&quot;uuid&quot;</span>)
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">cand_uuid</span>.<span class="ident">insert</span>(<span class="ident">uuid_ref</span>) {
-                <span class="macro">trace!</span>(<span class="string">&quot;uuid duplicate found in create set! {:?}&quot;</span>, <span class="ident">uuid_ref</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                    <span class="string">&quot;Uuid duplicate detected in request&quot;</span>.<span class="ident">to_string</span>(),
+        <span class="comment">// As we insert into the set, if a duplicate is found, return an error
+        // that a duplicate exists.
+        //
+        // Remember, we have to use the ava here, not the get_uuid types because
+        // we may not have filled in the uuid field yet.
+        </span><span class="kw">for </span>entry <span class="kw">in </span>cand.iter() {
+            <span class="kw">let </span>uuid_ref: Uuid = entry
+                .get_ava_single_uuid(<span class="string">&quot;uuid&quot;</span>)
+                .ok_or_else(|| OperationError::InvalidAttribute(<span class="string">&quot;uuid&quot;</span>.to_string()))<span class="question-mark">?</span>;
+            <span class="kw">if </span>!cand_uuid.insert(uuid_ref) {
+                <span class="macro">trace!</span>(<span class="string">&quot;uuid duplicate found in create set! {:?}&quot;</span>, uuid_ref);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                    <span class="string">&quot;Uuid duplicate detected in request&quot;</span>.to_string(),
                 )));
             }
         }
 
-        <span class="comment">// Check that the system-protected range is not in the cand_uuid, unless we are</span>
-        <span class="comment">// an internal operation.</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">ce</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
-            <span class="comment">// TODO: We can&#39;t lazy const this as you can&#39;t borrow the type down to what</span>
-            <span class="comment">// range and contains on btreeset need, but can we possibly make these constly</span>
-            <span class="comment">// part of the struct somehow at init. rather than needing to parse a lot?</span>
-            <span class="comment">// The internal set is bounded by: UUID_ADMIN -&gt; UUID_ANONYMOUS</span>
-            <span class="comment">// Sadly we need to allocate these to strings to make references, sigh.</span>
-            <span class="kw">let</span> <span class="ident">overlap</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">cand_uuid</span>.<span class="ident">range</span>(<span class="ident">UUID_ADMIN</span>..<span class="ident">UUID_ANONYMOUS</span>).<span class="ident">count</span>();
-            <span class="kw">if</span> <span class="ident">overlap</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="comment">// Check that the system-protected range is not in the cand_uuid, unless we are
+        // an internal operation.
+        </span><span class="kw">if </span>!ce.ident.is_internal() {
+            <span class="comment">// TODO: We can&#39;t lazy const this as you can&#39;t borrow the type down to what
+            // range and contains on btreeset need, but can we possibly make these constly
+            // part of the struct somehow at init. rather than needing to parse a lot?
+            // The internal set is bounded by: UUID_ADMIN -&gt; UUID_ANONYMOUS
+            // Sadly we need to allocate these to strings to make references, sigh.
+            </span><span class="kw">let </span>overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
+            <span class="kw">if </span>overlap != <span class="number">0 </span>{
                 <span class="macro">admin_error!</span>(
                     <span class="string">&quot;uuid from protected system UUID range found in create set! {:?}&quot;</span>,
-                    <span class="ident">overlap</span>
+                    overlap
                 );
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                    <span class="string">&quot;Uuid must not be in protected range&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                    <span class="string">&quot;Uuid must not be in protected range&quot;</span>.to_string(),
                 )));
             }
         }
 
-        <span class="kw">if</span> <span class="ident">cand_uuid</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOES_NOT_EXIST</span>) {
+        <span class="kw">if </span>cand_uuid.contains(<span class="kw-2">&amp;</span>UUID_DOES_NOT_EXIST) {
             <span class="macro">admin_error!</span>(
                 <span class="string">&quot;uuid \&quot;does not exist\&quot; found in create set! {:?}&quot;</span>,
-                <span class="ident">UUID_DOES_NOT_EXIST</span>
+                UUID_DOES_NOT_EXIST
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;UUID_DOES_NOT_EXIST may not exist!&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;UUID_DOES_NOT_EXIST may not exist!&quot;</span>.to_string(),
             )));
         }
 
-        <span class="comment">// Now from each element, generate a filter to search for all of them</span>
-        <span class="comment">//</span>
-        <span class="comment">// IMPORTANT: We don&#39;t exclude recycled or tombstones here!</span>
-        <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">FC::Or</span>(
-            <span class="ident">cand_uuid</span>
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">FC::Eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">u</span>)))
-                .<span class="ident">collect</span>(),
+        <span class="comment">// Now from each element, generate a filter to search for all of them
+        //
+        // IMPORTANT: We don&#39;t exclude recycled or tombstones here!
+        </span><span class="kw">let </span>filt_in = <span class="macro">filter_all!</span>(FC::Or(
+            cand_uuid
+                .into_iter()
+                .map(|u| FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+                .collect(),
         ));
 
-        <span class="comment">// If any results exist, fail as a duplicate UUID is present.</span>
-        <span class="comment">// TODO #69: Can we report which UUID exists? Probably yes, we do</span>
-        <span class="comment">// internal search and report the UUID *OR* we alter internal_exists</span>
-        <span class="comment">// to return UUID sets. This can be done as an extension to #69 where the</span>
-        <span class="comment">// internal exists is actually a wrapper around a search for uuid internally</span>
-        <span class="comment">//</span>
-        <span class="comment">// But does it add value? How many people will try to custom define/add uuid?</span>
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_exists</span>(<span class="ident">filt_in</span>);
+        <span class="comment">// If any results exist, fail as a duplicate UUID is present.
+        // TODO #69: Can we report which UUID exists? Probably yes, we do
+        // internal search and report the UUID *OR* we alter internal_exists
+        // to return UUID sets. This can be done as an extension to #69 where the
+        // internal exists is actually a wrapper around a search for uuid internally
+        //
+        // But does it add value? How many people will try to custom define/add uuid?
+        </span><span class="kw">let </span>r = qs.internal_exists(filt_in);
 
-        <span class="kw">match</span> <span class="ident">r</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">b</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">b</span> {
+        <span class="kw">match </span>r {
+            <span class="prelude-val">Ok</span>(b) =&gt; {
+                <span class="kw">if </span>b {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;A UUID already exists, rejecting.&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                        <span class="string">&quot;Uuid duplicate found in database&quot;</span>.<span class="ident">to_string</span>(),
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                        <span class="string">&quot;Uuid duplicate found in database&quot;</span>.to_string(),
                     )));
                 }
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Error occured checking UUID existance. {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Error occured checking UUID existance. {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(e);
             }
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;base_pre_modify&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">_cand</span>, <span class="ident">me</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">_cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">for</span> <span class="ident">modify</span> <span class="kw">in</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">into_iter</span>() {
-            <span class="kw">let</span> <span class="ident">attr</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">modify</span> {
-                <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="kw">_</span>) =&gt; <span class="ident">a</span>,
-                <span class="ident">Modify::Removed</span>(<span class="ident">a</span>, <span class="kw">_</span>) =&gt; <span class="ident">a</span>,
-                <span class="ident">Modify::Purged</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>,
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;base_pre_modify&quot;</span>, skip(_qs, _cand, me))]
+    </span><span class="kw">fn </span>pre_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        me: <span class="kw-2">&amp;</span>ModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">for </span>modify <span class="kw">in </span>me.modlist.into_iter() {
+            <span class="kw">let </span>attr = <span class="kw">match </span><span class="kw-2">&amp;</span>modify {
+                Modify::Present(a, <span class="kw">_</span>) =&gt; a,
+                Modify::Removed(a, <span class="kw">_</span>) =&gt; a,
+                Modify::Purged(a) =&gt; a,
             };
-            <span class="kw">if</span> <span class="ident">attr</span> <span class="op">==</span> <span class="string">&quot;uuid&quot;</span> {
+            <span class="kw">if </span>attr == <span class="string">&quot;uuid&quot; </span>{
                 <span class="macro">request_error!</span>(<span class="string">&quot;Modifications to UUID&#39;s are NOT ALLOWED&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedAttribute</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::SystemProtectedAttribute);
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;base_verify&quot;</span>, <span class="ident">skip</span>(<span class="ident">qs</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// Search for class = *</span>
-        <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>.<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>))) {
-            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Internal Search Failure: {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="kw">return</span> <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>)];
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;base_verify&quot;</span>, skip(qs))]
+    </span><span class="kw">fn </span>verify(qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
+        <span class="comment">// Search for class = *
+        </span><span class="kw">let </span>entries = <span class="kw">match </span>qs.internal_search(<span class="macro">filter!</span>(f_pres(<span class="string">&quot;class&quot;</span>))) {
+            <span class="prelude-val">Ok</span>(v) =&gt; v,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Internal Search Failure: {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="macro">vec!</span>[<span class="prelude-val">Err</span>(ConsistencyError::QueryServerSearchFailure)];
             }
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">uuid_seen</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet::with_capacity</span>(<span class="ident">entries</span>.<span class="ident">len</span>());
+        <span class="kw">let </span><span class="kw-2">mut </span>uuid_seen: HashSet&lt;Uuid&gt; = HashSet::with_capacity(entries.len());
 
-        <span class="ident">entries</span>
-            .<span class="ident">iter</span>()
-            <span class="comment">// do an exists checks on the uuid</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="comment">// To get the entry deserialised, a UUID MUST EXIST, else an expect</span>
-                <span class="comment">// will be thrown in the deserialise (possibly it will be better</span>
-                <span class="comment">// handled later). But it means this check only needs to validate</span>
-                <span class="comment">// uniqueness!</span>
-                <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>();
+        entries
+            .iter()
+            <span class="comment">// do an exists checks on the uuid
+            </span>.map(|e| {
+                <span class="comment">// To get the entry deserialised, a UUID MUST EXIST, else an expect
+                // will be thrown in the deserialise (possibly it will be better
+                // handled later). But it means this check only needs to validate
+                // uniqueness!
+                </span><span class="kw">let </span>uuid = e.get_uuid();
 
-                <span class="kw">if</span> <span class="ident">uuid_seen</span>.<span class="ident">insert</span>(<span class="ident">uuid</span>) {
-                    <span class="comment">// Insert returns true if the item was unique.</span>
-                    <span class="prelude-val">Ok</span>(())
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::UuidNotUnique</span>(<span class="ident">uuid</span>.<span class="ident">to_string</span>()))
+                <span class="kw">if </span>uuid_seen.insert(uuid) {
+                    <span class="comment">// Insert returns true if the item was unique.
+                    </span><span class="prelude-val">Ok</span>(())
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(ConsistencyError::UuidNotUnique(uuid.to_string()))
                 }
             })
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">is_err</span>())
-            .<span class="ident">collect</span>()
+            .filter(|v| v.is_err())
+            .collect()
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">kanidm_proto::v1::PluginError</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>kanidm_proto::v1::PluginError;
 
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-    <span class="kw">const</span> <span class="ident">JSON_ADMIN_ALLOW_ALL</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+    <span class="kw">const </span>JSON_ADMIN_ALLOW_ALL: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">r#&quot;{
         &quot;attrs&quot;: {
             &quot;class&quot;: [
                 &quot;object&quot;,
@@ -908,12 +908,12 @@
         }
     }&quot;#</span>;
 
-    <span class="comment">// check create where no uuid</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_no_uuid</span>() {
-        <span class="kw">let</span> <span class="ident">preload</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="comment">// check create where no uuid
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_no_uuid() {
+        <span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -924,29 +924,29 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e];
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">qs</span>
-                    .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
-                <span class="kw">let</span> <span class="ident">ue</span> <span class="op">=</span> <span class="ident">cands</span>.<span class="ident">first</span>().<span class="ident">expect</span>(<span class="string">&quot;No cand&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">ue</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;uuid&quot;</span>));
+            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+                <span class="kw">let </span>cands = qs
+                    .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))))
+                    .expect(<span class="string">&quot;Internal search failure&quot;</span>);
+                <span class="kw">let </span>ue = cands.first().expect(<span class="string">&quot;No cand&quot;</span>);
+                <span class="macro">assert!</span>(ue.attribute_pres(<span class="string">&quot;uuid&quot;</span>));
             }
         );
     }
 
-    <span class="comment">// check unparseable uuid</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_uuid_invalid</span>() {
-        <span class="kw">let</span> <span class="ident">preload</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="comment">// check unparseable uuid
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_uuid_invalid() {
+        <span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -958,23 +958,23 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>())),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;uuid&quot;</span>.to_string())),
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// check entry where uuid is empty list</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_uuid_empty</span>() {
-        <span class="kw">let</span> <span class="ident">preload</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="comment">// check entry where uuid is empty list
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_uuid_empty() {
+        <span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span><span class="kw-2">mut </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -986,28 +986,28 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">vs</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_ava_mut</span>(<span class="string">&quot;uuid&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="ident">vs</span>.<span class="ident">clear</span>();
+        <span class="kw">let </span>vs = e.get_ava_mut(<span class="string">&quot;uuid&quot;</span>).unwrap();
+        vs.clear();
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;Uuid format invalid&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;Uuid format invalid&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// check create where provided uuid is valid. It should be unchanged.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_uuid_valid</span>() {
-        <span class="kw">let</span> <span class="ident">preload</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="comment">// check create where provided uuid is valid. It should be unchanged.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_uuid_valid() {
+        <span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -1019,31 +1019,31 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">qs</span>
-                    .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))))
-                    .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
-                <span class="kw">let</span> <span class="ident">ue</span> <span class="op">=</span> <span class="ident">cands</span>.<span class="ident">first</span>().<span class="ident">expect</span>(<span class="string">&quot;No cand&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">ue</span>.<span class="ident">attribute_equality</span>(
+            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+                <span class="kw">let </span>cands = qs
+                    .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))))
+                    .expect(<span class="string">&quot;Internal search failure&quot;</span>);
+                <span class="kw">let </span>ue = cands.first().expect(<span class="string">&quot;No cand&quot;</span>);
+                <span class="macro">assert!</span>(ue.attribute_equality(
                     <span class="string">&quot;uuid&quot;</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">PartialValue::new_uuids</span>(<span class="string">&quot;79724141-3603-4060-b6bb-35c72772611d&quot;</span>).<span class="ident">unwrap</span>()
+                    <span class="kw-2">&amp;</span>PartialValue::new_uuids(<span class="string">&quot;79724141-3603-4060-b6bb-35c72772611d&quot;</span>).unwrap()
                 ));
             }
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_uuid_valid_multi</span>() {
-        <span class="kw">let</span> <span class="ident">preload</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_uuid_valid_multi() {
+        <span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -1055,30 +1055,30 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;Uuid has multiple values&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;Uuid has multiple values&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// check create where uuid already exists.</span>
-    <span class="comment">// -- check create where uuid is a well-known</span>
-    <span class="comment">// This second case is technically handled as well-known</span>
-    <span class="comment">// types are created &quot;at startup&quot; so it&#39;s not possible</span>
-    <span class="comment">// to create one.</span>
-    <span class="comment">//</span>
-    <span class="comment">// To solidify this, we could make a range of min-max well knowns</span>
-    <span class="comment">// to ensure we always have a name space to draw from?</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_uuid_exist</span>() {
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// check create where uuid already exists.
+    // -- check create where uuid is a well-known
+    // This second case is technically handled as well-known
+    // types are created &quot;at startup&quot; so it&#39;s not possible
+    // to create one.
+    //
+    // To solidify this, we could make a range of min-max well knowns
+    // to ensure we always have a name space to draw from?
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_uuid_exist() {
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -1090,26 +1090,26 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[e];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;Uuid duplicate found in database&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;Uuid duplicate found in database&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_double_uuid</span>() {
-        <span class="comment">// Test adding two entries with the same uuid</span>
-        <span class="kw">let</span> <span class="ident">preload</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_double_uuid() {
+        <span class="comment">// Test adding two entries with the same uuid
+        </span><span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -1121,7 +1121,7 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">eb</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>eb: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;],
@@ -1133,24 +1133,24 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>, <span class="ident">eb</span>];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[ea, eb];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;Uuid duplicate detected in request&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;Uuid duplicate detected in request&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="comment">// All of these *SHOULD* be blocked?</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_uuid_present</span>() {
-        <span class="comment">// Add another uuid to a type</span>
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="comment">// All of these *SHOULD* be blocked?
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_uuid_present() {
+        <span class="comment">// Add another uuid to a type
+        </span><span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1161,26 +1161,26 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea];
 
         <span class="macro">run_modify_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedAttribute</span>),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>),
-                <span class="ident">Value::from</span>(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>)
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedAttribute),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_a&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
+                AttrString::from(<span class="string">&quot;uuid&quot;</span>),
+                Value::from(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>)
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_uuid_removed</span>() {
-        <span class="comment">// Test attempting to remove a uuid</span>
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_uuid_removed() {
+        <span class="comment">// Test attempting to remove a uuid
+        </span><span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1191,26 +1191,26 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea];
 
         <span class="macro">run_modify_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedAttribute</span>),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Removed</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>),
-                <span class="ident">PartialValue::new_uuids</span>(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>).<span class="ident">unwrap</span>()
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedAttribute),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_a&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Removed(
+                AttrString::from(<span class="string">&quot;uuid&quot;</span>),
+                PartialValue::new_uuids(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>).unwrap()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_uuid_purged</span>() {
-        <span class="comment">// Test attempting to purge uuid</span>
-        <span class="kw">let</span> <span class="ident">ea</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_uuid_purged() {
+        <span class="comment">// Test attempting to purge uuid
+        </span><span class="kw">let </span>ea: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;group&quot;],
@@ -1221,29 +1221,29 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ea</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[ea];
 
         <span class="macro">run_modify_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedAttribute</span>),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))),
-            <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>))]),
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedAttribute),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_a&quot;</span>))),
+            ModifyList::new_list(<span class="macro">vec!</span>[Modify::Purged(AttrString::from(<span class="string">&quot;uuid&quot;</span>))]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_protected_uuid_range</span>() {
-        <span class="comment">// Test an external create, it should fail.</span>
-        <span class="comment">// Testing internal create is not super needed, due to migrations at start</span>
-        <span class="comment">// up testing this every time we run :P</span>
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_protected_uuid_range() {
+        <span class="comment">// Test an external create, it should fail.
+        // Testing internal create is not super needed, due to migrations at start
+        // up testing this every time we run :P
+        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;, &quot;system&quot;],
@@ -1255,29 +1255,29 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;Uuid must not be in protected range&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;Uuid must not be in protected range&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            preload,
+            create,
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_protected_uuid_range_2</span>() {
-        <span class="comment">// Test an external create, it should fail.</span>
-        <span class="comment">// Testing internal create is not super needed, due to migrations at start</span>
-        <span class="comment">// up testing this every time we run :P</span>
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_protected_uuid_range_2() {
+        <span class="comment">// Test an external create, it should fail.
+        // Testing internal create is not super needed, due to migrations at start
+        // up testing this every time we run :P
+        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;, &quot;system&quot;],
@@ -1289,25 +1289,25 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;Uuid must not be in protected range&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;Uuid must not be in protected range&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            preload,
+            create,
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_protected_uuid_does_not_exist</span>() {
-        <span class="comment">// Test that internal create of &quot;does not exist&quot; will fail.</span>
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_protected_uuid_does_not_exist() {
+        <span class="comment">// Test that internal create of &quot;does not exist&quot; will fail.
+        </span><span class="kw">let </span>preload = Vec::new();
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;, &quot;system&quot;],
@@ -1319,18 +1319,18 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::Base</span>(
-                <span class="string">&quot;UUID_DOES_NOT_EXIST may not exist!&quot;</span>.<span class="ident">to_string</span>()
+            <span class="prelude-val">Err</span>(OperationError::Plugin(PluginError::Base(
+                <span class="string">&quot;UUID_DOES_NOT_EXIST may not exist!&quot;</span>.to_string()
             ))),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
+            preload,
+            create,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            |<span class="kw">_</span>| {}
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/manager.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>manager.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd_web_ui/src/manager.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>manager.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../kanidmd_web_ui/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kanidmd_web_ui/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -119,126 +119,126 @@
 <span id="119">119</span>
 <span id="120">120</span>
 <span id="121">121</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This is the top level router of the web ui for kanidm. It decides based on the incoming</span>
-<span class="doccomment">//! request, where to direct this too, and if the requirements for that request have been</span>
-<span class="doccomment">//! met before rendering. For example, if you land here with an oauth request, but you are</span>
-<span class="doccomment">//! not atuhenticated, this will determine that and send you to authentication first, then</span>
-<span class="doccomment">//! will allow you to proceed with the oauth flow.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This is the top level router of the web ui for kanidm. It decides based on the incoming
+//! request, where to direct this too, and if the requirements for that request have been
+//! met before rendering. For example, if you land here with an oauth request, but you are
+//! not atuhenticated, this will determine that and send you to authentication first, then
+//! will allow you to proceed with the oauth flow.
 
-<span class="kw">use</span> <span class="ident">gloo::console</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">wasm_bindgen::UnwrapThrowExt</span>;
-<span class="kw">use</span> <span class="ident">yew::functional</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
+</span><span class="kw">use </span>gloo::console;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>wasm_bindgen::UnwrapThrowExt;
+<span class="kw">use </span>yew::functional::<span class="kw-2">*</span>;
+<span class="kw">use </span>yew::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>yew_router::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::reset::CredentialResetApp</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::login::LoginApp</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::oauth2::Oauth2App</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::views</span>::{<span class="ident">ViewRoute</span>, <span class="ident">ViewsApp</span>};
+<span class="kw">use </span><span class="kw">crate</span>::credential::reset::CredentialResetApp;
+<span class="kw">use </span><span class="kw">crate</span>::login::LoginApp;
+<span class="kw">use </span><span class="kw">crate</span>::oauth2::Oauth2App;
+<span class="kw">use </span><span class="kw">crate</span>::views::{ViewRoute, ViewsApp};
 
-<span class="comment">// router to decide on state.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Routable</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Route</span> {
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>)]</span>
-    <span class="ident">Landing</span>,
+<span class="comment">// router to decide on state.
+</span><span class="attribute">#[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>Route {
+    <span class="attribute">#[at(<span class="string">&quot;/&quot;</span>)]
+    </span>Landing,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/view/*&quot;</span>)]</span>
-    <span class="ident">Views</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/view/*&quot;</span>)]
+    </span>Views,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/login&quot;</span>)]</span>
-    <span class="ident">Login</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/login&quot;</span>)]
+    </span>Login,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/oauth2&quot;</span>)]</span>
-    <span class="ident">Oauth2</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/oauth2&quot;</span>)]
+    </span>Oauth2,
 
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/reset&quot;</span>)]</span>
-    <span class="ident">CredentialReset</span>,
+    <span class="attribute">#[at(<span class="string">&quot;/ui/reset&quot;</span>)]
+    </span>CredentialReset,
 
-    <span class="attribute">#[<span class="ident">not_found</span>]</span>
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/404&quot;</span>)]</span>
-    <span class="ident">NotFound</span>,
+    <span class="attribute">#[not_found]
+    #[at(<span class="string">&quot;/ui/404&quot;</span>)]
+    </span>NotFound,
 }
 
-<span class="attribute">#[<span class="ident">function_component</span>(<span class="ident">Landing</span>)]</span>
-<span class="kw">fn</span> <span class="ident">landing</span>() -&gt; <span class="ident">Html</span> {
-    <span class="comment">// Do this to allow use_history to work because lol.</span>
-    <span class="ident">use_history</span>()
-        .<span class="ident">expect_throw</span>(<span class="string">&quot;Unable to access history&quot;</span>)
-        .<span class="ident">push</span>(<span class="ident">ViewRoute::Apps</span>);
-    <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">main</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span> }
+<span class="attribute">#[function_component(Landing)]
+</span><span class="kw">fn </span>landing() -&gt; Html {
+    <span class="comment">// Do this to allow use_history to work because lol.
+    </span>use_history()
+        .expect_throw(<span class="string">&quot;Unable to access history&quot;</span>)
+        .push(ViewRoute::Apps);
+    <span class="macro">html! </span>{ &lt;main&gt;&lt;/main&gt; }
 }
 
-<span class="kw">fn</span> <span class="ident">switch</span>(<span class="ident">route</span>: <span class="kw-2">&amp;</span><span class="ident">Route</span>) -&gt; <span class="ident">Html</span> {
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-    <span class="macro">console::debug!</span>(<span class="string">&quot;manager::switch&quot;</span>);
-    <span class="kw">match</span> <span class="ident">route</span> {
-        <span class="ident">Route::Landing</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">Landing</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::Login</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">LoginApp</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::Oauth2</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">Oauth2App</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::Views</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">ViewsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::CredentialReset</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">CredentialResetApp</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::NotFound</span> =&gt; {
+<span class="kw">fn </span>switch(route: <span class="kw-2">&amp;</span>Route) -&gt; Html {
+    <span class="attribute">#[cfg(debug)]
+    </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::switch&quot;</span>);
+    <span class="kw">match </span>route {
+        Route::Landing =&gt; <span class="macro">html! </span>{ &lt;Landing /&gt; },
+        Route::Login =&gt; <span class="macro">html! </span>{ &lt;LoginApp /&gt; },
+        Route::Oauth2 =&gt; <span class="macro">html! </span>{ &lt;Oauth2App /&gt; },
+        Route::Views =&gt; <span class="macro">html! </span>{ &lt;ViewsApp /&gt; },
+        Route::CredentialReset =&gt; <span class="macro">html! </span>{ &lt;CredentialResetApp /&gt; },
+        Route::NotFound =&gt; {
             <span class="macro">add_body_form_classes!</span>();
 
-            <span class="macro">html!</span> {
-                <span class="op">&lt;</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;flex-shrink-0 form-signin text-center&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/logo-square.svg&quot;</span> <span class="ident">alt</span><span class="op">=</span><span class="string">&quot;Kanidm&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;kanidm_logo&quot;</span><span class="op">/</span><span class="op">&gt;</span>
-                        <span class="comment">// TODO: replace this with a call to domain info</span>
-                        <span class="op">&lt;</span><span class="ident">h3</span><span class="op">&gt;</span>{ <span class="string">&quot;404 - Page not found&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h3</span><span class="op">&gt;</span>
+            <span class="macro">html! </span>{
+                &lt;&gt;
+                &lt;main class=<span class="string">&quot;flex-shrink-0 form-signin text-center&quot;</span>&gt;
+                        &lt;img src=<span class="string">&quot;/pkg/img/logo-square.svg&quot; </span>alt=<span class="string">&quot;Kanidm&quot; </span>class=<span class="string">&quot;kanidm_logo&quot;</span>/&gt;
+                        <span class="comment">// TODO: replace this with a call to domain info
+                        </span>&lt;h3&gt;{ <span class="string">&quot;404 - Page not found&quot; </span>}&lt;/h3&gt;
 
-                        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{ <span class="ident">ViewRoute::Apps</span> }<span class="op">&gt;</span>
-                        { <span class="string">&quot;Home&quot;</span> }
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">Link</span><span class="op">&lt;</span><span class="ident">ViewRoute</span><span class="op">&gt;</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
-                { <span class="ident"><span class="kw">crate</span>::utils::do_footer</span>() }
-                <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
+                        &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
+                        &lt;Link&lt;ViewRoute&gt; to={ ViewRoute::Apps }&gt;
+                        { <span class="string">&quot;Home&quot; </span>}
+                        &lt;/Link&lt;ViewRoute&gt;&gt;
+                        &lt;/div&gt;
+                &lt;/main&gt;
+                { <span class="kw">crate</span>::utils::do_footer() }
+                &lt;/&gt;
             }
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ManagerApp</span> {}
+<span class="kw">pub struct </span>ManagerApp {}
 
-<span class="kw">impl</span> <span class="ident">Component</span> <span class="kw">for</span> <span class="ident">ManagerApp</span> {
-    <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> ();
-    <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> ();
+<span class="kw">impl </span>Component <span class="kw">for </span>ManagerApp {
+    <span class="kw">type </span>Message = ();
+    <span class="kw">type </span>Properties = ();
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;manager::create&quot;</span>);
-        <span class="ident">ManagerApp</span> {}
+    <span class="kw">fn </span>create(_ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::create&quot;</span>);
+        ManagerApp {}
     }
 
-    <span class="kw">fn</span> <span class="ident">changed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;manager::change&quot;</span>);
-        <span class="bool-val">false</span>
-    }
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::change&quot;</span>);
+        <span class="bool-val">false
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;manager::update&quot;</span>);
-        <span class="bool-val">true</span>
-    }
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _msg: <span class="self">Self</span>::Message) -&gt; bool {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::update&quot;</span>);
+        <span class="bool-val">true
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">debug</span>)]</span>
-        <span class="macro">console::debug!</span>(<span class="string">&quot;manager::rendered&quot;</span>);
-        <span class="comment">// Can only access the current_route AFTER it renders.</span>
-        <span class="comment">// console::debug!(format!(&quot;{:?}&quot;, yew_router::current_route::&lt;Route&gt;()).as_str())</span>
-    }
+    <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
+        <span class="attribute">#[cfg(debug)]
+        </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::rendered&quot;</span>);
+        <span class="comment">// Can only access the current_route AFTER it renders.
+        // console::debug!(format!(&quot;{:?}&quot;, yew_router::current_route::&lt;Route&gt;()).as_str())
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="macro">html!</span> {
-            <span class="op">&lt;</span><span class="ident">BrowserRouter</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">Switch</span><span class="op">&lt;</span><span class="ident">Route</span><span class="op">&gt;</span> <span class="ident">render</span><span class="op">=</span>{ <span class="ident">Switch::render</span>(<span class="ident">switch</span>) } <span class="op">/</span><span class="op">&gt;</span>
-            <span class="op">&lt;</span><span class="op">/</span><span class="ident">BrowserRouter</span><span class="op">&gt;</span>
+    <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="macro">html! </span>{
+            &lt;BrowserRouter&gt;
+                &lt;Switch&lt;Route&gt; render={ Switch::render(switch) } /&gt;
+            &lt;/BrowserRouter&gt;
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_web_ui" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

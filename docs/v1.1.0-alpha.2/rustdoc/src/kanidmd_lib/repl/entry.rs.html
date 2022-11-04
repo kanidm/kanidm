@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/repl/entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/repl/entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -553,32 +553,32 @@
 <span id="553">553</span>
 <span id="554">554</span>
 <span id="555">555</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::btree_map::Keys</span>;
-<span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Bound</span>::<span class="kw-2">*</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Keys;
+<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::ops::Bound;
+<span class="kw">use </span>std::ops::Bound::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident">kanidm_proto::v1::ConsistencyError</span>;
+<span class="kw">use </span>kanidm_proto::v1::ConsistencyError;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::cid::Cid</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">compare_attrs</span>, <span class="ident">Eattrs</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema::SchemaTransaction</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset</span>;
+<span class="kw">use </span><span class="kw">super</span>::cid::Cid;
+<span class="kw">use </span><span class="kw">crate</span>::entry::{compare_attrs, Eattrs};
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
+<span class="kw">use </span><span class="kw">crate</span>::valueset;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EntryChangelog</span> {
-    <span class="doccomment">/// The set of &quot;entries as they existed at a point in time&quot;. This allows us to rewind</span>
-    <span class="doccomment">/// to a point-in-time, and then to start to &quot;replay&quot; applying all changes again.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// A subtle and important piece of information is that an anchor can be considered</span>
-    <span class="doccomment">/// as the &quot;state as existing between two Cid&#39;s&quot;. This means for Cid X, this state is</span>
-    <span class="doccomment">/// the &quot;moment before X&quot;. This is important, as for a create we define the initial anchor</span>
-    <span class="doccomment">/// as &quot;nothing&quot;. It&#39;s means for the anchor at time X, that changes that occured at time</span>
-    <span class="doccomment">/// X have NOT been replayed and applied!</span>
-    <span class="ident">anchors</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">State</span><span class="op">&gt;</span>,
-    <span class="ident">changes</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">Change</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>EntryChangelog {
+    <span class="doccomment">/// The set of &quot;entries as they existed at a point in time&quot;. This allows us to rewind
+    /// to a point-in-time, and then to start to &quot;replay&quot; applying all changes again.
+    ///
+    /// A subtle and important piece of information is that an anchor can be considered
+    /// as the &quot;state as existing between two Cid&#39;s&quot;. This means for Cid X, this state is
+    /// the &quot;moment before X&quot;. This is important, as for a create we define the initial anchor
+    /// as &quot;nothing&quot;. It&#39;s means for the anchor at time X, that changes that occured at time
+    /// X have NOT been replayed and applied!
+    </span>anchors: BTreeMap&lt;Cid, State&gt;,
+    changes: BTreeMap&lt;Cid, Change&gt;,
 }
 
 <span class="comment">/*
@@ -587,133 +587,133 @@ impl fmt::Display for EntryChangelog {
         write!(f
     }
 }
-*/</span>
+*/
 
-<span class="doccomment">/// A change defines the transitions that occured within this Cid (transaction). A change is applied</span>
-<span class="doccomment">/// as a whole, or rejected during the replay process.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Change</span> {
-    <span class="ident">s</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transition</span><span class="op">&gt;</span>,
+</span><span class="doccomment">/// A change defines the transitions that occured within this Cid (transaction). A change is applied
+/// as a whole, or rejected during the replay process.
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>Change {
+    s: Vec&lt;Transition&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">State</span> {
-    <span class="ident">NonExistent</span>,
-    <span class="ident">Live</span>(<span class="ident">Eattrs</span>),
-    <span class="ident">Recycled</span>(<span class="ident">Eattrs</span>),
-    <span class="ident">Tombstone</span>(<span class="ident">Eattrs</span>),
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">enum </span>State {
+    NonExistent,
+    Live(Eattrs),
+    Recycled(Eattrs),
+    Tombstone(Eattrs),
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">State</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">State::NonExistent</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;NonExistent&quot;</span>),
-            <span class="ident">State::Live</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Live&quot;</span>),
-            <span class="ident">State::Recycled</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Recycled&quot;</span>),
-            <span class="ident">State::Tombstone</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Tombstone&quot;</span>),
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>State {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
+            State::NonExistent =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;NonExistent&quot;</span>),
+            State::Live(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Live&quot;</span>),
+            State::Recycled(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Recycled&quot;</span>),
+            State::Tombstone(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Tombstone&quot;</span>),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">Transition</span> {
-    <span class="ident">Create</span>(<span class="ident">Eattrs</span>),
-    <span class="ident">ModifyPurge</span>(<span class="ident">AttrString</span>),
-    <span class="ident">ModifyPresent</span>(<span class="ident">AttrString</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>),
-    <span class="ident">ModifyRemoved</span>(<span class="ident">AttrString</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>),
-    <span class="ident">Recycle</span>,
-    <span class="ident">Revive</span>,
-    <span class="ident">Tombstone</span>(<span class="ident">Eattrs</span>),
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">enum </span>Transition {
+    Create(Eattrs),
+    ModifyPurge(AttrString),
+    ModifyPresent(AttrString, Box&lt;Value&gt;),
+    ModifyRemoved(AttrString, Box&lt;PartialValue&gt;),
+    Recycle,
+    Revive,
+    Tombstone(Eattrs),
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Transition</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">Transition::Create</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Create&quot;</span>),
-            <span class="ident">Transition::ModifyPurge</span>(<span class="ident">a</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ModifyPurge({})&quot;</span>, <span class="ident">a</span>),
-            <span class="ident">Transition::ModifyPresent</span>(<span class="ident">a</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ModifyPresent({})&quot;</span>, <span class="ident">a</span>),
-            <span class="ident">Transition::ModifyRemoved</span>(<span class="ident">a</span>, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ModifyRemoved({})&quot;</span>, <span class="ident">a</span>),
-            <span class="ident">Transition::Recycle</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Recycle&quot;</span>),
-            <span class="ident">Transition::Revive</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Revive&quot;</span>),
-            <span class="ident">Transition::Tombstone</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Tombstone&quot;</span>),
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Transition {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
+            Transition::Create(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Create&quot;</span>),
+            Transition::ModifyPurge(a) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ModifyPurge({})&quot;</span>, a),
+            Transition::ModifyPresent(a, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ModifyPresent({})&quot;</span>, a),
+            Transition::ModifyRemoved(a, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ModifyRemoved({})&quot;</span>, a),
+            Transition::Recycle =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Recycle&quot;</span>),
+            Transition::Revive =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Revive&quot;</span>),
+            Transition::Tombstone(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Tombstone&quot;</span>),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">State</span> {
-    <span class="kw">fn</span> <span class="ident">apply_change</span>(<span class="self">self</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="ident">Change</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>;
-        <span class="kw">for</span> <span class="ident">transition</span> <span class="kw">in</span> <span class="ident">change</span>.<span class="ident">s</span>.<span class="ident">iter</span>() {
-            <span class="kw">match</span> (<span class="kw-2">&amp;mut</span> <span class="ident">state</span>, <span class="ident">transition</span>) {
-                (<span class="ident">State::NonExistent</span>, <span class="ident">Transition::Create</span>(<span class="ident">attrs</span>)) =&gt; {
+<span class="kw">impl </span>State {
+    <span class="kw">fn </span>apply_change(<span class="self">self</span>, change: <span class="kw-2">&amp;</span>Change) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>state = <span class="self">self</span>;
+        <span class="kw">for </span>transition <span class="kw">in </span>change.s.iter() {
+            <span class="kw">match </span>(<span class="kw-2">&amp;mut </span>state, transition) {
+                (State::NonExistent, Transition::Create(attrs)) =&gt; {
                     <span class="macro">trace!</span>(<span class="string">&quot;NonExistent + Create -&gt; Live&quot;</span>);
-                    <span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Live</span>(<span class="ident">attrs</span>.<span class="ident">clone</span>());
+                    state = State::Live(attrs.clone());
                 }
-                (<span class="ident">State::Live</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>), <span class="ident">Transition::ModifyPurge</span>(<span class="ident">attr</span>)) =&gt; {
-                    <span class="macro">trace!</span>(<span class="string">&quot;Live + ModifyPurge({}) -&gt; Live&quot;</span>, <span class="ident">attr</span>);
-                    <span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>);
+                (State::Live(<span class="kw-2">ref mut </span>attrs), Transition::ModifyPurge(attr)) =&gt; {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Live + ModifyPurge({}) -&gt; Live&quot;</span>, attr);
+                    attrs.remove(attr);
                 }
-                (<span class="ident">State::Live</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>), <span class="ident">Transition::ModifyPresent</span>(<span class="ident">attr</span>, <span class="ident">value</span>)) =&gt; {
-                    <span class="macro">trace!</span>(<span class="string">&quot;Live + ModifyPresent({}) -&gt; Live&quot;</span>, <span class="ident">attr</span>);
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
-                        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">insert_checked</span>(<span class="ident">value</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>());
-                        <span class="macro">assert!</span>(<span class="ident">r</span>.<span class="ident">is_ok</span>());
-                        <span class="comment">// Reject if it fails?</span>
-                    } <span class="kw">else</span> {
-                        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                        <span class="kw">let</span> <span class="ident">vs</span> <span class="op">=</span> <span class="ident">valueset::from_value_iter</span>(<span class="ident">std::iter::once</span>(<span class="ident">value</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()))
-                            .<span class="ident">expect</span>(<span class="string">&quot;Unable to fail - always single value, and only one type!&quot;</span>);
-                        <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">attr</span>.<span class="ident">clone</span>(), <span class="ident">vs</span>);
+                (State::Live(<span class="kw-2">ref mut </span>attrs), Transition::ModifyPresent(attr, value)) =&gt; {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Live + ModifyPresent({}) -&gt; Live&quot;</span>, attr);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = attrs.get_mut(attr) {
+                        <span class="kw">let </span>r = vs.insert_checked(value.as_ref().clone());
+                        <span class="macro">assert!</span>(r.is_ok());
+                        <span class="comment">// Reject if it fails?
+                    </span>} <span class="kw">else </span>{
+                        <span class="attribute">#[allow(clippy::expect_used)]
+                        </span><span class="kw">let </span>vs = valueset::from_value_iter(std::iter::once(value.as_ref().clone()))
+                            .expect(<span class="string">&quot;Unable to fail - always single value, and only one type!&quot;</span>);
+                        attrs.insert(attr.clone(), vs);
                     }
                 }
-                (<span class="ident">State::Live</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>), <span class="ident">Transition::ModifyRemoved</span>(<span class="ident">attr</span>, <span class="ident">value</span>)) =&gt; {
-                    <span class="macro">trace!</span>(<span class="string">&quot;Live + ModifyRemoved({}) -&gt; Live&quot;</span>, <span class="ident">attr</span>);
-                    <span class="kw">let</span> <span class="ident">rm</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
-                        <span class="ident">vs</span>.<span class="ident">remove</span>(<span class="ident">value</span>);
-                        <span class="ident">vs</span>.<span class="ident">is_empty</span>()
-                    } <span class="kw">else</span> {
-                        <span class="bool-val">false</span>
-                    };
-                    <span class="kw">if</span> <span class="ident">rm</span> {
-                        <span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>);
+                (State::Live(<span class="kw-2">ref mut </span>attrs), Transition::ModifyRemoved(attr, value)) =&gt; {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Live + ModifyRemoved({}) -&gt; Live&quot;</span>, attr);
+                    <span class="kw">let </span>rm = <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = attrs.get_mut(attr) {
+                        vs.remove(value);
+                        vs.is_empty()
+                    } <span class="kw">else </span>{
+                        <span class="bool-val">false
+                    </span>};
+                    <span class="kw">if </span>rm {
+                        attrs.remove(attr);
                     };
                 }
-                (<span class="ident">State::Live</span>(<span class="ident">attrs</span>), <span class="ident">Transition::Recycle</span>) =&gt; {
+                (State::Live(attrs), Transition::Recycle) =&gt; {
                     <span class="macro">trace!</span>(<span class="string">&quot;Live + Recycle -&gt; Recycled&quot;</span>);
-                    <span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Recycled</span>(<span class="ident">attrs</span>.<span class="ident">clone</span>());
+                    state = State::Recycled(attrs.clone());
                 }
-                (<span class="ident">State::Live</span>(<span class="kw">_</span>), <span class="ident">Transition::Tombstone</span>(<span class="ident">attrs</span>)) =&gt; {
+                (State::Live(<span class="kw">_</span>), Transition::Tombstone(attrs)) =&gt; {
                     <span class="macro">trace!</span>(<span class="string">&quot;Live + Tombstone -&gt; Tombstone&quot;</span>);
-                    <span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Tombstone</span>(<span class="ident">attrs</span>.<span class="ident">clone</span>());
+                    state = State::Tombstone(attrs.clone());
                 }
-                (<span class="ident">State::Recycled</span>(<span class="ident">attrs</span>), <span class="ident">Transition::Revive</span>) =&gt; {
+                (State::Recycled(attrs), Transition::Revive) =&gt; {
                     <span class="macro">trace!</span>(<span class="string">&quot;Recycled + Revive -&gt; Live&quot;</span>);
-                    <span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Live</span>(<span class="ident">attrs</span>.<span class="ident">clone</span>());
+                    state = State::Live(attrs.clone());
                 }
-                (<span class="ident">State::Recycled</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>), <span class="ident">Transition::ModifyPurge</span>(<span class="ident">attr</span>)) =&gt; {
-                    <span class="macro">trace!</span>(<span class="string">&quot;Recycled + ModifyPurge({}) -&gt; Recycled&quot;</span>, <span class="ident">attr</span>);
-                    <span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>);
+                (State::Recycled(<span class="kw-2">ref mut </span>attrs), Transition::ModifyPurge(attr)) =&gt; {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Recycled + ModifyPurge({}) -&gt; Recycled&quot;</span>, attr);
+                    attrs.remove(attr);
                 }
-                (<span class="ident">State::Recycled</span>(<span class="ident">attrs</span>), <span class="ident">Transition::ModifyRemoved</span>(<span class="ident">attr</span>, <span class="ident">value</span>)) =&gt; {
-                    <span class="macro">trace!</span>(<span class="string">&quot;Recycled + ModifyRemoved({}) -&gt; Recycled&quot;</span>, <span class="ident">attr</span>);
-                    <span class="kw">let</span> <span class="ident">rm</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
-                        <span class="ident">vs</span>.<span class="ident">remove</span>(<span class="ident">value</span>);
-                        <span class="ident">vs</span>.<span class="ident">is_empty</span>()
-                    } <span class="kw">else</span> {
-                        <span class="bool-val">false</span>
+                (State::Recycled(attrs), Transition::ModifyRemoved(attr, value)) =&gt; {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Recycled + ModifyRemoved({}) -&gt; Recycled&quot;</span>, attr);
+                    <span class="kw">let </span>rm = <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = attrs.get_mut(attr) {
+                        vs.remove(value);
+                        vs.is_empty()
+                    } <span class="kw">else </span>{
+                        <span class="bool-val">false
+                    </span>};
+                    <span class="kw">if </span>rm {
+                        attrs.remove(attr);
                     };
-                    <span class="kw">if</span> <span class="ident">rm</span> {
-                        <span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>);
-                    };
                 }
-                (<span class="ident">State::Recycled</span>(<span class="kw">_</span>), <span class="ident">Transition::Tombstone</span>(<span class="ident">attrs</span>)) =&gt; {
+                (State::Recycled(<span class="kw">_</span>), Transition::Tombstone(attrs)) =&gt; {
                     <span class="macro">trace!</span>(<span class="string">&quot;Recycled + Tombstone -&gt; Tombstone&quot;</span>);
-                    <span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Tombstone</span>(<span class="ident">attrs</span>.<span class="ident">clone</span>());
+                    state = State::Tombstone(attrs.clone());
                 }
 
-                <span class="comment">// ==============================</span>
-                <span class="comment">// Invalid States</span>
-                <span class="comment">/*
+                <span class="comment">// ==============================
+                // Invalid States
+                /*
                 (State::NonExistent, Transition::ModifyPurge(_))
                 | (State::NonExistent, Transition::ModifyPresent(_, _))
                 | (State::NonExistent, Transition::ModifyRemoved(_, _))
@@ -726,309 +726,309 @@ impl fmt::Display for EntryChangelog {
                 | (State::Recycled(_), Transition::Recycle)
                 | (State::Recycled(_), Transition::ModifyPresent(_, _))
                 | (State::Tombstone(_), _)
-                */</span>
-                (<span class="ident">s</span>, <span class="ident">t</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;{} + {} -&gt; REJECTING&quot;</span>, <span class="ident">s</span>, <span class="ident">t</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">state</span>);
+                */
+                </span>(s, t) =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;{} + {} -&gt; REJECTING&quot;</span>, s, t);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(state);
                 }
             };
         }
-        <span class="comment">// Everything must have applied, all good then.</span>
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">state</span>, <span class="string">&quot;applied changes&quot;</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">state</span>)
+        <span class="comment">// Everything must have applied, all good then.
+        </span><span class="macro">trace!</span>(<span class="question-mark">?</span>state, <span class="string">&quot;applied changes&quot;</span>);
+        <span class="prelude-val">Ok</span>(state)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">EntryChangelog</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cid</span>: <span class="ident">Cid</span>, <span class="ident">attrs</span>: <span class="ident">Eattrs</span>, <span class="ident">_schema</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">SchemaTransaction</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// I think we need to reduce the attrs based on what is / is not replicated.?</span>
+<span class="kw">impl </span>EntryChangelog {
+    <span class="kw">pub fn </span>new(cid: Cid, attrs: Eattrs, _schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction) -&gt; <span class="self">Self </span>{
+        <span class="comment">// I think we need to reduce the attrs based on what is / is not replicated.?
 
-        <span class="kw">let</span> <span class="ident">anchors</span> <span class="op">=</span> <span class="macro">btreemap!</span>[(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">State::NonExistent</span>)];
-        <span class="kw">let</span> <span class="ident">changes</span> <span class="op">=</span> <span class="macro">btreemap!</span>[(
-            <span class="ident">cid</span>,
-            <span class="ident">Change</span> {
-                <span class="ident">s</span>: <span class="macro">vec!</span>[<span class="ident">Transition::Create</span>(<span class="ident">attrs</span>)]
+        </span><span class="kw">let </span>anchors = <span class="macro">btreemap!</span>[(cid.clone(), State::NonExistent)];
+        <span class="kw">let </span>changes = <span class="macro">btreemap!</span>[(
+            cid,
+            Change {
+                s: <span class="macro">vec!</span>[Transition::Create(attrs)]
             }
         )];
 
-        <span class="ident">EntryChangelog</span> { <span class="ident">anchors</span>, <span class="ident">changes</span> }
+        EntryChangelog { anchors, changes }
     }
 
-    <span class="comment">// TODO: work out if the below comment about uncommenting is still valid</span>
-    <span class="comment">// Uncomment this once we have a real on-disk storage of the changelog</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_without_schema</span>(<span class="ident">cid</span>: <span class="ident">Cid</span>, <span class="ident">attrs</span>: <span class="ident">Eattrs</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// I think we need to reduce the attrs based on what is / is not replicated.?</span>
+    <span class="comment">// TODO: work out if the below comment about uncommenting is still valid
+    // Uncomment this once we have a real on-disk storage of the changelog
+    </span><span class="kw">pub fn </span>new_without_schema(cid: Cid, attrs: Eattrs) -&gt; <span class="self">Self </span>{
+        <span class="comment">// I think we need to reduce the attrs based on what is / is not replicated.?
 
-        <span class="comment">// We need to pick a state that reflects the current state WRT to tombstone</span>
-        <span class="comment">// or recycled!</span>
-        <span class="kw">let</span> <span class="ident">class</span> <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;class&quot;</span>);
+        // We need to pick a state that reflects the current state WRT to tombstone
+        // or recycled!
+        </span><span class="kw">let </span>class = attrs.get(<span class="string">&quot;class&quot;</span>);
 
-        <span class="kw">let</span> (<span class="ident">anchors</span>, <span class="ident">changes</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">class</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>))
-            .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
+        <span class="kw">let </span>(anchors, changes) = <span class="kw">if </span>class
+            .as_ref()
+            .map(|c| c.contains(<span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE <span class="kw">as </span><span class="kw-2">&amp;</span>PartialValue))
+            .unwrap_or(<span class="bool-val">false</span>)
         {
-            (<span class="macro">btreemap!</span>[(<span class="ident">cid</span>, <span class="ident">State::Tombstone</span>(<span class="ident">attrs</span>))], <span class="ident">BTreeMap::new</span>())
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">class</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>))
-            .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
+            (<span class="macro">btreemap!</span>[(cid, State::Tombstone(attrs))], BTreeMap::new())
+        } <span class="kw">else if </span>class
+            .as_ref()
+            .map(|c| c.contains(<span class="kw-2">&amp;</span>PVCLASS_RECYCLED <span class="kw">as </span><span class="kw-2">&amp;</span>PartialValue))
+            .unwrap_or(<span class="bool-val">false</span>)
         {
-            (<span class="macro">btreemap!</span>[(<span class="ident">cid</span>, <span class="ident">State::Recycled</span>(<span class="ident">attrs</span>))], <span class="ident">BTreeMap::new</span>())
-        } <span class="kw">else</span> {
+            (<span class="macro">btreemap!</span>[(cid, State::Recycled(attrs))], BTreeMap::new())
+        } <span class="kw">else </span>{
             (
-                <span class="macro">btreemap!</span>[(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">State::NonExistent</span>)],
+                <span class="macro">btreemap!</span>[(cid.clone(), State::NonExistent)],
                 <span class="macro">btreemap!</span>[(
-                    <span class="ident">cid</span>,
-                    <span class="ident">Change</span> {
-                        <span class="ident">s</span>: <span class="macro">vec!</span>[<span class="ident">Transition::Create</span>(<span class="ident">attrs</span>)]
+                    cid,
+                    Change {
+                        s: <span class="macro">vec!</span>[Transition::Create(attrs)]
                     }
                 )],
             )
         };
 
-        <span class="ident">EntryChangelog</span> { <span class="ident">anchors</span>, <span class="ident">changes</span> }
+        EntryChangelog { anchors, changes }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_ava_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">viter</span>: <span class="ident">T</span>)
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
+    <span class="kw">pub fn </span>add_ava_iter&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid, attr: <span class="kw-2">&amp;</span>str, viter: T)
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = Value&gt;,
     {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">contains_key</span>(<span class="ident">cid</span>) {
-            <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">Change</span> { <span class="ident">s</span>: <span class="ident">Vec::new</span>() });
+        <span class="kw">if </span>!<span class="self">self</span>.changes.contains_key(cid) {
+            <span class="self">self</span>.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">change</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">changes</span>
-            .<span class="ident">get_mut</span>(<span class="ident">cid</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
+        <span class="attribute">#[allow(clippy::expect_used)]
+        </span><span class="kw">let </span>change = <span class="self">self
+            </span>.changes
+            .get_mut(cid)
+            .expect(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
 
-        <span class="ident">viter</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Transition::ModifyPresent</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">Box::new</span>(<span class="ident">v</span>)))
-            .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">change</span>.<span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">t</span>));
+        viter
+            .into_iter()
+            .map(|v| Transition::ModifyPresent(AttrString::from(attr), Box::new(v)))
+            .for_each(|t| change.s.push(t));
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_ava_iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">viter</span>: <span class="ident">T</span>)
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">PartialValue</span><span class="op">&gt;</span>,
+    <span class="kw">pub fn </span>remove_ava_iter&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid, attr: <span class="kw-2">&amp;</span>str, viter: T)
+    <span class="kw">where
+        </span>T: IntoIterator&lt;Item = PartialValue&gt;,
     {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">contains_key</span>(<span class="ident">cid</span>) {
-            <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">Change</span> { <span class="ident">s</span>: <span class="ident">Vec::new</span>() });
+        <span class="kw">if </span>!<span class="self">self</span>.changes.contains_key(cid) {
+            <span class="self">self</span>.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">change</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">changes</span>
-            .<span class="ident">get_mut</span>(<span class="ident">cid</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
+        <span class="attribute">#[allow(clippy::expect_used)]
+        </span><span class="kw">let </span>change = <span class="self">self
+            </span>.changes
+            .get_mut(cid)
+            .expect(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
 
-        <span class="ident">viter</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Transition::ModifyRemoved</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">Box::new</span>(<span class="ident">v</span>)))
-            .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">change</span>.<span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">t</span>));
+        viter
+            .into_iter()
+            .map(|v| Transition::ModifyRemoved(AttrString::from(attr), Box::new(v)))
+            .for_each(|t| change.s.push(t));
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">purge_ava</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">contains_key</span>(<span class="ident">cid</span>) {
-            <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">Change</span> { <span class="ident">s</span>: <span class="ident">Vec::new</span>() });
+    <span class="kw">pub fn </span>purge_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid, attr: <span class="kw-2">&amp;</span>str) {
+        <span class="kw">if </span>!<span class="self">self</span>.changes.contains_key(cid) {
+            <span class="self">self</span>.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">change</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">changes</span>
-            .<span class="ident">get_mut</span>(<span class="ident">cid</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
-        <span class="ident">change</span>
-            .<span class="ident">s</span>
-            .<span class="ident">push</span>(<span class="ident">Transition::ModifyPurge</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>)));
+        <span class="attribute">#[allow(clippy::expect_used)]
+        </span><span class="kw">let </span>change = <span class="self">self
+            </span>.changes
+            .get_mut(cid)
+            .expect(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
+        change
+            .s
+            .push(Transition::ModifyPurge(AttrString::from(attr)));
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recycled</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>) {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">contains_key</span>(<span class="ident">cid</span>) {
-            <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">Change</span> { <span class="ident">s</span>: <span class="ident">Vec::new</span>() });
+    <span class="kw">pub fn </span>recycled(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) {
+        <span class="kw">if </span>!<span class="self">self</span>.changes.contains_key(cid) {
+            <span class="self">self</span>.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">change</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">changes</span>
-            .<span class="ident">get_mut</span>(<span class="ident">cid</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
-        <span class="ident">change</span>.<span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">Transition::Recycle</span>);
+        <span class="attribute">#[allow(clippy::expect_used)]
+        </span><span class="kw">let </span>change = <span class="self">self
+            </span>.changes
+            .get_mut(cid)
+            .expect(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
+        change.s.push(Transition::Recycle);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">revive</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>) {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">contains_key</span>(<span class="ident">cid</span>) {
-            <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">Change</span> { <span class="ident">s</span>: <span class="ident">Vec::new</span>() });
+    <span class="kw">pub fn </span>revive(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) {
+        <span class="kw">if </span>!<span class="self">self</span>.changes.contains_key(cid) {
+            <span class="self">self</span>.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">change</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">changes</span>
-            .<span class="ident">get_mut</span>(<span class="ident">cid</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
-        <span class="ident">change</span>.<span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">Transition::Revive</span>);
+        <span class="attribute">#[allow(clippy::expect_used)]
+        </span><span class="kw">let </span>change = <span class="self">self
+            </span>.changes
+            .get_mut(cid)
+            .expect(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
+        change.s.push(Transition::Revive);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tombstone</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>, <span class="ident">attrs</span>: <span class="ident">Eattrs</span>) {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">contains_key</span>(<span class="ident">cid</span>) {
-            <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">Change</span> { <span class="ident">s</span>: <span class="ident">Vec::new</span>() });
+    <span class="kw">pub fn </span>tombstone(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid, attrs: Eattrs) {
+        <span class="kw">if </span>!<span class="self">self</span>.changes.contains_key(cid) {
+            <span class="self">self</span>.changes.insert(cid.clone(), Change { s: Vec::new() });
         }
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">change</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">changes</span>
-            .<span class="ident">get_mut</span>(<span class="ident">cid</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
-        <span class="ident">change</span>.<span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">Transition::Tombstone</span>(<span class="ident">attrs</span>));
+        <span class="attribute">#[allow(clippy::expect_used)]
+        </span><span class="kw">let </span>change = <span class="self">self
+            </span>.changes
+            .get_mut(cid)
+            .expect(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
+        change.s.push(Transition::Tombstone(attrs));
     }
 
-    <span class="doccomment">/// Replay our changes from and including the replay Cid, up to the latest point</span>
-    <span class="doccomment">/// in time. We also return a vector of *rejected* Cid&#39;s showing what is in the</span>
-    <span class="doccomment">/// change log that is considered invalid.</span>
-    <span class="kw">fn</span> <span class="ident">replay</span>(
+    <span class="doccomment">/// Replay our changes from and including the replay Cid, up to the latest point
+    /// in time. We also return a vector of *rejected* Cid&#39;s showing what is in the
+    /// change log that is considered invalid.
+    </span><span class="kw">fn </span>replay(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">from_cid</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Cid</span><span class="op">&gt;</span>,
-        <span class="ident">to_cid</span>: <span class="ident">Bound</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Cid</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">State</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Cid</span><span class="op">&gt;</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Select the anchor_cid that is *earlier* or *equals* to the replay_cid.</span>
+        from_cid: Bound&lt;<span class="kw-2">&amp;</span>Cid&gt;,
+        to_cid: Bound&lt;<span class="kw-2">&amp;</span>Cid&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(State, Vec&lt;Cid&gt;), OperationError&gt; {
+        <span class="comment">// Select the anchor_cid that is *earlier* or *equals* to the replay_cid.
 
-        <span class="comment">// if not found, we are *unable to* perform this replay which indicates a problem!</span>
-        <span class="kw">let</span> (<span class="ident">anchor_cid</span>, <span class="ident">anchor</span>) <span class="op">=</span> <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">from_cid</span>, <span class="ident">Unbounded</span>) {
-            <span class="comment">// If the from is unbounded, and to is unbounded, we want</span>
-            <span class="comment">// the earliest anchor possible.</span>
+        // if not found, we are *unable to* perform this replay which indicates a problem!
+        </span><span class="kw">let </span>(anchor_cid, anchor) = <span class="kw">if </span><span class="macro">matches!</span>(from_cid, Unbounded) {
+            <span class="comment">// If the from is unbounded, and to is unbounded, we want
+            // the earliest anchor possible.
 
-            <span class="comment">// If from is unbounded and to is bounded, we want the earliest</span>
-            <span class="comment">// possible.</span>
-            <span class="self">self</span>.<span class="ident">anchors</span>.<span class="ident">iter</span>().<span class="ident">next</span>()
-        } <span class="kw">else</span> {
-            <span class="comment">// If from has a bound, we want an anchor &quot;earlier than&quot; from, regardless</span>
-            <span class="comment">// of the to bound state.</span>
-            <span class="self">self</span>.<span class="ident">anchors</span>.<span class="ident">range</span>((<span class="ident">Unbounded</span>, <span class="ident">from_cid</span>)).<span class="ident">next_back</span>()
+            // If from is unbounded and to is bounded, we want the earliest
+            // possible.
+            </span><span class="self">self</span>.anchors.iter().next()
+        } <span class="kw">else </span>{
+            <span class="comment">// If from has a bound, we want an anchor &quot;earlier than&quot; from, regardless
+            // of the to bound state.
+            </span><span class="self">self</span>.anchors.range((Unbounded, from_cid)).next_back()
         }
-        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+        .ok_or_else(|| {
             <span class="macro">admin_error!</span>(
-                <span class="question-mark">?</span><span class="ident">from_cid</span>,
-                <span class="question-mark">?</span><span class="ident">to_cid</span>,
-                <span class="string">&quot;Failed to locate anchor in replay range&quot;</span>
-            );
-            <span class="ident">OperationError::ReplReplayFailure</span>
+                <span class="question-mark">?</span>from_cid,
+                <span class="question-mark">?</span>to_cid,
+                <span class="string">&quot;Failed to locate anchor in replay range&quot;
+            </span>);
+            OperationError::ReplReplayFailure
         })<span class="question-mark">?</span>;
 
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">anchor_cid</span>, <span class="question-mark">?</span><span class="ident">anchor</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>anchor_cid, <span class="question-mark">?</span>anchor);
 
-        <span class="comment">// Load the entry attribute state at that time.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">replay_state</span> <span class="op">=</span> <span class="ident">anchor</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rejected_cid</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="comment">// Load the entry attribute state at that time.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>replay_state = anchor.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>rejected_cid = Vec::new();
 
-        <span class="comment">// For each change</span>
-        <span class="kw">for</span> (<span class="ident">change_cid</span>, <span class="ident">change</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">range</span>((<span class="ident">Included</span>(<span class="ident">anchor_cid</span>), <span class="ident">to_cid</span>)) {
-            <span class="comment">// Apply the change.</span>
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">change_cid</span>, <span class="question-mark">?</span><span class="ident">change</span>);
+        <span class="comment">// For each change
+        </span><span class="kw">for </span>(change_cid, change) <span class="kw">in </span><span class="self">self</span>.changes.range((Included(anchor_cid), to_cid)) {
+            <span class="comment">// Apply the change.
+            </span><span class="macro">trace!</span>(<span class="question-mark">?</span>change_cid, <span class="question-mark">?</span>change);
 
-            <span class="ident">replay_state</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">replay_state</span>.<span class="ident">apply_change</span>(<span class="ident">change</span>) {
-                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">new_state</span>) =&gt; {
-                    <span class="comment">// Indicate that this was the highest CID so far.</span>
-                    <span class="kw">match</span> <span class="kw-2">&amp;mut</span> <span class="ident">new_state</span> {
-                        <span class="ident">State::NonExistent</span> =&gt; {
+            replay_state = <span class="kw">match </span>replay_state.apply_change(change) {
+                <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>new_state) =&gt; {
+                    <span class="comment">// Indicate that this was the highest CID so far.
+                    </span><span class="kw">match </span><span class="kw-2">&amp;mut </span>new_state {
+                        State::NonExistent =&gt; {
                             <span class="macro">trace!</span>(<span class="string">&quot;pass&quot;</span>);
                         }
-                        <span class="ident">State::Live</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>)
-                        <span class="op">|</span> <span class="ident">State::Recycled</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>)
-                        <span class="op">|</span> <span class="ident">State::Tombstone</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>) =&gt; {
-                            <span class="kw">let</span> <span class="ident">cv</span> <span class="op">=</span> <span class="macro">vs_cid!</span>[<span class="ident">change_cid</span>.<span class="ident">clone</span>()];
-                            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;last_modified_cid&quot;</span>), <span class="ident">cv</span>);
+                        State::Live(<span class="kw-2">ref mut </span>attrs)
+                        | State::Recycled(<span class="kw-2">ref mut </span>attrs)
+                        | State::Tombstone(<span class="kw-2">ref mut </span>attrs) =&gt; {
+                            <span class="kw">let </span>cv = <span class="macro">vs_cid!</span>[change_cid.clone()];
+                            <span class="kw">let _ </span>= attrs.insert(AttrString::from(<span class="string">&quot;last_modified_cid&quot;</span>), cv);
                         }
                     };
-                    <span class="ident">new_state</span>
+                    new_state
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">previous_state</span>) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;rejecting invalid change {:?}&quot;</span>, <span class="ident">change_cid</span>);
-                    <span class="ident">rejected_cid</span>.<span class="ident">push</span>(<span class="ident">change_cid</span>.<span class="ident">clone</span>());
-                    <span class="ident">previous_state</span>
+                <span class="prelude-val">Err</span>(previous_state) =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;rejecting invalid change {:?}&quot;</span>, change_cid);
+                    rejected_cid.push(change_cid.clone());
+                    previous_state
                 }
             };
         }
 
-        <span class="comment">// Return the eattrs state.</span>
-        <span class="prelude-val">Ok</span>((<span class="ident">replay_state</span>, <span class="ident">rejected_cid</span>))
+        <span class="comment">// Return the eattrs state.
+        </span><span class="prelude-val">Ok</span>((replay_state, rejected_cid))
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(
-        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;verify&quot;</span>,
-        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">_schema</span>, <span class="ident">expected_attrs</span>, <span class="ident">results</span>)
-    )]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(
+    <span class="attribute">#[instrument(
+        level = <span class="string">&quot;trace&quot;</span>,
+        name = <span class="string">&quot;verify&quot;</span>,
+        skip(<span class="self">self</span>, _schema, expected_attrs, results)
+    )]
+    </span><span class="kw">pub fn </span>verify(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">_schema</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">SchemaTransaction</span>,
-        <span class="ident">expected_attrs</span>: <span class="kw-2">&amp;</span><span class="ident">Eattrs</span>,
-        <span class="ident">entry_id</span>: <span class="ident">u64</span>,
-        <span class="ident">results</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        _schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction,
+        expected_attrs: <span class="kw-2">&amp;</span>Eattrs,
+        entry_id: u64,
+        results: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt;,
     ) {
-        <span class="comment">// We need to be able to take any anchor entry, and replay that when all changes</span>
-        <span class="comment">// are applied we get the *same entry* as the current state.</span>
-        <span class="macro">debug_assert!</span>(<span class="ident">results</span>.<span class="ident">is_empty</span>());
+        <span class="comment">// We need to be able to take any anchor entry, and replay that when all changes
+        // are applied we get the *same entry* as the current state.
+        </span><span class="macro">debug_assert!</span>(results.is_empty());
 
-        <span class="comment">// For each anchor (we only needs it&#39;s change id.)</span>
-        <span class="kw">for</span> <span class="ident">cid</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">anchors</span>.<span class="ident">keys</span>() {
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">replay</span>(<span class="ident">Included</span>(<span class="ident">cid</span>), <span class="ident">Unbounded</span>) {
-                <span class="prelude-val">Ok</span>((<span class="ident">entry_state</span>, <span class="ident">rejected</span>)) =&gt; {
-                    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">rejected</span>);
+        <span class="comment">// For each anchor (we only needs it&#39;s change id.)
+        </span><span class="kw">for </span>cid <span class="kw">in </span><span class="self">self</span>.anchors.keys() {
+            <span class="kw">match </span><span class="self">self</span>.replay(Included(cid), Unbounded) {
+                <span class="prelude-val">Ok</span>((entry_state, rejected)) =&gt; {
+                    <span class="macro">trace!</span>(<span class="question-mark">?</span>rejected);
 
-                    <span class="kw">match</span> <span class="ident">entry_state</span> {
-                        <span class="ident">State::Live</span>(<span class="ident">attrs</span>) <span class="op">|</span> <span class="ident">State::Recycled</span>(<span class="ident">attrs</span>) <span class="op">|</span> <span class="ident">State::Tombstone</span>(<span class="ident">attrs</span>) =&gt; {
-                            <span class="kw">if</span> <span class="ident">compare_attrs</span>(<span class="kw-2">&amp;</span><span class="ident">attrs</span>, <span class="ident">expected_attrs</span>) {
-                                <span class="comment">// valid</span>
-                                <span class="macro">trace!</span>(<span class="string">&quot;changelog is synchronised&quot;</span>);
-                            } <span class="kw">else</span> {
-                                <span class="comment">// ruh-roh.</span>
-                                <span class="macro">warn!</span>(<span class="string">&quot;changelog has desynchronised!&quot;</span>);
-                                <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">attrs</span>);
-                                <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">expected_attrs</span>);
+                    <span class="kw">match </span>entry_state {
+                        State::Live(attrs) | State::Recycled(attrs) | State::Tombstone(attrs) =&gt; {
+                            <span class="kw">if </span>compare_attrs(<span class="kw-2">&amp;</span>attrs, expected_attrs) {
+                                <span class="comment">// valid
+                                </span><span class="macro">trace!</span>(<span class="string">&quot;changelog is synchronised&quot;</span>);
+                            } <span class="kw">else </span>{
+                                <span class="comment">// ruh-roh.
+                                </span><span class="macro">warn!</span>(<span class="string">&quot;changelog has desynchronised!&quot;</span>);
+                                <span class="macro">debug!</span>(<span class="question-mark">?</span>attrs);
+                                <span class="macro">debug!</span>(<span class="question-mark">?</span>expected_attrs);
                                 <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                                <span class="ident">results</span>
-                                    .<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::ChangelogDesynchronised</span>(<span class="ident">entry_id</span>)));
+                                results
+                                    .push(<span class="prelude-val">Err</span>(ConsistencyError::ChangelogDesynchronised(entry_id)));
                             }
                         }
-                        <span class="ident">State::NonExistent</span> =&gt; {
+                        State::NonExistent =&gt; {
                             <span class="macro">warn!</span>(<span class="string">&quot;entry does not exist - changelog is corrupted?!&quot;</span>);
-                            <span class="ident">results</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::ChangelogDesynchronised</span>(<span class="ident">entry_id</span>)))
+                            results.push(<span class="prelude-val">Err</span>(ConsistencyError::ChangelogDesynchronised(entry_id)))
                         }
                     }
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
+                <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="macro">error!</span>(<span class="question-mark">?</span>e);
                 }
             }
         }
 
-        <span class="macro">debug_assert!</span>(<span class="ident">results</span>.<span class="ident">is_empty</span>());
+        <span class="macro">debug_assert!</span>(results.is_empty());
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains_tail_cid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">tail_cid</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">keys</span>().<span class="ident">next_back</span>() {
-            <span class="kw">if</span> <span class="ident">tail_cid</span> <span class="op">==</span> <span class="ident">cid</span> {
-                <span class="kw">return</span> <span class="bool-val">true</span>;
+    <span class="kw">pub fn </span>contains_tail_cid(<span class="kw-2">&amp;</span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(tail_cid) = <span class="self">self</span>.changes.keys().next_back() {
+            <span class="kw">if </span>tail_cid == cid {
+                <span class="kw">return </span><span class="bool-val">true</span>;
             }
         };
-        <span class="bool-val">false</span>
+        <span class="bool-val">false
+    </span>}
+
+    <span class="kw">pub fn </span>can_delete(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="comment">// Changelog should be empty.
+        // should have a current anchor state of tombstone.
+        </span><span class="self">self</span>.changes.is_empty()
+            &amp;&amp; <span class="macro">matches!</span>(<span class="self">self</span>.anchors.values().next_back(), <span class="prelude-val">Some</span>(State::Tombstone(<span class="kw">_</span>)))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">can_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// Changelog should be empty.</span>
-        <span class="comment">// should have a current anchor state of tombstone.</span>
-        <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">is_empty</span>()
-            <span class="op">&amp;&amp;</span> <span class="macro">matches!</span>(<span class="self">self</span>.<span class="ident">anchors</span>.<span class="ident">values</span>().<span class="ident">next_back</span>(), <span class="prelude-val">Some</span>(<span class="ident">State::Tombstone</span>(<span class="kw">_</span>)))
+    <span class="kw">pub fn </span>is_live(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        !<span class="macro">matches!</span>(<span class="self">self</span>.anchors.values().next_back(), <span class="prelude-val">Some</span>(State::Tombstone(<span class="kw">_</span>)))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_live</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="op">!</span><span class="macro">matches!</span>(<span class="self">self</span>.<span class="ident">anchors</span>.<span class="ident">values</span>().<span class="ident">next_back</span>(), <span class="prelude-val">Some</span>(<span class="ident">State::Tombstone</span>(<span class="kw">_</span>)))
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cid_iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Keys</span><span class="op">&lt;</span><span class="ident">Cid</span>, <span class="ident">Change</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">keys</span>()
+    <span class="kw">pub fn </span>cid_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Keys&lt;Cid, Change&gt; {
+        <span class="self">self</span>.changes.keys()
     }
 
     <span class="comment">/*
@@ -1038,75 +1038,75 @@ impl fmt::Display for EntryChangelog {
         let _ = self.anchors.split_off(&amp;cid);
         self.anchors.insert(cid.clone(), entry_state);
     }
-    */</span>
+    */
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">trim_up_to</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">Cid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Build a new anchor that is equal or less than this cid.</span>
-        <span class="comment">// In other words, the cid we are trimming to, should be remaining</span>
-        <span class="comment">// in the CL, and we should have an anchor that preceeds it.</span>
-        <span class="kw">let</span> (<span class="ident">entry_state</span>, <span class="ident">rejected</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">replay</span>(<span class="ident">Unbounded</span>, <span class="ident">Excluded</span>(<span class="ident">cid</span>)).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
-            <span class="ident">e</span>
+    </span><span class="kw">pub fn </span>trim_up_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// Build a new anchor that is equal or less than this cid.
+        // In other words, the cid we are trimming to, should be remaining
+        // in the CL, and we should have an anchor that preceeds it.
+        </span><span class="kw">let </span>(entry_state, rejected) = <span class="self">self</span>.replay(Unbounded, Excluded(cid)).map_err(|e| {
+            <span class="macro">error!</span>(<span class="question-mark">?</span>e);
+            e
         })<span class="question-mark">?</span>;
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">rejected</span>);
-        <span class="comment">// Add the entry_state as an anchor. Use the CID we just</span>
-        <span class="comment">// trimmed to.</span>
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>rejected);
+        <span class="comment">// Add the entry_state as an anchor. Use the CID we just
+        // trimmed to.
 
-        <span class="comment">// insert_anchor will remove anything to the right, we also need to</span>
-        <span class="comment">// remove everything to the left, so just clear.</span>
-        <span class="self">self</span>.<span class="ident">anchors</span>.<span class="ident">clear</span>();
-        <span class="self">self</span>.<span class="ident">anchors</span>.<span class="ident">insert</span>(<span class="ident">cid</span>.<span class="ident">clone</span>(), <span class="ident">entry_state</span>);
+        // insert_anchor will remove anything to the right, we also need to
+        // remove everything to the left, so just clear.
+        </span><span class="self">self</span>.anchors.clear();
+        <span class="self">self</span>.anchors.insert(cid.clone(), entry_state);
 
-        <span class="comment">// And now split the CL.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">right</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">changes</span>.<span class="ident">split_off</span>(<span class="ident">cid</span>);
-        <span class="ident">std::mem::swap</span>(<span class="kw-2">&amp;mut</span> <span class="ident">right</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">changes</span>);
-        <span class="comment">// We can trace what we drop later?</span>
-        <span class="prelude-val">Ok</span>(())
+        <span class="comment">// And now split the CL.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>right = <span class="self">self</span>.changes.split_off(cid);
+        std::mem::swap(<span class="kw-2">&amp;mut </span>right, <span class="kw-2">&amp;mut </span><span class="self">self</span>.changes);
+        <span class="comment">// We can trace what we drop later?
+        </span><span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::time::Duration;
 
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry::Eattrs</span>;
-    <span class="comment">// use crate::prelude::*;</span>
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::cid::Cid</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::entry</span>::{<span class="ident">Change</span>, <span class="ident">EntryChangelog</span>, <span class="ident">State</span>, <span class="ident">Transition</span>};
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schema</span>::{<span class="ident">Schema</span>, <span class="ident">SchemaTransaction</span>};
+    <span class="kw">use </span><span class="kw">crate</span>::entry::Eattrs;
+    <span class="comment">// use crate::prelude::*;
+    </span><span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
+    <span class="kw">use </span><span class="kw">crate</span>::repl::entry::{Change, EntryChangelog, State, Transition};
+    <span class="kw">use </span><span class="kw">crate</span>::schema::{Schema, SchemaTransaction};
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_entrychangelog_basic</span>() {
-        <span class="macro">run_entrychangelog_test!</span>(<span class="op">|</span><span class="ident">schema</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">SchemaTransaction</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">cid</span> <span class="op">=</span> <span class="ident">Cid::new_random_s_d</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1</span>));
-            <span class="kw">let</span> <span class="ident">eattrs</span> <span class="op">=</span> <span class="ident">Eattrs::new</span>();
-            <span class="kw">let</span> <span class="ident">eclog</span> <span class="op">=</span> <span class="ident">EntryChangelog::new</span>(<span class="ident">cid</span>, <span class="ident">eattrs</span>, <span class="ident">schema</span>);
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">eclog</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_entrychangelog_basic() {
+        <span class="macro">run_entrychangelog_test!</span>(|schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction| {
+            <span class="kw">let </span>cid = Cid::new_random_s_d(Duration::from_secs(<span class="number">1</span>));
+            <span class="kw">let </span>eattrs = Eattrs::new();
+            <span class="kw">let </span>eclog = EntryChangelog::new(cid, eattrs, schema);
+            <span class="macro">trace!</span>(<span class="question-mark">?</span>eclog);
         })
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_entrychangelog_state_transitions</span>() {
-        <span class="comment">// Test that all our transitions are defined and work as</span>
-        <span class="comment">// expected.</span>
-        <span class="macro">assert!</span>(<span class="ident">State::NonExistent</span>
-            .<span class="ident">apply_change</span>(<span class="kw-2">&amp;</span><span class="ident">Change</span> { <span class="ident">s</span>: <span class="macro">vec!</span>[] })
-            .<span class="ident">is_ok</span>());
-        <span class="macro">assert!</span>(<span class="ident">State::NonExistent</span>
-            .<span class="ident">apply_change</span>(<span class="kw-2">&amp;</span><span class="ident">Change</span> {
-                <span class="ident">s</span>: <span class="macro">vec!</span>[<span class="ident">Transition::Create</span>(<span class="ident">Eattrs::new</span>())]
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_entrychangelog_state_transitions() {
+        <span class="comment">// Test that all our transitions are defined and work as
+        // expected.
+        </span><span class="macro">assert!</span>(State::NonExistent
+            .apply_change(<span class="kw-2">&amp;</span>Change { s: <span class="macro">vec!</span>[] })
+            .is_ok());
+        <span class="macro">assert!</span>(State::NonExistent
+            .apply_change(<span class="kw-2">&amp;</span>Change {
+                s: <span class="macro">vec!</span>[Transition::Create(Eattrs::new())]
             })
-            .<span class="ident">is_ok</span>());
+            .is_ok());
 
-        <span class="macro">assert!</span>(<span class="ident">State::Live</span>(<span class="ident">Eattrs::new</span>())
-            .<span class="ident">apply_change</span>(<span class="kw-2">&amp;</span><span class="ident">Change</span> { <span class="ident">s</span>: <span class="macro">vec!</span>[] })
-            .<span class="ident">is_ok</span>());
-        <span class="macro">assert!</span>(<span class="ident">State::Live</span>(<span class="ident">Eattrs::new</span>())
-            .<span class="ident">apply_change</span>(<span class="kw-2">&amp;</span><span class="ident">Change</span> {
-                <span class="ident">s</span>: <span class="macro">vec!</span>[<span class="ident">Transition::Create</span>(<span class="ident">Eattrs::new</span>())]
+        <span class="macro">assert!</span>(State::Live(Eattrs::new())
+            .apply_change(<span class="kw-2">&amp;</span>Change { s: <span class="macro">vec!</span>[] })
+            .is_ok());
+        <span class="macro">assert!</span>(State::Live(Eattrs::new())
+            .apply_change(<span class="kw-2">&amp;</span>Change {
+                s: <span class="macro">vec!</span>[Transition::Create(Eattrs::new())]
             })
-            .<span class="ident">is_err</span>());
+            .is_err());
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

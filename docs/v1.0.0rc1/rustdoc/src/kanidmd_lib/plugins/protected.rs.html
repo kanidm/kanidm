@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/protected.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protected.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/plugins/protected.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>protected.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -432,178 +432,178 @@
 <span id="432">432</span>
 <span id="433">433</span>
 <span id="434">434</span>
-</pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements</span>
-<span class="comment">// may only have certain modifications performed.</span>
+</pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements
+// may only have certain modifications performed.
 
-<span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
+</span><span class="kw">use </span>hashbrown::HashSet;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">CreateEvent</span>, <span class="ident">DeleteEvent</span>, <span class="ident">ModifyEvent</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify::Modify</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plugins::Plugin</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, DeleteEvent, ModifyEvent};
+<span class="kw">use </span><span class="kw">crate</span>::modify::Modify;
+<span class="kw">use </span><span class="kw">crate</span>::plugins::Plugin;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Protected</span> {}
+<span class="kw">pub struct </span>Protected {}
 
-<span class="comment">// Here is the declaration of all the attrs that can be altered by</span>
-<span class="comment">// a call on a system object. We trust they are allowed because</span>
-<span class="comment">// schema will have checked this, and we don&#39;t allow class changes!</span>
+<span class="comment">// Here is the declaration of all the attrs that can be altered by
+// a call on a system object. We trust they are allowed because
+// schema will have checked this, and we don&#39;t allow class changes!
 
-<span class="macro">lazy_static!</span> {
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">ALLOWED_ATTRS</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">HashSet::with_capacity</span>(<span class="number">8</span>);
-        <span class="comment">// Allow modification of some schema class types to allow local extension</span>
-        <span class="comment">// of schema types.</span>
-        <span class="comment">//</span>
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;must&quot;</span>);
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;may&quot;</span>);
-        <span class="comment">// Allow modification of some domain info types for local configuration.</span>
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;domain_ssid&quot;</span>);
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;fernet_private_key_str&quot;</span>);
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;es256_private_key_der&quot;</span>);
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;badlist_password&quot;</span>);
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;domain_display_name&quot;</span>);
-        <span class="ident">m</span>
+</span><span class="macro">lazy_static! </span>{
+    <span class="kw">static </span><span class="kw-2">ref </span>ALLOWED_ATTRS: HashSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; = {
+        <span class="kw">let </span><span class="kw-2">mut </span>m = HashSet::with_capacity(<span class="number">8</span>);
+        <span class="comment">// Allow modification of some schema class types to allow local extension
+        // of schema types.
+        //
+        </span>m.insert(<span class="string">&quot;must&quot;</span>);
+        m.insert(<span class="string">&quot;may&quot;</span>);
+        <span class="comment">// Allow modification of some domain info types for local configuration.
+        </span>m.insert(<span class="string">&quot;domain_ssid&quot;</span>);
+        m.insert(<span class="string">&quot;fernet_private_key_str&quot;</span>);
+        m.insert(<span class="string">&quot;es256_private_key_der&quot;</span>);
+        m.insert(<span class="string">&quot;badlist_password&quot;</span>);
+        m.insert(<span class="string">&quot;domain_display_name&quot;</span>);
+        m
     };
 }
 
-<span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">Protected</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="string">&quot;plugin_protected&quot;</span>
-    }
+<span class="kw">impl </span>Plugin <span class="kw">for </span>Protected {
+    <span class="kw">fn </span>id() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="string">&quot;plugin_protected&quot;
+    </span>}
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;protected_pre_create&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">ce</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">pre_create</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="comment">// List of what we will commit that is valid?</span>
-        <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span>],
-        <span class="ident">ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">ce</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;protected_pre_create&quot;</span>, skip(_qs, cand, ce))]
+    </span><span class="kw">fn </span>pre_create(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        <span class="comment">// List of what we will commit that is valid?
+        </span>cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryNew&gt;],
+        ce: <span class="kw-2">&amp;</span>CreateEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if </span>ce.ident.is_internal() {
             <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, not enforcing system object protection&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">cand</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DOMAIN_INFO</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_INFO</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_CONFIG</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DYNGROUP</span>)
+        cand.iter().try_fold((), |(), cand| {
+            <span class="kw">if </span>cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DOMAIN_INFO)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM_INFO)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM_CONFIG)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
             {
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-            } <span class="kw">else</span> {
+                <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
+            } <span class="kw">else </span>{
                 <span class="prelude-val">Ok</span>(())
             }
         })
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;protected_pre_modify&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="comment">// Should these be EntrySealed?</span>
-        <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;protected_pre_modify&quot;</span>, skip(_qs, cand, me))]
+    </span><span class="kw">fn </span>pre_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        <span class="comment">// Should these be EntrySealed?
+        </span>cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        me: <span class="kw-2">&amp;</span>ModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if </span>me.ident.is_internal() {
             <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, not enforcing system object protection&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
-        <span class="comment">// Prevent adding class: system, domain_info, tombstone, or recycled.</span>
-        <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">m</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">m</span> {
-            <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) =&gt; {
-                <span class="comment">// TODO: Can we avoid this clone?</span>
-                <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;class&quot;</span>
-                    <span class="op">&amp;&amp;</span> (<span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">CLASS_SYSTEM</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">CLASS_DOMAIN_INFO</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">CLASS_SYSTEM_INFO</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">CLASS_SYSTEM_CONFIG</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">CLASS_DYNGROUP</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">CLASS_TOMBSTONE</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">CLASS_RECYCLED</span>))
+        <span class="comment">// Prevent adding class: system, domain_info, tombstone, or recycled.
+        </span>me.modlist.iter().try_fold((), |(), m| <span class="kw">match </span>m {
+            Modify::Present(a, v) =&gt; {
+                <span class="comment">// TODO: Can we avoid this clone?
+                </span><span class="kw">if </span>a == <span class="string">&quot;class&quot;
+                    </span>&amp;&amp; (v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM)
+                        || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_DOMAIN_INFO)
+                        || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM_INFO)
+                        || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM_CONFIG)
+                        || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_DYNGROUP)
+                        || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_TOMBSTONE)
+                        || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_RECYCLED))
                 {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-                } <span class="kw">else</span> {
+                    <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
+                } <span class="kw">else </span>{
                     <span class="prelude-val">Ok</span>(())
                 }
             }
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(()),
         })<span class="question-mark">?</span>;
 
-        <span class="comment">// HARD block mods on tombstone or recycle. We soft block on the rest as they may</span>
-        <span class="comment">// have some allowed attrs.</span>
-        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">cand</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DYNGROUP</span>)
+        <span class="comment">// HARD block mods on tombstone or recycle. We soft block on the rest as they may
+        // have some allowed attrs.
+        </span>cand.iter().try_fold((), |(), cand| {
+            <span class="kw">if </span>cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
             {
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-            } <span class="kw">else</span> {
+                <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
+            } <span class="kw">else </span>{
                 <span class="prelude-val">Ok</span>(())
             }
         })<span class="question-mark">?</span>;
 
-        <span class="comment">// if class: system, check the mods are &quot;allowed&quot;</span>
-        <span class="kw">let</span> <span class="ident">system_pres</span> <span class="op">=</span> <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-            <span class="comment">// We don&#39;t need to check for domain info here because domain_info has a class</span>
-            <span class="comment">// system also. We just need to block it from being created.</span>
-            <span class="ident">c</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
+        <span class="comment">// if class: system, check the mods are &quot;allowed&quot;
+        </span><span class="kw">let </span>system_pres = cand.iter().any(|c| {
+            <span class="comment">// We don&#39;t need to check for domain info here because domain_info has a class
+            // system also. We just need to block it from being created.
+            </span>c.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM)
         });
 
-        <span class="macro">trace!</span>(<span class="string">&quot;class: system -&gt; {}&quot;</span>, <span class="ident">system_pres</span>);
-        <span class="comment">// No system types being altered, return.</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">system_pres</span> {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+        <span class="macro">trace!</span>(<span class="string">&quot;class: system -&gt; {}&quot;</span>, system_pres);
+        <span class="comment">// No system types being altered, return.
+        </span><span class="kw">if </span>!system_pres {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="comment">// Something altered is system, check if it&#39;s allowed.</span>
-        <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">m</span><span class="op">|</span> {
-            <span class="comment">// Already hit an error, move on.</span>
-            <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">m</span> {
-                <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Removed</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Purged</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>,
+        <span class="comment">// Something altered is system, check if it&#39;s allowed.
+        </span>me.modlist.iter().try_fold((), |(), m| {
+            <span class="comment">// Already hit an error, move on.
+            </span><span class="kw">let </span>a = <span class="kw">match </span>m {
+                Modify::Present(a, <span class="kw">_</span>) | Modify::Removed(a, <span class="kw">_</span>) | Modify::Purged(a) =&gt; a,
             };
-            <span class="kw">match</span> <span class="ident">ALLOWED_ATTRS</span>.<span class="ident">get</span>(<span class="ident">a</span>.<span class="ident">as_str</span>()) {
+            <span class="kw">match </span>ALLOWED_ATTRS.get(a.as_str()) {
                 <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
             }
         })
     }
 
-    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;protected_pre_delete&quot;</span>, <span class="ident">skip</span>(<span class="ident">_qs</span>, <span class="ident">cand</span>, <span class="ident">de</span>))]</span>
-    <span class="kw">fn</span> <span class="ident">pre_delete</span>(
-        <span class="ident">_qs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-        <span class="comment">// Should these be EntrySealed</span>
-        <span class="ident">cand</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">de</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">de</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;protected_pre_delete&quot;</span>, skip(_qs, cand, de))]
+    </span><span class="kw">fn </span>pre_delete(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        <span class="comment">// Should these be EntrySealed
+        </span>cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        de: <span class="kw-2">&amp;</span>DeleteEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if </span>de.ident.is_internal() {
             <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, not enforcing system object protection&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">cand</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DOMAIN_INFO</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_INFO</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_CONFIG</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
-                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DYNGROUP</span>)
+        cand.iter().try_fold((), |(), cand| {
+            <span class="kw">if </span>cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DOMAIN_INFO)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM_INFO)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM_CONFIG)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
             {
-                <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-            } <span class="kw">else</span> {
+                <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
+            } <span class="kw">else </span>{
                 <span class="prelude-val">Ok</span>(())
             }
         })
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
-    <span class="kw">const</span> <span class="ident">JSON_ADMIN_ALLOW_ALL</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+    <span class="kw">const </span>JSON_ADMIN_ALLOW_ALL: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">r#&quot;{
         &quot;attrs&quot;: {
             &quot;class&quot;: [
                 &quot;object&quot;,
@@ -638,14 +638,14 @@
         }
     }&quot;#</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_create_deny</span>() {
-        <span class="comment">// Test creating with class: system is rejected.</span>
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_create_deny() {
+        <span class="comment">// Test creating with class: system is rejected.
+        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
 
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;, &quot;system&quot;],
@@ -656,22 +656,22 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+            preload,
+            create,
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_modify_system_deny</span>() {
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
-        <span class="comment">// Test modify of class to a system is denied</span>
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_modify_system_deny() {
+        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        <span class="comment">// Test modify of class to a system is denied
+        </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;, &quot;system&quot;],
@@ -682,27 +682,27 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>, <span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
 
         <span class="macro">run_modify_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))),
             <span class="macro">modlist!</span>([
-                <span class="ident">m_purge</span>(<span class="string">&quot;displayname&quot;</span>),
-                <span class="ident">m_pres</span>(<span class="string">&quot;displayname&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_utf8s</span>(<span class="string">&quot;system test&quot;</span>)),
+                m_purge(<span class="string">&quot;displayname&quot;</span>),
+                m_pres(<span class="string">&quot;displayname&quot;</span>, <span class="kw-2">&amp;</span>Value::new_utf8s(<span class="string">&quot;system test&quot;</span>)),
             ]),
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_modify_class_add_deny</span>() {
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
-        <span class="comment">// Show that adding a system class is denied</span>
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_modify_class_add_deny() {
+        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        <span class="comment">// Show that adding a system class is denied
+        </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;object&quot;, &quot;classtype&quot;],
@@ -713,27 +713,27 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>, <span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;classname&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;testclass&quot;</span>))),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;classname&quot;</span>, PartialValue::new_class(<span class="string">&quot;testclass&quot;</span>))),
             <span class="macro">modlist!</span>([
-                <span class="ident">m_pres</span>(<span class="string">&quot;may&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_iutf8</span>(<span class="string">&quot;name&quot;</span>)),
-                <span class="ident">m_pres</span>(<span class="string">&quot;must&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_iutf8</span>(<span class="string">&quot;name&quot;</span>)),
+                m_pres(<span class="string">&quot;may&quot;</span>, <span class="kw-2">&amp;</span>Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
+                m_pres(<span class="string">&quot;must&quot;</span>, <span class="kw-2">&amp;</span>Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
             ]),
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_pre_delete_deny</span>() {
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
-        <span class="comment">// Test deleting with class: system is rejected.</span>
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_pre_delete_deny() {
+        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        <span class="comment">// Test deleting with class: system is rejected.
+        </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;, &quot;system&quot;],
@@ -744,23 +744,23 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>, <span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
 
         <span class="macro">run_delete_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+            preload,
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))),
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_modify_domain</span>() {
-        <span class="comment">// Can edit *my* domain_ssid and domain_name</span>
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
-        <span class="comment">// Show that adding a system class is denied</span>
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_modify_domain() {
+        <span class="comment">// Can edit *my* domain_ssid and domain_name
+        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        <span class="comment">// Show that adding a system class is denied
+        </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;domain_info&quot;],
@@ -778,31 +778,31 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>, <span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+            preload,
+            <span class="macro">filter!</span>(f_eq(
                 <span class="string">&quot;name&quot;</span>,
-                <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;domain_example.net.au&quot;</span>)
+                PartialValue::new_iname(<span class="string">&quot;domain_example.net.au&quot;</span>)
             )),
             <span class="macro">modlist!</span>([
-                <span class="ident">m_purge</span>(<span class="string">&quot;domain_ssid&quot;</span>),
-                <span class="ident">m_pres</span>(<span class="string">&quot;domain_ssid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_utf8s</span>(<span class="string">&quot;NewExampleWifi&quot;</span>)),
+                m_purge(<span class="string">&quot;domain_ssid&quot;</span>),
+                m_pres(<span class="string">&quot;domain_ssid&quot;</span>, <span class="kw-2">&amp;</span>Value::new_utf8s(<span class="string">&quot;NewExampleWifi&quot;</span>)),
             ]),
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {},
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {},
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_ext_create_domain</span>() {
-        <span class="comment">// can not add a domain_info type - note the lack of class: system</span>
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>];
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_ext_create_domain() {
+        <span class="comment">// can not add a domain_info type - note the lack of class: system
+        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
+        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;domain_info&quot;],
@@ -819,22 +819,22 @@
             }
         }&quot;#</span>,
         );
-        <span class="kw">let</span> <span class="ident">create</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">e</span>];
+        <span class="kw">let </span>create = <span class="macro">vec!</span>[e];
 
         <span class="macro">run_create_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
-            <span class="ident">preload</span>,
-            <span class="ident">create</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+            preload,
+            create,
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {}
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_delete_domain</span>() {
-        <span class="kw">let</span> <span class="ident">acp</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(<span class="ident">JSON_ADMIN_ALLOW_ALL</span>);
-        <span class="comment">// On the real thing we have a class: system, but to prove the point ...</span>
-        <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::unsafe_from_entry_str</span>(
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_delete_domain() {
+        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        <span class="comment">// On the real thing we have a class: system, but to prove the point ...
+        </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;domain_info&quot;],
@@ -852,19 +852,19 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">preload</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">acp</span>, <span class="ident">e</span>.<span class="ident">clone</span>()];
+        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
 
         <span class="macro">run_delete_test!</span>(
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
-            <span class="ident">preload</span>,
-            <span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+            <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+            preload,
+            <span class="macro">filter!</span>(f_eq(
                 <span class="string">&quot;name&quot;</span>,
-                <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;domain_example.net.au&quot;</span>)
+                PartialValue::new_iname(<span class="string">&quot;domain_example.net.au&quot;</span>)
             )),
-            <span class="prelude-val">Some</span>(<span class="ident">JSON_ADMIN_V1</span>),
-            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
+            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            |<span class="kw">_</span>| {}
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

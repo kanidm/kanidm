@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/constants/entries.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entries.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/constants/entries.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entries.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -598,17 +598,17 @@
 <span id="598">598</span>
 <span id="599">599</span>
 <span id="600">600</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::uuids</span>::<span class="kw-2">*</span>;
-<span class="doccomment">///! Constant Entries for the IDM</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::values</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryInit</span>, <span class="ident">EntryInitNew</span>, <span class="ident">EntryNew</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::Value</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::constants::uuids::<span class="kw-2">*</span>;
+<span class="doccomment">///! Constant Entries for the IDM
+</span><span class="kw">use </span><span class="kw">crate</span>::constants::values::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+<span class="kw">use </span><span class="kw">crate</span>::value::Value;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">use</span> <span class="ident">uuid</span>::{<span class="ident">uuid</span>, <span class="ident">Uuid</span>};
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">use </span>uuid::{uuid, Uuid};
 
-<span class="doccomment">/// Builtin System Admin account.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_ADMIN_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin System Admin account.
+</span><span class="kw">pub const </span>JSON_ADMIN_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;account&quot;, &quot;service_account&quot;, &quot;memberof&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;admin&quot;],
@@ -618,24 +618,24 @@
     }
 }&quot;#</span>;
 
-<span class="macro">lazy_static!</span> {
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">E_ADMIN_V1</span>: <span class="ident">EntryInitNew</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_OBJECT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_MEMBEROF</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_ACCOUNT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_SERVICE_ACCOUNT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;admin&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::new_uuid</span>(<span class="ident">UUID_ADMIN</span>)),
+<span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_ADMIN_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_MEMBEROF.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_ACCOUNT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_SERVICE_ACCOUNT.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;admin&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_ADMIN)),
         (
             <span class="string">&quot;description&quot;</span>,
-            <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;Builtin System Admin account.&quot;</span>)
+            Value::new_utf8s(<span class="string">&quot;Builtin System Admin account.&quot;</span>)
         ),
-        (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;System Administrator&quot;</span>))
+        (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;System Administrator&quot;</span>))
     );
 }
 
-<span class="doccomment">/// Builtin IDM Admin account.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ADMIN_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Admin account.
+</span><span class="kw">pub const </span>JSON_IDM_ADMIN_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;account&quot;, &quot;service_account&quot;, &quot;memberof&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_admin&quot;],
@@ -645,8 +645,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Administrators Group.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ADMINS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Administrators Group.
+</span><span class="kw">pub const </span>JSON_IDM_ADMINS_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_admins&quot;],
@@ -656,8 +656,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin System Administrators Group.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SYSTEM_ADMINS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin System Administrators Group.
+</span><span class="kw">pub const </span>JSON_SYSTEM_ADMINS_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;system_admins&quot;],
@@ -667,9 +667,9 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// * People read managers</span>
-<span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) read permissions.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * People read managers
+</span><span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) read permissions.
+</span><span class="kw">pub const </span>JSON_IDM_PEOPLE_READ_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_people_read_priv&quot;],
@@ -679,9 +679,9 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// * People write managers</span>
-<span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * People write managers
+</span><span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) write and lifecycle management permissions.
+</span><span class="kw">pub const </span>JSON_IDM_PEOPLE_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_people_manage_priv&quot;],
@@ -693,8 +693,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) write permissions.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) write permissions.
+</span><span class="kw">pub const </span>JSON_IDM_PEOPLE_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_people_write_priv&quot;],
@@ -707,8 +707,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for importing passwords to person accounts - intended for service account membership only.
+</span><span class="kw">pub const </span>JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_people_account_password_import_priv&quot;],
@@ -717,8 +717,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for allowing the ability to extend accounts to have the &quot;person&quot; flag set.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for allowing the ability to extend accounts to have the &quot;person&quot; flag set.
+</span><span class="kw">pub const </span>JSON_IDM_PEOPLE_EXTEND_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_people_extend_priv&quot;],
@@ -730,8 +730,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// Self-write of mail</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// Self-write of mail
+</span><span class="kw">pub const </span>JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_people_self_write_mail_priv&quot;],
@@ -740,8 +740,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_PEOPLE_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting elevated high privilege people (personal data) read permissions.
+</span><span class="kw">pub const </span>JSON_IDM_HP_PEOPLE_READ_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_people_read_priv&quot;],
@@ -751,8 +751,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting elevated high privilege people (personal data) write permissions.
+</span><span class="kw">pub const </span>JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_people_write_priv&quot;],
@@ -764,8 +764,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for extending high privilege accounts to be people.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for extending high privilege accounts to be people.
+</span><span class="kw">pub const </span>JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_people_extend_priv&quot;],
@@ -777,10 +777,10 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// * group write manager (no read, everyone has read via the anon, etc)</span>
-<span class="comment">// IDM_GROUP_CREATE_PRIV</span>
-<span class="doccomment">/// Builtin IDM Group for granting elevated group write and lifecycle permissions.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_GROUP_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * group write manager (no read, everyone has read via the anon, etc)
+// IDM_GROUP_CREATE_PRIV
+</span><span class="doccomment">/// Builtin IDM Group for granting elevated group write and lifecycle permissions.
+</span><span class="kw">pub const </span>JSON_IDM_GROUP_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_group_manage_priv&quot;],
@@ -792,7 +792,7 @@
         ]
     }
 }&quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_GROUP_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_IDM_GROUP_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_group_write_priv&quot;],
@@ -803,7 +803,7 @@
         ]
     }
 }&quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_group_unix_extend_priv&quot;],
@@ -814,8 +814,8 @@
         ]
     }
 }&quot;#</span>;
-<span class="comment">// * account read manager</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ACCOUNT_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * account read manager
+</span><span class="kw">pub const </span>JSON_IDM_ACCOUNT_READ_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_account_read_priv&quot;],
@@ -826,8 +826,8 @@
         ]
     }
 }&quot;#</span>;
-<span class="comment">// * account write manager</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * account write manager
+</span><span class="kw">pub const </span>JSON_IDM_ACCOUNT_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_account_manage_priv&quot;],
@@ -838,7 +838,7 @@
         ]
     }
 }&quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ACCOUNT_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_IDM_ACCOUNT_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_account_write_priv&quot;],
@@ -847,7 +847,7 @@
         &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000014&quot;]
     }
 }&quot;#</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_account_unix_extend_priv&quot;],
@@ -856,10 +856,10 @@
         &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000001&quot;]
     }
 }&quot;#</span>;
-<span class="comment">// * RADIUS servers</span>
+<span class="comment">// * RADIUS servers
 
-<span class="doccomment">/// Builtin IDM Group for RADIUS secret write for all non-hp accounts.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+</span><span class="doccomment">/// Builtin IDM Group for RADIUS secret write for all non-hp accounts.
+</span><span class="kw">pub const </span>JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_radius_secret_write_priv&quot;],
@@ -869,8 +869,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for RADIUS secret reading for all non-hp accounts.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SECRET_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for RADIUS secret reading for all non-hp accounts.
+</span><span class="kw">pub const </span>JSON_IDM_RADIUS_SECRET_READ_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_radius_secret_read_priv&quot;],
@@ -880,8 +880,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for RADIUS server access delegation.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SERVERS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for RADIUS server access delegation.
+</span><span class="kw">pub const </span>JSON_IDM_RADIUS_SERVERS_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_radius_servers&quot;],
@@ -890,8 +890,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// * high priv account read manager</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * high priv account read manager
+</span><span class="kw">pub const </span>JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_account_read_priv&quot;],
@@ -903,8 +903,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// * high priv account write manager</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * high priv account write manager
+</span><span class="kw">pub const </span>JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_account_manage_priv&quot;],
@@ -916,8 +916,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting elevated account write permissions over high privilege accounts.
+</span><span class="kw">pub const </span>JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_account_write_priv&quot;],
@@ -929,8 +929,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting account unix extend permissions for high privilege accounts.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting account unix extend permissions for high privilege accounts.
+</span><span class="kw">pub const </span>JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_account_unix_extend_priv&quot;],
@@ -940,8 +940,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// * Schema write manager</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_SCHEMA_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * Schema write manager
+</span><span class="kw">pub const </span>JSON_IDM_SCHEMA_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_schema_manage_priv&quot;],
@@ -953,8 +953,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// * ACP read/write manager</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ACP_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// * ACP read/write manager
+</span><span class="kw">pub const </span>JSON_IDM_ACP_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_acp_manage_priv&quot;],
@@ -964,8 +964,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_GROUP_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// Builtin IDM Group for granting elevated group write and lifecycle privileges for high privilege groups.
+</span><span class="kw">pub const </span>JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_group_manage_priv&quot;],
@@ -975,8 +975,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting elevated group write privileges for high privilege groups.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_GROUP_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting elevated group write privileges for high privilege groups.
+</span><span class="kw">pub const </span>JSON_IDM_HP_GROUP_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_group_write_priv&quot;],
@@ -988,8 +988,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting unix group extension permissions for high privilege groups.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting unix group extension permissions for high privilege groups.
+</span><span class="kw">pub const </span>JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_group_unix_extend_priv&quot;],
@@ -1001,8 +1001,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin IDM Group for granting local domain administration rights and trust administration rights</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_DOMAIN_ADMINS</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin IDM Group for granting local domain administration rights and trust administration rights
+</span><span class="kw">pub const </span>JSON_DOMAIN_ADMINS: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;domain_admins&quot;],
@@ -1014,7 +1014,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_oauth2_manage_priv&quot;],
@@ -1026,7 +1026,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_service_account_into_person_migrate_priv&quot;],
@@ -1038,8 +1038,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// Builtin System Admin account.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// Builtin System Admin account.
+</span><span class="kw">pub const </span>JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_hp_sync_account_manage_priv&quot;],
@@ -1051,9 +1051,9 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// == dyn groups</span>
+<span class="comment">// == dyn groups
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ALL_PERSONS</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+</span><span class="kw">pub const </span>JSON_IDM_ALL_PERSONS: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;dyngroup&quot;, &quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_all_persons&quot;],
@@ -1065,7 +1065,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_ALL_ACCOUNTS</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_IDM_ALL_ACCOUNTS: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;dyngroup&quot;, &quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_all_accounts&quot;],
@@ -1077,8 +1077,8 @@
     }
 }&quot;#</span>;
 
-<span class="doccomment">/// This must be the last group to init to include the UUID of the other high priv groups.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HIGH_PRIVILEGE_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="doccomment">/// This must be the last group to init to include the UUID of the other high priv groups.
+</span><span class="kw">pub const </span>JSON_IDM_HIGH_PRIVILEGE_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;idm_high_privilege&quot;],
@@ -1118,7 +1118,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_SYSTEM_INFO_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_SYSTEM_INFO_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;object&quot;, &quot;system_info&quot;, &quot;system&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000001&quot;],
@@ -1127,7 +1127,7 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_DOMAIN_INFO_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="kw">pub const </span>JSON_DOMAIN_INFO_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;object&quot;, &quot;domain_info&quot;, &quot;system&quot;],
         &quot;name&quot;: [&quot;domain_local&quot;],
@@ -1137,8 +1137,8 @@
     }
 }&quot;#</span>;
 
-<span class="comment">// Anonymous should be the last object in the range here.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_ANONYMOUS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="comment">// Anonymous should be the last object in the range here.
+</span><span class="kw">pub const </span>JSON_ANONYMOUS_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;account&quot;, &quot;service_account&quot;, &quot;object&quot;],
         &quot;name&quot;: [&quot;anonymous&quot;],
@@ -1148,24 +1148,24 @@
     }
 }&quot;#</span>;
 
-<span class="macro">lazy_static!</span> {
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">E_ANONYMOUS_V1</span>: <span class="ident">EntryInitNew</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_OBJECT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_ACCOUNT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_SERVICE_ACCOUNT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;anonymous&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::new_uuid</span>(<span class="ident">UUID_ANONYMOUS</span>)),
-        (<span class="string">&quot;description&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;Anonymous access account.&quot;</span>)),
-        (<span class="string">&quot;displayname&quot;</span>, <span class="ident">Value::new_utf8s</span>(<span class="string">&quot;Anonymous&quot;</span>))
+<span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_ANONYMOUS_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_ACCOUNT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_SERVICE_ACCOUNT.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;anonymous&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_ANONYMOUS)),
+        (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;Anonymous access account.&quot;</span>)),
+        (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Anonymous&quot;</span>))
     );
 }
 
-<span class="comment">// ============ TEST DATA ============</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_TESTPERSON_1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
+<span class="comment">// ============ TEST DATA ============
+</span><span class="attribute">#[cfg(test)]
+</span><span class="kw">pub const </span>UUID_TESTPERSON_1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_TESTPERSON1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub const </span>JSON_TESTPERSON1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;object&quot;],
         &quot;name&quot;: [&quot;testperson1&quot;],
@@ -1173,11 +1173,11 @@
     }
 }&quot;#</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_TESTPERSON_2</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;538faac7-4d29-473b-a59d-23023ac19955&quot;</span>);
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub const </span>UUID_TESTPERSON_2: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;538faac7-4d29-473b-a59d-23023ac19955&quot;</span>);
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_TESTPERSON2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub const </span>JSON_TESTPERSON2: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;object&quot;],
         &quot;name&quot;: [&quot;testperson2&quot;],
@@ -1185,18 +1185,18 @@
     }
 }&quot;#</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="macro">lazy_static!</span> {
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">E_TESTPERSON_1</span>: <span class="ident">EntryInitNew</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_OBJECT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson1&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::new_uuid</span>(<span class="ident">UUID_TESTPERSON_1</span>))
+<span class="attribute">#[cfg(test)]
+</span><span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_TESTPERSON_1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TESTPERSON_1))
     );
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">E_TESTPERSON_2</span>: <span class="ident">EntryInitNew</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
-        (<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_OBJECT</span>.<span class="ident">clone</span>()),
-        (<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;testperson2&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::new_uuid</span>(<span class="ident">UUID_TESTPERSON_2</span>))
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_TESTPERSON_2: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson2&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TESTPERSON_2))
     );
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

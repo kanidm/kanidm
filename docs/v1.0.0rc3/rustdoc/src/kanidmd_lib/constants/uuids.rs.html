@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/constants/uuids.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>uuids.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/constants/uuids.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>uuids.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -284,291 +284,291 @@
 <span id="284">284</span>
 <span id="285">285</span>
 <span id="286">286</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![allow(clippy::unwrap_used)]
 
-<span class="kw">use</span> <span class="ident">uuid</span>::{<span class="ident">uuid</span>, <span class="ident">Uuid</span>};
+</span><span class="kw">use </span>uuid::{uuid, Uuid};
 
-<span class="comment">// Built in group and account ranges.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">STR_UUID_ADMIN</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_ADMIN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ADMINS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_PEOPLE_READ_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000002&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_PEOPLE_WRITE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000003&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_GROUP_WRITE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000004&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACCOUNT_READ_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000005&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACCOUNT_WRITE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000006&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_RADIUS_SERVERS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000007&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACCOUNT_READ_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000008&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACCOUNT_WRITE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000009&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_SCHEMA_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000010&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000011&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_GROUP_WRITE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000012&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_PEOPLE_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000013&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACCOUNT_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000014&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_GROUP_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000015&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACCOUNT_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000016&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_GROUP_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000017&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_IDM_ADMIN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000018&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SYSTEM_ADMINS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000019&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_DOMAIN_ADMINS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000020&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000021&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_GROUP_UNIX_EXTEND_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000022&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="comment">// Built in group and account ranges.
+</span><span class="kw">pub const </span>STR_UUID_ADMIN: <span class="kw-2">&amp;</span>str = <span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>;
+<span class="kw">pub const </span>UUID_ADMIN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ADMINS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_PEOPLE_READ_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000002&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_PEOPLE_WRITE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000003&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_GROUP_WRITE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000004&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACCOUNT_READ_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000005&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACCOUNT_WRITE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000006&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_RADIUS_SERVERS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000007&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_ACCOUNT_READ_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000008&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_ACCOUNT_WRITE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000009&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_SCHEMA_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000010&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000011&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_GROUP_WRITE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000012&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_PEOPLE_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000013&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACCOUNT_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000014&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_GROUP_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000015&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_ACCOUNT_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000016&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_GROUP_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000017&quot;</span>);
+<span class="kw">pub const </span>UUID_IDM_ADMIN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000018&quot;</span>);
+<span class="kw">pub const </span>UUID_SYSTEM_ADMINS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000019&quot;</span>);
+<span class="kw">pub const </span>UUID_DOMAIN_ADMINS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000020&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000021&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_GROUP_UNIX_EXTEND_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000022&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000023&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_PEOPLE_EXTEND_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000024&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_PEOPLE_EXTEND_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000024&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000025&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000026&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_OAUTH2_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000027&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_PEOPLE_READ_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000028&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_PEOPLE_WRITE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000029&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_PEOPLE_EXTEND_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000030&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000026&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_OAUTH2_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000027&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_PEOPLE_READ_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000028&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_PEOPLE_WRITE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000029&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_PEOPLE_EXTEND_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000030&quot;</span>);
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_RADIUS_SECRET_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_RADIUS_SECRET_READ_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000032&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000031&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000033&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000034&quot;</span>);
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_IDM_ALL_PERSONS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000035&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_IDM_ALL_ACCOUNTS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000036&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_IDM_ALL_PERSONS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000035&quot;</span>);
+<span class="kw">pub const </span>UUID_IDM_ALL_ACCOUNTS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000036&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000037&quot;</span>);
 
-<span class="comment">//</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HIGH_PRIVILEGE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000001000&quot;</span>);
+<span class="comment">//
+</span><span class="kw">pub const </span>_UUID_IDM_HIGH_PRIVILEGE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000001000&quot;</span>);
 
-<span class="comment">// Builtin schema</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_CLASS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000000&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_UUID</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000001&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_NAME</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000002&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SPN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000003&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_DESCRIPTION</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000004&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_MULTIVALUE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000005&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_UNIQUE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000047&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_INDEX</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000006&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SYNTAX</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000007&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SYSTEMMAY</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000008&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_MAY</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000009&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SYSTEMMUST</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000010&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_MUST</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000011&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_MEMBEROF</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000012&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_MEMBER</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000013&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_DIRECTMEMBEROF</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000014&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_VERSION</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000015&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_DOMAIN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000016&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_ENABLE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000017&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_RECEIVER</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000018&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_TARGETSCOPE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000019&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000020&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_CREATE_CLASS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000021&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_CREATE_ATTR</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000022&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="comment">// Builtin schema
+</span><span class="kw">pub const </span>UUID_SCHEMA_ATTR_CLASS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000000&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_UUID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000001&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_NAME: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000002&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SPN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000003&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_DESCRIPTION: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000004&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_MULTIVALUE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000005&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_UNIQUE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000047&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_INDEX: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000006&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYNTAX: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000007&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYSTEMMAY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000008&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_MAY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000009&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYSTEMMUST: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000010&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_MUST: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000011&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_MEMBEROF: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000012&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_MEMBER: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000013&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_DIRECTMEMBEROF: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000014&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_VERSION: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000015&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_DOMAIN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000016&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_ENABLE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000017&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_RECEIVER: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000018&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_TARGETSCOPE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000019&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000020&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000021&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_CREATE_ATTR: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000022&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000023&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000024&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000025&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_ATTRIBUTETYPE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000026&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_CLASSTYPE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000027&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_OBJECT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000028&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000029&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_MEMBEROF</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000030&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_RECYCLED</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000031&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_TOMBSTONE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000032&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_SYSTEM_INFO</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000033&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000025&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_ATTRIBUTETYPE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000026&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_CLASSTYPE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000027&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_OBJECT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000028&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000029&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_MEMBEROF: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000030&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_RECYCLED: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000031&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_TOMBSTONE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000032&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_SYSTEM_INFO: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000033&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000034&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000035&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000036&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000037&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000038&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_SYSTEM</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000039&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DISPLAYNAME</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000040&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_MAIL</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000041&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_SSH_PUBLICKEY</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000042&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_SYSTEM: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000039&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DISPLAYNAME: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000040&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_MAIL: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000041&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_SSH_PUBLICKEY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000042&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000043&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_PERSON</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000044&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_GROUP</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000045&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_ACCOUNT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000046&quot;</span>);
-<span class="comment">// GAP - 47</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ATTRIBUTENAME</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000048&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_CLASSNAME</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000049&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_LEGALNAME</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000050&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_RADIUS_SECRET</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000051&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_DOMAIN_INFO</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000052&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DOMAIN_NAME</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000053&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DOMAIN_UUID</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000054&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DOMAIN_SSID</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000055&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_GIDNUMBER</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000056&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_POSIXACCOUNT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000057&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_POSIXGROUP</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000058&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_BADLIST_PASSWORD</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000059&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_SYSTEM_CONFIG</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000060&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_LOGINSHELL</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000061&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_UNIX_PASSWORD</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000062&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_LAST_MOD_CID</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000063&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_PHANTOM</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000064&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_CLAIM</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000065&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_PASSWORD_IMPORT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000066&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_NSUNIQUEID</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000067&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_DN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000068&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_NICE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000069&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ENTRYUUID</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000070&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_OBJECTCLASS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000071&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000072&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_PERSON: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000044&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_GROUP: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000045&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_ACCOUNT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000046&quot;</span>);
+<span class="comment">// GAP - 47
+</span><span class="kw">pub const </span>UUID_SCHEMA_ATTR_ATTRIBUTENAME: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000048&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_CLASSNAME: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000049&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_LEGALNAME: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000050&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_RADIUS_SECRET: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000051&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_DOMAIN_INFO: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000052&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DOMAIN_NAME: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000053&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DOMAIN_UUID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000054&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DOMAIN_SSID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000055&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_GIDNUMBER: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000056&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_POSIXACCOUNT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000057&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_POSIXGROUP: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000058&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_BADLIST_PASSWORD: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000059&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_SYSTEM_CONFIG: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000060&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_LOGINSHELL: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000061&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_UNIX_PASSWORD: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000062&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_LAST_MOD_CID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000063&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_PHANTOM: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000064&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_CLAIM: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000065&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_PASSWORD_IMPORT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000066&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_NSUNIQUEID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000067&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_DN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000068&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_NICE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000069&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ENTRYUUID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000070&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_OBJECTCLASS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000071&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000072&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000073&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_ENTRYDN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000074&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_EMAIL</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000075&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_EMAILADDRESS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000076&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_KEYS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000077&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SSHPUBLICKEY</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000078&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_UIDNUMBER</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000079&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_RS_NAME</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000080&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000081&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ENTRYDN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000074&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_EMAIL: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000075&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_EMAILADDRESS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000076&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_KEYS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000077&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SSHPUBLICKEY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000078&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_UIDNUMBER: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000079&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_NAME: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000080&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000081&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000082&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000083&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000084&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_OAUTH2_RS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000085&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000086&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_CN</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000087&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000088&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_OAUTH2_RS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000085&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000086&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_CN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000087&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000088&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000089&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000090&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000091&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000092&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000093&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_ORGPERSON</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000094&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_ORGPERSON: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000094&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000095&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000096&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_OAUTH2_CONSENT_SCOPE_MAP</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_OAUTH2_CONSENT_SCOPE_MAP: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000097&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000098&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_PASSKEYS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000099&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DEVICEKEYS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000100&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_PASSKEYS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000099&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DEVICEKEYS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000100&quot;</span>);
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SYSTEMSUPPLEMENTS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000101&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SUPPLEMENTS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000102&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SYSTEMEXCLUDES</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000103&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_EXCLUDES</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000104&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_ATTR_SCOPE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000105&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SCHEMA_CLASS_SERVICE_ACCOUNT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000106&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_DYNGROUP</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000107&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_DYNGROUP_FILTER</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000108&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_PREFERR_SHORT_USERNAME</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYSTEMSUPPLEMENTS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000101&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SUPPLEMENTS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000102&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYSTEMEXCLUDES: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000103&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_EXCLUDES: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000104&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SCOPE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000105&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_SERVICE_ACCOUNT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000106&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_DYNGROUP: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000107&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DYNGROUP_FILTER: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000108&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_PREFERR_SHORT_USERNAME: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000109&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000110&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_API_TOKEN_SESSION</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000111&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_API_TOKEN_SESSION: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000111&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000112&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000113&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_CLASS_SYNC_ACCOUNT</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000114&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_SCHEMA_CLASS_SYNC_ACCOUNT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000114&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000115&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_SCHEMA_ATTR_SYNC_COOKIE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000116&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_SYNC_COOKIE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000116&quot;</span>);
 
-<span class="comment">// System and domain infos</span>
-<span class="comment">// I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SYSTEM_INFO</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000001&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">STR_UUID_DOMAIN_INFO</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;00000000-0000-0000-0000-ffffff000025&quot;</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_DOMAIN_INFO</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000025&quot;</span>);
+<span class="comment">// System and domain infos
+// I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.
+</span><span class="kw">pub const </span>UUID_SYSTEM_INFO: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000001&quot;</span>);
+<span class="kw">pub const </span>STR_UUID_DOMAIN_INFO: <span class="kw-2">&amp;</span>str = <span class="string">&quot;00000000-0000-0000-0000-ffffff000025&quot;</span>;
+<span class="kw">pub const </span>UUID_DOMAIN_INFO: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000025&quot;</span>);
 
-<span class="comment">// DO NOT allocate here, allocate below.</span>
+<span class="comment">// DO NOT allocate here, allocate below.
 
-<span class="comment">// Access controls</span>
-<span class="comment">// skip 00 / 01 - see system info</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+// Access controls
+// skip 00 / 01 - see system info
+</span><span class="kw">pub const </span>_UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000002&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ADMINS_ACP_REVIVE_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000003&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_SELF_ACP_READ_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000004&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ALL_ACP_READ_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000006&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_PEOPLE_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000007&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000008&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_GROUP_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000009&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000010&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000011&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ADMINS_ACP_REVIVE_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000003&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_SELF_ACP_READ_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000004&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ALL_ACP_READ_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000006&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_PEOPLE_READ_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000007&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000008&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_GROUP_WRITE_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000009&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000010&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000011&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000012&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000013&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_RADIUS_SERVERS_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000014&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000013&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_RADIUS_SERVERS_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000014&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000015&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000016&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000017&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000018&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_ACP_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000019&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_ACP_MANAGE_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000019&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000020&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_SELF_ACP_WRITE_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000021&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000022&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_SELF_ACP_WRITE_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000021&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000022&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000023&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000024&quot;</span>);
-<span class="comment">// Skip 25 - see domain info.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000026&quot;</span>);
+<span class="comment">// Skip 25 - see domain info.
+</span><span class="kw">pub const </span>_UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000026&quot;</span>);
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">STR_UUID_SYSTEM_CONFIG</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;00000000-0000-0000-0000-ffffff000027&quot;</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_SYSTEM_CONFIG</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000027&quot;</span>);
+<span class="kw">pub const </span>STR_UUID_SYSTEM_CONFIG: <span class="kw-2">&amp;</span>str = <span class="string">&quot;00000000-0000-0000-0000-ffffff000027&quot;</span>;
+<span class="kw">pub const </span>UUID_SYSTEM_CONFIG: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000027&quot;</span>);
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000028&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000028&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000029&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000030&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000031&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000032&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000032&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000033&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000034&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000035&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000036&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000037&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000038&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000039&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000040&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000041&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000042&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_OAUTH2_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000043&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+<span class="kw">pub const </span>_UUID_IDM_ACP_OAUTH2_READ_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000043&quot;</span>);
+<span class="kw">pub const </span>_UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000044&quot;</span>);
 
-<span class="comment">// End of system ranges</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_DOES_NOT_EXIST</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-fffffffffffe&quot;</span>);
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_ANONYMOUS</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffffffffff&quot;</span>);
+<span class="comment">// End of system ranges
+</span><span class="kw">pub const </span>UUID_DOES_NOT_EXIST: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-fffffffffffe&quot;</span>);
+<span class="kw">pub const </span>UUID_ANONYMOUS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffffffffff&quot;</span>);
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

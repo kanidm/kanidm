@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/delayed.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>delayed.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/lib/src/idm/delayed.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>delayed.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../kanidmd_lib/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -70,77 +70,77 @@
 <span id="70">70</span>
 <span id="71">71</span>
 <span id="72">72</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">AccessScope</span>, <span class="ident">IdentityId</span>};
-<span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
-<span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::prelude::AuthenticationResult</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::identity::{AccessScope, IdentityId};
+<span class="kw">use </span>time::OffsetDateTime;
+<span class="kw">use </span>uuid::Uuid;
+<span class="kw">use </span>webauthn_rs::prelude::AuthenticationResult;
 
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
+<span class="kw">use </span>std::fmt;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DelayedAction</span> {
-    <span class="ident">PwUpgrade</span>(<span class="ident">PasswordUpgrade</span>),
-    <span class="ident">UnixPwUpgrade</span>(<span class="ident">UnixPasswordUpgrade</span>),
-    <span class="ident">WebauthnCounterIncrement</span>(<span class="ident">WebauthnCounterIncrement</span>),
-    <span class="ident">BackupCodeRemoval</span>(<span class="ident">BackupCodeRemoval</span>),
-    <span class="ident">Oauth2ConsentGrant</span>(<span class="ident">Oauth2ConsentGrant</span>),
-    <span class="ident">AuthSessionRecord</span>(<span class="ident">AuthSessionRecord</span>),
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>DelayedAction {
+    PwUpgrade(PasswordUpgrade),
+    UnixPwUpgrade(UnixPasswordUpgrade),
+    WebauthnCounterIncrement(WebauthnCounterIncrement),
+    BackupCodeRemoval(BackupCodeRemoval),
+    Oauth2ConsentGrant(Oauth2ConsentGrant),
+    AuthSessionRecord(AuthSessionRecord),
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PasswordUpgrade</span> {
-    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">existing_password</span>: <span class="ident">String</span>,
+<span class="kw">pub struct </span>PasswordUpgrade {
+    <span class="kw">pub </span>target_uuid: Uuid,
+    <span class="kw">pub </span>existing_password: String,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">PasswordUpgrade</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;PasswordUpgrade&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;target_uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target_uuid</span>)
-            .<span class="ident">finish</span>()
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>PasswordUpgrade {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        f.debug_struct(<span class="string">&quot;PasswordUpgrade&quot;</span>)
+            .field(<span class="string">&quot;target_uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.target_uuid)
+            .finish()
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnixPasswordUpgrade</span> {
-    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">existing_password</span>: <span class="ident">String</span>,
+<span class="kw">pub struct </span>UnixPasswordUpgrade {
+    <span class="kw">pub </span>target_uuid: Uuid,
+    <span class="kw">pub </span>existing_password: String,
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">UnixPasswordUpgrade</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;UnixPasswordUpgrade&quot;</span>)
-            .<span class="ident">field</span>(<span class="string">&quot;target_uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target_uuid</span>)
-            .<span class="ident">finish</span>()
+<span class="kw">impl </span>fmt::Debug <span class="kw">for </span>UnixPasswordUpgrade {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        f.debug_struct(<span class="string">&quot;UnixPasswordUpgrade&quot;</span>)
+            .field(<span class="string">&quot;target_uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.target_uuid)
+            .finish()
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WebauthnCounterIncrement</span> {
-    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">auth_result</span>: <span class="ident">AuthenticationResult</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>WebauthnCounterIncrement {
+    <span class="kw">pub </span>target_uuid: Uuid,
+    <span class="kw">pub </span>auth_result: AuthenticationResult,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BackupCodeRemoval</span> {
-    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">code_to_remove</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>BackupCodeRemoval {
+    <span class="kw">pub </span>target_uuid: Uuid,
+    <span class="kw">pub </span>code_to_remove: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2ConsentGrant</span> {
-    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">oauth2_rs_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Oauth2ConsentGrant {
+    <span class="kw">pub </span>target_uuid: Uuid,
+    <span class="kw">pub </span>oauth2_rs_uuid: Uuid,
+    <span class="kw">pub </span>scopes: Vec&lt;String&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthSessionRecord</span> {
-    <span class="kw">pub</span> <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
-    <span class="kw">pub</span> <span class="ident">label</span>: <span class="ident">String</span>,
-    <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">OffsetDateTime</span>,
-    <span class="kw">pub</span> <span class="ident">issued_by</span>: <span class="ident">IdentityId</span>,
-    <span class="kw">pub</span> <span class="ident">scope</span>: <span class="ident">AccessScope</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>AuthSessionRecord {
+    <span class="kw">pub </span>target_uuid: Uuid,
+    <span class="kw">pub </span>session_id: Uuid,
+    <span class="kw">pub </span>label: String,
+    <span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>issued_at: OffsetDateTime,
+    <span class="kw">pub </span>issued_by: IdentityId,
+    <span class="kw">pub </span>scope: AccessScope,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

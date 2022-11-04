@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/../opt/kanidm.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kanidm.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../kanidm_cli/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/../opt/kanidm.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kanidm.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../kanidm_cli/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../kanidm_cli/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -815,822 +815,822 @@
 <span id="815">815</span>
 <span id="816">816</span>
 <span id="817">817</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Args</span>, <span class="ident">Subcommand</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>Named {
+    <span class="kw">pub </span>name: String,
+    <span class="attribute">#[clap(flatten)]
+    </span><span class="kw">pub </span>copt: CommonOpt,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DebugOpt</span> {
-    <span class="doccomment">/// Enable debbuging of the kanidm tool</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>DebugOpt {
+    <span class="doccomment">/// Enable debbuging of the kanidm tool
+    </span><span class="attribute">#[clap(short, long, env = <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]
+    </span><span class="kw">pub </span>debug: bool,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
-    <span class="doccomment">/// Enable debbuging of the kanidm tool</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// The URL of the kanidm instance</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;H&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;url&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_URL&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">addr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// User which will initiate requests</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;D&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;name&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_NAME&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">username</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Path to a CA certificate file</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;C&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">ca_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>CommonOpt {
+    <span class="doccomment">/// Enable debbuging of the kanidm tool
+    </span><span class="attribute">#[clap(short, long, env = <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]
+    </span><span class="kw">pub </span>debug: bool,
+    <span class="doccomment">/// The URL of the kanidm instance
+    </span><span class="attribute">#[clap(short = <span class="string">&#39;H&#39;</span>, long = <span class="string">&quot;url&quot;</span>, env = <span class="string">&quot;KANIDM_URL&quot;</span>)]
+    </span><span class="kw">pub </span>addr: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="doccomment">/// User which will initiate requests
+    </span><span class="attribute">#[clap(short = <span class="string">&#39;D&#39;</span>, long = <span class="string">&quot;name&quot;</span>, env = <span class="string">&quot;KANIDM_NAME&quot;</span>)]
+    </span><span class="kw">pub </span>username: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="doccomment">/// Path to a CA certificate file
+    </span><span class="attribute">#[clap(parse(from_os_str), short = <span class="string">&#39;C&#39;</span>, long = <span class="string">&quot;ca&quot;</span>, env = <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]
+    </span><span class="kw">pub </span>ca_path: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupNamedMembers</span> {
-    <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>GroupNamedMembers {
+    name: String,
+    members: Vec&lt;String&gt;,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupPosixOpt</span> {
-    <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>)]</span>
-    <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>GroupPosixOpt {
+    name: String,
+    <span class="attribute">#[clap(long)]
+    </span>gidnumber: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupPosix</span> {
-    <span class="doccomment">/// Show details of a specific posix group</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
-    <span class="ident">Show</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Setup posix group properties, or alter them</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
-    <span class="ident">Set</span>(<span class="ident">GroupPosixOpt</span>),
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>GroupPosix {
+    <span class="doccomment">/// Show details of a specific posix group
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;show&quot;</span>)]
+    </span>Show(Named),
+    <span class="doccomment">/// Setup posix group properties, or alter them
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;set&quot;</span>)]
+    </span>Set(GroupPosixOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupOpt</span> {
-    <span class="doccomment">/// List all groups</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
-    <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="doccomment">/// View a specific group</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
-    <span class="ident">Get</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Create a new group</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
-    <span class="ident">Create</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Delete a group</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
-    <span class="ident">Delete</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// List the members of a group</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_members&quot;</span>)]</span>
-    <span class="ident">ListMembers</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Set the exact list of members that this group should contain, removing any not listed in the</span>
-    <span class="doccomment">/// set operation.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_members&quot;</span>)]</span>
-    <span class="ident">SetMembers</span>(<span class="ident">GroupNamedMembers</span>),
-    <span class="doccomment">/// Delete all members of a group.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;purge_members&quot;</span>)]</span>
-    <span class="ident">PurgeMembers</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Add new members to a group</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_members&quot;</span>)]</span>
-    <span class="ident">AddMembers</span>(<span class="ident">GroupNamedMembers</span>),
-    <span class="doccomment">/// Remove the named members from this group</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_members&quot;</span>)]</span>
-    <span class="ident">RemoveMembers</span>(<span class="ident">GroupNamedMembers</span>),
-    <span class="doccomment">/// Manage posix extensions for this group allowing groups to be used on unix/linux systems</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;posix&quot;</span>)]</span>
-    <span class="ident">Posix</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">GroupPosix</span>,
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>GroupOpt {
+    <span class="doccomment">/// List all groups
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;list&quot;</span>)]
+    </span>List(CommonOpt),
+    <span class="doccomment">/// View a specific group
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;get&quot;</span>)]
+    </span>Get(Named),
+    <span class="doccomment">/// Create a new group
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;create&quot;</span>)]
+    </span>Create(Named),
+    <span class="doccomment">/// Delete a group
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;delete&quot;</span>)]
+    </span>Delete(Named),
+    <span class="doccomment">/// List the members of a group
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;list_members&quot;</span>)]
+    </span>ListMembers(Named),
+    <span class="doccomment">/// Set the exact list of members that this group should contain, removing any not listed in the
+    /// set operation.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;set_members&quot;</span>)]
+    </span>SetMembers(GroupNamedMembers),
+    <span class="doccomment">/// Delete all members of a group.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;purge_members&quot;</span>)]
+    </span>PurgeMembers(Named),
+    <span class="doccomment">/// Add new members to a group
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;add_members&quot;</span>)]
+    </span>AddMembers(GroupNamedMembers),
+    <span class="doccomment">/// Remove the named members from this group
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;remove_members&quot;</span>)]
+    </span>RemoveMembers(GroupNamedMembers),
+    <span class="doccomment">/// Manage posix extensions for this group allowing groups to be used on unix/linux systems
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;posix&quot;</span>)]
+    </span>Posix {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: GroupPosix,
     },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountCommonOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>()]</span>
-    <span class="ident">account_id</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountCommonOpt {
+    <span class="attribute">#[clap()]
+    </span>account_id: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountNamedOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedExpireDateTimeOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;datetime&quot;</span>)]</span>
-    <span class="doccomment">/// An rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;</span>
-    <span class="doccomment">/// or the word &quot;never&quot;, &quot;clear&quot; to remove account expiry.</span>
-    <span class="ident">datetime</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountNamedExpireDateTimeOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(name = <span class="string">&quot;datetime&quot;</span>)]
+    </span><span class="doccomment">/// An rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;
+    /// or the word &quot;never&quot;, &quot;clear&quot; to remove account expiry.
+    </span>datetime: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedValidDateTimeOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;datetime&quot;</span>)]</span>
-    <span class="doccomment">/// An rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;</span>
-    <span class="doccomment">/// or the word &quot;any&quot;, &quot;clear&quot; to remove valid from enforcement.</span>
-    <span class="ident">datetime</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountNamedValidDateTimeOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(name = <span class="string">&quot;datetime&quot;</span>)]
+    </span><span class="doccomment">/// An rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;
+    /// or the word &quot;any&quot;, &quot;clear&quot; to remove valid from enforcement.
+    </span>datetime: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedTagOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
-    <span class="ident">tag</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountNamedTagOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(name = <span class="string">&quot;tag&quot;</span>)]
+    </span>tag: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedTagPkOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
-    <span class="ident">tag</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;pubkey&quot;</span>)]</span>
-    <span class="ident">pubkey</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountNamedTagPkOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(name = <span class="string">&quot;tag&quot;</span>)]
+    </span>tag: String,
+    <span class="attribute">#[clap(name = <span class="string">&quot;pubkey&quot;</span>)]
+    </span>pubkey: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="doccomment">/// Command-line options for account credental use_reset_token</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UseResetTokenOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;token&quot;</span>)]</span>
-    <span class="ident">token</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="doccomment">/// Command-line options for account credental use_reset_token
+</span><span class="kw">pub struct </span>UseResetTokenOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(name = <span class="string">&quot;token&quot;</span>)]
+    </span>token: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountCreateOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;display_name&quot;</span>)]</span>
-    <span class="ident">display_name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountCreateOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(name = <span class="string">&quot;display_name&quot;</span>)]
+    </span>display_name: String,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountCredential</span> {
-    <span class="doccomment">/// Show the status of this accounts credentials.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;status&quot;</span>)]</span>
-    <span class="ident">Status</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Interactively update/change the credentials for an account</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update&quot;</span>)]</span>
-    <span class="ident">Update</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Using a reset token, interactively reset credentials for a user</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;use_reset_token&quot;</span>)]</span>
-    <span class="ident">UseResetToken</span>(<span class="ident">UseResetTokenOpt</span>),
-    <span class="doccomment">/// Create a reset token that can be given to another person so they can</span>
-    <span class="doccomment">/// recover or reset their account credentials.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_reset_token&quot;</span>)]</span>
-    <span class="ident">CreateResetToken</span>(<span class="ident">AccountNamedOpt</span>),
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>AccountCredential {
+    <span class="doccomment">/// Show the status of this accounts credentials.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;status&quot;</span>)]
+    </span>Status(AccountNamedOpt),
+    <span class="doccomment">/// Interactively update/change the credentials for an account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;update&quot;</span>)]
+    </span>Update(AccountNamedOpt),
+    <span class="doccomment">/// Using a reset token, interactively reset credentials for a user
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;use_reset_token&quot;</span>)]
+    </span>UseResetToken(UseResetTokenOpt),
+    <span class="doccomment">/// Create a reset token that can be given to another person so they can
+    /// recover or reset their account credentials.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;create_reset_token&quot;</span>)]
+    </span>CreateResetToken(AccountNamedOpt),
 }
 
-<span class="doccomment">/// RADIUS secret management</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountRadius</span> {
-    <span class="doccomment">/// Show the RADIUS secret for a user.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show_secret&quot;</span>)]</span>
-    <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Generate a randomized RADIUS secret for a user.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;generate_secret&quot;</span>)]</span>
-    <span class="ident">Generate</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_secret&quot;</span>)]</span>
-    <span class="doccomment">/// Remove the configured RADIUS secret for the user.</span>
-    <span class="ident">DeleteSecret</span>(<span class="ident">AccountNamedOpt</span>),
+<span class="doccomment">/// RADIUS secret management
+</span><span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>AccountRadius {
+    <span class="doccomment">/// Show the RADIUS secret for a user.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;show_secret&quot;</span>)]
+    </span>Show(AccountNamedOpt),
+    <span class="doccomment">/// Generate a randomized RADIUS secret for a user.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;generate_secret&quot;</span>)]
+    </span>Generate(AccountNamedOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;delete_secret&quot;</span>)]
+    </span><span class="doccomment">/// Remove the configured RADIUS secret for the user.
+    </span>DeleteSecret(AccountNamedOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountPosixOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>)]</span>
-    <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>)]</span>
-    <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>AccountPosixOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(long)]
+    </span>gidnumber: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="attribute">#[clap(long)]
+    </span>shell: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PersonPosix</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
-    <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
-    <span class="ident">Set</span>(<span class="ident">AccountPosixOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_password&quot;</span>)]</span>
-    <span class="ident">SetPassword</span>(<span class="ident">AccountNamedOpt</span>),
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>PersonPosix {
+    <span class="attribute">#[clap(name = <span class="string">&quot;show&quot;</span>)]
+    </span>Show(AccountNamedOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;set&quot;</span>)]
+    </span>Set(AccountPosixOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;set_password&quot;</span>)]
+    </span>SetPassword(AccountNamedOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ServiceAccountPosix</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
-    <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
-    <span class="ident">Set</span>(<span class="ident">AccountPosixOpt</span>),
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>ServiceAccountPosix {
+    <span class="attribute">#[clap(name = <span class="string">&quot;show&quot;</span>)]
+    </span>Show(AccountNamedOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;set&quot;</span>)]
+    </span>Set(AccountPosixOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PersonUpdateOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>, <span class="ident">short</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Set the legal name for the person.&quot;</span>)]</span>
-    <span class="ident">legalname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>, <span class="ident">short</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Set the account name for the person.&quot;</span>)]</span>
-    <span class="ident">newname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>, <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;i&#39;</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Set the display name for the person.&quot;</span>)]</span>
-    <span class="ident">displayname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(
-        <span class="ident">long</span>,
-        <span class="ident">short</span>,
-        <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the &#39;primary&#39;&quot;</span>
-    )]</span>
-    <span class="ident">mail</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>PersonUpdateOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(long, short, help = <span class="string">&quot;Set the legal name for the person.&quot;</span>)]
+    </span>legalname: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[clap(long, short, help = <span class="string">&quot;Set the account name for the person.&quot;</span>)]
+    </span>newname: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[clap(long, short = <span class="string">&#39;i&#39;</span>, help = <span class="string">&quot;Set the display name for the person.&quot;</span>)]
+    </span>displayname: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[clap(
+        long,
+        short,
+        help = <span class="string">&quot;Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the &#39;primary&#39;&quot;
+    </span>)]
+    </span>mail: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountSsh</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_publickeys&quot;</span>)]</span>
-    <span class="ident">List</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_publickey&quot;</span>)]</span>
-    <span class="ident">Add</span>(<span class="ident">AccountNamedTagPkOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_publickey&quot;</span>)]</span>
-    <span class="ident">Delete</span>(<span class="ident">AccountNamedTagOpt</span>),
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>AccountSsh {
+    <span class="attribute">#[clap(name = <span class="string">&quot;list_publickeys&quot;</span>)]
+    </span>List(AccountNamedOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;add_publickey&quot;</span>)]
+    </span>Add(AccountNamedTagPkOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;delete_publickey&quot;</span>)]
+    </span>Delete(AccountNamedTagOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountValidity</span> {
-    <span class="doccomment">/// Show an accounts validity window</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
-    <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Set an accounts expiry time</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;expire_at&quot;</span>)]</span>
-    <span class="ident">ExpireAt</span>(<span class="ident">AccountNamedExpireDateTimeOpt</span>),
-    <span class="doccomment">/// Set an account valid from time</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;begin_from&quot;</span>)]</span>
-    <span class="ident">BeginFrom</span>(<span class="ident">AccountNamedValidDateTimeOpt</span>),
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>AccountValidity {
+    <span class="doccomment">/// Show an accounts validity window
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;show&quot;</span>)]
+    </span>Show(AccountNamedOpt),
+    <span class="doccomment">/// Set an accounts expiry time
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;expire_at&quot;</span>)]
+    </span>ExpireAt(AccountNamedExpireDateTimeOpt),
+    <span class="doccomment">/// Set an account valid from time
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;begin_from&quot;</span>)]
+    </span>BeginFrom(AccountNamedValidDateTimeOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountUserAuthToken</span> {
-    <span class="doccomment">/// Show the status of logged in sessions associated to this account.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;status&quot;</span>)]</span>
-    <span class="ident">Status</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Destroy / revoke a session for this account. Access to the</span>
-    <span class="doccomment">/// session (user auth token) is NOT required, only the uuid of the session.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;destroy&quot;</span>)]</span>
-    <span class="ident">Destroy</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-        <span class="doccomment">/// The UUID of the token to destroy.</span>
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;session_id&quot;</span>)]</span>
-        <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>AccountUserAuthToken {
+    <span class="doccomment">/// Show the status of logged in sessions associated to this account.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;status&quot;</span>)]
+    </span>Status(AccountNamedOpt),
+    <span class="doccomment">/// Destroy / revoke a session for this account. Access to the
+    /// session (user auth token) is NOT required, only the uuid of the session.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;destroy&quot;</span>)]
+    </span>Destroy {
+        <span class="attribute">#[clap(flatten)]
+        </span>aopts: AccountCommonOpt,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+        <span class="doccomment">/// The UUID of the token to destroy.
+        </span><span class="attribute">#[clap(name = <span class="string">&quot;session_id&quot;</span>)]
+        </span>session_id: Uuid,
     },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PersonOpt</span> {
-    <span class="doccomment">/// Manage the credentials this person uses for authentication</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;credential&quot;</span>)]</span>
-    <span class="ident">Credential</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountCredential</span>,
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>PersonOpt {
+    <span class="doccomment">/// Manage the credentials this person uses for authentication
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;credential&quot;</span>)]
+    </span>Credential {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountCredential,
     },
-    <span class="doccomment">/// Manage radius access for this person</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;radius&quot;</span>)]</span>
-    <span class="ident">Radius</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountRadius</span>,
+    <span class="doccomment">/// Manage radius access for this person
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;radius&quot;</span>)]
+    </span>Radius {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountRadius,
     },
-    <span class="doccomment">/// Manage posix extensions for this person allowing access to unix/linux systems</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;posix&quot;</span>)]</span>
-    <span class="ident">Posix</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">PersonPosix</span>,
+    <span class="doccomment">/// Manage posix extensions for this person allowing access to unix/linux systems
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;posix&quot;</span>)]
+    </span>Posix {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: PersonPosix,
     },
-    <span class="doccomment">/// Manage sessions (user auth tokens) associated to this person.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;session&quot;</span>)]</span>
-    <span class="ident">Session</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountUserAuthToken</span>,
+    <span class="doccomment">/// Manage sessions (user auth tokens) associated to this person.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;session&quot;</span>)]
+    </span>Session {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountUserAuthToken,
     },
-    <span class="doccomment">/// Manage ssh public key&#39;s associated to this person</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ssh&quot;</span>)]</span>
-    <span class="ident">Ssh</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountSsh</span>,
+    <span class="doccomment">/// Manage ssh public key&#39;s associated to this person
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;ssh&quot;</span>)]
+    </span>Ssh {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountSsh,
     },
-    <span class="doccomment">/// List all persons</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
-    <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="doccomment">/// View a specific person</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
-    <span class="ident">Get</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Update a specific person&#39;s attributes</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update&quot;</span>)]</span>
-    <span class="ident">Update</span>(<span class="ident">PersonUpdateOpt</span>),
-    <span class="doccomment">/// Create a new person&#39;s account</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
-    <span class="ident">Create</span>(<span class="ident">AccountCreateOpt</span>),
-    <span class="doccomment">/// Delete a person&#39;s account</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
-    <span class="ident">Delete</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Manage a person&#39;s account validity, such as expiry time (account lock/unlock)</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;validity&quot;</span>)]</span>
-    <span class="ident">Validity</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountValidity</span>,
-    },
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ServiceAccountCredential</span> {
-    <span class="doccomment">/// Show the status of this accounts password</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;status&quot;</span>)]</span>
-    <span class="ident">Status</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Reset and generate a new service account password. This password can NOT</span>
-    <span class="doccomment">/// be used with the LDAP interface.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;generate&quot;</span>)]</span>
-    <span class="ident">GeneratePw</span>(<span class="ident">AccountNamedOpt</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ServiceAccountApiToken</span> {
-    <span class="doccomment">/// Show the status of api tokens associated to this service account.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;status&quot;</span>)]</span>
-    <span class="ident">Status</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Generate a new api token for this service account.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;generate&quot;</span>)]</span>
-    <span class="ident">Generate</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-        <span class="doccomment">/// A string describing the token. This is not used to identify the token, it is only</span>
-        <span class="doccomment">/// for human description of the tokens purpose.</span>
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;label&quot;</span>)]</span>
-        <span class="ident">label</span>: <span class="ident">String</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;expiry&quot;</span>)]</span>
-        <span class="doccomment">/// An optional rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;.</span>
-        <span class="doccomment">/// After this time the api token will no longer be valid.</span>
-        <span class="ident">expiry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;rw&quot;</span>)]</span>
-        <span class="ident">read_write</span>: <span class="ident">bool</span>,
-    },
-    <span class="doccomment">/// Destroy / revoke an api token from this service account. Access to the</span>
-    <span class="doccomment">/// token is NOT required, only the tag/uuid of the token.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;destroy&quot;</span>)]</span>
-    <span class="ident">Destroy</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-        <span class="doccomment">/// The UUID of the token to destroy.</span>
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;token_id&quot;</span>)]</span>
-        <span class="ident">token_id</span>: <span class="ident">Uuid</span>,
+    <span class="doccomment">/// List all persons
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;list&quot;</span>)]
+    </span>List(CommonOpt),
+    <span class="doccomment">/// View a specific person
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;get&quot;</span>)]
+    </span>Get(AccountNamedOpt),
+    <span class="doccomment">/// Update a specific person&#39;s attributes
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;update&quot;</span>)]
+    </span>Update(PersonUpdateOpt),
+    <span class="doccomment">/// Create a new person&#39;s account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;create&quot;</span>)]
+    </span>Create(AccountCreateOpt),
+    <span class="doccomment">/// Delete a person&#39;s account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;delete&quot;</span>)]
+    </span>Delete(AccountNamedOpt),
+    <span class="doccomment">/// Manage a person&#39;s account validity, such as expiry time (account lock/unlock)
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;validity&quot;</span>)]
+    </span>Validity {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountValidity,
     },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ServiceAccountUpdateOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>, <span class="ident">short</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Set the account name for the service account.&quot;</span>)]</span>
-    <span class="ident">newname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(
-        <span class="ident">long</span>,
-        <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;i&#39;</span>,
-        <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Set the display name for the service account.&quot;</span>
-    )]</span>
-    <span class="ident">displayname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(
-        <span class="ident">long</span>,
-        <span class="ident">short</span>,
-        <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the &#39;primary&#39;&quot;</span>
-    )]</span>
-    <span class="ident">mail</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>ServiceAccountCredential {
+    <span class="doccomment">/// Show the status of this accounts password
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;status&quot;</span>)]
+    </span>Status(AccountNamedOpt),
+    <span class="doccomment">/// Reset and generate a new service account password. This password can NOT
+    /// be used with the LDAP interface.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;generate&quot;</span>)]
+    </span>GeneratePw(AccountNamedOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ServiceAccountOpt</span> {
-    <span class="doccomment">/// Manage the generated password of this service account.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;credential&quot;</span>)]</span>
-    <span class="ident">Credential</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">ServiceAccountCredential</span>,
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>ServiceAccountApiToken {
+    <span class="doccomment">/// Show the status of api tokens associated to this service account.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;status&quot;</span>)]
+    </span>Status(AccountNamedOpt),
+    <span class="doccomment">/// Generate a new api token for this service account.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;generate&quot;</span>)]
+    </span>Generate {
+        <span class="attribute">#[clap(flatten)]
+        </span>aopts: AccountCommonOpt,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+        <span class="doccomment">/// A string describing the token. This is not used to identify the token, it is only
+        /// for human description of the tokens purpose.
+        </span><span class="attribute">#[clap(name = <span class="string">&quot;label&quot;</span>)]
+        </span>label: String,
+        <span class="attribute">#[clap(name = <span class="string">&quot;expiry&quot;</span>)]
+        </span><span class="doccomment">/// An optional rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;.
+        /// After this time the api token will no longer be valid.
+        </span>expiry: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        <span class="attribute">#[clap(long = <span class="string">&quot;rw&quot;</span>)]
+        </span>read_write: bool,
     },
-    <span class="doccomment">/// Manage api tokens associated to this service account.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;api-token&quot;</span>)]</span>
-    <span class="ident">ApiToken</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">ServiceAccountApiToken</span>,
+    <span class="doccomment">/// Destroy / revoke an api token from this service account. Access to the
+    /// token is NOT required, only the tag/uuid of the token.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;destroy&quot;</span>)]
+    </span>Destroy {
+        <span class="attribute">#[clap(flatten)]
+        </span>aopts: AccountCommonOpt,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+        <span class="doccomment">/// The UUID of the token to destroy.
+        </span><span class="attribute">#[clap(name = <span class="string">&quot;token_id&quot;</span>)]
+        </span>token_id: Uuid,
     },
-    <span class="doccomment">/// Manage posix extensions for this service account allowing access to unix/linux systems</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;posix&quot;</span>)]</span>
-    <span class="ident">Posix</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">ServiceAccountPosix</span>,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>ServiceAccountUpdateOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>aopts: AccountCommonOpt,
+    <span class="attribute">#[clap(long, short, help = <span class="string">&quot;Set the account name for the service account.&quot;</span>)]
+    </span>newname: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[clap(
+        long,
+        short = <span class="string">&#39;i&#39;</span>,
+        help = <span class="string">&quot;Set the display name for the service account.&quot;
+    </span>)]
+    </span>displayname: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attribute">#[clap(
+        long,
+        short,
+        help = <span class="string">&quot;Set the mail address, can be set multiple times for multiple addresses. The first listed mail address is the &#39;primary&#39;&quot;
+    </span>)]
+    </span>mail: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+}
+
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>ServiceAccountOpt {
+    <span class="doccomment">/// Manage the generated password of this service account.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;credential&quot;</span>)]
+    </span>Credential {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: ServiceAccountCredential,
     },
-    <span class="doccomment">/// Manage sessions (user auth tokens) associated to this service account.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;session&quot;</span>)]</span>
-    <span class="ident">Session</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountUserAuthToken</span>,
+    <span class="doccomment">/// Manage api tokens associated to this service account.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;api-token&quot;</span>)]
+    </span>ApiToken {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: ServiceAccountApiToken,
     },
-    <span class="doccomment">/// Manage ssh public key&#39;s associated to this person</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ssh&quot;</span>)]</span>
-    <span class="ident">Ssh</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountSsh</span>,
+    <span class="doccomment">/// Manage posix extensions for this service account allowing access to unix/linux systems
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;posix&quot;</span>)]
+    </span>Posix {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: ServiceAccountPosix,
     },
-    <span class="doccomment">/// List all service accounts</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
-    <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="doccomment">/// View a specific service account</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
-    <span class="ident">Get</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Create a new service account</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
-    <span class="ident">Create</span>(<span class="ident">AccountCreateOpt</span>),
-    <span class="doccomment">/// Update a specific service account&#39;s attributes</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update&quot;</span>)]</span>
-    <span class="ident">Update</span>(<span class="ident">ServiceAccountUpdateOpt</span>),
-    <span class="doccomment">/// Delete a service account</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
-    <span class="ident">Delete</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Manage a service account validity, such as expiry time (account lock/unlock)</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;validity&quot;</span>)]</span>
-    <span class="ident">Validity</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">AccountValidity</span>,
+    <span class="doccomment">/// Manage sessions (user auth tokens) associated to this service account.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;session&quot;</span>)]
+    </span>Session {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountUserAuthToken,
     },
-    <span class="doccomment">/// Convert a service account into a person. This is used during the alpha.9</span>
-    <span class="doccomment">/// to alpha.10 migration to &quot;fix up&quot; accounts that were not previously marked</span>
-    <span class="doccomment">/// as persons.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;into-person&quot;</span>)]</span>
-    <span class="ident">IntoPerson</span>(<span class="ident">AccountNamedOpt</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RecycleOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
-    <span class="doccomment">/// List objects that are in the recycle bin</span>
-    <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
-    <span class="doccomment">/// Display an object from the recycle bin</span>
-    <span class="ident">Get</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;revive&quot;</span>)]</span>
-    <span class="doccomment">/// Revive a recycled object into a live (accessible) state - this is the opposite of &quot;delete&quot;</span>
-    <span class="ident">Revive</span>(<span class="ident">Named</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoginOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>)]</span>
-    <span class="ident">webauthn</span>: <span class="ident">bool</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LogoutOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">hide</span> <span class="op">=</span> <span class="bool-val">true</span>)]</span>
-    <span class="doccomment">/// Do not send the logout to the server - only remove the session token locally</span>
-    <span class="ident">local_only</span>: <span class="ident">bool</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SessionOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
-    <span class="doccomment">/// List current active sessions</span>
-    <span class="ident">List</span>(<span class="ident">DebugOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;cleanup&quot;</span>)]</span>
-    <span class="doccomment">/// Remove sessions that have expired or are invalid.</span>
-    <span class="ident">Cleanup</span>(<span class="ident">DebugOpt</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FilterOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>()]</span>
-    <span class="ident">filter</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CreateOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
-    <span class="ident">file</span>: <span class="ident">PathBuf</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>()]</span>
-    <span class="ident">filter</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
-    <span class="ident">file</span>: <span class="ident">PathBuf</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RawOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search&quot;</span>)]</span>
-    <span class="ident">Search</span>(<span class="ident">FilterOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
-    <span class="ident">Create</span>(<span class="ident">CreateOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;modify&quot;</span>)]</span>
-    <span class="ident">Modify</span>(<span class="ident">ModifyOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
-    <span class="ident">Delete</span>(<span class="ident">FilterOpt</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SelfOpt</span> {
-    <span class="doccomment">/// Show the current authenticated user&#39;s identity</span>
-    <span class="ident">Whoami</span>(<span class="ident">CommonOpt</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2BasicCreateOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
-    <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;origin&quot;</span>)]</span>
-    <span class="ident">origin</span>: <span class="ident">String</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2SetDisplayname</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
-    <span class="ident">displayname</span>: <span class="ident">String</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2SetImplicitScopes</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
-    <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2CreateScopeMapOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
-    <span class="ident">group</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
-    <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2DeleteScopeMapOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
-    <span class="ident">group</span>: <span class="ident">String</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Oauth2Opt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
-    <span class="doccomment">/// List all configured oauth2 resource servers</span>
-    <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
-    <span class="doccomment">/// Display a selected oauth2 resource server</span>
-    <span class="ident">Get</span>(<span class="ident">Named</span>),
-    <span class="comment">// #[clap(name = &quot;set&quot;)]</span>
-    <span class="comment">// /// Set options for a selected oauth2 resource server</span>
-    <span class="comment">// Set(),</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
-    <span class="doccomment">/// Create a new oauth2 resource server</span>
-    <span class="ident">CreateBasic</span>(<span class="ident">Oauth2BasicCreateOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update_scope_map&quot;</span>, <span class="ident">visible_aliases</span><span class="op">=</span><span class="kw-2">&amp;</span>[<span class="string">&quot;create_scope_map&quot;</span>]</span>)]
-    <span class="doccomment">/// Update or add a new mapping from a group to scopes that it provides to members</span>
-    <span class="ident">UpdateScopeMap</span>(<span class="ident">Oauth2CreateScopeMapOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_scope_map&quot;</span>)]</span>
-    <span class="doccomment">/// Remove a mapping from groups to scopes</span>
-    <span class="ident">DeleteScopeMap</span>(<span class="ident">Oauth2DeleteScopeMapOpt</span>),
-
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update_sup_scope_map&quot;</span>, <span class="ident">visible_aliases</span><span class="op">=</span><span class="kw-2">&amp;</span>[<span class="string">&quot;create_sup_scope_map&quot;</span>]</span>)]
-    <span class="doccomment">/// Update or add a new mapping from a group to scopes that it provides to members</span>
-    <span class="ident">UpdateSupScopeMap</span>(<span class="ident">Oauth2CreateScopeMapOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_sup_scope_map&quot;</span>)]</span>
-    <span class="doccomment">/// Remove a mapping from groups to scopes</span>
-    <span class="ident">DeleteSupScopeMap</span>(<span class="ident">Oauth2DeleteScopeMapOpt</span>),
-
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_secrets&quot;</span>)]</span>
-    <span class="doccomment">/// Reset the secrets associated to this resource server</span>
-    <span class="ident">ResetSecrets</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show_basic_secret&quot;</span>)]</span>
-    <span class="doccomment">/// Show the associated basic secret for this resource server</span>
-    <span class="ident">ShowBasicSecret</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
-    <span class="doccomment">/// Delete a oauth2 resource server</span>
-    <span class="ident">Delete</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Set a new displayname for a resource server</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_displayname&quot;</span>)]</span>
-    <span class="ident">SetDisplayname</span>(<span class="ident">Oauth2SetDisplayname</span>),
-    <span class="doccomment">/// Set a new name for this resource server. You may need to update</span>
-    <span class="doccomment">/// your integrated applications after this so that they continue to</span>
-    <span class="doccomment">/// function correctly.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_name&quot;</span>)]</span>
-    <span class="ident">SetName</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">nopt</span>: <span class="ident">Named</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;newname&quot;</span>)]</span>
-        <span class="ident">name</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// Manage ssh public key&#39;s associated to this person
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;ssh&quot;</span>)]
+    </span>Ssh {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountSsh,
     },
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;enable_pkce&quot;</span>)]</span>
-    <span class="doccomment">/// Enable PKCE on this oauth2 resource server. This defaults to being enabled.</span>
-    <span class="ident">EnablePkce</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Disable PKCE on this oauth2 resource server to work around insecure clients that</span>
-    <span class="doccomment">/// may not support it. You should request the client to enable PKCE!</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_insecure_client_disable_pkce&quot;</span>)]</span>
-    <span class="ident">DisablePkce</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_enable_legacy_crypto&quot;</span>)]</span>
-    <span class="doccomment">/// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.</span>
-    <span class="doccomment">/// You only need to enable this for openid clients that do not support modern crytopgraphic</span>
-    <span class="doccomment">/// operations.</span>
-    <span class="ident">EnableLegacyCrypto</span>(<span class="ident">Named</span>),
-    <span class="doccomment">/// Disable legacy signing crypto on this oauth2 resource server. This is the default.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;disable_legacy_crypto&quot;</span>)]</span>
-    <span class="ident">DisableLegacyCrypto</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;prefer_short_username&quot;</span>)]</span>
-    <span class="doccomment">/// Use the &#39;name&#39; attribute instead of &#39;spn&#39; for the preferred_username</span>
-    <span class="ident">PreferShortUsername</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;prefer_spn_username&quot;</span>)]</span>
-    <span class="doccomment">/// Use the &#39;spn&#39; attribute instead of &#39;name&#39; for the preferred_username</span>
-    <span class="ident">PreferSPNUsername</span>(<span class="ident">Named</span>),
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Args</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OptSetDomainDisplayName</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;new_display_Name&quot;</span>)]</span>
-    <span class="ident">new_display_name</span>: <span class="ident">String</span>,
-}
-
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PwBadlistOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>[<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>]</span>]
-    <span class="doccomment">/// Show information about this system&#39;s password badlist</span>
-    <span class="ident">Show</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>[<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;upload&quot;</span>]</span>]
-    <span class="doccomment">/// Upload an extra badlist, appending to the currently configured one.</span>
-    <span class="doccomment">/// This badlist will be preprocessed to remove items that are already</span>
-    <span class="doccomment">/// caught by &quot;zxcvbn&quot; at the configured level.</span>
-    <span class="ident">Upload</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
-        <span class="ident">paths</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// List all service accounts
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;list&quot;</span>)]
+    </span>List(CommonOpt),
+    <span class="doccomment">/// View a specific service account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;get&quot;</span>)]
+    </span>Get(AccountNamedOpt),
+    <span class="doccomment">/// Create a new service account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;create&quot;</span>)]
+    </span>Create(AccountCreateOpt),
+    <span class="doccomment">/// Update a specific service account&#39;s attributes
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;update&quot;</span>)]
+    </span>Update(ServiceAccountUpdateOpt),
+    <span class="doccomment">/// Delete a service account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;delete&quot;</span>)]
+    </span>Delete(AccountNamedOpt),
+    <span class="doccomment">/// Manage a service account validity, such as expiry time (account lock/unlock)
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;validity&quot;</span>)]
+    </span>Validity {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: AccountValidity,
     },
-    <span class="attribute">#[<span class="ident">clap</span>[<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove&quot;</span>, <span class="ident">hide</span> <span class="op">=</span> <span class="bool-val">true</span>]</span>]
-    <span class="doccomment">/// Remove the content of these lists if present in the configured</span>
-    <span class="doccomment">/// badlist.</span>
-    <span class="ident">Remove</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
-        <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
-        <span class="ident">paths</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Convert a service account into a person. This is used during the alpha.9
+    /// to alpha.10 migration to &quot;fix up&quot; accounts that were not previously marked
+    /// as persons.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;into-person&quot;</span>)]
+    </span>IntoPerson(AccountNamedOpt),
+}
+
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>RecycleOpt {
+    <span class="attribute">#[clap(name = <span class="string">&quot;list&quot;</span>)]
+    </span><span class="doccomment">/// List objects that are in the recycle bin
+    </span>List(CommonOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;get&quot;</span>)]
+    </span><span class="doccomment">/// Display an object from the recycle bin
+    </span>Get(Named),
+    <span class="attribute">#[clap(name = <span class="string">&quot;revive&quot;</span>)]
+    </span><span class="doccomment">/// Revive a recycled object into a live (accessible) state - this is the opposite of &quot;delete&quot;
+    </span>Revive(Named),
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>LoginOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(short, long)]
+    </span>webauthn: bool,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>LogoutOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(short, long, hide = <span class="bool-val">true</span>)]
+    </span><span class="doccomment">/// Do not send the logout to the server - only remove the session token locally
+    </span>local_only: bool,
+}
+
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>SessionOpt {
+    <span class="attribute">#[clap(name = <span class="string">&quot;list&quot;</span>)]
+    </span><span class="doccomment">/// List current active sessions
+    </span>List(DebugOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;cleanup&quot;</span>)]
+    </span><span class="doccomment">/// Remove sessions that have expired or are invalid.
+    </span>Cleanup(DebugOpt),
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>FilterOpt {
+    <span class="attribute">#[clap()]
+    </span>filter: String,
+    <span class="attribute">#[clap(flatten)]
+    </span>commonopts: CommonOpt,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>CreateOpt {
+    <span class="attribute">#[clap(parse(from_os_str))]
+    </span>file: PathBuf,
+    <span class="attribute">#[clap(flatten)]
+    </span>commonopts: CommonOpt,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>ModifyOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>commonopts: CommonOpt,
+    <span class="attribute">#[clap()]
+    </span>filter: String,
+    <span class="attribute">#[clap(parse(from_os_str))]
+    </span>file: PathBuf,
+}
+
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>RawOpt {
+    <span class="attribute">#[clap(name = <span class="string">&quot;search&quot;</span>)]
+    </span>Search(FilterOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;create&quot;</span>)]
+    </span>Create(CreateOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;modify&quot;</span>)]
+    </span>Modify(ModifyOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;delete&quot;</span>)]
+    </span>Delete(FilterOpt),
+}
+
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>SelfOpt {
+    <span class="doccomment">/// Show the current authenticated user&#39;s identity
+    </span>Whoami(CommonOpt),
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>Oauth2BasicCreateOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>nopt: Named,
+    <span class="attribute">#[clap(name = <span class="string">&quot;displayname&quot;</span>)]
+    </span>displayname: String,
+    <span class="attribute">#[clap(name = <span class="string">&quot;origin&quot;</span>)]
+    </span>origin: String,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>Oauth2SetDisplayname {
+    <span class="attribute">#[clap(flatten)]
+    </span>nopt: Named,
+    <span class="attribute">#[clap(name = <span class="string">&quot;displayname&quot;</span>)]
+    </span>displayname: String,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>Oauth2SetImplicitScopes {
+    <span class="attribute">#[clap(flatten)]
+    </span>nopt: Named,
+    <span class="attribute">#[clap(name = <span class="string">&quot;scopes&quot;</span>)]
+    </span>scopes: Vec&lt;String&gt;,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>Oauth2CreateScopeMapOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>nopt: Named,
+    <span class="attribute">#[clap(name = <span class="string">&quot;group&quot;</span>)]
+    </span>group: String,
+    <span class="attribute">#[clap(name = <span class="string">&quot;scopes&quot;</span>)]
+    </span>scopes: Vec&lt;String&gt;,
+}
+
+<span class="attribute">#[derive(Debug, Args)]
+</span><span class="kw">pub struct </span>Oauth2DeleteScopeMapOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span>nopt: Named,
+    <span class="attribute">#[clap(name = <span class="string">&quot;group&quot;</span>)]
+    </span>group: String,
+}
+
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>Oauth2Opt {
+    <span class="attribute">#[clap(name = <span class="string">&quot;list&quot;</span>)]
+    </span><span class="doccomment">/// List all configured oauth2 resource servers
+    </span>List(CommonOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;get&quot;</span>)]
+    </span><span class="doccomment">/// Display a selected oauth2 resource server
+    </span>Get(Named),
+    <span class="comment">// #[clap(name = &quot;set&quot;)]
+    // /// Set options for a selected oauth2 resource server
+    // Set(),
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;create&quot;</span>)]
+    </span><span class="doccomment">/// Create a new oauth2 resource server
+    </span>CreateBasic(Oauth2BasicCreateOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;update_scope_map&quot;</span>, visible_aliases=<span class="kw-2">&amp;</span>[<span class="string">&quot;create_scope_map&quot;</span>]</span>)]
+    <span class="doccomment">/// Update or add a new mapping from a group to scopes that it provides to members
+    </span>UpdateScopeMap(Oauth2CreateScopeMapOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;delete_scope_map&quot;</span>)]
+    </span><span class="doccomment">/// Remove a mapping from groups to scopes
+    </span>DeleteScopeMap(Oauth2DeleteScopeMapOpt),
+
+    <span class="attribute">#[clap(name = <span class="string">&quot;update_sup_scope_map&quot;</span>, visible_aliases=<span class="kw-2">&amp;</span>[<span class="string">&quot;create_sup_scope_map&quot;</span>]</span>)]
+    <span class="doccomment">/// Update or add a new mapping from a group to scopes that it provides to members
+    </span>UpdateSupScopeMap(Oauth2CreateScopeMapOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;delete_sup_scope_map&quot;</span>)]
+    </span><span class="doccomment">/// Remove a mapping from groups to scopes
+    </span>DeleteSupScopeMap(Oauth2DeleteScopeMapOpt),
+
+    <span class="attribute">#[clap(name = <span class="string">&quot;reset_secrets&quot;</span>)]
+    </span><span class="doccomment">/// Reset the secrets associated to this resource server
+    </span>ResetSecrets(Named),
+    <span class="attribute">#[clap(name = <span class="string">&quot;show_basic_secret&quot;</span>)]
+    </span><span class="doccomment">/// Show the associated basic secret for this resource server
+    </span>ShowBasicSecret(Named),
+    <span class="attribute">#[clap(name = <span class="string">&quot;delete&quot;</span>)]
+    </span><span class="doccomment">/// Delete a oauth2 resource server
+    </span>Delete(Named),
+    <span class="doccomment">/// Set a new displayname for a resource server
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;set_displayname&quot;</span>)]
+    </span>SetDisplayname(Oauth2SetDisplayname),
+    <span class="doccomment">/// Set a new name for this resource server. You may need to update
+    /// your integrated applications after this so that they continue to
+    /// function correctly.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;set_name&quot;</span>)]
+    </span>SetName {
+        <span class="attribute">#[clap(flatten)]
+        </span>nopt: Named,
+        <span class="attribute">#[clap(name = <span class="string">&quot;newname&quot;</span>)]
+        </span>name: String,
+    },
+    <span class="attribute">#[clap(name = <span class="string">&quot;enable_pkce&quot;</span>)]
+    </span><span class="doccomment">/// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
+    </span>EnablePkce(Named),
+    <span class="doccomment">/// Disable PKCE on this oauth2 resource server to work around insecure clients that
+    /// may not support it. You should request the client to enable PKCE!
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;warning_insecure_client_disable_pkce&quot;</span>)]
+    </span>DisablePkce(Named),
+    <span class="attribute">#[clap(name = <span class="string">&quot;warning_enable_legacy_crypto&quot;</span>)]
+    </span><span class="doccomment">/// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.
+    /// You only need to enable this for openid clients that do not support modern crytopgraphic
+    /// operations.
+    </span>EnableLegacyCrypto(Named),
+    <span class="doccomment">/// Disable legacy signing crypto on this oauth2 resource server. This is the default.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;disable_legacy_crypto&quot;</span>)]
+    </span>DisableLegacyCrypto(Named),
+    <span class="attribute">#[clap(name = <span class="string">&quot;prefer_short_username&quot;</span>)]
+    </span><span class="doccomment">/// Use the &#39;name&#39; attribute instead of &#39;spn&#39; for the preferred_username
+    </span>PreferShortUsername(Named),
+    <span class="attribute">#[clap(name = <span class="string">&quot;prefer_spn_username&quot;</span>)]
+    </span><span class="doccomment">/// Use the &#39;spn&#39; attribute instead of &#39;name&#39; for the preferred_username
+    </span>PreferSPNUsername(Named),
+}
+
+<span class="attribute">#[derive(Args, Debug)]
+</span><span class="kw">pub struct </span>OptSetDomainDisplayName {
+    <span class="attribute">#[clap(flatten)]
+    </span>copt: CommonOpt,
+    <span class="attribute">#[clap(name = <span class="string">&quot;new_display_Name&quot;</span>)]
+    </span>new_display_name: String,
+}
+
+
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>PwBadlistOpt {
+    <span class="attribute">#[clap[name = <span class="string">&quot;show&quot;</span>]</span>]
+    <span class="doccomment">/// Show information about this system&#39;s password badlist
+    </span>Show(CommonOpt),
+    <span class="attribute">#[clap[name = <span class="string">&quot;upload&quot;</span>]</span>]
+    <span class="doccomment">/// Upload an extra badlist, appending to the currently configured one.
+    /// This badlist will be preprocessed to remove items that are already
+    /// caught by &quot;zxcvbn&quot; at the configured level.
+    </span>Upload {
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+        <span class="attribute">#[clap(parse(from_os_str))]
+        </span>paths: Vec&lt;PathBuf&gt;,
+    },
+    <span class="attribute">#[clap[name = <span class="string">&quot;remove&quot;</span>, hide = <span class="bool-val">true</span>]</span>]
+    <span class="doccomment">/// Remove the content of these lists if present in the configured
+    /// badlist.
+    </span>Remove {
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+        <span class="attribute">#[clap(parse(from_os_str))]
+        </span>paths: Vec&lt;PathBuf&gt;,
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DomainOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>[<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_domain_display_name&quot;</span>]</span>]
-    <span class="doccomment">/// Set the domain display name</span>
-    <span class="ident">SetDomainDisplayName</span>(<span class="ident">OptSetDomainDisplayName</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
-    <span class="doccomment">/// Show information about this system&#39;s domain</span>
-    <span class="ident">Show</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_token_key&quot;</span>)]</span>
-    <span class="doccomment">/// Reset this domain token signing key. This will cause all user sessions to be</span>
-    <span class="doccomment">/// invalidated (logged out).</span>
-    <span class="ident">ResetTokenKey</span>(<span class="ident">CommonOpt</span>),
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>DomainOpt {
+    <span class="attribute">#[clap[name = <span class="string">&quot;set_domain_display_name&quot;</span>]</span>]
+    <span class="doccomment">/// Set the domain display name
+    </span>SetDomainDisplayName(OptSetDomainDisplayName),
+    <span class="attribute">#[clap(name = <span class="string">&quot;show&quot;</span>)]
+    </span><span class="doccomment">/// Show information about this system&#39;s domain
+    </span>Show(CommonOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;reset_token_key&quot;</span>)]
+    </span><span class="doccomment">/// Reset this domain token signing key. This will cause all user sessions to be
+    /// invalidated (logged out).
+    </span>ResetTokenKey(CommonOpt),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SystemOpt</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;pw-badlist&quot;</span>)]</span>
-    <span class="doccomment">/// Configure and manage the password badlist entry</span>
-    <span class="ident">PwBadlist</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">PwBadlistOpt</span>,
+<span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>SystemOpt {
+    <span class="attribute">#[clap(name = <span class="string">&quot;pw-badlist&quot;</span>)]
+    </span><span class="doccomment">/// Configure and manage the password badlist entry
+    </span>PwBadlist {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: PwBadlistOpt,
     },
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2&quot;</span>)]</span>
-    <span class="doccomment">/// Configure and display oauth2/oidc resource server configuration</span>
-    <span class="ident">Oauth2</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">Oauth2Opt</span>,
+    <span class="attribute">#[clap(name = <span class="string">&quot;oauth2&quot;</span>)]
+    </span><span class="doccomment">/// Configure and display oauth2/oidc resource server configuration
+    </span>Oauth2 {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: Oauth2Opt,
     },
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain&quot;</span>)]</span>
-    <span class="doccomment">/// Configure and display domain configuration</span>
-    <span class="ident">Domain</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">DomainOpt</span>,
+    <span class="attribute">#[clap(name = <span class="string">&quot;domain&quot;</span>)]
+    </span><span class="doccomment">/// Configure and display domain configuration
+    </span>Domain {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: DomainOpt,
     },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
-<span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Kanidm Client Utility&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KanidmClientOpt</span> {
-    <span class="doccomment">/// Login to an account to use with future cli operations</span>
-    <span class="ident">Login</span>(<span class="ident">LoginOpt</span>),
-    <span class="doccomment">/// Logout of an active cli session</span>
-    <span class="ident">Logout</span>(<span class="ident">LogoutOpt</span>),
-    <span class="doccomment">/// Manage active cli sessions</span>
-    <span class="ident">Session</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">SessionOpt</span>,
+<span class="attribute">#[derive(Debug, Subcommand)]
+#[clap(about = <span class="string">&quot;Kanidm Client Utility&quot;</span>)]
+</span><span class="kw">pub enum </span>KanidmClientOpt {
+    <span class="doccomment">/// Login to an account to use with future cli operations
+    </span>Login(LoginOpt),
+    <span class="doccomment">/// Logout of an active cli session
+    </span>Logout(LogoutOpt),
+    <span class="doccomment">/// Manage active cli sessions
+    </span>Session {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: SessionOpt,
     },
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;self&quot;</span>)]</span>
-    <span class="doccomment">/// Actions for the current authenticated account</span>
-    <span class="ident">CSelf</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">SelfOpt</span>,
+    <span class="attribute">#[clap(name = <span class="string">&quot;self&quot;</span>)]
+    </span><span class="doccomment">/// Actions for the current authenticated account
+    </span>CSelf {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: SelfOpt,
     },
-    <span class="doccomment">/// Actions to manage and view person (user) accounts</span>
-    <span class="ident">Person</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">PersonOpt</span>,
+    <span class="doccomment">/// Actions to manage and view person (user) accounts
+    </span>Person {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: PersonOpt,
     },
-    <span class="doccomment">/// Actions to manage groups</span>
-    <span class="ident">Group</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">GroupOpt</span>,
+    <span class="doccomment">/// Actions to manage groups
+    </span>Group {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: GroupOpt,
     },
-    <span class="doccomment">/// Actions to manage and view service accounts</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;service-account&quot;</span>)]</span>
-    <span class="ident">ServiceAccount</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">ServiceAccountOpt</span>,
+    <span class="doccomment">/// Actions to manage and view service accounts
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;service-account&quot;</span>)]
+    </span>ServiceAccount {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: ServiceAccountOpt,
     },
-    <span class="doccomment">/// System configuration operations</span>
-    <span class="ident">System</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">SystemOpt</span>,
+    <span class="doccomment">/// System configuration operations
+    </span>System {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: SystemOpt,
     },
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;recycle-bin&quot;</span>)]</span>
-    <span class="doccomment">/// Recycle Bin operations</span>
-    <span class="ident">Recycle</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">RecycleOpt</span>,
+    <span class="attribute">#[clap(name = <span class="string">&quot;recycle-bin&quot;</span>)]
+    </span><span class="doccomment">/// Recycle Bin operations
+    </span>Recycle {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: RecycleOpt,
     },
-    <span class="doccomment">/// Unsafe - low level, raw database queries and operations.</span>
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">hide</span> <span class="op">=</span> <span class="bool-val">true</span>)]</span>
-    <span class="ident">Raw</span> {
-        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-        <span class="ident">commands</span>: <span class="ident">RawOpt</span>,
+    <span class="doccomment">/// Unsafe - low level, raw database queries and operations.
+    </span><span class="attribute">#[clap(hide = <span class="bool-val">true</span>)]
+    </span>Raw {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: RawOpt,
     },
-    <span class="doccomment">/// Print the program version and exit</span>
-    <span class="ident">Version</span> {},
+    <span class="doccomment">/// Print the program version and exit
+    </span>Version {},
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">clap::Parser</span>)]</span>
-<span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Kanidm Client Utility&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KanidmClientParser</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">commands</span>: <span class="ident">KanidmClientOpt</span>,
+<span class="attribute">#[derive(Debug, clap::Parser)]
+#[clap(about = <span class="string">&quot;Kanidm Client Utility&quot;</span>)]
+</span><span class="kw">pub struct </span>KanidmClientParser {
+    <span class="attribute">#[clap(subcommand)]
+    </span><span class="kw">pub </span>commands: KanidmClientOpt,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
