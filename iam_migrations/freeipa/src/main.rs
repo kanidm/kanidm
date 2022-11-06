@@ -88,14 +88,16 @@ async fn driver_main(opt: Opt) {
     //  * can we connect to kanidm?
 
     // - get the current sync cookie from kanidm.
-    let _scim_sync_status = match rsclient.scim_v1_sync_status().await {
-        Ok(s) => {
-            debug!(?s);
-        }
+    let scim_sync_status = match rsclient.scim_v1_sync_status().await {
+        Ok(s) => 
+            s,
         Err(e) => {
             error!(?e, "Failed to access scim sync status");
+            return;
         }
     };
+
+    debug!(state=?scim_sync_status);
 
     // - sync repl from ipa.
 
