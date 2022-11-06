@@ -93,32 +93,36 @@ pub async fn sync_account_token_delete(req: tide::Request<AppState>) -> tide::Re
     to_tide_response(res, hvalue)
 }
 
-async fn scim_sync_post(_req: tide::Request<AppState>) -> tide::Result {
-    // let (eventid, hvalue) = req.new_eventid();
-    /*
-    let ApiTokenGenerate {
-        label,
-        expiry,
-        read_write,
-    } = req.body_json().await?;
-    */
+async fn scim_sync_post(mut req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
 
-    // We need to deserialise the body.
+    // Given the token, and a sync update, apply the changes if any
+    let bearer = req.get_auth_bearer();
 
-    Ok(tide::Response::new(500))
+    // Change this type later.
+    let changes: () = req.body_json().await?;
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_scim_sync_apply(bearer, changes, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
-async fn scim_sync_get(_req: tide::Request<AppState>) -> tide::Result {
-    // let (eventid, hvalue) = req.new_eventid();
+async fn scim_sync_get(req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
 
-    // let bearer = req.get_auth_bearer();
+    // Given the token, what is it's connected sync state?
+    let bearer = req.get_auth_bearer();
+    trace!(?bearer);
 
-    // Given the token
-    // What is the connected sync session
-    // Issue it's current state (version) cookie.
-
-    // todo!();
-    Ok(tide::Response::new(500))
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_scim_sync_status(bearer, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
 async fn scim_sink_get(req: tide::Request<AppState>) -> tide::Result {

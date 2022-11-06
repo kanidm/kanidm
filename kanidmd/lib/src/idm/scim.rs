@@ -225,14 +225,37 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-pub struct ScimSyncUpdateEvent {}
+pub struct ScimSyncUpdateEvent {
+    pub ident: Identity,
+}
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
-    pub fn scim_sync_update(
+    pub fn scim_sync_apply(
         &mut self,
-        _sse: &ScimSyncUpdateEvent,
+        sse: &ScimSyncUpdateEvent,
         _ct: Duration,
     ) -> Result<(), OperationError> {
+        let _sync_uuid = match &sse.ident.origin {
+            IdentType::User(_) | IdentType::Internal => {
+                warn!("Ident type is not synchronise");
+                return Err(OperationError::AccessDenied);
+            }
+            IdentType::Synch(u) => {
+                // Ok!
+                u
+            }
+        };
+
+        match sse.ident.access_scope() {
+            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::ReadWrite => {
+                warn!("Ident access scope is not synchronise");
+                return Err(OperationError::AccessDenied);
+            }
+            AccessScope::Synchronise => {
+                // As you were
+            }
+        };
+
         // Only update entries related to this uuid
         // Make a sync_authority uuid to relate back to on creates.
 

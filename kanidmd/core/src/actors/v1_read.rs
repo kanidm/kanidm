@@ -37,7 +37,7 @@ use kanidmd_lib::{
 // ===========================================================
 
 pub struct QueryServerReadV1 {
-    idms: Arc<IdmServer>,
+    pub(crate) idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
 }
 

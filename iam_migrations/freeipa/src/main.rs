@@ -1,5 +1,4 @@
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
@@ -82,14 +81,14 @@ async fn driver_main(opt: Opt) {
         }
     };
 
-    rsclient.set_token(sync_config.sync_token.clone());
+    rsclient.set_token(sync_config.sync_token.clone()).await;
 
     // Preflight check.
     //  * can we connect to ipa?
     //  * can we connect to kanidm?
 
     // - get the current sync cookie from kanidm.
-    let scim_sync_status = match rsclient.scim_v1_sync_status().await {
+    let _scim_sync_status = match rsclient.scim_v1_sync_status().await {
         Ok(s) => {
             debug!(?s);
         }
