@@ -11,8 +11,8 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 use std::ffi::CString;
-use std::os::unix::fs::symlink;
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::fs::symlink;
 use std::path::Path;
 use std::time::Duration;
 use std::{fs, io};
@@ -81,7 +81,11 @@ fn chown(path: &Path, gid: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str, use_etc_skel: bool) -> Result<(), String> {
+fn create_home_directory(
+    info: &HomeDirectoryInfo,
+    home_prefix: &str,
+    use_etc_skel: bool,
+) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
     let name = info
         .name

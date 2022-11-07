@@ -211,3 +211,21 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
         Ok(response)
     }
 }
+
+const KANIDM_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+#[derive(Default)]
+pub struct VersionHeaderMiddleware;
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for VersionHeaderMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("X-KANIDM-VERSION", KANIDM_VERSION);
+        Ok(response)
+    }
+}
