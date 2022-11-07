@@ -13,6 +13,9 @@
 
 mod config;
 
+#[cfg(test)]
+mod tests;
+
 use crate::config::Config;
 use clap::Parser;
 use std::fs::metadata;
@@ -27,9 +30,12 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use kanidm_client::KanidmClientBuilder;
+use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
 use kanidmd_lib::utils::file_permissions_readonly;
 
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+
+use ldap3_client::{proto, LdapClientBuilder, LdapSyncRepl};
 
 include!("./opt.rs");
 
@@ -85,12 +91,39 @@ async fn driver_main(opt: Opt) {
 
     // Preflight check.
     //  * can we connect to ipa?
-    //  * can we connect to kanidm?
 
+    let mut ipa_client = match LdapClientBuilder::new(&sync_config.ipa_uri)
+        .add_tls_ca(&sync_config.ipa_ca)
+        .build()
+        .await
+    {
+        Ok(lc) => lc,
+        Err(e) => {
+            error!(?e, "Failed to connect to freeipa");
+            return;
+        }
+    };
+
+    match ipa_client
+        .bind(
+            sync_config.ipa_sync_dn.clone(),
+            sync_config.ipa_sync_pw.clone(),
+        )
+        .await
+    {
+        Ok(()) => {
+            debug!(ipa_sync_dn = ?sync_config.ipa_sync_dn, ipa_uri = %sync_config.ipa_uri);
+        }
+        Err(e) => {
+            error!(?e, "Failed to bind (authenticate) to freeipa");
+            return;
+        }
+    };
+
+    //  * can we connect to kanidm?
     // - get the current sync cookie from kanidm.
     let scim_sync_status = match rsclient.scim_v1_sync_status().await {
-        Ok(s) => 
-            s,
+        Ok(s) => s,
         Err(e) => {
             error!(?e, "Failed to access scim sync status");
             return;
@@ -99,15 +132,57 @@ async fn driver_main(opt: Opt) {
 
     debug!(state=?scim_sync_status);
 
-    // - sync repl from ipa.
+    // === Everything is connected! ===
+
+    // Based on the scim_sync_status, perform our sync repl
+
+    let mode = proto::SyncRequestMode::RefreshOnly;
+
+    let cookie = match scim_sync_status {
+        ScimSyncState::Initial => None,
+        ScimSyncState::Active { cookie } => Some(cookie.0),
+    };
+
+    debug!(ipa_sync_base_dn = ?sync_config.ipa_sync_base_dn, ?cookie, ?mode);
+    let sync_result = match ipa_client
+        .syncrepl(sync_config.ipa_sync_base_dn, cookie, mode)
+        .await
+    {
+        Ok(results) => results,
+        Err(e) => {
+            error!(?e, "Failed to perform syncrepl from ipa");
+            return;
+        }
+    };
+
+    if opt.proto_dump {
+        let stdout = std::io::stdout();
+        if let Err(e) = serde_json::to_writer_pretty(stdout, &sync_result) {
+            error!(?e, "Failed to serialise ldap sync response");
+        }
+    }
 
     // pre-process the entries.
+    //  - > fn so we can test.
+    let scim_sync_request = match process_ipa_sync_result(sync_result).await {
+        Ok(ssr) => ssr,
+        Err(()) => return,
+    };
 
-    // dump
-    // OR
-    // send sync req.
-
+    if opt.proto_dump {
+        let stdout = std::io::stdout();
+        // write it out.
+        if let Err(e) = serde_json::to_writer_pretty(stdout, &scim_sync_request) {
+            error!(?e, "Failed to serialise scim sync request");
+        };
+    } else {
+        todo!();
+    }
     // done!
+}
+
+async fn process_ipa_sync_result(_sync_result: LdapSyncRepl) -> Result<ScimSyncRequest, ()> {
+    Err(())
 }
 
 fn config_security_checks(cfg_path: &Path) -> bool {
@@ -158,7 +233,7 @@ fn main() {
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 
     let filter_layer = if opt.debug {
-        match EnvFilter::try_new("kanidm_client=debug,kanidm_ipa_sync=debug") {
+        match EnvFilter::try_new("kanidm_client=debug,kanidm_ipa_sync=debug,ldap3_client=debug") {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("ERROR! Unable to start tracing {:?}", e);
@@ -168,7 +243,7 @@ fn main() {
     } else {
         match EnvFilter::try_from_default_env() {
             Ok(f) => f,
-            Err(_) => EnvFilter::new("kanidm_client=warn,kanidm_ipa_sync=info"),
+            Err(_) => EnvFilter::new("kanidm_client=warn,kanidm_ipa_sync=info,ldap3_client=warn"),
         }
     };
 
@@ -209,13 +284,4 @@ fn main() {
     rt.block_on(async move { driver_main(opt).await });
 
     info!("Success!");
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn it_works() {
-        assert!(true)
-    }
 }
