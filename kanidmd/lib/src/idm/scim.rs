@@ -306,7 +306,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Some(b) => ScimSyncState::Active {
                     cookie: Base64UrlSafeData(b.to_vec()),
                 },
-                None => ScimSyncState::Initial,
+                None => ScimSyncState::Refresh,
             },
         )
     }
@@ -382,7 +382,7 @@ mod tests {
                 .expect("Failed to get current sync state");
             trace!(?sync_state);
 
-            assert!(matches!(sync_state, ScimSyncState::Initial));
+            assert!(matches!(sync_state, ScimSyncState::Refresh));
 
             drop(idms_prox_read);
 

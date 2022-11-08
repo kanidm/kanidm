@@ -23,6 +23,7 @@ use std::fs::File;
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::thread;
 use tokio::runtime;
 use tracing::{debug, error, info, warn};
@@ -30,12 +31,17 @@ use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use kanidm_client::KanidmClientBuilder;
-use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
+use kanidm_proto::scim_v1::{
+    ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest, ScimSyncState,
+};
 use kanidmd_lib::utils::file_permissions_readonly;
 
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-use ldap3_client::{proto, LdapClientBuilder, LdapSyncRepl};
+use ldap3_client::{
+    proto, proto::LdapFilter, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
+    LdapSyncStateValue,
+};
 
 include!("./opt.rs");
 
@@ -138,14 +144,45 @@ async fn driver_main(opt: Opt) {
 
     let mode = proto::SyncRequestMode::RefreshOnly;
 
-    let cookie = match scim_sync_status {
-        ScimSyncState::Initial => None,
-        ScimSyncState::Active { cookie } => Some(cookie.0),
+    let cookie = match &scim_sync_status {
+        ScimSyncState::Refresh => None,
+        ScimSyncState::Active { cookie } => Some(cookie.0.clone()),
     };
 
-    debug!(ipa_sync_base_dn = ?sync_config.ipa_sync_base_dn, ?cookie, ?mode);
+    let filter = LdapFilter::Or(vec![
+        // LdapFilter::Equality("objectclass".to_string(), "domain".to_string()),
+        LdapFilter::And(vec![
+            LdapFilter::Equality("objectclass".to_string(), "person".to_string()),
+            LdapFilter::Equality("objectclass".to_string(), "ipantuserattrs".to_string()),
+            LdapFilter::Equality("objectclass".to_string(), "posixaccount".to_string()),
+        ]),
+        LdapFilter::And(vec![
+            LdapFilter::Equality("objectclass".to_string(), "groupofnames".to_string()),
+            LdapFilter::Equality("objectclass".to_string(), "ipausergroup".to_string()),
+            LdapFilter::Not(Box::new(LdapFilter::Equality(
+                "objectclass".to_string(),
+                "mepmanagedentry".to_string(),
+            ))),
+            // Need to exclude the admins group as it gid conflicts to admin.
+            LdapFilter::Not(Box::new(LdapFilter::Equality(
+                "cn".to_string(),
+                "admins".to_string(),
+            ))),
+            // Kani internally has an all persons group.
+            LdapFilter::Not(Box::new(LdapFilter::Equality(
+                "cn".to_string(),
+                "ipausers".to_string(),
+            ))),
+        ]),
+        LdapFilter::And(vec![
+            LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
+            LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
+        ]),
+    ]);
+
+    debug!(ipa_sync_base_dn = ?sync_config.ipa_sync_base_dn, ?cookie, ?mode, ?filter);
     let sync_result = match ipa_client
-        .syncrepl(sync_config.ipa_sync_base_dn, cookie, mode)
+        .syncrepl(sync_config.ipa_sync_base_dn, filter, cookie, mode)
         .await
     {
         Ok(results) => results,
@@ -164,7 +201,7 @@ async fn driver_main(opt: Opt) {
 
     // pre-process the entries.
     //  - > fn so we can test.
-    let scim_sync_request = match process_ipa_sync_result(sync_result).await {
+    let scim_sync_request = match process_ipa_sync_result(scim_sync_status, sync_result).await {
         Ok(ssr) => ssr,
         Err(()) => return,
     };
@@ -181,8 +218,186 @@ async fn driver_main(opt: Opt) {
     // done!
 }
 
-async fn process_ipa_sync_result(_sync_result: LdapSyncRepl) -> Result<ScimSyncRequest, ()> {
-    Err(())
+async fn process_ipa_sync_result(
+    from_state: ScimSyncState,
+    sync_result: LdapSyncRepl,
+) -> Result<ScimSyncRequest, ()> {
+    match sync_result {
+        LdapSyncRepl::Success {
+            cookie,
+            refresh_deletes,
+            entries,
+            delete_uuids,
+            present_uuids,
+        } => {
+            if refresh_deletes {
+                error!("Unsure how to handle refreshDeletes=True");
+                return Err(());
+            }
+
+            if !present_uuids.is_empty() {
+                error!("Unsure how to handle presentUuids > 0");
+                return Err(());
+            }
+
+            let to_state = cookie
+                .map(|cookie| {
+                    ScimSyncState::Active { cookie }
+                })
+                .ok_or_else(|| {
+                    error!("Invalid state, ldap sync repl did not provide a valid state cookie in response.");
+                })?;
+
+            // Future - make this par-map
+            let entries = entries
+                .into_iter()
+                .filter_map(|e| match ipa_to_scim_entry(e) {
+                    Ok(Some(e)) => Some(Ok(e)),
+                    Ok(None) => None,
+                    Err(()) => Some(Err(())),
+                })
+                .collect::<Result<Vec<_>, _>>();
+
+            let entries = match entries {
+                Ok(e) => e,
+                Err(()) => {
+                    error!("Failed to process IPA entries to SCIM");
+                    return Err(());
+                }
+            };
+
+            Ok(ScimSyncRequest {
+                from_state,
+                to_state,
+                entries,
+                delete_uuids,
+            })
+        }
+        LdapSyncRepl::RefreshRequired => {
+            let to_state = ScimSyncState::Refresh;
+
+            Ok(ScimSyncRequest {
+                from_state,
+                to_state,
+                entries: Vec::new(),
+                delete_uuids: Vec::new(),
+            })
+        }
+    }
+}
+
+fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry) -> Result<Option<ScimEntry>, ()> {
+    debug!("{:#?}", sync_entry);
+    // Is this an entry we need to observe/look at?
+
+    // check the sync_entry state?
+    if sync_entry.state != LdapSyncStateValue::Add {
+        todo!();
+    }
+
+    let dn = sync_entry.entry.dn.clone();
+
+    let oc = sync_entry.entry.attrs.get("objectclass").ok_or_else(|| {
+        error!("Invalid entry - no object class {}", dn);
+    })?;
+
+    if oc.contains("person") {
+        let LdapSyncReplEntry {
+            entry_uuid,
+            state: _,
+            mut entry,
+        } = sync_entry;
+
+        let id = entry_uuid;
+
+        let user_name = entry.remove_ava_single("uid").ok_or_else(|| {
+            error!("Missing required attribute uid");
+        })?;
+
+        let display_name = entry.remove_ava_single("cn").ok_or_else(|| {
+            error!("Missing required attribute cn");
+        })?;
+
+        let gidnumber = entry
+            .remove_ava_single("gidnumber")
+            .map(|gid| {
+                u32::from_str(&gid).map_err(|_| {
+                    error!("Invalid gidnumber");
+                })
+            })
+            .transpose()?;
+
+        let homedirectory = entry.remove_ava_single("homedirectory");
+        let password_import = entry.remove_ava_single("ipanthash");
+        let login_shell = entry.remove_ava_single("loginshell");
+        let external_id = Some(entry.dn);
+
+        Ok(Some(
+            ScimSyncPerson {
+                id,
+                external_id,
+                user_name,
+                display_name,
+                gidnumber,
+                homedirectory,
+                password_import,
+                login_shell,
+            }
+            .into(),
+        ))
+    } else if oc.contains("groupofnames") {
+        let LdapSyncReplEntry {
+            entry_uuid,
+            state: _,
+            mut entry,
+        } = sync_entry;
+
+        let id = entry_uuid;
+
+        let name = entry.remove_ava_single("cn").ok_or_else(|| {
+            error!("Missing required attribute cn");
+        })?;
+
+        let description = entry.remove_ava_single("description");
+
+        let gidnumber = entry
+            .remove_ava_single("gidnumber")
+            .map(|gid| {
+                u32::from_str(&gid).map_err(|_| {
+                    error!("Invalid gidnumber");
+                })
+            })
+            .transpose()?;
+
+        let members: Vec<_> = entry
+            .remove_ava("member")
+            .map(|set| {
+                set.into_iter()
+                    .map(|external_id| ScimExternalMember { external_id })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let external_id = Some(entry.dn);
+
+        Ok(Some(
+            ScimSyncGroup {
+                id,
+                external_id,
+                name,
+                description,
+                gidnumber,
+                members,
+            }
+            .into(),
+        ))
+    } else if oc.contains("ipatokentotp") {
+        // Skip for now, we don't supporty multiple totp yet.
+        Ok(None)
+    } else {
+        debug!("Skipping entry {} with oc {:?}", dn, oc);
+        Ok(None)
+    }
 }
 
 fn config_security_checks(cfg_path: &Path) -> bool {
