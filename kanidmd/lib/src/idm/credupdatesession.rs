@@ -1372,7 +1372,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                 session.account.existing_credential_id_list(),
             )
             .map_err(|e| {
-                error!(?e, "Unable to start passkey registration");
+                error!(eclass=?e, emsg=%e, "Unable to start passkey registration");
                 OperationError::Webauthn
             })?;
 
@@ -1401,7 +1401,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     .webauthn
                     .finish_passkey_registration(reg, pk_reg)
                     .map_err(|e| {
-                        error!(?e, "Unable to start passkey registration");
+                        error!(eclass=?e, emsg=%e, "Unable to start passkey registration");
                         OperationError::Webauthn
                     })?;
                 let pk_id = Uuid::new_v4();
