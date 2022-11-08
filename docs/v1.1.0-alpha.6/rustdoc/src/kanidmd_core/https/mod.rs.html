@@ -865,6 +865,12 @@
 <span id="865">865</span>
 <span id="866">866</span>
 <span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
 </pre><pre class="rust"><code><span class="kw">mod </span>manifest;
 <span class="kw">pub mod </span>middleware;
 <span class="kw">mod </span>oauth2;
@@ -1241,19 +1247,21 @@ Disallow: /
         js_files: js_files.to_owned(),
     });
 
-    <span class="comment">// Add middleware?
+    <span class="comment">// Add the logging subsystem.
     </span>tserver.with(sketching::middleware::TreeMiddleware::new(
         trust_x_forward_for,
     ));
 
-    <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.
+    <span class="comment">// Add cookie handling.
     </span>tserver.with(
         <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.
         </span>tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
             .with_cookie_name(<span class="string">&quot;kanidm-session&quot;</span>)
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
-    tserver.with(StrictResponseMiddleware::default());
+
+    <span class="comment">// Strict responses.
+    </span>tserver.with(StrictResponseMiddleware::default());
 
     <span class="comment">// Add routes
     // ==== static content routes that have a longer cache policy.
@@ -1334,6 +1342,8 @@ Disallow: /
 
     <span class="comment">// ==== Some routes can be cached - these are here:
     </span><span class="kw">let </span><span class="kw-2">mut </span>tserver_cacheable = tserver.at(<span class="string">&quot;&quot;</span>);
+    <span class="comment">// Add our version injector, we only add this to apis.
+    </span>tserver_cacheable.with(VersionHeaderMiddleware::default());
     tserver_cacheable.with(CacheableMiddleware::default());
 
     <span class="comment">// We allow clients to cache the unix token for accounts and groups.
@@ -1353,6 +1363,8 @@ Disallow: /
 
     <span class="comment">// ==== These routes can not be cached
     </span><span class="kw">let </span><span class="kw-2">mut </span>appserver = tserver.at(<span class="string">&quot;&quot;</span>);
+    <span class="comment">// Add our version injector, we only add this to apis.
+    </span>appserver.with(VersionHeaderMiddleware::default());
     appserver.with(NoCacheMiddleware::default());
 
     <span class="comment">// let mut well_known = appserver.at(&quot;/.well-known&quot;);

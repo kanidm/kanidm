@@ -211,6 +211,24 @@
 <span id="211">211</span>
 <span id="212">212</span>
 <span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
 </pre><pre class="rust"><code><span class="kw">use </span>regex::Regex;
 
 <span class="doccomment">///! Custom tide middleware for Kanidm
@@ -421,6 +439,24 @@
             .join(<span class="string">&quot;;&quot;</span>),
         );
 
+        <span class="prelude-val">Ok</span>(response)
+    }
+}
+
+<span class="kw">const </span>KANIDM_VERSION: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>);
+
+<span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>VersionHeaderMiddleware;
+
+<span class="attribute">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;State: Clone + Send + Sync + <span class="lifetime">&#39;static</span>&gt; tide::Middleware&lt;State&gt; <span class="kw">for </span>VersionHeaderMiddleware {
+    <span class="kw">async fn </span>handle(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        request: tide::Request&lt;State&gt;,
+        next: tide::Next&lt;<span class="lifetime">&#39;_</span>, State&gt;,
+    ) -&gt; tide::Result {
+        <span class="kw">let </span><span class="kw-2">mut </span>response = next.run(request).<span class="kw">await</span>;
+        response.insert_header(<span class="string">&quot;X-KANIDM-VERSION&quot;</span>, KANIDM_VERSION);
         <span class="prelude-val">Ok</span>(response)
     }
 }

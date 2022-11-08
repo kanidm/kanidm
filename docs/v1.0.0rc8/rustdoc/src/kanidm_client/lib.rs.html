@@ -1817,6 +1817,54 @@
 <span id="1817">1817</span>
 <span id="1818">1818</span>
 <span id="1819">1819</span>
+<span id="1820">1820</span>
+<span id="1821">1821</span>
+<span id="1822">1822</span>
+<span id="1823">1823</span>
+<span id="1824">1824</span>
+<span id="1825">1825</span>
+<span id="1826">1826</span>
+<span id="1827">1827</span>
+<span id="1828">1828</span>
+<span id="1829">1829</span>
+<span id="1830">1830</span>
+<span id="1831">1831</span>
+<span id="1832">1832</span>
+<span id="1833">1833</span>
+<span id="1834">1834</span>
+<span id="1835">1835</span>
+<span id="1836">1836</span>
+<span id="1837">1837</span>
+<span id="1838">1838</span>
+<span id="1839">1839</span>
+<span id="1840">1840</span>
+<span id="1841">1841</span>
+<span id="1842">1842</span>
+<span id="1843">1843</span>
+<span id="1844">1844</span>
+<span id="1845">1845</span>
+<span id="1846">1846</span>
+<span id="1847">1847</span>
+<span id="1848">1848</span>
+<span id="1849">1849</span>
+<span id="1850">1850</span>
+<span id="1851">1851</span>
+<span id="1852">1852</span>
+<span id="1853">1853</span>
+<span id="1854">1854</span>
+<span id="1855">1855</span>
+<span id="1856">1856</span>
+<span id="1857">1857</span>
+<span id="1858">1858</span>
+<span id="1859">1859</span>
+<span id="1860">1860</span>
+<span id="1861">1861</span>
+<span id="1862">1862</span>
+<span id="1863">1863</span>
+<span id="1864">1864</span>
+<span id="1865">1865</span>
+<span id="1866">1866</span>
+<span id="1867">1867</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -1849,7 +1897,7 @@
 <span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_json::error::Error <span class="kw">as </span>SerdeJsonError;
-<span class="kw">use </span>tokio::sync::RwLock;
+<span class="kw">use </span>tokio::sync::{Mutex, RwLock};
 <span class="kw">use </span>url::Url;
 <span class="kw">use </span>uuid::Uuid;
 <span class="kw">use </span>webauthn_rs_proto::{
@@ -1864,6 +1912,9 @@
 <span class="kw">pub const </span>APPLICATION_JSON: <span class="kw-2">&amp;</span>str = <span class="string">&quot;application/json&quot;</span>;
 <span class="kw">pub const </span>KOPID: <span class="kw-2">&amp;</span>str = <span class="string">&quot;X-KANIDM-OPID&quot;</span>;
 <span class="kw">pub const </span>KSESSIONID: <span class="kw-2">&amp;</span>str = <span class="string">&quot;X-KANIDM-AUTH-SESSION-ID&quot;</span>;
+
+<span class="kw">const </span>KVERSION: <span class="kw-2">&amp;</span>str = <span class="string">&quot;X-KANIDM-VERSION&quot;</span>;
+<span class="kw">const </span>EXPECT_VERSION: <span class="kw-2">&amp;</span>str = <span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>);
 
 <span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub enum </span>ClientError {
@@ -1925,6 +1976,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) builder: KanidmClientBuilder,
     <span class="kw">pub</span>(<span class="kw">crate</span>) bearer_token: RwLock&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) auth_session_id: RwLock&lt;<span class="prelude-ty">Option</span>&lt;String&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) check_version: Mutex&lt;bool&gt;,
 }
 
 <span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
@@ -2223,6 +2275,7 @@
             bearer_token: RwLock::new(<span class="prelude-val">None</span>),
             origin,
             auth_session_id: RwLock::new(<span class="prelude-val">None</span>),
+            check_version: Mutex::new(<span class="bool-val">true</span>),
         })
     }
 }
@@ -2259,6 +2312,31 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="kw">async fn </span>expect_version(<span class="kw-2">&amp;</span><span class="self">self</span>, response: <span class="kw-2">&amp;</span>reqwest::Response) {
+        <span class="kw">let </span><span class="kw-2">mut </span>guard = <span class="self">self</span>.check_version.lock().<span class="kw">await</span>;
+
+        <span class="kw">if </span>!<span class="kw-2">*</span>guard {
+            <span class="kw">return</span>;
+        }
+
+        <span class="kw">let </span>ver = response
+            .headers()
+            .get(KVERSION)
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or(<span class="string">&quot;&quot;</span>);
+
+        <span class="kw">let </span>matching = ver == EXPECT_VERSION;
+
+        <span class="kw">if </span>!matching {
+            <span class="macro">warn!</span>(server_version = <span class="question-mark">?</span>ver, client_version = <span class="question-mark">?</span>EXPECT_VERSION, <span class="string">&quot;Mismatched client and server version - features may not work, or other unforseen errors may occur.&quot;</span>)
+        }
+
+        <span class="macro">debug_assert!</span>(matching);
+
+        <span class="comment">// Check is done once, mark as no longer needing to occur
+        </span><span class="kw-2">*</span>guard = <span class="bool-val">false</span>;
+    }
+
     <span class="kw">async fn </span>perform_simple_post_request&lt;R: Serialize, T: DeserializeOwned&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         dest: <span class="kw-2">&amp;</span>str,
@@ -2275,6 +2353,8 @@
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
 
         <span class="kw">let </span>opid = response
             .headers()
@@ -2336,6 +2416,8 @@
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
 
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
+
         <span class="comment">// If we have a sessionid header in the response, get it now.
 
         </span><span class="kw">let </span>headers = response.headers();
@@ -2396,6 +2478,8 @@
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
 
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
+
         <span class="kw">let </span>opid = response
             .headers()
             .get(KOPID)
@@ -2449,6 +2533,8 @@
             .<span class="kw">await
             </span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
 
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
+
         <span class="kw">let </span>opid = response
             .headers()
             .get(KOPID)
@@ -2500,6 +2586,8 @@
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
 
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
+
         <span class="kw">let </span>opid = response
             .headers()
             .get(KOPID)
@@ -2539,6 +2627,8 @@
         };
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
 
         <span class="kw">let </span>opid = response
             .headers()
@@ -2584,6 +2674,8 @@
         };
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
 
         <span class="kw">let </span>opid = response
             .headers()
@@ -2634,6 +2726,8 @@
         };
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
 
         <span class="kw">let </span>opid = response
             .headers()
@@ -3001,6 +3095,8 @@
         };
 
         <span class="kw">let </span>response = response.send().<span class="kw">await</span>.map_err(ClientError::Transport)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.expect_version(<span class="kw-2">&amp;</span>response).<span class="kw">await</span>;
 
         <span class="kw">let </span>opid = response
             .headers()

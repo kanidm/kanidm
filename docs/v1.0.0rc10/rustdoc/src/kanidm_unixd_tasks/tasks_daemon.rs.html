@@ -290,6 +290,10 @@
 <span id="290">290</span>
 <span id="291">291</span>
 <span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -303,8 +307,8 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 </span><span class="kw">use </span>std::ffi::CString;
-<span class="kw">use </span>std::os::unix::fs::symlink;
 <span class="kw">use </span>std::os::unix::ffi::OsStrExt;
+<span class="kw">use </span>std::os::unix::fs::symlink;
 <span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{fs, io};
@@ -373,7 +377,11 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>create_home_directory(info: <span class="kw-2">&amp;</span>HomeDirectoryInfo, home_prefix: <span class="kw-2">&amp;</span>str, use_etc_skel: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+<span class="kw">fn </span>create_home_directory(
+    info: <span class="kw-2">&amp;</span>HomeDirectoryInfo,
+    home_prefix: <span class="kw-2">&amp;</span>str,
+    use_etc_skel: bool,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
     <span class="comment">// Final sanity check to prevent certain classes of attacks.
     </span><span class="kw">let </span>name = info
         .name
