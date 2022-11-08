@@ -208,6 +208,12 @@ impl KanidmClientBuilder {
         config_path: P,
     ) -> Result<Self, ()> {
         debug!("Attempting to load configuration from {:#?}", &config_path);
+
+        if !config_path.as_ref().exists() {
+            debug!("{:?} does not exist", config_path);
+            return Ok(self);
+        };
+
         // If the file does not exist, we skip this function.
         let mut f = match File::open(&config_path) {
             Ok(f) => {

@@ -16,9 +16,21 @@ impl CommonOpt {
 
         let client_builder = KanidmClientBuilder::new()
             .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
-            .and_then(|cb| cb.read_options_from_optional_config(&config_path))
-            .unwrap_or_else(|e| {
-                error!("Failed to parse config (if present) -- {:?}", e);
+            .map_err(|e| {
+                error!(
+                    "Failed to parse config ({:?}) -- {:?}",
+                    DEFAULT_CLIENT_CONFIG_PATH, e
+                );
+                e
+            })
+            .and_then(|cb| {
+                cb.read_options_from_optional_config(&config_path)
+                    .map_err(|e| {
+                        error!("Failed to parse config ({:?}) -- {:?}", config_path, e);
+                        e
+                    })
+            })
+            .unwrap_or_else(|_e| {
                 std::process::exit(1);
             });
         debug!(

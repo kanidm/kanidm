@@ -11,7 +11,7 @@ Kanidm currently supports the following Linux distributions:
 
  * OpenSUSE Tumbleweed
  * OpenSUSE Leap 15.3/15.4
- * Fedora 34/35
+ * Fedora 36
  * CentOS Stream 9
 
 The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
@@ -26,8 +26,7 @@ the clients with:
 
 ### OpenSUSE Leap 15.3/15.4
 
-Leap 15.3/15.4 does not have full Kanidm support. For an experimental client, you can
-try the development repository. Using zypper you can add the repository with:
+Using zypper you can add the Kanidm leap repository with:
 
     zypper ar -f obs://network:idm network_idm
 
@@ -38,20 +37,43 @@ Then you need to refresh your metadata and install the clients.
 
 ### Fedora / Centos Stream
 
-Fedora has limited support through the development repository. You need to add the repository 
+Fedora has limited support through the development repository. You need to add the repository
 metadata into the correct directory:
 
-    cd /etc/yum.repos.d
-    # Fedora 34
-    wget https://download.opensuse.org/repositories/network:/idm/Fedora_34/network:idm.repo
-    # Fedora 35
-    wget https://download.opensuse.org/repositories/network:/idm/Fedora_35/network:idm.repo
+    # Fedora
+    wget https://download.opensuse.org/repositories/network:/idm/Fedora_36/network:idm.repo
     # Centos Stream 9
     wget https://download.opensuse.org/repositories/network:/idm/CentOS_9_Stream/network:idm.repo
 
 You can then install with:
 
     dnf install kanidm-clients
+
+{{#template
+    templates/kani-warning.md
+    imagepath=images
+    title=Take Note!
+    text=Kanidm frequently uses new Rust versions and features, however Fedora and Centos frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm versions available.
+}}
+
+## Tools Container
+
+In some cases if your distribution does not have native kanidm-client support, you can use the cli
+tools from a docker container instead.
+
+    docker pull kanidm/tools:latest
+    docker run --rm -i -t \
+        -v /etc/kanidm/config:/etc/kanidm/config:ro \
+        -v ~/.config/kanidm:/home/kanidm/.config/kanidm:ro \
+        -v ~/.cache/kanidm_tokens:/home/kanidm/.cache/kanidm_tokens \
+        kanidm/tools:latest \
+        /sbin/kanidm --help
+
+If you have a ca.pem you may need to bind mound this in as requried.
+
+> **TIP** You can alias the docker run command to make the tools easier to access such as:
+
+    alias kanidm="docker run ..."
 
 ## From source (CLI only, not recommended)
 
