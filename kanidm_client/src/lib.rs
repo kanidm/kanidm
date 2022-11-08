@@ -30,7 +30,7 @@ pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs_proto::{
@@ -45,6 +45,9 @@ mod system;
 pub const APPLICATION_JSON: &str = "application/json";
 pub const KOPID: &str = "X-KANIDM-OPID";
 pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
+
+const KVERSION: &str = "X-KANIDM-VERSION";
+const EXPECT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -106,6 +109,7 @@ pub struct KanidmClient {
     pub(crate) builder: KanidmClientBuilder,
     pub(crate) bearer_token: RwLock<Option<String>>,
     pub(crate) auth_session_id: RwLock<Option<String>>,
+    pub(crate) check_version: Mutex<bool>,
 }
 
 #[cfg(target_family = "unix")]
@@ -404,6 +408,7 @@ impl KanidmClientBuilder {
             bearer_token: RwLock::new(None),
             origin,
             auth_session_id: RwLock::new(None),
+            check_version: Mutex::new(true),
         })
     }
 }
@@ -440,6 +445,31 @@ impl KanidmClient {
         Ok(())
     }
 
+    async fn expect_version(&self, response: &reqwest::Response) {
+        let mut guard = self.check_version.lock().await;
+
+        if !*guard {
+            return;
+        }
+
+        let ver = response
+            .headers()
+            .get(KVERSION)
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("");
+
+        let matching = ver == EXPECT_VERSION;
+
+        if !matching {
+            warn!(server_version = ?ver, client_version = ?EXPECT_VERSION, "Mismatched client and server version - features may not work, or other unforseen errors may occur.")
+        }
+
+        debug_assert!(matching);
+
+        // Check is done once, mark as no longer needing to occur
+        *guard = false;
+    }
+
     async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(
         &self,
         dest: &str,
@@ -456,6 +486,8 @@ impl KanidmClient {
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
         let response = response.send().await.map_err(ClientError::Transport)?;
+
+        self.expect_version(&response).await;
 
         let opid = response
             .headers()
@@ -517,6 +549,8 @@ impl KanidmClient {
 
         let response = response.send().await.map_err(ClientError::Transport)?;
 
+        self.expect_version(&response).await;
+
         // If we have a sessionid header in the response, get it now.
 
         let headers = response.headers();
@@ -577,6 +611,8 @@ impl KanidmClient {
 
         let response = response.send().await.map_err(ClientError::Transport)?;
 
+        self.expect_version(&response).await;
+
         let opid = response
             .headers()
             .get(KOPID)
@@ -630,6 +666,8 @@ impl KanidmClient {
             .await
             .map_err(ClientError::Transport)?;
 
+        self.expect_version(&response).await;
+
         let opid = response
             .headers()
             .get(KOPID)
@@ -681,6 +719,8 @@ impl KanidmClient {
 
         let response = response.send().await.map_err(ClientError::Transport)?;
 
+        self.expect_version(&response).await;
+
         let opid = response
             .headers()
             .get(KOPID)
@@ -720,6 +760,8 @@ impl KanidmClient {
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
+
+        self.expect_version(&response).await;
 
         let opid = response
             .headers()
@@ -765,6 +807,8 @@ impl KanidmClient {
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
+
+        self.expect_version(&response).await;
 
         let opid = response
             .headers()
@@ -815,6 +859,8 @@ impl KanidmClient {
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
+
+        self.expect_version(&response).await;
 
         let opid = response
             .headers()
@@ -1182,6 +1228,8 @@ impl KanidmClient {
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
+
+        self.expect_version(&response).await;
 
         let opid = response
             .headers()

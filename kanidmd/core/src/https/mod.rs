@@ -374,18 +374,20 @@ pub fn create_https_server(
         js_files: js_files.to_owned(),
     });
 
-    // Add middleware?
+    // Add the logging subsystem.
     tserver.with(sketching::middleware::TreeMiddleware::new(
         trust_x_forward_for,
     ));
 
-    // We do not force a session ttl, because we validate this elsewhere in usage.
+    // Add cookie handling.
     tserver.with(
         // We do not force a session ttl, because we validate this elsewhere in usage.
         tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
             .with_cookie_name("kanidm-session")
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
+
+    // Strict responses.
     tserver.with(StrictResponseMiddleware::default());
 
     // Add routes
@@ -467,6 +469,8 @@ pub fn create_https_server(
 
     // ==== Some routes can be cached - these are here:
     let mut tserver_cacheable = tserver.at("");
+    // Add our version injector, we only add this to apis.
+    tserver_cacheable.with(VersionHeaderMiddleware::default());
     tserver_cacheable.with(CacheableMiddleware::default());
 
     // We allow clients to cache the unix token for accounts and groups.
@@ -486,6 +490,8 @@ pub fn create_https_server(
 
     // ==== These routes can not be cached
     let mut appserver = tserver.at("");
+    // Add our version injector, we only add this to apis.
+    appserver.with(VersionHeaderMiddleware::default());
     appserver.with(NoCacheMiddleware::default());
 
     // let mut well_known = appserver.at("/.well-known");
