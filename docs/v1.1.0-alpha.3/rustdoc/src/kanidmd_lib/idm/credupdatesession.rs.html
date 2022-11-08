@@ -3880,7 +3880,7 @@
                 session.account.existing_credential_id_list(),
             )
             .map_err(|e| {
-                <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Unable to start passkey registration&quot;</span>);
+                <span class="macro">error!</span>(eclass=<span class="question-mark">?</span>e, emsg=%e, <span class="string">&quot;Unable to start passkey registration&quot;</span>);
                 OperationError::Webauthn
             })<span class="question-mark">?</span>;
 
@@ -3909,7 +3909,7 @@
                     </span>.webauthn
                     .finish_passkey_registration(reg, pk_reg)
                     .map_err(|e| {
-                        <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Unable to start passkey registration&quot;</span>);
+                        <span class="macro">error!</span>(eclass=<span class="question-mark">?</span>e, emsg=%e, <span class="string">&quot;Unable to start passkey registration&quot;</span>);
                         OperationError::Webauthn
                     })<span class="question-mark">?</span>;
                 <span class="kw">let </span>pk_id = Uuid::new_v4();
