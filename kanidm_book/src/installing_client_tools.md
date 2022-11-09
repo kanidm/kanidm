@@ -35,7 +35,22 @@ Then you need to refresh your metadata and install the clients.
     zypper ref
     zypper in kanidm-clients
 
+### MacOS - Brew
+
+[Homebrew](https://brew.sh/) allows addition of third party repositories for installing tools. On
+MacOS you can use this to install the Kanidm tools.
+
+    brew tap kanidm/kanidm
+    brew install kanidm
+
 ### Fedora / Centos Stream
+
+{{#template
+    templates/kani-warning.md
+    imagepath=images
+    title=Take Note!
+    text=Kanidm frequently uses new Rust versions and features, however Fedora and Centos frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm versions available.
+}}
 
 Fedora has limited support through the development repository. You need to add the repository
 metadata into the correct directory:
@@ -49,17 +64,18 @@ You can then install with:
 
     dnf install kanidm-clients
 
-{{#template
-    templates/kani-warning.md
-    imagepath=images
-    title=Take Note!
-    text=Kanidm frequently uses new Rust versions and features, however Fedora and Centos frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm versions available.
-}}
+## Cargo
+
+The tools are available as a cargo download if you have a rust tool chain available. To install
+rust you should follow the documentation for [rustup](https://rustup.rs/). These will be installed
+into your home directory. To update these, re-run the install command.
+
+    cargo install kanidm_tools
 
 ## Tools Container
 
-In some cases if your distribution does not have native kanidm-client support, you can use the cli
-tools from a docker container instead.
+In some cases if your distribution does not have native kanidm-client support, and you can't access
+cargo for the install for some reason, you can use the cli tools from a docker container instead.
 
     docker pull kanidm/tools:latest
     docker run --rm -i -t \
@@ -74,13 +90,6 @@ If you have a ca.pem you may need to bind mount this in as required.
 > **TIP** You can alias the docker run command to make the tools easier to access such as:
 
     alias kanidm="docker run ..."
-
-## From source (CLI only, not recommended)
-
-After you check out the source (see [GitHub](https://github.com/kanidm/kanidm)), navigate to:
-
-    cd kanidm_tools
-    cargo install --path .
 
 ## Checking that the tools work
 

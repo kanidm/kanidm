@@ -209,6 +209,10 @@ impl KanidmClientBuilder {
     ) -> Result<Self, ()> {
         debug!("Attempting to load configuration from {:#?}", &config_path);
 
+        // We have to check the .exists case manually, because there are some weird overlayfs
+        // issues in docker where when the file does NOT exist, but we "open it" we get an
+        // error describing that the file is actually a directory rather than a not exists
+        // error. This check enforces that we get the CORRECT error message instead.
         if !config_path.as_ref().exists() {
             debug!("{:?} does not exist", config_path);
             return Ok(self);
