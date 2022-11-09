@@ -69,7 +69,7 @@ tools from a docker container instead.
         kanidm/tools:latest \
         /sbin/kanidm --help
 
-If you have a ca.pem you may need to bind mound this in as requried.
+If you have a ca.pem you may need to bind mount this in as required.
 
 > **TIP** You can alias the docker run command to make the tools easier to access such as:
 
