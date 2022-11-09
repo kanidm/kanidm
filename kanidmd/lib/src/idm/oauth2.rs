@@ -34,7 +34,7 @@ use tracing::trace;
 use url::{Origin, Url};
 
 use crate::identity::IdentityId;
-use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant};
+use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use crate::value::OAUTHSCOPE_RE;
@@ -132,6 +132,7 @@ impl fmt::Display for Oauth2TokenType {
 #[derive(Serialize, Deserialize, Debug)]
 struct Oauth2AccessToken {
     pub scopes: Vec<String>,
+    pub parent_session_id: Uuid,
     pub session_id: Uuid,
     pub auth_type: AuthType,
     pub expiry: time::OffsetDateTime,
@@ -853,6 +854,7 @@ impl Oauth2ResourceServersReadTransaction {
         client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
+        async_tx: &Sender<DelayedAction>,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // TODO: add refresh token grant type.
         //  If it's a refresh token grant, are the consent permissions the same?
@@ -1061,10 +1063,15 @@ impl Oauth2ResourceServersReadTransaction {
             None
         };
 
-        // TODO: Refresh tokens!
+        let session_id = Uuid::new_v4();
+        let parent_session_id = code_xchg.uat.session_id;
+
+        // We need to record this into the record? Delayed action?
+
         let access_token_raw = Oauth2TokenType::Access(Oauth2AccessToken {
             scopes: code_xchg.scopes,
-            session_id: code_xchg.uat.session_id,
+            parent_session_id,
+            session_id,
             auth_type: code_xchg.uat.auth_type,
             expiry,
             uuid: code_xchg.uat.uuid,
@@ -1083,6 +1090,21 @@ impl Oauth2ResourceServersReadTransaction {
             .encrypt_at_time(&access_token_data, ct.as_secs());
 
         let refresh_token = None;
+
+        async_tx
+            .send(DelayedAction::Oauth2SessionRecord(Oauth2SessionRecord {
+                target_uuid: code_xchg.uat.uuid,
+                parent_session_id,
+                session_id,
+                expiry: Some(expiry),
+                issued_at: odt_ct,
+            }))
+            .map_err(|e| {
+                admin_error!(err = ?e, "Unable to submit oauth2 session record");
+                Oauth2Error::ServerError(
+                                    OperationError::InvalidState
+                                    )
+            })?;
 
         Ok(AccessTokenResponse {
             access_token,

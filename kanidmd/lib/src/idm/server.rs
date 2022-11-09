@@ -1528,7 +1528,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         self.oauth2rs
-            .check_oauth2_token_exchange(client_authz, token_req, ct)
+            .check_oauth2_token_exchange(client_authz, token_req, ct, &self.async_tx)
     }
 
     pub fn check_oauth2_token_introspect(
@@ -2110,6 +2110,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let entry = self.qs_write.internal_search_uuid(&asr.target_uuid)?;
         let sessions = entry.get_ava_as_session_map("user_auth_token_session");
 
+        // Also get the child session maps from oauth2.
+
         let session = Value::Session(
             asr.session_id,
             Session {
@@ -2189,6 +2191,75 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    pub(crate) fn process_oauth2sessionrecord(
+        &mut self,
+        osr: &Oauth2SessionRecord,
+        ct: Duration,
+    ) -> Result<(), OperationError> {
+        let entry = self.qs_write.internal_search_uuid(&osr.target_uuid)?;
+        let sessions = entry.get_ava_as_oauth2session_map("oauth2_session");
+
+        /*
+        let session = Value::Session(
+            asr.session_id,
+            Session {
+                label: asr.label.clone(),
+                expiry: asr.expiry,
+                // Need the other inner bits?
+                // for the gracewindow.
+                issued_at: asr.issued_at,
+                // Who actually created this?
+                issued_by: asr.issued_by.clone(),
+                // What is the access scope of this session? This is
+                // for auditing purposes.
+                scope: asr.scope,
+            },
+        );
+        */
+
+        info!(session_id = %osr.session_id, "Persisting auth session");
+
+        let offset_ct = OffsetDateTime::unix_epoch() + ct;
+
+        let mlist: Vec<_> = sessions
+            .iter()
+            .map(|item| item.iter())
+            .flatten()
+            .filter_map(|(k, v)| {
+                // We only check if an expiry is present
+                v.expiry.and_then(|exp| {
+                    if exp <= offset_ct {
+                        info!(session_id = %k, "Removing expired oauth2 session");
+                        Some(Modify::Removed(
+                            AttrString::from("oauth2_session"),
+                            PartialValue::Refer(*k),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .chain(std::iter::once(Modify::Present(
+                AttrString::from("oauth2_session"),
+                session,
+            )))
+            .collect();
+
+        // modify the account to put the session onto it.
+        let modlist = ModifyList::new_list(mlist);
+
+        self.qs_write
+            .internal_modify(
+                &filter!(f_eq("uuid", PartialValue::new_uuid(asr.target_uuid))),
+                &modlist,
+            )
+            .map_err(|e| {
+                admin_error!("Failed to persist user auth token {:?}", e);
+                e
+            })
+        // Done!
+    }
+
     pub fn process_delayedaction(
         &mut self,
         da: DelayedAction,
@@ -2201,6 +2272,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
             DelayedAction::Oauth2ConsentGrant(o2cg) => self.process_oauth2consentgrant(&o2cg),
             DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr, ct),
+            DelayedAction::Oauth2SessionRecord(osr) => self.process_oauth2sessionrecord(&osr, ct),
         }
     }
 
