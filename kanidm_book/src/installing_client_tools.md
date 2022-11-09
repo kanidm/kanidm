@@ -1,16 +1,19 @@
 # Installing Client Tools
 
-> **NOTE** As this project is in a rapid development phase, running different 
-release versions will likely present incompatibilities. Ensure you're running 
-matching release versions of client and server binaries. If you have any issues, 
+> **NOTE** As this project is in a rapid development phase, running different
+release versions will likely present incompatibilities. Ensure you're running
+matching release versions of client and server binaries. If you have any issues,
 check that you are running the latest software.
 
 ## From packages
 
-Kanidm currently supports the following Linux distributions:
+Kanidm currently is packaged for the following systems:
 
  * OpenSUSE Tumbleweed
  * OpenSUSE Leap 15.3/15.4
+ * MacOS
+ * Arch Linux
+ * NixOS
  * Fedora 36
  * CentOS Stream 9
 
@@ -42,6 +45,14 @@ MacOS you can use this to install the Kanidm tools.
 
     brew tap kanidm/kanidm
     brew install kanidm
+
+### Arch Linux
+
+[Kanidm on AUR](https://aur.archlinux.org/packages?O=0&K=kanidm)
+
+### NixOS
+
+[Kanidm in NixOS](https://search.nixos.org/packages?sort=relevance&type=packages&query=kanidm)
 
 ### Fedora / Centos Stream
 
