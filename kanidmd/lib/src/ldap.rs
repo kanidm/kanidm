@@ -86,31 +86,31 @@ impl LdapServer {
             attributes: vec![
                 LdapPartialAttribute {
                     atype: "objectClass".to_string(),
-                    vals: vec!["top".to_string()],
+                    vals: vec!["top".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: "vendorName".to_string(),
-                    vals: vec!["Kanidm Project".to_string()],
+                    vals: vec!["Kanidm Project".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: "vendorVersion".to_string(),
-                    vals: vec!["kanidm_ldap_1.0.0".to_string()],
+                    vals: vec!["kanidm_ldap_1.0.0".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: "supportedLDAPVersion".to_string(),
-                    vals: vec!["3".to_string()],
+                    vals: vec!["3".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: "supportedExtension".to_string(),
-                    vals: vec!["1.3.6.1.4.1.4203.1.11.3".to_string()],
+                    vals: vec!["1.3.6.1.4.1.4203.1.11.3".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: "supportedFeatures".to_string(),
-                    vals: vec!["1.3.6.1.4.1.4203.1.5.1".to_string()],
+                    vals: vec!["1.3.6.1.4.1.4203.1.5.1".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: "defaultnamingcontext".to_string(),
-                    vals: vec![basedn.clone()],
+                    vals: vec![basedn.as_bytes().to_vec()],
                 },
             ],
         };
@@ -717,12 +717,12 @@ mod tests {
             let mut attrs = HashSet::new();
             for a in $e.attributes.iter() {
                 for v in a.vals.iter() {
-                    attrs.insert((a.atype.as_str(), v.as_str()));
+                    attrs.insert((a.atype.as_str(), v.as_slice()));
                 }
             };
             $(
                 assert!(attrs.contains(&(
-                    $item.0, $item.1
+                    $item.0, $item.1.as_bytes()
                 )));
             )*
 

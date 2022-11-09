@@ -733,6 +733,42 @@ pub enum DomainOpt {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum SynchOpt {
+    #[clap(name = "list")]
+    /// List all configured IDM sync accounts
+    List(CommonOpt),
+    #[clap(name = "get")]
+    /// Display a selected IDM sync account
+    Get(Named),
+    /// Create a new IDM sync account
+    #[clap(name = "create")]
+    Create {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "description")]
+        description: Option<String>,
+    },
+    #[clap(name = "generate-token")]
+    GenerateToken {
+        #[clap()]
+        account_id: String,
+        #[clap()]
+        label: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    #[clap(name = "destroy-token")]
+    DestroyToken {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 pub enum SystemOpt {
     #[clap(name = "pw-badlist")]
     /// Configure and manage the password badlist entry
@@ -752,6 +788,11 @@ pub enum SystemOpt {
         #[clap(subcommand)]
         commands: DomainOpt,
     },
+    #[clap(name = "sync", hide = true)]
+    Synch {
+        #[clap(subcommand)]
+        commands: SynchOpt,
+    }
 }
 
 #[derive(Debug, Subcommand)]

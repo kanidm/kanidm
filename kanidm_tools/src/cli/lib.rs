@@ -30,6 +30,7 @@ pub mod raw;
 pub mod recycle;
 pub mod serviceaccount;
 pub mod session;
+pub mod synch;
 
 impl SelfOpt {
     pub fn debug(&self) -> bool {
@@ -68,6 +69,7 @@ impl SystemOpt {
             SystemOpt::PwBadlist { commands } => commands.debug(),
             SystemOpt::Oauth2 { commands } => commands.debug(),
             SystemOpt::Domain { commands } => commands.debug(),
+            SystemOpt::Synch { commands } => commands.debug(),
         }
     }
 
@@ -76,6 +78,7 @@ impl SystemOpt {
             SystemOpt::PwBadlist { commands } => commands.exec().await,
             SystemOpt::Oauth2 { commands } => commands.exec().await,
             SystemOpt::Domain { commands } => commands.exec().await,
+            SystemOpt::Synch { commands } => commands.exec().await,
         }
     }
 }

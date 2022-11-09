@@ -72,7 +72,7 @@ pub struct AppState {
 pub trait RequestExtensions {
     fn get_current_uat(&self) -> Option<String>;
 
-    fn get_auth_bearer(&self) -> Option<&str>;
+    fn get_auth_bearer(&self) -> Option<String>;
 
     fn get_current_auth_session_id(&self) -> Option<Uuid>;
 
@@ -84,7 +84,7 @@ pub trait RequestExtensions {
 }
 
 impl RequestExtensions for tide::Request<AppState> {
-    fn get_auth_bearer(&self) -> Option<&str> {
+    fn get_auth_bearer(&self) -> Option<String> {
         // Contact the QS to get it to validate wtf is up.
         // let kref = &self.state().bundy_handle;
         // self.session().get::<UserAuthToken>("uat")
@@ -97,6 +97,7 @@ impl RequestExtensions for tide::Request<AppState> {
                 // Turn it to a &str, and then check the prefix
                 h.as_str().strip_prefix("Bearer ")
             })
+            .map(str::to_string)
     }
 
     fn get_current_uat(&self) -> Option<String> {

@@ -1709,7 +1709,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         // so they are all in "ldap forms" which makes our next stage a bit easier.
 
         // Stage 1 - transform our results to a map of kani attr -> ldap value.
-        let attr_map: Result<Map<&str, Vec<String>>, _> = self
+        let attr_map: Result<Map<&str, Vec<Vec<u8>>>, _> = self
             .attrs
             .iter()
             .map(|(k, vs)| {
@@ -1717,8 +1717,8 @@ impl Entry<EntryReduced, EntryCommitted> {
                     .map(|pvs| (k.as_str(), pvs))
             })
             .collect();
-
         let attr_map = attr_map?;
+
         // Stage 2 - transform and get all our attr - names out that we need to return.
         //                  ldap a, kani a
         let attr_names: Vec<(&str, &str)> = if all_attrs {
@@ -1748,7 +1748,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                 match ldap_a {
                     "entrydn" => Some(LdapPartialAttribute {
                         atype: "entrydn".to_string(),
-                        vals: vec![dn.clone()],
+                        vals: vec![dn.as_bytes().to_vec()],
                     }),
                     _ => attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                         atype: ldap_a.to_string(),

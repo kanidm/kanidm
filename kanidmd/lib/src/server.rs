@@ -688,22 +688,25 @@ pub trait QueryServerTransaction<'a> {
         &self,
         value: &ValueSet,
         basedn: &str,
-    ) -> Result<Vec<String>, OperationError> {
+    ) -> Result<Vec<Vec<u8>>, OperationError> {
         if let Some(r_set) = value.as_refer_set() {
             let v: Result<Vec<_>, _> = r_set
                 .iter()
                 .copied()
                 .map(|ur| {
                     let rdn = self.uuid_to_rdn(ur)?;
-                    Ok(format!("{},{}", rdn, basedn))
+                    Ok(format!("{},{}", rdn, basedn).into_bytes())
                 })
                 .collect();
             v
         } else if let Some(k_set) = value.as_sshkey_map() {
-            let v: Vec<_> = k_set.values().cloned().collect();
+            let v: Vec<_> = k_set.values().cloned().map(|s| s.into_bytes()).collect();
             Ok(v)
         } else {
-            let v: Vec<_> = value.to_proto_string_clone_iter().collect();
+            let v: Vec<_> = value
+                .to_proto_string_clone_iter()
+                .map(|s| s.into_bytes())
+                .collect();
             Ok(v)
         }
     }
