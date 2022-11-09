@@ -68,9 +68,9 @@ You can then install with:
 
 The tools are available as a cargo download if you have a rust tool chain available. To install
 rust you should follow the documentation for [rustup](https://rustup.rs/). These will be installed
-into your home directory. To update these, re-run the install command.
+into your home directory. To update these, re-run the install command with the new version.
 
-    cargo install kanidm_tools
+    cargo install --version 1.1.0-alpha.10 kanidm_tools
 
 ## Tools Container
 
