@@ -2543,6 +2543,7 @@ dependencies = [
 [[package]]
 name = "ldap3_client"
 version = "0.3.0"
+source = "git+https://github.com/kanidm/ldap3.git#6b0d146d3f85a32add3bdc3639ba4146822eb861"
 dependencies = [
  "base64 0.13.1",
  "base64urlsafedata",
@@ -2561,6 +2562,7 @@ dependencies = [
 [[package]]
 name = "ldap3_proto"
 version = "0.3.0"
+source = "git+https://github.com/kanidm/ldap3.git#6b0d146d3f85a32add3bdc3639ba4146822eb861"
 dependencies = [
  "bytes",
  "lber",
@@ -3781,6 +3783,7 @@ dependencies = [
 [[package]]
 name = "scim_proto"
 version = "0.1.0"
+source = "git+https://github.com/kanidm/scim.git#f7a9241bf413ac2e40cb974876d2b0433a866c74"
 dependencies = [
  "base64urlsafedata",
  "serde",
