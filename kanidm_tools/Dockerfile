@@ -32,7 +32,6 @@ ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
 RUN echo Features $KANIDM_FEATURES
 
 ENV CARGO_HOME=/scratch/.cargo
-ENV RUSTFLAGS="-Clinker=clang"
 ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
 
 # set up sccache if you've done the thing
@@ -63,18 +62,21 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; then sccache -s; fi
 
 RUN ls -al /usr/src/kanidm/target/release
 
+# == Construct the tools container
 FROM repos
 
-RUN zypper install -y timezone busybox-adduser
-RUN zypper clean -a
+RUN zypper install -y timezone busybox-adduser && \
+    zypper clean -a
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 RUN chmod +x /sbin/kanidm
 ENV RUST_BACKTRACE 1
 
 RUN adduser -D -H kanidm
-RUN zypper remove -y busybox-adduser
+RUN mkdir /etc/kanidm && \
+    touch /etc/kanidm/config
 
 USER kanidm
 
-CMD [ "/sbin/kanidm", "-c", "/data/kanidm.toml" ]
+CMD [ "/sbin/kanidm", "-h" ]
+

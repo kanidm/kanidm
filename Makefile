@@ -35,6 +35,17 @@ buildx/kanidmd:
 		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
+buildx/kanidm_tools: ## Build multiarch kanidm tool images and push to docker hub
+buildx/kanidm_tools:
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
+		--pull --push --platform $(IMAGE_ARCH) \
+		-f kanidm_tools/Dockerfile \
+		-t $(IMAGE_BASE)/tools:$(IMAGE_VERSION) \
+		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
+		--build-arg "KANIDM_FEATURES=" \
+		$(CONTAINER_BUILD_ARGS) .
+	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/tools:$(IMAGE_VERSION)
+
 buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
 buildx/radiusd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
@@ -43,7 +54,7 @@ buildx/radiusd:
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
-buildx: buildx/kanidmd buildx/radiusd
+buildx: buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd
 
 build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
