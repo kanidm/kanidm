@@ -174,6 +174,7 @@ pub struct Oauth2RS {
     displayname: String,
     uuid: Uuid,
     origin: Origin,
+    origin_https: bool,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     // Client Auth Type (basic is all we support for now.
@@ -290,9 +291,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("origin");
-                    let origin = ent
+                    let (origin, origin_https) = ent
                         .get_ava_single_url("oauth2_rs_origin")
-                        .map(|url| url.origin())
+                        .map(|url| (url.origin(), url.scheme() == "https"))
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("authz_secret");
                     let authz_secret = ent
@@ -396,6 +397,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         displayname,
                         uuid,
                         origin,
+                        origin_https,
                         scope_maps,
                         sup_scope_maps,
                         authz_secret,
@@ -473,6 +475,14 @@ impl Oauth2ResourceServersReadTransaction {
             admin_warn!(
                 origin = ?o2rs.origin,
                 "Invalid oauth2 redirect_uri (must be related to origin of) - got {:?}", auth_req.redirect_uri.origin()
+            );
+            return Err(Oauth2Error::InvalidOrigin);
+        }
+
+        if o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
+            admin_warn!(
+                origin = ?o2rs.origin,
+                "Invalid oauth2 redirect_uri (must be https for secure origin) - got {:?}", auth_req.redirect_uri.scheme()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }
@@ -929,7 +939,7 @@ impl Oauth2ResourceServersReadTransaction {
         // Validate the redirect_uri is the same as the original.
         if token_req.redirect_uri != code_xchg.redirect_uri {
             security_info!("Invalid oauth2 redirect_uri (differs from original request uri)");
-            return Err(Oauth2Error::InvalidRequest);
+            return Err(Oauth2Error::InvalidOrigin);
         }
 
         // ==== We are now GOOD TO GO! ====
@@ -2027,7 +2037,7 @@ mod tests {
                     idms_prox_read
                         .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                         .unwrap_err()
-                        == Oauth2Error::InvalidRequest
+                        == Oauth2Error::InvalidOrigin
                 );
 
                 //  * code verifier incorrect
@@ -2997,6 +3007,94 @@ mod tests {
                 assert!(matches!(
                     idms_prox_read.check_oauth2_token_exchange(None, &token_req, ct),
                     Err(Oauth2Error::InvalidRequest)
+                ))
+            }
+        )
+    }
+
+    #[test]
+    // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-2.1
+    //
+    // If the origin configured is https, do not allow downgrading to http on redirect
+    fn test_idm_oauth2_redir_http_downgrade() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                // Enable pkce is set to FALSE
+                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
+
+                let idms_prox_read = task::block_on(idms.proxy_read());
+
+                // Get an ident/uat for now.
+
+                // == Setup the authorisation request
+                // We attempt pkce even though the rs is set to not support pkce.
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+                // First, NOTE the lack of https on the redir uri.
+                let auth_req = AuthorisationRequest {
+                    response_type: "code".to_string(),
+                    client_id: "test_resource_server".to_string(),
+                    state: "123".to_string(),
+                    pkce_request: Some(PkceRequest {
+                        code_challenge: Base64UrlSafeData(code_challenge.clone()),
+                        code_challenge_method: CodeChallengeMethod::S256,
+                    }),
+                    redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
+                    scope: "openid".to_string(),
+                    nonce: None,
+                    oidc_ext: Default::default(),
+                    unknown_keys: Default::default(),
+                };
+
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::InvalidOrigin
+                );
+
+                // This does have https
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+                // Should be in the consent phase;
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
+
+                // == Submit the token exchange code.
+                // NOTE the url is http again
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
+                    client_id: Some("test_resource_server".to_string()),
+                    client_secret: Some(secret),
+                    // Note the code verifier is set to "something else"
+                    code_verifier,
+                };
+
+                // Assert the exchange fails.
+                assert!(matches!(
+                    idms_prox_read.check_oauth2_token_exchange(None, &token_req, ct),
+                    Err(Oauth2Error::InvalidOrigin)
                 ))
             }
         )

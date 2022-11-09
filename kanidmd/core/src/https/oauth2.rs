@@ -305,6 +305,8 @@ async fn oauth2_authorise(
             state,
             code,
         })) => {
+            // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
+            // We could consider changing this to 303?
             let mut res = tide::Response::new(302);
 
             redirect_uri
@@ -411,6 +413,8 @@ async fn oauth2_authorise_permit(
             state,
             code,
         }) => {
+            // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
+            // We could consider changing this to 303?
             let mut res = tide::Response::new(302);
             redirect_uri
                 .query_pairs_mut()
