@@ -414,6 +414,27 @@
 <span id="414">414</span>
 <span id="415">415</span>
 <span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
 <span class="kw">use </span>std::time::{Duration, Instant};
 
@@ -513,11 +534,14 @@
                 attributes: <span class="macro">vec!</span>[
                     LdapAttribute {
                         atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;organizationalUnit&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[
+                            <span class="string">&quot;top&quot;</span>.as_bytes().into(),
+                            <span class="string">&quot;organizationalUnit&quot;</span>.as_bytes().into(),
+                        ],
                     },
                     LdapAttribute {
                         atype: <span class="string">&quot;ou&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;people&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;people&quot;</span>.as_bytes().into()],
                     },
                 ],
             };
@@ -537,11 +561,14 @@
                 attributes: <span class="macro">vec!</span>[
                     LdapAttribute {
                         atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;organizationalUnit&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[
+                            <span class="string">&quot;top&quot;</span>.as_bytes().into(),
+                            <span class="string">&quot;organizationalUnit&quot;</span>.as_bytes().into(),
+                        ],
                     },
                     LdapAttribute {
                         atype: <span class="string">&quot;ou&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;groups&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;groups&quot;</span>.as_bytes().into()],
                     },
                 ],
             };
@@ -571,40 +598,40 @@
                             LdapAttribute {
                                 atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
                                 vals: <span class="macro">vec!</span>[
-                                    <span class="string">&quot;top&quot;</span>.to_string(),
-                                    <span class="string">&quot;nsPerson&quot;</span>.to_string(),
-                                    <span class="string">&quot;nsAccount&quot;</span>.to_string(),
-                                    <span class="string">&quot;nsOrgPerson&quot;</span>.to_string(),
-                                    <span class="string">&quot;posixAccount&quot;</span>.to_string(),
+                                    <span class="string">&quot;top&quot;</span>.as_bytes().into(),
+                                    <span class="string">&quot;nsPerson&quot;</span>.as_bytes().into(),
+                                    <span class="string">&quot;nsAccount&quot;</span>.as_bytes().into(),
+                                    <span class="string">&quot;nsOrgPerson&quot;</span>.as_bytes().into(),
+                                    <span class="string">&quot;posixAccount&quot;</span>.as_bytes().into(),
                                 ],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;cn&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[a.uuid.to_string()],
+                                vals: <span class="macro">vec!</span>[a.uuid.as_bytes().to_vec()],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;uid&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[a.name.clone()],
+                                vals: <span class="macro">vec!</span>[a.name.as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;displayName&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[a.display_name.clone()],
+                                vals: <span class="macro">vec!</span>[a.display_name.as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;userPassword&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[a.password.clone()],
+                                vals: <span class="macro">vec!</span>[a.password.as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;homeDirectory&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;/home/{}&quot;</span>, a.uuid)],
+                                vals: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;/home/{}&quot;</span>, a.uuid).as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;uidNumber&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.to_string()],
+                                vals: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.as_bytes().into()],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;gidNumber&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.to_string()],
+                                vals: <span class="macro">vec!</span>[<span class="string">&quot;1000&quot;</span>.as_bytes().into()],
                             },
                         ],
                     };
@@ -616,11 +643,14 @@
                         attributes: <span class="macro">vec!</span>[
                             LdapAttribute {
                                 atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;groupOfNames&quot;</span>.to_string()],
+                                vals: <span class="macro">vec!</span>[
+                                    <span class="string">&quot;top&quot;</span>.as_bytes().into(),
+                                    <span class="string">&quot;groupOfNames&quot;</span>.as_bytes().into(),
+                                ],
                             },
                             LdapAttribute {
                                 atype: <span class="string">&quot;cn&quot;</span>.to_string(),
-                                vals: <span class="macro">vec!</span>[g.uuid.to_string(), g.name.clone()],
+                                vals: <span class="macro">vec!</span>[g.uuid.as_bytes().to_vec(), g.name.as_bytes().into()],
                             },
                         ],
                     };
@@ -638,7 +668,7 @@
             }
         }) {
             <span class="comment">// List of dns
-            </span><span class="kw">let </span>vals: Vec&lt;<span class="kw">_</span>&gt; = g
+            </span><span class="kw">let </span>vals: Vec&lt;Vec&lt;u8&gt;&gt; = g
                 .members
                 .iter()
                 .map(|id| {
@@ -646,6 +676,8 @@
                         .get(id)
                         .unwrap()
                         .get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn)
+                        .as_bytes()
+                        .into()
                 })
                 .collect();
 
@@ -686,11 +718,11 @@
                 attributes: <span class="macro">vec!</span>[
                     LdapAttribute {
                         atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;groupOfNames&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.as_bytes().into(), <span class="string">&quot;groupOfNames&quot;</span>.as_bytes().into()],
                     },
                     LdapAttribute {
                         atype: <span class="string">&quot;cn&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;priv_account_manage&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;priv_account_manage&quot;</span>.as_bytes().into()],
                     },
                 ],
             };
@@ -713,11 +745,11 @@
                 attributes: <span class="macro">vec!</span>[
                     LdapAttribute {
                         atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string(), <span class="string">&quot;groupOfNames&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.as_bytes().into(), <span class="string">&quot;groupOfNames&quot;</span>.as_bytes().into()],
                     },
                     LdapAttribute {
                         atype: <span class="string">&quot;cn&quot;</span>.to_string(),
-                        vals: <span class="macro">vec!</span>[<span class="string">&quot;priv_group_manage&quot;</span>.to_string()],
+                        vals: <span class="macro">vec!</span>[<span class="string">&quot;priv_group_manage&quot;</span>.as_bytes().into()],
                     },
                 ],
             };
@@ -733,14 +765,14 @@
                         modification: LdapPartialAttribute {
                             atype: <span class="string">&quot;aci&quot;</span>.to_string(),
                             vals: <span class="macro">vec!</span>[
-                                <span class="string">r#&quot;(targetattr=&quot;dc || description || objectClass&quot;)(targetfilter=&quot;(objectClass=domain)&quot;)(version 3.0; acl &quot;Enable anyone domain read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
+                                <span class="string">r#&quot;(targetattr=&quot;dc || description || objectClass&quot;)(targetfilter=&quot;(objectClass=domain)&quot;)(version 3.0; acl &quot;Enable anyone domain read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.as_bytes().into(),
 
-                                <span class="string">r#&quot;(targetattr=&quot;ou || objectClass&quot;)(targetfilter=&quot;(objectClass=organizationalUnit)&quot;)(version 3.0; acl &quot;Enable anyone ou read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
-                                <span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || nsUniqueId || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable anyone group read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
-                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable group_admin to manage groups&quot;; allow (write,add, delete)(groupdn=&quot;ldap:///cn=priv_group_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.ldap.basedn),
-                                <span class="string">r#&quot;(targetattr=&quot;objectClass || description || nsUniqueId || uid || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || nsSshPublicKey || nsAccountLock || userCertificate&quot;)(targetfilter=&quot;(objectClass=posixaccount)&quot;)(version 3.0; acl &quot;Enable anyone user read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.to_string(),
-                                <span class="string">r#&quot;(targetattr=&quot;displayName || legalName || userPassword || nsSshPublicKey&quot;)(version 3.0; acl &quot;Enable self partial modify&quot;; allow (write)(userdn=&quot;ldap:///self&quot;);)&quot;#</span>.to_string(),
-                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;uid || description || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || legalName || telephoneNumber || mobile&quot;)(targetfilter=&quot;(&amp;(objectClass=nsPerson)(objectClass=nsAccount))&quot;)(version 3.0; acl &quot;Enable user admin create&quot;; allow (write, add, delete, read)(groupdn=&quot;ldap:///cn=priv_account_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.ldap.basedn),
+                                <span class="string">r#&quot;(targetattr=&quot;ou || objectClass&quot;)(targetfilter=&quot;(objectClass=organizationalUnit)&quot;)(version 3.0; acl &quot;Enable anyone ou read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.as_bytes().into(),
+                                <span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || nsUniqueId || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable anyone group read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.as_bytes().into(),
+                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;cn || member || gidNumber || description || objectClass&quot;)(targetfilter=&quot;(objectClass=groupOfNames)&quot;)(version 3.0; acl &quot;Enable group_admin to manage groups&quot;; allow (write,add, delete)(groupdn=&quot;ldap:///cn=priv_group_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.ldap.basedn).as_bytes().into(),
+                                <span class="string">r#&quot;(targetattr=&quot;objectClass || description || nsUniqueId || uid || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || nsSshPublicKey || nsAccountLock || userCertificate&quot;)(targetfilter=&quot;(objectClass=posixaccount)&quot;)(version 3.0; acl &quot;Enable anyone user read&quot;; allow (read, search, compare)(userdn=&quot;ldap:///anyone&quot;);)&quot;#</span>.as_bytes().into(),
+                                <span class="string">r#&quot;(targetattr=&quot;displayName || legalName || userPassword || nsSshPublicKey&quot;)(version 3.0; acl &quot;Enable self partial modify&quot;; allow (write)(userdn=&quot;ldap:///self&quot;);)&quot;#</span>.as_bytes().into(),
+                                <span class="macro">format!</span>(<span class="string">r#&quot;(targetattr=&quot;uid || description || displayName || loginShell || uidNumber || gidNumber || gecos || homeDirectory || cn || memberOf || mail || legalName || telephoneNumber || mobile&quot;)(targetfilter=&quot;(&amp;(objectClass=nsPerson)(objectClass=nsAccount))&quot;)(version 3.0; acl &quot;Enable user admin create&quot;; allow (write, add, delete, read)(groupdn=&quot;ldap:///cn=priv_account_manage,{}&quot;);)&quot;#</span>, <span class="self">self</span>.ldap.basedn).as_bytes().into(),
                             ]
                         }
                     }
@@ -768,10 +800,20 @@
                 == <span class="number">0</span>;
 
             <span class="kw">if </span>need_account {
-                priv_account.push(account.get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn))
+                priv_account.push(
+                    account
+                        .get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn)
+                        .as_bytes()
+                        .to_vec(),
+                )
             }
             <span class="kw">if </span>need_group {
-                priv_group.push(account.get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn))
+                priv_group.push(
+                    account
+                        .get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>.ldap.basedn)
+                        .as_bytes()
+                        .to_vec(),
+                )
             }
         }
 

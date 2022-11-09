@@ -32,6 +32,23 @@
 <span id="32">32</span>
 <span id="33">33</span>
 <span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{ClientError, KanidmClient};
 <span class="kw">use </span>kanidm_proto::v1::Entry;
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -63,6 +80,23 @@
                 .insert(<span class="string">&quot;description&quot;</span>.to_string(), <span class="macro">vec!</span>[description.to_string()]);
         }
         <span class="self">self</span>.perform_post_request(<span class="string">&quot;/v1/sync_account&quot;</span>, new_acct)
+            .<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>idm_sync_account_generate_token(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        id: <span class="kw-2">&amp;</span>str,
+        label: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;String, ClientError&gt; {
+        <span class="self">self</span>.perform_post_request(
+            <span class="macro">format!</span>(<span class="string">&quot;/v1/sync_account/{}/_sync_token&quot;</span>, id).as_str(),
+            label,
+        )
+        .<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>idm_sync_account_destroy_token(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
+        <span class="self">self</span>.perform_delete_request(<span class="macro">format!</span>(<span class="string">&quot;/v1/sync_account/{}/_sync_token&quot;</span>, id,).as_str())
             .<span class="kw">await
     </span>}
 }

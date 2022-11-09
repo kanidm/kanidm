@@ -7,14 +7,306 @@
 <span id="7">7</span>
 <span id="8">8</span>
 <span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
 </pre><pre class="rust"><code><span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
-
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>uuid::Uuid;
+
+<span class="kw">pub use </span>scim_proto::prelude::{ScimEntry, ScimError};
+<span class="kw">use </span>scim_proto::<span class="kw-2">*</span>;
 
 <span class="attribute">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub enum </span>ScimSyncState {
-    Initial,
+    Refresh,
     Active { cookie: Base64UrlSafeData },
+}
+
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>ScimSyncRequest {
+    <span class="kw">pub </span>from_state: ScimSyncState,
+    <span class="kw">pub </span>to_state: ScimSyncState,
+
+    <span class="comment">// How do I want to represent different entities to kani? Split by type? All in one?
+    </span><span class="kw">pub </span>entries: Vec&lt;ScimEntry&gt;,
+    <span class="comment">// Delete uuids?
+    </span><span class="kw">pub </span>delete_uuids: Vec&lt;Uuid&gt;,
+}
+
+<span class="kw">pub const </span>SCIM_SCHEMA_SYNC_PERSON: <span class="kw-2">&amp;</span>str = <span class="string">&quot;urn:ietf:params:scim:schemas:kanidm:1.0:sync:person&quot;</span>;
+
+<span class="attribute">#[derive(Serialize, Debug, Clone)]
+#[serde(into = <span class="string">&quot;ScimEntry&quot;</span>)]
+</span><span class="kw">pub struct </span>ScimSyncPerson {
+    <span class="kw">pub </span>id: Uuid,
+    <span class="kw">pub </span>external_id: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>user_name: String,
+    <span class="kw">pub </span>display_name: String,
+    <span class="kw">pub </span>gidnumber: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="kw">pub </span>homedirectory: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>password_import: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>login_shell: <span class="prelude-ty">Option</span>&lt;String&gt;,
+}
+
+<span class="comment">/*
+impl TryFrom&lt;ScimEntry&gt; for ScimSyncPerson {
+    type Error = ScimError;
+
+    fn try_from(_value: ScimEntry) -&gt; Result&lt;Self, Self::Error&gt; {
+        todo!();
+    }
+}
+*/
+
+</span><span class="kw">impl </span>Into&lt;ScimEntry&gt; <span class="kw">for </span>ScimSyncPerson {
+    <span class="kw">fn </span>into(<span class="self">self</span>) -&gt; ScimEntry {
+        <span class="kw">let </span>ScimSyncPerson {
+            id,
+            external_id,
+            user_name,
+            display_name,
+            gidnumber,
+            homedirectory,
+            password_import,
+            login_shell,
+        } = <span class="self">self</span>;
+
+        <span class="kw">let </span>schemas = <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_PERSON.to_string()];
+
+        <span class="kw">let </span><span class="kw-2">mut </span>attrs = BTreeMap::default();
+
+        <span class="macro">set_string!</span>(attrs, <span class="string">&quot;userName&quot;</span>, user_name);
+        <span class="macro">set_string!</span>(attrs, <span class="string">&quot;displayName&quot;</span>, display_name);
+        <span class="macro">set_option_u32!</span>(attrs, <span class="string">&quot;gidNumber&quot;</span>, gidnumber);
+        <span class="macro">set_option_string!</span>(attrs, <span class="string">&quot;homeDirectory&quot;</span>, homedirectory);
+        <span class="macro">set_option_string!</span>(attrs, <span class="string">&quot;passwordImport&quot;</span>, password_import);
+        <span class="macro">set_option_string!</span>(attrs, <span class="string">&quot;loginShell&quot;</span>, login_shell);
+
+        ScimEntry {
+            schemas,
+            id,
+            external_id,
+            meta: <span class="prelude-val">None</span>,
+            attrs,
+        }
+    }
+}
+
+<span class="kw">pub const </span>SCIM_SCHEMA_SYNC_GROUP: <span class="kw-2">&amp;</span>str = <span class="string">&quot;urn:ietf:params:scim:schemas:kanidm:1.0:sync:group&quot;</span>;
+
+<span class="attribute">#[derive(Serialize, Debug, Clone)]
+</span><span class="kw">pub struct </span>ScimExternalMember {
+    <span class="kw">pub </span>external_id: String,
+}
+
+<span class="kw">impl </span>Into&lt;ScimComplexAttr&gt; <span class="kw">for </span>ScimExternalMember {
+    <span class="kw">fn </span>into(<span class="self">self</span>) -&gt; ScimComplexAttr {
+        <span class="kw">let </span>ScimExternalMember { external_id } = <span class="self">self</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>attrs = BTreeMap::default();
+
+        attrs.insert(
+            <span class="string">&quot;external_id&quot;</span>.to_string(),
+            ScimSimpleAttr::String(external_id),
+        );
+
+        ScimComplexAttr { attrs }
+    }
+}
+
+<span class="attribute">#[derive(Serialize, Debug, Clone)]
+#[serde(into = <span class="string">&quot;ScimEntry&quot;</span>)]
+</span><span class="kw">pub struct </span>ScimSyncGroup {
+    <span class="kw">pub </span>id: Uuid,
+    <span class="kw">pub </span>external_id: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>name: String,
+    <span class="kw">pub </span>description: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>gidnumber: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    <span class="kw">pub </span>members: Vec&lt;ScimExternalMember&gt;,
+}
+
+<span class="comment">/*
+impl TryFrom&lt;ScimEntry&gt; for ScimSyncPerson {
+    type Error = ScimError;
+
+    fn try_from(_value: ScimEntry) -&gt; Result&lt;Self, Self::Error&gt; {
+        todo!();
+    }
+}
+*/
+
+</span><span class="kw">impl </span>Into&lt;ScimEntry&gt; <span class="kw">for </span>ScimSyncGroup {
+    <span class="kw">fn </span>into(<span class="self">self</span>) -&gt; ScimEntry {
+        <span class="kw">let </span>ScimSyncGroup {
+            id,
+            external_id,
+            name,
+            description,
+            gidnumber,
+            members,
+        } = <span class="self">self</span>;
+
+        <span class="kw">let </span>schemas = <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()];
+
+        <span class="kw">let </span><span class="kw-2">mut </span>attrs = BTreeMap::default();
+
+        <span class="macro">set_string!</span>(attrs, <span class="string">&quot;name&quot;</span>, name);
+        <span class="macro">set_option_u32!</span>(attrs, <span class="string">&quot;gidNumber&quot;</span>, gidnumber);
+        <span class="macro">set_option_string!</span>(attrs, <span class="string">&quot;description&quot;</span>, description);
+        <span class="macro">set_multi_complex!</span>(attrs, <span class="string">&quot;members&quot;</span>, members);
+
+        ScimEntry {
+            schemas,
+            id,
+            external_id,
+            meta: <span class="prelude-val">None</span>,
+            attrs,
+        }
+    }
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_proto" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

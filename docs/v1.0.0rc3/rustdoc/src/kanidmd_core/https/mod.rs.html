@@ -871,6 +871,7 @@
 <span id="871">871</span>
 <span id="872">872</span>
 <span id="873">873</span>
+<span id="874">874</span>
 </pre><pre class="rust"><code><span class="kw">mod </span>manifest;
 <span class="kw">pub mod </span>middleware;
 <span class="kw">mod </span>oauth2;
@@ -945,7 +946,7 @@
 <span class="kw">pub trait </span>RequestExtensions {
     <span class="kw">fn </span>get_current_uat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;;
 
-    <span class="kw">fn </span>get_auth_bearer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;;
+    <span class="kw">fn </span>get_auth_bearer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;;
 
     <span class="kw">fn </span>get_current_auth_session_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt;;
 
@@ -957,7 +958,7 @@
 }
 
 <span class="kw">impl </span>RequestExtensions <span class="kw">for </span>tide::Request&lt;AppState&gt; {
-    <span class="kw">fn </span>get_auth_bearer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
+    <span class="kw">fn </span>get_auth_bearer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
         <span class="comment">// Contact the QS to get it to validate wtf is up.
         // let kref = &amp;self.state().bundy_handle;
         // self.session().get::&lt;UserAuthToken&gt;(&quot;uat&quot;)
@@ -970,6 +971,7 @@
                 <span class="comment">// Turn it to a &amp;str, and then check the prefix
                 </span>h.as_str().strip_prefix(<span class="string">&quot;Bearer &quot;</span>)
             })
+            .map(str::to_string)
     }
 
     <span class="kw">fn </span>get_current_uat(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {

@@ -4575,6 +4575,9 @@
 <span id="4575">4575</span>
 <span id="4576">4576</span>
 <span id="4577">4577</span>
+<span id="4578">4578</span>
+<span id="4579">4579</span>
+<span id="4580">4580</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -5265,22 +5268,25 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         value: <span class="kw-2">&amp;</span>ValueSet,
         basedn: <span class="kw-2">&amp;</span>str,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, OperationError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;, OperationError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(r_set) = value.as_refer_set() {
             <span class="kw">let </span>v: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = r_set
                 .iter()
                 .copied()
                 .map(|ur| {
                     <span class="kw">let </span>rdn = <span class="self">self</span>.uuid_to_rdn(ur)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{},{}&quot;</span>, rdn, basedn))
+                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{},{}&quot;</span>, rdn, basedn).into_bytes())
                 })
                 .collect();
             v
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(k_set) = value.as_sshkey_map() {
-            <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = k_set.values().cloned().collect();
+            <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = k_set.values().cloned().map(|s| s.into_bytes()).collect();
             <span class="prelude-val">Ok</span>(v)
         } <span class="kw">else </span>{
-            <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = value.to_proto_string_clone_iter().collect();
+            <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = value
+                .to_proto_string_clone_iter()
+                .map(|s| s.into_bytes())
+                .collect();
             <span class="prelude-val">Ok</span>(v)
         }
     }

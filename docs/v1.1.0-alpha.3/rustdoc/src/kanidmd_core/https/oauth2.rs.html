@@ -768,6 +768,10 @@
 <span id="768">768</span>
 <span id="769">769</span>
 <span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
 </pre><pre class="rust"><code><span class="kw">use </span>kanidm_proto::oauth2::AuthorisationResponse;
 <span class="kw">use </span>kanidm_proto::v1::Entry <span class="kw">as </span>ProtoEntry;
 <span class="kw">use </span>kanidmd_lib::idm::oauth2::{
@@ -1075,7 +1079,9 @@
             state,
             code,
         })) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">302</span>);
+            <span class="comment">// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
+            // We could consider changing this to 303?
+            </span><span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">302</span>);
 
             redirect_uri
                 .query_pairs_mut()
@@ -1181,7 +1187,9 @@
             state,
             code,
         }) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">302</span>);
+            <span class="comment">// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
+            // We could consider changing this to 303?
+            </span><span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">302</span>);
             redirect_uri
                 .query_pairs_mut()
                 .clear()

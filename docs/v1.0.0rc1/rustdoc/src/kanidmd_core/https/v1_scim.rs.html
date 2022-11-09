@@ -261,8 +261,14 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::routemaps::{RouteMap, RouteMaps};
 <span class="kw">use super</span>::{to_tide_response, AppState, RequestExtensions};
+<span class="kw">use </span>kanidm_proto::scim_v1::ScimSyncRequest;
 <span class="kw">use </span>kanidm_proto::v1::Entry <span class="kw">as </span>ProtoEntry;
 <span class="kw">use </span>kanidmd_lib::prelude::<span class="kw-2">*</span>;
 
@@ -356,32 +362,36 @@ pub async fn sync_account_token_get(req: tide::Request&lt;AppState&gt;) -&gt; ti
     to_tide_response(res, hvalue)
 }
 
-<span class="kw">async fn </span>scim_sync_post(_req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
-    <span class="comment">// let (eventid, hvalue) = req.new_eventid();
-    /*
-    let ApiTokenGenerate {
-        label,
-        expiry,
-        read_write,
-    } = req.body_json().await?;
-    */
+<span class="kw">async fn </span>scim_sync_post(<span class="kw-2">mut </span>req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span>(eventid, hvalue) = req.new_eventid();
 
-    // We need to deserialise the body.
+    <span class="comment">// Given the token, and a sync update, apply the changes if any
+    </span><span class="kw">let </span>bearer = req.get_auth_bearer();
 
-    </span><span class="prelude-val">Ok</span>(tide::Response::new(<span class="number">500</span>))
+    <span class="comment">// Change this type later.
+    </span><span class="kw">let </span>changes: ScimSyncRequest = req.body_json().<span class="kw">await</span><span class="question-mark">?</span>;
+
+    <span class="kw">let </span>res = req
+        .state()
+        .qe_w_ref
+        .handle_scim_sync_apply(bearer, changes, eventid)
+        .<span class="kw">await</span>;
+    to_tide_response(res, hvalue)
 }
 
-<span class="kw">async fn </span>scim_sync_get(_req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
-    <span class="comment">// let (eventid, hvalue) = req.new_eventid();
+<span class="kw">async fn </span>scim_sync_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span>(eventid, hvalue) = req.new_eventid();
 
-    // let bearer = req.get_auth_bearer();
+    <span class="comment">// Given the token, what is it&#39;s connected sync state?
+    </span><span class="kw">let </span>bearer = req.get_auth_bearer();
+    <span class="macro">trace!</span>(<span class="question-mark">?</span>bearer);
 
-    // Given the token
-    // What is the connected sync session
-    // Issue it&#39;s current state (version) cookie.
-
-    // todo!();
-    </span><span class="prelude-val">Ok</span>(tide::Response::new(<span class="number">500</span>))
+    <span class="kw">let </span>res = req
+        .state()
+        .qe_r_ref
+        .handle_scim_sync_status(bearer, eventid)
+        .<span class="kw">await</span>;
+    to_tide_response(res, hvalue)
 }
 
 <span class="kw">async fn </span>scim_sink_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {

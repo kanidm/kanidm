@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ScimSyncState",""]]};
+window.SIDEBAR_ITEMS = {"constant":[["SCIM_SCHEMA_SYNC_GROUP",""],["SCIM_SCHEMA_SYNC_PERSON",""]],"enum":[["ScimError",""],["ScimSyncState",""]],"struct":[["ScimEntry",""],["ScimExternalMember",""],["ScimSyncGroup",""],["ScimSyncPerson",""],["ScimSyncRequest",""]]};

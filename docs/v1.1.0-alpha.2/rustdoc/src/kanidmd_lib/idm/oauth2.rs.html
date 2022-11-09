@@ -3002,6 +3002,104 @@
 <span id="3002">3002</span>
 <span id="3003">3003</span>
 <span id="3004">3004</span>
+<span id="3005">3005</span>
+<span id="3006">3006</span>
+<span id="3007">3007</span>
+<span id="3008">3008</span>
+<span id="3009">3009</span>
+<span id="3010">3010</span>
+<span id="3011">3011</span>
+<span id="3012">3012</span>
+<span id="3013">3013</span>
+<span id="3014">3014</span>
+<span id="3015">3015</span>
+<span id="3016">3016</span>
+<span id="3017">3017</span>
+<span id="3018">3018</span>
+<span id="3019">3019</span>
+<span id="3020">3020</span>
+<span id="3021">3021</span>
+<span id="3022">3022</span>
+<span id="3023">3023</span>
+<span id="3024">3024</span>
+<span id="3025">3025</span>
+<span id="3026">3026</span>
+<span id="3027">3027</span>
+<span id="3028">3028</span>
+<span id="3029">3029</span>
+<span id="3030">3030</span>
+<span id="3031">3031</span>
+<span id="3032">3032</span>
+<span id="3033">3033</span>
+<span id="3034">3034</span>
+<span id="3035">3035</span>
+<span id="3036">3036</span>
+<span id="3037">3037</span>
+<span id="3038">3038</span>
+<span id="3039">3039</span>
+<span id="3040">3040</span>
+<span id="3041">3041</span>
+<span id="3042">3042</span>
+<span id="3043">3043</span>
+<span id="3044">3044</span>
+<span id="3045">3045</span>
+<span id="3046">3046</span>
+<span id="3047">3047</span>
+<span id="3048">3048</span>
+<span id="3049">3049</span>
+<span id="3050">3050</span>
+<span id="3051">3051</span>
+<span id="3052">3052</span>
+<span id="3053">3053</span>
+<span id="3054">3054</span>
+<span id="3055">3055</span>
+<span id="3056">3056</span>
+<span id="3057">3057</span>
+<span id="3058">3058</span>
+<span id="3059">3059</span>
+<span id="3060">3060</span>
+<span id="3061">3061</span>
+<span id="3062">3062</span>
+<span id="3063">3063</span>
+<span id="3064">3064</span>
+<span id="3065">3065</span>
+<span id="3066">3066</span>
+<span id="3067">3067</span>
+<span id="3068">3068</span>
+<span id="3069">3069</span>
+<span id="3070">3070</span>
+<span id="3071">3071</span>
+<span id="3072">3072</span>
+<span id="3073">3073</span>
+<span id="3074">3074</span>
+<span id="3075">3075</span>
+<span id="3076">3076</span>
+<span id="3077">3077</span>
+<span id="3078">3078</span>
+<span id="3079">3079</span>
+<span id="3080">3080</span>
+<span id="3081">3081</span>
+<span id="3082">3082</span>
+<span id="3083">3083</span>
+<span id="3084">3084</span>
+<span id="3085">3085</span>
+<span id="3086">3086</span>
+<span id="3087">3087</span>
+<span id="3088">3088</span>
+<span id="3089">3089</span>
+<span id="3090">3090</span>
+<span id="3091">3091</span>
+<span id="3092">3092</span>
+<span id="3093">3093</span>
+<span id="3094">3094</span>
+<span id="3095">3095</span>
+<span id="3096">3096</span>
+<span id="3097">3097</span>
+<span id="3098">3098</span>
+<span id="3099">3099</span>
+<span id="3100">3100</span>
+<span id="3101">3101</span>
+<span id="3102">3102</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -3178,6 +3276,7 @@
     displayname: String,
     uuid: Uuid,
     origin: Origin,
+    origin_https: bool,
     scope_maps: BTreeMap&lt;Uuid, BTreeSet&lt;String&gt;&gt;,
     sup_scope_maps: BTreeMap&lt;Uuid, BTreeSet&lt;String&gt;&gt;,
     <span class="comment">// Client Auth Type (basic is all we support for now.
@@ -3294,9 +3393,9 @@
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">&quot;origin&quot;</span>);
-                    <span class="kw">let </span>origin = ent
+                    <span class="kw">let </span>(origin, origin_https) = ent
                         .get_ava_single_url(<span class="string">&quot;oauth2_rs_origin&quot;</span>)
-                        .map(|url| url.origin())
+                        .map(|url| (url.origin(), url.scheme() == <span class="string">&quot;https&quot;</span>))
                         .ok_or(OperationError::InvalidValueState)<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">&quot;authz_secret&quot;</span>);
                     <span class="kw">let </span>authz_secret = ent
@@ -3400,6 +3499,7 @@
                         displayname,
                         uuid,
                         origin,
+                        origin_https,
                         scope_maps,
                         sup_scope_maps,
                         authz_secret,
@@ -3477,6 +3577,14 @@
             <span class="macro">admin_warn!</span>(
                 origin = <span class="question-mark">?</span>o2rs.origin,
                 <span class="string">&quot;Invalid oauth2 redirect_uri (must be related to origin of) - got {:?}&quot;</span>, auth_req.redirect_uri.origin()
+            );
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidOrigin);
+        }
+
+        <span class="kw">if </span>o2rs.origin_https &amp;&amp; auth_req.redirect_uri.scheme() != <span class="string">&quot;https&quot; </span>{
+            <span class="macro">admin_warn!</span>(
+                origin = <span class="question-mark">?</span>o2rs.origin,
+                <span class="string">&quot;Invalid oauth2 redirect_uri (must be https for secure origin) - got {:?}&quot;</span>, auth_req.redirect_uri.scheme()
             );
             <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidOrigin);
         }
@@ -3933,7 +4041,7 @@
         <span class="comment">// Validate the redirect_uri is the same as the original.
         </span><span class="kw">if </span>token_req.redirect_uri != code_xchg.redirect_uri {
             <span class="macro">security_info!</span>(<span class="string">&quot;Invalid oauth2 redirect_uri (differs from original request uri)&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidRequest);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidOrigin);
         }
 
         <span class="comment">// ==== We are now GOOD TO GO! ====
@@ -5031,7 +5139,7 @@
                     idms_prox_read
                         .check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
                         .unwrap_err()
-                        == Oauth2Error::InvalidRequest
+                        == Oauth2Error::InvalidOrigin
                 );
 
                 <span class="comment">//  * code verifier incorrect
@@ -6001,6 +6109,94 @@
                 </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(
                     idms_prox_read.check_oauth2_token_exchange(<span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>token_req, ct),
                     <span class="prelude-val">Err</span>(Oauth2Error::InvalidRequest)
+                ))
+            }
+        )
+    }
+
+    <span class="attribute">#[test]
+    </span><span class="comment">// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-2.1
+    //
+    // If the origin configured is https, do not allow downgrading to http on redirect
+    </span><span class="kw">fn </span>test_idm_oauth2_redir_http_downgrade() {
+        <span class="macro">run_idm_test!</span>(
+            |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
+                <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+                <span class="comment">// Enable pkce is set to FALSE
+                </span><span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+
+                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+
+                <span class="comment">// Get an ident/uat for now.
+
+                // == Setup the authorisation request
+                // We attempt pkce even though the rs is set to not support pkce.
+                </span><span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
+
+                <span class="comment">// First, NOTE the lack of https on the redir uri.
+                </span><span class="kw">let </span>auth_req = AuthorisationRequest {
+                    response_type: <span class="string">&quot;code&quot;</span>.to_string(),
+                    client_id: <span class="string">&quot;test_resource_server&quot;</span>.to_string(),
+                    state: <span class="string">&quot;123&quot;</span>.to_string(),
+                    pkce_request: <span class="prelude-val">Some</span>(PkceRequest {
+                        code_challenge: Base64UrlSafeData(code_challenge.clone()),
+                        code_challenge_method: CodeChallengeMethod::S256,
+                    }),
+                    redirect_uri: Url::parse(<span class="string">&quot;http://demo.example.com/oauth2/result&quot;</span>).unwrap(),
+                    scope: <span class="string">&quot;openid&quot;</span>.to_string(),
+                    nonce: <span class="prelude-val">None</span>,
+                    oidc_ext: Default::default(),
+                    unknown_keys: Default::default(),
+                };
+
+                <span class="macro">assert!</span>(
+                    idms_prox_read
+                        .check_oauth2_authorisation(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>uat, <span class="kw-2">&amp;</span>auth_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::InvalidOrigin
+                );
+
+                <span class="comment">// This does have https
+                </span><span class="kw">let </span>consent_request =
+                    <span class="macro">good_authorisation_request!</span>(idms_prox_read, <span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>uat, ct, code_challenge);
+
+                <span class="comment">// Should be in the consent phase;
+                </span><span class="kw">let </span>consent_token =
+                    <span class="kw">if let </span>AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } <span class="kw">else </span>{
+                        <span class="macro">unreachable!</span>();
+                    };
+
+                <span class="comment">// == Manually submit the consent token to the permit for the permit_success
+                </span><span class="kw">let </span>permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>uat, <span class="kw-2">&amp;</span>consent_token, ct)
+                    .expect(<span class="string">&quot;Failed to perform oauth2 permit&quot;</span>);
+
+                <span class="comment">// Assert that the consent was submitted
+                </span><span class="kw">match </span>idms_delayed.async_rx.blocking_recv() {
+                    <span class="prelude-val">Some</span>(DelayedAction::Oauth2ConsentGrant(<span class="kw">_</span>)) =&gt; {}
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                }
+
+                <span class="comment">// == Submit the token exchange code.
+                // NOTE the url is http again
+                </span><span class="kw">let </span>token_req = AccessTokenRequest {
+                    grant_type: <span class="string">&quot;authorization_code&quot;</span>.to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse(<span class="string">&quot;http://demo.example.com/oauth2/result&quot;</span>).unwrap(),
+                    client_id: <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>.to_string()),
+                    client_secret: <span class="prelude-val">Some</span>(secret),
+                    <span class="comment">// Note the code verifier is set to &quot;something else&quot;
+                    </span>code_verifier,
+                };
+
+                <span class="comment">// Assert the exchange fails.
+                </span><span class="macro">assert!</span>(<span class="macro">matches!</span>(
+                    idms_prox_read.check_oauth2_token_exchange(<span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>token_req, ct),
+                    <span class="prelude-val">Err</span>(Oauth2Error::InvalidOrigin)
                 ))
             }
         )

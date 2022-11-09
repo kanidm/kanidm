@@ -214,6 +214,18 @@
 <span id="214">214</span>
 <span id="215">215</span>
 <span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">use </span>compact_jwt::{Jws, JwsUnverified};
@@ -232,9 +244,21 @@
 
         <span class="kw">let </span>client_builder = KanidmClientBuilder::new()
             .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
-            .and_then(|cb| cb.read_options_from_optional_config(<span class="kw-2">&amp;</span>config_path))
-            .unwrap_or_else(|e| {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to parse config (if present) -- {:?}&quot;</span>, e);
+            .map_err(|e| {
+                <span class="macro">error!</span>(
+                    <span class="string">&quot;Failed to parse config ({:?}) -- {:?}&quot;</span>,
+                    DEFAULT_CLIENT_CONFIG_PATH, e
+                );
+                e
+            })
+            .and_then(|cb| {
+                cb.read_options_from_optional_config(<span class="kw-2">&amp;</span>config_path)
+                    .map_err(|e| {
+                        <span class="macro">error!</span>(<span class="string">&quot;Failed to parse config ({:?}) -- {:?}&quot;</span>, config_path, e);
+                        e
+                    })
+            })
+            .unwrap_or_else(|_e| {
                 std::process::exit(<span class="number">1</span>);
             });
         <span class="macro">debug!</span>(

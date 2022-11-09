@@ -815,6 +815,47 @@
 <span id="815">815</span>
 <span id="816">816</span>
 <span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attribute">#[derive(Debug, Args)]
@@ -1550,6 +1591,42 @@
 }
 
 <span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="kw">pub enum </span>SynchOpt {
+    <span class="attribute">#[clap(name = <span class="string">&quot;list&quot;</span>)]
+    </span><span class="doccomment">/// List all configured IDM sync accounts
+    </span>List(CommonOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;get&quot;</span>)]
+    </span><span class="doccomment">/// Display a selected IDM sync account
+    </span>Get(Named),
+    <span class="doccomment">/// Create a new IDM sync account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;create&quot;</span>)]
+    </span>Create {
+        <span class="attribute">#[clap()]
+        </span>account_id: String,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+        <span class="attribute">#[clap(name = <span class="string">&quot;description&quot;</span>)]
+        </span>description: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    },
+    <span class="attribute">#[clap(name = <span class="string">&quot;generate-token&quot;</span>)]
+    </span>GenerateToken {
+        <span class="attribute">#[clap()]
+        </span>account_id: String,
+        <span class="attribute">#[clap()]
+        </span>label: String,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+    },
+    <span class="attribute">#[clap(name = <span class="string">&quot;destroy-token&quot;</span>)]
+    </span>DestroyToken {
+        <span class="attribute">#[clap()]
+        </span>account_id: String,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+    },
+}
+
+<span class="attribute">#[derive(Debug, Subcommand)]
 </span><span class="kw">pub enum </span>SystemOpt {
     <span class="attribute">#[clap(name = <span class="string">&quot;pw-badlist&quot;</span>)]
     </span><span class="doccomment">/// Configure and manage the password badlist entry
@@ -1569,6 +1646,11 @@
         <span class="attribute">#[clap(subcommand)]
         </span>commands: DomainOpt,
     },
+    <span class="attribute">#[clap(name = <span class="string">&quot;sync&quot;</span>, hide = <span class="bool-val">true</span>)]
+    </span>Synch {
+        <span class="attribute">#[clap(subcommand)]
+        </span>commands: SynchOpt,
+    }
 }
 
 <span class="attribute">#[derive(Debug, Subcommand)]

@@ -2,6 +2,7 @@
 "kanidm_cache_clear":[["impl Parser for <a class=\"struct\" href=\"kanidm_cache_clear/struct.CacheClearOpt.html\" title=\"struct kanidm_cache_clear::CacheClearOpt\">CacheClearOpt</a>"]],
 "kanidm_cache_invalidate":[["impl Parser for <a class=\"struct\" href=\"kanidm_cache_invalidate/struct.CacheInvalidateOpt.html\" title=\"struct kanidm_cache_invalidate::CacheInvalidateOpt\">CacheInvalidateOpt</a>"]],
 "kanidm_cli":[["impl Parser for <a class=\"struct\" href=\"kanidm_cli/struct.KanidmClientParser.html\" title=\"struct kanidm_cli::KanidmClientParser\">KanidmClientParser</a>"]],
+"kanidm_ipa_sync":[["impl Parser for <a class=\"struct\" href=\"kanidm_ipa_sync/struct.Opt.html\" title=\"struct kanidm_ipa_sync::Opt\">Opt</a>"]],
 "kanidm_ssh_authorizedkeys":[["impl Parser for <a class=\"struct\" href=\"kanidm_ssh_authorizedkeys/struct.SshAuthorizedOpt.html\" title=\"struct kanidm_ssh_authorizedkeys::SshAuthorizedOpt\">SshAuthorizedOpt</a>"]],
 "kanidm_ssh_authorizedkeys_direct":[["impl Parser for <a class=\"struct\" href=\"kanidm_ssh_authorizedkeys_direct/struct.SshAuthorizedOpt.html\" title=\"struct kanidm_ssh_authorizedkeys_direct::SshAuthorizedOpt\">SshAuthorizedOpt</a>"]],
 "kanidm_test_auth":[["impl Parser for <a class=\"struct\" href=\"kanidm_test_auth/struct.ClientOpt.html\" title=\"struct kanidm_test_auth::ClientOpt\">ClientOpt</a>"]],

@@ -1104,31 +1104,31 @@
             attributes: <span class="macro">vec!</span>[
                 LdapPartialAttribute {
                     atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.to_string()],
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: <span class="string">&quot;vendorName&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[<span class="string">&quot;Kanidm Project&quot;</span>.to_string()],
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;Kanidm Project&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: <span class="string">&quot;vendorVersion&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[<span class="string">&quot;kanidm_ldap_1.0.0&quot;</span>.to_string()],
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;kanidm_ldap_1.0.0&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: <span class="string">&quot;supportedLDAPVersion&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[<span class="string">&quot;3&quot;</span>.to_string()],
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;3&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: <span class="string">&quot;supportedExtension&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.11.3&quot;</span>.to_string()],
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.11.3&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: <span class="string">&quot;supportedFeatures&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.5.1&quot;</span>.to_string()],
+                    vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.5.1&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
                     atype: <span class="string">&quot;defaultnamingcontext&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[basedn.clone()],
+                    vals: <span class="macro">vec!</span>[basedn.as_bytes().to_vec()],
                 },
             ],
         };
@@ -1735,13 +1735,13 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>attrs = HashSet::new();
             <span class="kw">for </span>a <span class="kw">in </span><span class="macro-nonterminal">$e</span>.attributes.iter() {
                 <span class="kw">for </span>v <span class="kw">in </span>a.vals.iter() {
-                    attrs.insert((a.atype.as_str(), v.as_str()));
+                    attrs.insert((a.atype.as_str(), v.as_slice()));
                 }
             };
             $(
                 <span class="macro">assert!</span>(attrs.contains(<span class="kw-2">&amp;</span>(
-                    <span class="macro-nonterminal">$item</span>.<span class="number">0</span>, <span class="macro-nonterminal">$item</span>.<span class="number">1
-                </span>)));
+                    <span class="macro-nonterminal">$item</span>.<span class="number">0</span>, <span class="macro-nonterminal">$item</span>.<span class="number">1</span>.as_bytes()
+                )));
             )*
 
         }};

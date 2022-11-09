@@ -132,6 +132,9 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -164,6 +167,7 @@
 <span class="kw">pub mod </span>recycle;
 <span class="kw">pub mod </span>serviceaccount;
 <span class="kw">pub mod </span>session;
+<span class="kw">pub mod </span>synch;
 
 <span class="kw">impl </span>SelfOpt {
     <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -202,6 +206,7 @@
             SystemOpt::PwBadlist { commands } =&gt; commands.debug(),
             SystemOpt::Oauth2 { commands } =&gt; commands.debug(),
             SystemOpt::Domain { commands } =&gt; commands.debug(),
+            SystemOpt::Synch { commands } =&gt; commands.debug(),
         }
     }
 
@@ -210,6 +215,7 @@
             SystemOpt::PwBadlist { commands } =&gt; commands.exec().<span class="kw">await</span>,
             SystemOpt::Oauth2 { commands } =&gt; commands.exec().<span class="kw">await</span>,
             SystemOpt::Domain { commands } =&gt; commands.exec().<span class="kw">await</span>,
+            SystemOpt::Synch { commands } =&gt; commands.exec().<span class="kw">await</span>,
         }
     }
 }

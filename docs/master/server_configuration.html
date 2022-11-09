@@ -266,9 +266,11 @@ origin = &quot;https://idm.example.com:8443&quot;
     kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
 </code></pre>
 <h3 id="default-admin-account"><a class="header" href="#default-admin-account">Default Admin Account</a></h3>
-<p>Then you can setup the initial admin account and initialise the database into your volume.</p>
+<p>Then you can setup the initial admin account and initialise the database into your volume. This command
+will generate a new random password for the admin account.</p>
 <pre><code>docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml admin
+# success - recover_account password for user admin: vv...
 </code></pre>
 <h3 id="run-the-server"><a class="header" href="#run-the-server">Run the Server</a></h3>
 <p>Now we can run the server so that it can accept connections. This defaults to using <code>-c /data/server.toml</code></p>

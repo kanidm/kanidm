@@ -1,8 +1,9 @@
 var sourcesIndex = JSON.parse('{\
 "kanidm_cache_clear":["",[["opt",[],["cache_clear.rs"]]],["cache_clear.rs"]],\
 "kanidm_cache_invalidate":["",[["opt",[],["cache_invalidate.rs"]]],["cache_invalidate.rs"]],\
-"kanidm_cli":["",[["opt",[],["kanidm.rs"]]],["badlist.rs","common.rs","domain.rs","group.rs","lib.rs","oauth2.rs","person.rs","raw.rs","recycle.rs","serviceaccount.rs","session.rs"]],\
-"kanidm_client":["",[],["lib.rs","person.rs","service_account.rs","sync_account.rs","system.rs"]],\
+"kanidm_cli":["",[["opt",[],["kanidm.rs"]]],["badlist.rs","common.rs","domain.rs","group.rs","lib.rs","oauth2.rs","person.rs","raw.rs","recycle.rs","serviceaccount.rs","session.rs","synch.rs"]],\
+"kanidm_client":["",[],["lib.rs","person.rs","scim.rs","service_account.rs","sync_account.rs","system.rs"]],\
+"kanidm_ipa_sync":["",[],["config.rs","main.rs","opt.rs"]],\
 "kanidm_proto":["",[],["constants.rs","lib.rs","messages.rs","oauth2.rs","scim_v1.rs","utils.rs","v1.rs"]],\
 "kanidm_ssh_authorizedkeys":["",[["opt",[],["ssh_authorizedkeys.rs"]]],["ssh_authorizedkeys.rs"]],\
 "kanidm_ssh_authorizedkeys_direct":["",[["opt",[],["ssh_authorizedkeys.rs"]]],["ssh_authorizedkeys.rs"]],\
