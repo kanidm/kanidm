@@ -1,5 +1,6 @@
 use super::routemaps::{RouteMap, RouteMaps};
 use super::{to_tide_response, AppState, RequestExtensions};
+use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
@@ -100,7 +101,7 @@ async fn scim_sync_post(mut req: tide::Request<AppState>) -> tide::Result {
     let bearer = req.get_auth_bearer();
 
     // Change this type later.
-    let changes: () = req.body_json().await?;
+    let changes: ScimSyncRequest = req.body_json().await?;
 
     let res = req
         .state()

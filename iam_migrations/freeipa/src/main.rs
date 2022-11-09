@@ -213,7 +213,12 @@ async fn driver_main(opt: Opt) {
             error!(?e, "Failed to serialise scim sync request");
         };
     } else {
-        todo!();
+        if let Err(e) = rsclient.scim_v1_sync_update(&scim_sync_request).await {
+            error!(
+                ?e,
+                "Failed to submit scim sync update - see the kanidmd server log for more details."
+            );
+        };
     }
     // done!
 }

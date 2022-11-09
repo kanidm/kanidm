@@ -4,6 +4,7 @@ use std::time::Duration;
 use base64urlsafedata::Base64UrlSafeData;
 
 use compact_jwt::{Jws, JwsSigner};
+use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
@@ -233,6 +234,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn scim_sync_apply(
         &mut self,
         sse: &ScimSyncUpdateEvent,
+        _changes: &ScimSyncRequest,
         _ct: Duration,
     ) -> Result<(), OperationError> {
         let _sync_uuid = match &sse.ident.origin {
@@ -323,7 +325,7 @@ mod tests {
     use kanidm_proto::v1::ApiTokenPurpose;
     use std::time::Duration;
 
-    use super::{GenerateScimSyncTokenEvent, ScimSyncToken};
+    use super::{GenerateScimSyncTokenEvent, ScimSyncToken, ScimSyncUpdateEvent};
 
     use async_std::task;
 
@@ -520,4 +522,141 @@ mod tests {
     }
 
     // Need to delete different phases such as conflictn and end of the agreement.
+
+    #[test]
+    fn test_idm_scim_sync_refresh_1() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            let sync_uuid = Uuid::new_v4();
+
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("sync_account")),
+                ("name", Value::new_iname("test_scim_sync")),
+                ("uuid", Value::new_uuid(sync_uuid)),
+                ("description", Value::new_utf8s("A test sync agreement"))
+            );
+
+            let ce = CreateEvent::new_internal(vec![e1]);
+            let cr = idms_prox_write.qs_write.create(&ce);
+            assert!(cr.is_ok());
+
+            let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+
+            let sync_token = idms_prox_write
+                .scim_sync_generate_token(&gte, ct)
+                .expect("failed to generate new scim sync token");
+
+            let ident = idms_prox_write
+                .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
+                .expect("Failed to process sync token to ident");
+
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes =
+                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+            let res = idms_prox_write.scim_sync_apply(&sse, &changes, ct);
+
+            // Currently in testing this is just access denied.
+            assert!(matches!(res, Err(OperationError::AccessDenied)));
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    const TEST_SYNC_SCIM_IPA_1: &str = r#"
+    {
+      "from_state": "Refresh",
+      "to_state": {
+        "Active": {
+          "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEwOQ"
+        }
+      },
+      "entries": [
+        {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
+          ],
+          "id": "ac60034b-3498-11ed-a50d-919b4b1a5ec0",
+          "externalId": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+          "displayName": "Administrator",
+          "gidNumber": 8200000,
+          "homeDirectory": "/home/admin",
+          "loginShell": "/bin/bash",
+          "passwordImport": "CVBguEizG80swI8sftaknw",
+          "userName": "admin"
+        },
+        {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+          ],
+          "id": "ac60034e-3498-11ed-a50d-919b4b1a5ec0",
+          "externalId": "cn=editors,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+          "description": "Limited admins who can edit other users",
+          "gidNumber": 8200002,
+          "name": "editors"
+        },
+        {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+          ],
+          "id": "0c56a965-3499-11ed-a50d-919b4b1a5ec0",
+          "externalId": "cn=trust admins,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+          "description": "Trusts administrators group",
+          "members": [
+            {
+              "external_id": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+            }
+          ],
+          "name": "trust admins"
+        },
+        {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
+          ],
+          "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
+          "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+          "displayName": "Test User",
+          "gidNumber": 12345,
+          "homeDirectory": "/home/testuser",
+          "loginShell": "/bin/sh",
+          "passwordImport": "iEb36u6PsRetBr3YMLdYbA",
+          "userName": "testuser"
+        },
+        {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+          ],
+          "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
+          "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+          "description": "Test group",
+          "name": "testgroup"
+        },
+        {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+          ],
+          "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
+          "externalId": "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+          "name": "testexternal"
+        },
+        {
+          "schemas": [
+            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+          ],
+          "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
+          "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+          "gidNumber": 1234567,
+          "name": "testposix"
+        }
+      ],
+      "delete_uuids": []
+    }
+    "#;
 }

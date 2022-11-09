@@ -4,7 +4,7 @@ use crate::{QueryServerReadV1, QueryServerWriteV1};
 use kanidmd_lib::idm::scim::{GenerateScimSyncTokenEvent, ScimSyncUpdateEvent};
 use kanidmd_lib::idm::server::IdmServerTransaction;
 
-use kanidm_proto::scim_v1::ScimSyncState;
+use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
 
 impl QueryServerWriteV1 {
     #[instrument(
@@ -88,7 +88,7 @@ impl QueryServerWriteV1 {
     pub async fn handle_scim_sync_apply(
         &self,
         bearer: Option<String>,
-        _changes: (),
+        changes: ScimSyncRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
@@ -100,7 +100,7 @@ impl QueryServerWriteV1 {
         let sse = ScimSyncUpdateEvent { ident };
 
         idms_prox_write
-            .scim_sync_apply(&sse, ct)
+            .scim_sync_apply(&sse, &changes, ct)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 }
