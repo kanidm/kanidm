@@ -26,10 +26,12 @@ You should test your configuration is valid before you proceed.
 
 ### Default Admin Account
 
-Then you can setup the initial admin account and initialise the database into your volume.
+Then you can setup the initial admin account and initialise the database into your volume. This command
+will generate a new random password for the admin account.
 
     docker run --rm -i -t -v kanidmd:/data \
         kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml admin
+    # success - recover_account password for user admin: vv...
 
 ### Run the Server
 
