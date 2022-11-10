@@ -92,7 +92,7 @@ impl Oauth2App {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             // let jsval_json = JsFuture::from(resp.json()?).await?;
             Ok(Oauth2Msg::Error { emsg, kopid })
         }
@@ -158,7 +158,7 @@ impl Oauth2App {
             Ok(Oauth2Msg::AccessDenied { kopid })
         } else {
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             Ok(Oauth2Msg::Error { emsg, kopid })
         }
     }

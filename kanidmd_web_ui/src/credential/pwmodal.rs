@@ -103,7 +103,7 @@ impl PwModalApp {
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }

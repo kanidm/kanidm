@@ -24,7 +24,7 @@ impl TryFrom<Entry> for Profile {
     type Error = String;
 
     fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        console::error!("Entry Dump", format!("{:?}", entry).to_string());
+        console::error!("Entry Dump", format!("{:?}", entry));
 
         let uuid = entry
             .attrs
@@ -152,7 +152,7 @@ impl Component for ProfileApp {
                   </main>
                 }
             }
-            State::Ready(profile) => self.view_profile(ctx, &profile),
+            State::Ready(profile) => self.view_profile(ctx, profile),
             State::Error { emsg, kopid } => self.do_alert_error(
                 "An error has occured 😔 ",
                 Some(
@@ -313,7 +313,7 @@ impl ProfileApp {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }

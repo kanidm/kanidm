@@ -463,7 +463,8 @@ impl Oauth2ResourceServersReadTransaction {
         //
         let o2rs = self.inner.rs_set.get(&auth_req.client_id).ok_or_else(|| {
             admin_warn!(
-                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+                "Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?",
+                &auth_req.client_id
             );
             Oauth2Error::InvalidClientId
         })?;
@@ -472,7 +473,9 @@ impl Oauth2ResourceServersReadTransaction {
         if auth_req.redirect_uri.origin() != o2rs.origin {
             admin_warn!(
                 origin = ?o2rs.origin,
-                "Invalid oauth2 redirect_uri (must be related to origin of) - got {:?}", auth_req.redirect_uri.origin()
+                "Invalid oauth2 redirect_uri (must be related to origin {:?}) - got {:?}",
+                o2rs.origin,
+                auth_req.redirect_uri.origin()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }

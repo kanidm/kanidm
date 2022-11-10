@@ -198,7 +198,7 @@ impl SecurityApp {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             // let jsval_json = JsFuture::from(resp.json()?).await?;
             Ok(Msg::Error { emsg, kopid })
         }

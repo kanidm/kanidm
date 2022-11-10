@@ -16,7 +16,7 @@ pub(crate) fn qs_test(_args: &TokenStream, item: TokenStream, with_init: bool) -
 
     if let Some(attr) = input.attrs.iter().find(|attr| attr.path.is_ident("test")) {
         let msg = "second test attribute is supplied";
-        return token_stream_with_error(item, syn::Error::new_spanned(&attr, msg));
+        return token_stream_with_error(item, syn::Error::new_spanned(attr, msg));
     };
 
     if input.sig.asyncness.is_none() {
@@ -106,7 +106,7 @@ pub(crate) fn idm_test(_args: &TokenStream, item: TokenStream) -> TokenStream {
 
     if let Some(attr) = input.attrs.iter().find(|attr| attr.path.is_ident("test")) {
         let msg = "second test attribute is supplied";
-        return token_stream_with_error(item, syn::Error::new_spanned(&attr, msg));
+        return token_stream_with_error(item, syn::Error::new_spanned(attr, msg));
     };
 
     if input.sig.asyncness.is_none() {

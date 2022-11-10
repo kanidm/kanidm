@@ -52,10 +52,15 @@ fn switch(route: &Route) -> Html {
     #[cfg(debug)]
     console::debug!("manager::switch");
     match route {
+        #[allow(clippy::let_unit_value)]
         Route::Landing => html! { <Landing /> },
+        #[allow(clippy::let_unit_value)]
         Route::Login => html! { <LoginApp /> },
+        #[allow(clippy::let_unit_value)]
         Route::Oauth2 => html! { <Oauth2App /> },
+        #[allow(clippy::let_unit_value)]
         Route::Views => html! { <ViewsApp /> },
+        #[allow(clippy::let_unit_value)]
         Route::CredentialReset => html! { <CredentialResetApp /> },
         Route::NotFound => {
             add_body_form_classes!();

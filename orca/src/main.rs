@@ -63,6 +63,7 @@ impl TargetServerBuilder {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum TargetServer {
     Kanidm(KaniHttpServer),
     KanidmLdap(Box<KaniLdapServer>),
