@@ -515,6 +515,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Session => Err(OperationError::InvalidAttribute("Session Values can not be supplied through modification".to_string())),
                     SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute("JwsKeyEs256 Values can not be supplied through modification".to_string())),
                     SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute("JwsKeyRs256 Values can not be supplied through modification".to_string())),
+                    SyntaxType::Oauth2Session => Err(OperationError::InvalidAttribute("Oauth2Session Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -576,7 +577,10 @@ pub trait QueryServerTransaction<'a> {
                     // ⚠️   Any types here need to also be added to update_attributes in
                     // schema.rs for reference type / cache awareness during referential
                     // integrity processing. Exceptions are self-contained value types!
-                    SyntaxType::ReferenceUuid | SyntaxType::OauthScopeMap | SyntaxType::Session => {
+                    SyntaxType::ReferenceUuid
+                    | SyntaxType::OauthScopeMap
+                    | SyntaxType::Session
+                    | SyntaxType::Oauth2Session => {
                         // See comments above.
                         PartialValue::new_refer_s(value)
                             .or_else(|| {
@@ -2653,6 +2657,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
             JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
             JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
+            JSON_SCHEMA_ATTR_OAUTH2_SESSION,
             JSON_SCHEMA_ATTR_NSUNIQUEID,
             JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
             JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,

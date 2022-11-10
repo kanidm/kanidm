@@ -201,6 +201,7 @@ pub const _UUID_SCHEMA_CLASS_SYNC_ACCOUNT: Uuid = uuid!("00000000-0000-0000-0000
 pub const _UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000115");
 pub const _UUID_SCHEMA_ATTR_SYNC_COOKIE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000116");
+pub const _UUID_SCHEMA_ATTR_OAUTH2_SESSION: Uuid = uuid!("00000000-0000-0000-0000-ffff00000117");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

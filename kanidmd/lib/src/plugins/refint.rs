@@ -146,7 +146,7 @@ impl Plugin for ReferentialIntegrity {
         })
         .map(|v| {
             v.to_ref_uuid()
-                .map(|uuid| PartialValue::new_uuid(*uuid))
+                .map(|uuid| PartialValue::new_uuid(uuid))
                 .ok_or_else(|| {
                     admin_error!(?v, "reference value could not convert to reference uuid.");
                     admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");

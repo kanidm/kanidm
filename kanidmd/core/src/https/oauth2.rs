@@ -2,7 +2,7 @@ use kanidm_proto::oauth2::AuthorisationResponse;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
-    AuthoriseResponse, ErrorResponse, Oauth2Error,
+    AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
 };
 use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -723,6 +723,68 @@ pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> t
     })
 }
 
+pub async fn oauth2_token_revoke_post(mut req: tide::Request<AppState>) -> tide::Result {
+    // This is called directly by the resource server, where we then revoke
+    // the token identified by this request.
+    let (eventid, hvalue) = req.new_eventid();
+
+    let client_authz = req
+        .header("authorization")
+        .and_then(|hv| hv.get(0))
+        .and_then(|h| h.as_str().strip_prefix("Basic "))
+        .map(str::to_string)
+        .ok_or_else(|| {
+            error!("Basic Authentication Not Provided");
+            tide::Error::from_str(
+                tide::StatusCode::Unauthorized,
+                "Invalid Basic Authorisation",
+            )
+        })?;
+
+    // Get the introspection request, could we accept json or form? Prob needs content type here.
+    let intr_req: TokenRevokeRequest = req.body_form().await.map_err(|e| {
+        request_error!("{:?}", e);
+        tide::Error::from_str(
+            tide::StatusCode::BadRequest,
+            "Invalid Oauth2 TokenRevokeRequest",
+        )
+    })?;
+
+    request_trace!("Revoke Request - {:?}", intr_req);
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_oauth2_token_revoke(client_authz, intr_req, eventid)
+        .await;
+
+    match res {
+        Ok(()) => Ok(tide::Response::new(200)),
+        Err(Oauth2Error::AuthenticationRequired) => {
+            // This will trigger our ui to auth and retry.
+            Ok(tide::Response::new(tide::StatusCode::Unauthorized))
+        }
+        Err(e) => {
+            // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
+            let err = ErrorResponse {
+                error: e.to_string(),
+                error_description: None,
+                error_uri: None,
+            };
+
+            let mut res = tide::Response::new(400);
+            tide::Body::from_json(&err).map(|b| {
+                res.set_body(b);
+                res
+            })
+        }
+    }
+    .map(|mut res| {
+        res.insert_header("X-KANIDM-OPID", hvalue);
+        res
+    })
+}
+
 pub fn oauth2_route_setup(appserver: &mut tide::Route<'_, AppState>, routemap: &mut RouteMap) {
     let mut oauth2_process = appserver.at("/oauth2");
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
@@ -738,36 +800,45 @@ pub fn oauth2_route_setup(appserver: &mut tide::Route<'_, AppState>, routemap: &
         .at("/authorise/permit")
         .mapped_post(routemap, oauth2_authorise_permit_post)
         .mapped_get(routemap, oauth2_authorise_permit_get);
+
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/authorise/reject")
         .mapped_post(routemap, oauth2_authorise_reject_post)
         .mapped_get(routemap, oauth2_authorise_reject_get);
+
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/token")
         .mapped_post(routemap, oauth2_token_post);
+
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/token/introspect")
         .mapped_post(routemap, oauth2_token_introspect_post);
+    oauth2_process
+        .at("/token/revoke")
+        .mapped_post(routemap, oauth2_token_revoke_post);
 
     let mut openid_process = appserver.at("/oauth2/openid");
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+
     openid_process
         .at("/:client_id/.well-known/openid-configuration")
         .mapped_get(routemap, oauth2_openid_discovery_get);
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+
     openid_process
         .at("/:client_id/userinfo")
         .mapped_get(routemap, oauth2_openid_userinfo_get);
     // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
     // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+
     openid_process
         .at("/:client_id/public_key.jwk")
         .mapped_get(routemap, oauth2_openid_publickey_get);

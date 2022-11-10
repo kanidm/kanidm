@@ -80,6 +80,5 @@ pub struct Oauth2SessionRecord {
     pub expiry: Option<OffsetDateTime>,
     pub issued_at: OffsetDateTime,
     // Which rs is this related to?
-    pub rsid: Uuid,
+    pub rs_uuid: Uuid,
 }
-

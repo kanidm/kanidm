@@ -400,6 +400,22 @@ pub enum DbValueSession {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueOauth2Session {
+    V1 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "p")]
+        parent: Uuid,
+        #[serde(rename = "e")]
+        expiry: Option<String>,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "r")]
+        rs_uuid: Uuid,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
     Utf8(String),
@@ -532,6 +548,8 @@ pub enum DbValueSetV2 {
     JwsKeyEs256(Vec<Vec<u8>>),
     #[serde(rename = "JR")]
     JwsKeyRs256(Vec<Vec<u8>>),
+    #[serde(rename = "AS")]
+    Oauth2Session(Vec<DbValueOauth2Session>),
 }
 
 impl DbValueSetV2 {
@@ -568,6 +586,7 @@ impl DbValueSetV2 {
             DbValueSetV2::DeviceKey(set) => set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
             DbValueSetV2::Session(set) => set.len(),
+            DbValueSetV2::Oauth2Session(set) => set.len(),
             DbValueSetV2::JwsKeyEs256(set) => set.len(),
             DbValueSetV2::JwsKeyRs256(set) => set.len(),
         }

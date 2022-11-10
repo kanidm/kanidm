@@ -52,7 +52,9 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::entry::EntryChangelog;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::value::{IndexType, IntentTokenState, PartialValue, Session, SyntaxType, Value};
+use crate::value::{
+    IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
+};
 use crate::valueset::{self, ValueSet};
 
 // use std::convert::TryFrom;
@@ -1861,6 +1863,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         attr: &str,
     ) -> Option<&std::collections::BTreeMap<Uuid, Session>> {
         self.attrs.get(attr).and_then(|vs| vs.as_session_map())
+    }
+
+    #[inline(always)]
+    pub fn get_ava_as_oauth2session_map(
+        &self,
+        attr: &str,
+    ) -> Option<&std::collections::BTreeMap<Uuid, Oauth2Session>> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.as_oauth2session_map())
     }
 
     #[inline(always)]

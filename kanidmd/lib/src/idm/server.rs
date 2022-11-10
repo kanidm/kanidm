@@ -33,8 +33,8 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, PasswordUpgrade,
-    UnixPasswordUpgrade, WebauthnCounterIncrement,
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord,
+    PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
 };
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
@@ -58,7 +58,7 @@ use crate::idm::AuthState;
 use crate::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-use crate::value::Session;
+use crate::value::{Oauth2Session, Session};
 
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -135,7 +135,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     uat_jwt_signer: CowCellWriteTxn<'a, JwsSigner>,
     uat_jwt_validator: CowCellWriteTxn<'a, JwsValidator>,
     pub(crate) token_enc_key: CowCellWriteTxn<'a, Fernet>,
-    oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
+    pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
 pub struct IdmServerDelayed {
@@ -574,25 +574,54 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    fn check_account_uuid_valid(
+    fn check_oauth2_account_uuid_valid(
         &self,
-        uuid: &Uuid,
+        uuid: Uuid,
+        session_id: Uuid,
+        parent_session_id: Uuid,
+        iat: i64,
         ct: Duration,
     ) -> Result<Option<Account>, OperationError> {
-        let entry = self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
-            admin_error!(?e, "check_account_uuid_valid failed");
+        let entry = self.get_qs_txn().internal_search_uuid(&uuid).map_err(|e| {
+            admin_error!(?e, "check_oauth2_account_uuid_valid failed");
             e
         })?;
 
-        if Account::check_within_valid_time(
+        let within_valid_window = Account::check_within_valid_time(
             ct,
             entry.get_ava_single_datetime("account_valid_from").as_ref(),
             entry.get_ava_single_datetime("account_expire").as_ref(),
-        ) {
-            Account::try_from_entry_no_groups(entry.as_ref()).map(Some)
-        } else {
-            Ok(None)
+        );
+
+        if !within_valid_window {
+            security_info!("Account has expired or is not yet valid, not allowing to proceed");
+            return Ok(None);
         }
+
+        if ct >= Duration::from_secs(iat as u64) + GRACE_WINDOW {
+            // We are past the grace window. Enforce session presence.
+            // We enforce both sessions are present in case of inconsistency
+            // that may occur with replication.
+            let oauth2_session_valid = entry
+                .get_ava_as_oauth2session_map("oauth2_session")
+                .map(|map| map.get(&session_id).is_some())
+                .unwrap_or(false);
+            let uat_session_valid = entry
+                .get_ava_as_session_map("user_auth_token_session")
+                .map(|map| map.get(&parent_session_id).is_some())
+                .unwrap_or(false);
+
+            if oauth2_session_valid && uat_session_valid {
+                security_info!("A valid session value exists for this token");
+            } else {
+                security_info!(%uat_session_valid, %oauth2_session_valid, "The token grace window has passed and no sessions exist. Assuming invalid.");
+                return Ok(None);
+            }
+        } else {
+            security_info!("The token grace window is in effect. Assuming valid.");
+        };
+
+        Account::try_from_entry_no_groups(entry.as_ref()).map(Some)
     }
 
     /// For any event/operation to proceed, we need to attach an identity to the
@@ -2191,6 +2220,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    // WARNING WILLIAM - what do if the uat id isn't present? Won't session
+    // consistency kick in?
+    // session consistency should check the grace windows too?
     pub(crate) fn process_oauth2sessionrecord(
         &mut self,
         osr: &Oauth2SessionRecord,
@@ -2199,23 +2231,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let entry = self.qs_write.internal_search_uuid(&osr.target_uuid)?;
         let sessions = entry.get_ava_as_oauth2session_map("oauth2_session");
 
-        /*
-        let session = Value::Session(
-            asr.session_id,
-            Session {
-                label: asr.label.clone(),
-                expiry: asr.expiry,
-                // Need the other inner bits?
-                // for the gracewindow.
-                issued_at: asr.issued_at,
-                // Who actually created this?
-                issued_by: asr.issued_by.clone(),
-                // What is the access scope of this session? This is
-                // for auditing purposes.
-                scope: asr.scope,
+        let session = Value::Oauth2Session(
+            osr.session_id,
+            Oauth2Session {
+                parent: osr.parent_session_id,
+                expiry: osr.expiry,
+                issued_at: osr.issued_at,
+                rs_uuid: osr.rs_uuid,
             },
         );
-        */
 
         info!(session_id = %osr.session_id, "Persisting auth session");
 
@@ -2250,7 +2274,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(asr.target_uuid))),
+                &filter!(f_eq("uuid", PartialValue::new_uuid(osr.target_uuid))),
                 &modlist,
             )
             .map_err(|e| {

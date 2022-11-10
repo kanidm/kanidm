@@ -15,7 +15,7 @@ use crate::credential::Credential;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
-use crate::value::{Address, IntentTokenState, Session};
+use crate::value::{Address, IntentTokenState, Oauth2Session, Session};
 
 mod address;
 mod binary;
@@ -56,7 +56,7 @@ pub use self::nsuniqueid::ValueSetNsUniqueId;
 pub use self::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
 pub use self::restricted::ValueSetRestricted;
 pub use self::secret::ValueSetSecret;
-pub use self::session::ValueSetSession;
+pub use self::session::{ValueSetOauth2Session, ValueSetSession};
 pub use self::spn::ValueSetSpn;
 pub use self::ssh::ValueSetSshKey;
 pub use self::syntax::ValueSetSyntax;
@@ -471,6 +471,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_oauth2session_map(&self) -> Option<&BTreeMap<Uuid, Oauth2Session>> {
+        debug_assert!(false);
+        None
+    }
+
     fn to_jws_key_es256_single(&self) -> Option<&JwsSigner> {
         debug_assert!(false);
         None
@@ -546,6 +551,7 @@ pub fn from_result_value_iter(
         | Value::DeviceKey(_, _, _)
         | Value::TrustedDeviceEnrollment(_)
         | Value::Session(_, _)
+        | Value::Oauth2Session(_, _)
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_) => {
             debug_assert!(false);
@@ -601,6 +607,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::JwsKeyEs256(k) => ValueSetJwsKeyEs256::new(k),
         Value::JwsKeyRs256(k) => ValueSetJwsKeyRs256::new(k),
         Value::Session(u, m) => ValueSetSession::new(u, m),
+        Value::Oauth2Session(u, m) => ValueSetOauth2Session::new(u, m),
         Value::PhoneNumber(_, _) | Value::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -644,6 +651,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
         DbValueSetV2::DeviceKey(set) => ValueSetDeviceKey::from_dbvs2(set),
         DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(set),
+        DbValueSetV2::Oauth2Session(set) => ValueSetOauth2Session::from_dbvs2(set),
         DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
