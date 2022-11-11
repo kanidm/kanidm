@@ -735,6 +735,7 @@ impl PartialValue {
         }
     }
 
+    #[allow(clippy::unimplemented)]
     pub fn get_idx_sub_key(&self) -> String {
         unimplemented!();
     }

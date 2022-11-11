@@ -15,6 +15,7 @@ pub struct DynGroupCache {
 pub struct DynGroup;
 
 impl DynGroup {
+    #[allow(clippy::too_many_arguments)]
     fn apply_dyngroup_change(
         qs: &QueryServerWriteTransaction,
         ident: &Identity,
@@ -35,7 +36,7 @@ impl DynGroup {
         // Search all the new groups first.
         let filt = filter!(FC::Or(
             n_dyn_groups
-                .into_iter()
+                .iter()
                 .map(|e| f_eq("uuid", PartialValue::new_uuid(e.get_uuid())))
                 .collect()
         ));

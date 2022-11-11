@@ -999,7 +999,7 @@ impl IdlSqliteWriteTransaction {
         idx_table_list.iter().try_for_each(|idx_table| {
             trace!(table = ?idx_table, "removing idx_table");
             self.conn
-                .prepare(&format!("DROP TABLE {}.{}", "main", idx_table).as_str())
+                .prepare(format!("DROP TABLE {}.{}", "main", idx_table).as_str())
                 .and_then(|mut stmt| stmt.execute([]).map(|_| ()))
                 .map_err(sqlite_error)
         })
@@ -1373,7 +1373,7 @@ impl IdlSqlite {
                 })?;
 
             vconn
-                .pragma_update(None, "journal_mode", &"DELETE")
+                .pragma_update(None, "journal_mode", "DELETE")
                 .map_err(|e| {
                     admin_error!(?e, "rusqlite journal_mode update error");
                     OperationError::SqliteError
@@ -1388,7 +1388,7 @@ impl IdlSqlite {
                 Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)?;
 
             vconn
-                .pragma_update(None, "page_size", &(cfg.fstype as u32))
+                .pragma_update(None, "page_size", cfg.fstype as u32)
                 .map_err(|e| {
                     admin_error!(?e, "rusqlite page_size update error");
                     OperationError::SqliteError
@@ -1400,7 +1400,7 @@ impl IdlSqlite {
             })?;
 
             vconn
-                .pragma_update(None, "journal_mode", &"WAL")
+                .pragma_update(None, "journal_mode", "WAL")
                 .map_err(|e| {
                     admin_error!(?e, "rusqlite journal_mode update error");
                     OperationError::SqliteError

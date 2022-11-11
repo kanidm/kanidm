@@ -103,8 +103,7 @@ impl PwBadlistOpt {
 
                 let filt_pwset: Vec<_> = results
                     .into_iter()
-                    .map(|res| res.expect("Thread join failure"))
-                    .flatten()
+                    .flat_map(|res| res.expect("Thread join failure"))
                     .collect();
 
                 info!(

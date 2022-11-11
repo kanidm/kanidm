@@ -320,6 +320,7 @@ impl ViewsApp {
                         ViewRoute::Admin => html!{
                             <Switch<AdminRoute> render={ Switch::render(admin_routes) } />
                         },
+                        #[allow(clippy::let_unit_value)]
                         ViewRoute::Apps => html! { <AppsApp /> },
                         ViewRoute::Profile => html! { <ProfileApp current_user_uat={ current_user_uat.clone() } /> },
                         ViewRoute::Security => html! { <SecurityApp current_user_uat={ current_user_uat.clone() } /> },
@@ -359,7 +360,7 @@ impl ViewsApp {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
@@ -396,7 +397,7 @@ impl ViewsApp {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
@@ -425,7 +426,7 @@ impl ViewsApp {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            let emsg = text.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }

@@ -1577,6 +1577,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn get_origin(&self) -> &Url {
+        #[allow(clippy::unwrap_used)]
         self.webauthn.get_allowed_origins().get(0).unwrap()
     }
 
@@ -2131,8 +2132,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let mlist: Vec<_> = sessions
             .iter()
-            .map(|item| item.iter())
-            .flatten()
+            .flat_map(|item| item.iter())
             .filter_map(|(k, v)| {
                 // We only check if an expiry is present
                 v.expiry.and_then(|exp| {
