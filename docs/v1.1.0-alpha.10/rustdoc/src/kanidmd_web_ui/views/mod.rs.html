@@ -462,6 +462,7 @@
 <span id="462">462</span>
 <span id="463">463</span>
 <span id="464">464</span>
+<span id="465">465</span>
 </pre><pre class="rust"><code><span class="kw">use </span>gloo::console;
 <span class="kw">use </span>kanidm_proto::v1::UserAuthToken;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -784,7 +785,8 @@
                         ViewRoute::Admin =&gt; <span class="macro">html!</span>{
                             &lt;Switch&lt;AdminRoute&gt; render={ Switch::render(admin_routes) } /&gt;
                         },
-                        ViewRoute::Apps =&gt; <span class="macro">html! </span>{ &lt;AppsApp /&gt; },
+                        <span class="attribute">#[allow(clippy::let_unit_value)]
+                        </span>ViewRoute::Apps =&gt; <span class="macro">html! </span>{ &lt;AppsApp /&gt; },
                         ViewRoute::Profile =&gt; <span class="macro">html! </span>{ &lt;ProfileApp current_user_uat={ current_user_uat.clone() } /&gt; },
                         ViewRoute::Security =&gt; <span class="macro">html! </span>{ &lt;SecurityApp current_user_uat={ current_user_uat.clone() } /&gt; },
                         ViewRoute::NotFound =&gt; <span class="macro">html! </span>{
@@ -823,7 +825,7 @@
             <span class="kw">let </span>headers = resp.headers();
             <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
             <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_default();
             <span class="prelude-val">Ok</span>(ViewsMsg::Error { emsg, kopid })
         }
     }
@@ -860,7 +862,7 @@
             <span class="kw">let </span>headers = resp.headers();
             <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
             <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_default();
             <span class="prelude-val">Ok</span>(ViewsMsg::Error { emsg, kopid })
         }
     }
@@ -889,7 +891,7 @@
             <span class="kw">let </span>headers = resp.headers();
             <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
             <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_default();
             <span class="prelude-val">Ok</span>(ViewsMsg::Error { emsg, kopid })
         }
     }

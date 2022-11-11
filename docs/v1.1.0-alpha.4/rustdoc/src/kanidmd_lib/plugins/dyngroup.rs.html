@@ -914,6 +914,7 @@
 <span id="914">914</span>
 <span id="915">915</span>
 <span id="916">916</span>
+<span id="917">917</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -931,7 +932,8 @@
 <span class="kw">pub struct </span>DynGroup;
 
 <span class="kw">impl </span>DynGroup {
-    <span class="kw">fn </span>apply_dyngroup_change(
+    <span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">fn </span>apply_dyngroup_change(
         qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
         ident: <span class="kw-2">&amp;</span>Identity,
         pre_candidates: <span class="kw-2">&amp;mut </span>Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt;,
@@ -951,7 +953,7 @@
         <span class="comment">// Search all the new groups first.
         </span><span class="kw">let </span>filt = <span class="macro">filter!</span>(FC::Or(
             n_dyn_groups
-                .into_iter()
+                .iter()
                 .map(|e| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(e.get_uuid())))
                 .collect()
         ));

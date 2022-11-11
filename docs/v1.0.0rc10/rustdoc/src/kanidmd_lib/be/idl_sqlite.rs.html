@@ -2492,7 +2492,7 @@
         idx_table_list.iter().try_for_each(|idx_table| {
             <span class="macro">trace!</span>(table = <span class="question-mark">?</span>idx_table, <span class="string">&quot;removing idx_table&quot;</span>);
             <span class="self">self</span>.conn
-                .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;DROP TABLE {}.{}&quot;</span>, <span class="string">&quot;main&quot;</span>, idx_table).as_str())
+                .prepare(<span class="macro">format!</span>(<span class="string">&quot;DROP TABLE {}.{}&quot;</span>, <span class="string">&quot;main&quot;</span>, idx_table).as_str())
                 .and_then(|<span class="kw-2">mut </span>stmt| stmt.execute([]).map(|<span class="kw">_</span>| ()))
                 .map_err(sqlite_error)
         })
@@ -2866,7 +2866,7 @@
                 })<span class="question-mark">?</span>;
 
             vconn
-                .pragma_update(<span class="prelude-val">None</span>, <span class="string">&quot;journal_mode&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;DELETE&quot;</span>)
+                .pragma_update(<span class="prelude-val">None</span>, <span class="string">&quot;journal_mode&quot;</span>, <span class="string">&quot;DELETE&quot;</span>)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;rusqlite journal_mode update error&quot;</span>);
                     OperationError::SqliteError
@@ -2881,7 +2881,7 @@
                 Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)<span class="question-mark">?</span>;
 
             vconn
-                .pragma_update(<span class="prelude-val">None</span>, <span class="string">&quot;page_size&quot;</span>, <span class="kw-2">&amp;</span>(cfg.fstype <span class="kw">as </span>u32))
+                .pragma_update(<span class="prelude-val">None</span>, <span class="string">&quot;page_size&quot;</span>, cfg.fstype <span class="kw">as </span>u32)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;rusqlite page_size update error&quot;</span>);
                     OperationError::SqliteError
@@ -2893,7 +2893,7 @@
             })<span class="question-mark">?</span>;
 
             vconn
-                .pragma_update(<span class="prelude-val">None</span>, <span class="string">&quot;journal_mode&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;WAL&quot;</span>)
+                .pragma_update(<span class="prelude-val">None</span>, <span class="string">&quot;journal_mode&quot;</span>, <span class="string">&quot;WAL&quot;</span>)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;rusqlite journal_mode update error&quot;</span>);
                     OperationError::SqliteError

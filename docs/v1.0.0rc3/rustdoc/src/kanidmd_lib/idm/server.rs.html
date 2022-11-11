@@ -5666,7 +5666,8 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerProxyWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub fn </span>get_origin(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Url {
-        <span class="self">self</span>.webauthn.get_allowed_origins().get(<span class="number">0</span>).unwrap()
+        <span class="attribute">#[allow(clippy::unwrap_used)]
+        </span><span class="self">self</span>.webauthn.get_allowed_origins().get(<span class="number">0</span>).unwrap()
     }
 
     <span class="kw">fn </span>check_password_quality(
@@ -6220,8 +6221,7 @@
 
         <span class="kw">let </span>mlist: Vec&lt;<span class="kw">_</span>&gt; = sessions
             .iter()
-            .map(|item| item.iter())
-            .flatten()
+            .flat_map(|item| item.iter())
             .filter_map(|(k, v)| {
                 <span class="comment">// We only check if an expiry is present
                 </span>v.expiry.and_then(|exp| {

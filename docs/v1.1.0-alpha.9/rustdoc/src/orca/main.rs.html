@@ -205,6 +205,7 @@
 <span id="205">205</span>
 <span id="206">206</span>
 <span id="207">207</span>
+<span id="208">208</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::unwrap_used)]
@@ -270,7 +271,8 @@
     }
 }
 
-<span class="kw">pub enum </span>TargetServer {
+<span class="attribute">#[allow(clippy::large_enum_variant)]
+</span><span class="kw">pub enum </span>TargetServer {
     Kanidm(KaniHttpServer),
     KanidmLdap(Box&lt;KaniLdapServer&gt;),
     DirSrv(DirectoryServer),

@@ -344,7 +344,7 @@
     <span class="kw">type </span>Error = String;
 
     <span class="kw">fn </span>try_from(entry: Entry) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="macro">console::error!</span>(<span class="string">&quot;Entry Dump&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, entry).to_string());
+        <span class="macro">console::error!</span>(<span class="string">&quot;Entry Dump&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, entry));
 
         <span class="kw">let </span>uuid = entry
             .attrs
@@ -472,7 +472,7 @@
                   &lt;/main&gt;
                 }
             }
-            State::Ready(profile) =&gt; <span class="self">self</span>.view_profile(ctx, <span class="kw-2">&amp;</span>profile),
+            State::Ready(profile) =&gt; <span class="self">self</span>.view_profile(ctx, profile),
             State::Error { emsg, kopid } =&gt; <span class="self">self</span>.do_alert_error(
                 <span class="string">&quot;An error has occured 😔 &quot;</span>,
                 <span class="prelude-val">Some</span>(
@@ -633,7 +633,7 @@
             <span class="kw">let </span>headers = resp.headers();
             <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
             <span class="kw">let </span>text = JsFuture::from(resp.text()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>emsg = text.as_string().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+            <span class="kw">let </span>emsg = text.as_string().unwrap_or_default();
             <span class="prelude-val">Ok</span>(Msg::Error { emsg, kopid })
         }
     }

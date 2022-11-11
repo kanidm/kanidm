@@ -119,6 +119,11 @@
 <span id="119">119</span>
 <span id="120">120</span>
 <span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This is the top level router of the web ui for kanidm. It decides based on the incoming
 //! request, where to direct this too, and if the requirements for that request have been
 //! met before rendering. For example, if you land here with an oauth request, but you are
@@ -173,11 +178,16 @@
     <span class="attribute">#[cfg(debug)]
     </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::switch&quot;</span>);
     <span class="kw">match </span>route {
-        Route::Landing =&gt; <span class="macro">html! </span>{ &lt;Landing /&gt; },
-        Route::Login =&gt; <span class="macro">html! </span>{ &lt;LoginApp /&gt; },
-        Route::Oauth2 =&gt; <span class="macro">html! </span>{ &lt;Oauth2App /&gt; },
-        Route::Views =&gt; <span class="macro">html! </span>{ &lt;ViewsApp /&gt; },
-        Route::CredentialReset =&gt; <span class="macro">html! </span>{ &lt;CredentialResetApp /&gt; },
+        <span class="attribute">#[allow(clippy::let_unit_value)]
+        </span>Route::Landing =&gt; <span class="macro">html! </span>{ &lt;Landing /&gt; },
+        <span class="attribute">#[allow(clippy::let_unit_value)]
+        </span>Route::Login =&gt; <span class="macro">html! </span>{ &lt;LoginApp /&gt; },
+        <span class="attribute">#[allow(clippy::let_unit_value)]
+        </span>Route::Oauth2 =&gt; <span class="macro">html! </span>{ &lt;Oauth2App /&gt; },
+        <span class="attribute">#[allow(clippy::let_unit_value)]
+        </span>Route::Views =&gt; <span class="macro">html! </span>{ &lt;ViewsApp /&gt; },
+        <span class="attribute">#[allow(clippy::let_unit_value)]
+        </span>Route::CredentialReset =&gt; <span class="macro">html! </span>{ &lt;CredentialResetApp /&gt; },
         Route::NotFound =&gt; {
             <span class="macro">add_body_form_classes!</span>();
 

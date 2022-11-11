@@ -3100,6 +3100,9 @@
 <span id="3100">3100</span>
 <span id="3101">3101</span>
 <span id="3102">3102</span>
+<span id="3103">3103</span>
+<span id="3104">3104</span>
+<span id="3105">3105</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -3567,8 +3570,9 @@
         //
         </span><span class="kw">let </span>o2rs = <span class="self">self</span>.inner.rs_set.get(<span class="kw-2">&amp;</span>auth_req.client_id).ok_or_else(|| {
             <span class="macro">admin_warn!</span>(
-                <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;
-            </span>);
+                <span class="string">&quot;Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?&quot;</span>,
+                <span class="kw-2">&amp;</span>auth_req.client_id
+            );
             Oauth2Error::InvalidClientId
         })<span class="question-mark">?</span>;
 
@@ -3576,7 +3580,9 @@
         </span><span class="kw">if </span>auth_req.redirect_uri.origin() != o2rs.origin {
             <span class="macro">admin_warn!</span>(
                 origin = <span class="question-mark">?</span>o2rs.origin,
-                <span class="string">&quot;Invalid oauth2 redirect_uri (must be related to origin of) - got {:?}&quot;</span>, auth_req.redirect_uri.origin()
+                <span class="string">&quot;Invalid oauth2 redirect_uri (must be related to origin {:?}) - got {:?}&quot;</span>,
+                o2rs.origin,
+                auth_req.redirect_uri.origin()
             );
             <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidOrigin);
         }

@@ -1867,6 +1867,7 @@
 <span id="1867">1867</span>
 <span id="1868">1868</span>
 <span id="1869">1869</span>
+<span id="1870">1870</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -2604,7 +2605,8 @@
         }
     }
 
-    <span class="kw">pub fn </span>get_idx_sub_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+    <span class="attribute">#[allow(clippy::unimplemented)]
+    </span><span class="kw">pub fn </span>get_idx_sub_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="macro">unimplemented!</span>();
     }
 }
