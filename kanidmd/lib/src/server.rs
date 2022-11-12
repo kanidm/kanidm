@@ -2383,6 +2383,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.delete(&de)
     }
 
+    pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let de = DeleteEvent::new_internal(f_valid);
+        self.delete(&de)
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn internal_modify(
         &mut self,
