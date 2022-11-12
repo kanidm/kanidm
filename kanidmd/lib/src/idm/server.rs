@@ -2220,9 +2220,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
-    // WARNING WILLIAM - what do if the uat id isn't present? Won't session
-    // consistency kick in?
-    // session consistency should check the grace windows too?
     pub(crate) fn process_oauth2sessionrecord(
         &mut self,
         osr: &Oauth2SessionRecord,
@@ -2403,7 +2400,6 @@ mod tests {
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
     const TEST_CURRENT_TIME: u64 = 6000;
-    const TEST_CURRENT_EXPIRE: u64 = TEST_CURRENT_TIME + AUTH_SESSION_TIMEOUT + 1;
 
     #[test]
     fn test_idm_anonymous_auth() {
@@ -2834,36 +2830,6 @@ mod tests {
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 assert!(idms_prox_write.set_account_password(&pce).is_err());
                 assert!(idms_prox_write.commit().is_ok());
-            }
-        )
-    }
-
-    #[test]
-    fn test_idm_session_expire() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                let sid = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    "admin",
-                );
-                let mut idms_auth = idms.auth();
-                assert!(idms_auth.is_sessionid_present(&sid));
-                // Expire like we are currently "now". Should not affect our session.
-                task::block_on(
-                    idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                assert!(idms_auth.is_sessionid_present(&sid));
-                // Expire as though we are in the future.
-                task::block_on(
-                    idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE)),
-                );
-                assert!(!idms_auth.is_sessionid_present(&sid));
-                assert!(idms_auth.commit().is_ok());
-                let idms_auth = idms.auth();
-                assert!(!idms_auth.is_sessionid_present(&sid));
             }
         )
     }

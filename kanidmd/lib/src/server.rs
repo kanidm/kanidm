@@ -90,6 +90,7 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     phase: CowCellWriteTxn<'a, ServerPhase>,
     d_info: CowCellWriteTxn<'a, DomainInfo>,
+    curtime: Duration,
     cid: Cid,
     be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
@@ -1008,7 +1009,7 @@ impl QueryServer {
         }
     }
 
-    pub async fn write(&self, ts: Duration) -> QueryServerWriteTransaction<'_> {
+    pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
         let write_ticket = self
@@ -1030,8 +1031,10 @@ impl QueryServer {
         let phase = self.phase.write();
 
         #[allow(clippy::expect_used)]
-        let ts_max = be_txn.get_db_ts_max(ts).expect("Unable to get db_ts_max");
-        let cid = Cid::new_lamport(self.s_uuid, d_info.d_uuid, ts, &ts_max);
+        let ts_max = be_txn
+            .get_db_ts_max(curtime)
+            .expect("Unable to get db_ts_max");
+        let cid = Cid::new_lamport(self.s_uuid, d_info.d_uuid, curtime, &ts_max);
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -1043,6 +1046,7 @@ impl QueryServer {
             committed: false,
             phase,
             d_info,
+            curtime,
             cid,
             be_txn,
             schema: schema_write,
@@ -1178,6 +1182,10 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    pub(crate) fn get_curtime(&self) -> Duration {
+        self.curtime
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn create(&mut self, ce: &CreateEvent) -> Result<(), OperationError> {
         // The create event is a raw, read only representation of the request
