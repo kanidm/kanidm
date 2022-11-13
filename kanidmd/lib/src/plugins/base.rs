@@ -208,38 +208,70 @@ impl Plugin for Base {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::v1::PluginError;
-
     use crate::prelude::*;
+    use kanidm_proto::v1::PluginError;
+    use std::sync::Arc;
 
-    const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
-        "attrs": {
-            "class": [
-                "object",
-                "access_control_profile",
-                "access_control_modify",
-                "access_control_create",
-                "access_control_delete",
-                "access_control_search"
-            ],
-            "name": ["idm_admins_acp_allow_all_test"],
-            "uuid": ["bb18f746-a409-497d-928c-5455d4aef4f7"],
-            "description": ["Builtin IDM Administrators Access Controls."],
-            "acp_enable": ["true"],
-            "acp_receiver": [
-                "{\"eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
-            ],
-            "acp_targetscope": [
-                "{\"pres\":\"class\"}"
-            ],
-            "acp_search_attr": ["name", "class", "uuid"],
-            "acp_modify_class": ["system"],
-            "acp_modify_removedattr": ["class", "displayname", "may", "must"],
-            "acp_modify_presentattr": ["class", "displayname", "may", "must"],
-            "acp_create_class": ["object", "person", "system"],
-            "acp_create_attr": ["name", "class", "description", "displayname", "uuid"]
-        }
-    }"#;
+    const UUID_TEST_ACCOUNT: Uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+    const UUID_TEST_GROUP: Uuid = uuid::uuid!("81ec1640-3637-4a2f-8a52-874fa3c3c92f");
+    const UUID_TEST_ACP: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
+
+    lazy_static! {
+        pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("service_account")),
+            ("class", Value::new_class("memberof")),
+            ("name", Value::new_iname("test_account_1")),
+            ("displayname", Value::new_utf8s("test_account_1")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT)),
+            ("memberof", Value::new_refer(UUID_TEST_GROUP))
+        );
+        pub static ref TEST_GROUP: EntryInitNew = entry_init!(
+            ("class", Value::new_class("group")),
+            ("name", Value::new_iname("test_group_a")),
+            ("uuid", Value::new_uuid(UUID_TEST_GROUP)),
+            ("member", Value::new_refer(UUID_TEST_ACCOUNT))
+        );
+        pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("access_control_profile")),
+            ("class", Value::new_class("access_control_modify")),
+            ("class", Value::new_class("access_control_create")),
+            ("class", Value::new_class("access_control_delete")),
+            ("class", Value::new_class("access_control_search")),
+            ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACP)),
+            ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
+            (
+                "acp_targetscope",
+                Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
+            ),
+            ("acp_search_attr", Value::new_iutf8("name")),
+            ("acp_search_attr", Value::new_iutf8("class")),
+            ("acp_search_attr", Value::new_iutf8("uuid")),
+            ("acp_modify_class", Value::new_iutf8("system")),
+            ("acp_modify_removedattr", Value::new_iutf8("class")),
+            ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+            ("acp_modify_removedattr", Value::new_iutf8("may")),
+            ("acp_modify_removedattr", Value::new_iutf8("must")),
+            ("acp_modify_presentattr", Value::new_iutf8("class")),
+            ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+            ("acp_modify_presentattr", Value::new_iutf8("may")),
+            ("acp_modify_presentattr", Value::new_iutf8("must")),
+            ("acp_create_class", Value::new_iutf8("object")),
+            ("acp_create_class", Value::new_iutf8("person")),
+            ("acp_create_class", Value::new_iutf8("system")),
+            ("acp_create_attr", Value::new_iutf8("name")),
+            ("acp_create_attr", Value::new_iutf8("class")),
+            ("acp_create_attr", Value::new_iutf8("description")),
+            ("acp_create_attr", Value::new_iutf8("displayname")),
+            ("acp_create_attr", Value::new_iutf8("uuid"))
+        );
+        pub static ref PRELOAD: Vec<EntryInitNew> =
+            vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
+        pub static ref E_TEST_ACCOUNT: Arc<EntrySealedCommitted> =
+            Arc::new(unsafe { TEST_ACCOUNT.clone().into_sealed_committed() });
+    }
 
     // check create where no uuid
     #[test]
@@ -572,9 +604,7 @@ mod tests {
         // Test an external create, it should fail.
         // Testing internal create is not super needed, due to migrations at start
         // up testing this every time we run :P
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-
-        let preload = vec![acp];
+        let preload = PRELOAD.clone();
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -596,7 +626,7 @@ mod tests {
             ))),
             preload,
             create,
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {}
         );
     }
@@ -606,9 +636,7 @@ mod tests {
         // Test an external create, it should fail.
         // Testing internal create is not super needed, due to migrations at start
         // up testing this every time we run :P
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-
-        let preload = vec![acp];
+        let preload = PRELOAD.clone();
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -630,7 +658,7 @@ mod tests {
             ))),
             preload,
             create,
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {}
         );
     }

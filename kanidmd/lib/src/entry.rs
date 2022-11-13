@@ -390,7 +390,7 @@ impl Entry<EntryInit, EntryNew> {
                             )
                         )
                     }
-                    "member" | "memberof" | "directmemberof" => {
+                    "member" | "memberof" | "directmemberof" | "acp_receiver_group" => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() )
                         )

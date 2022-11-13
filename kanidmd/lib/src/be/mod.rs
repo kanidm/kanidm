@@ -1264,7 +1264,7 @@ impl<'a> BackendWriteTransaction<'a> {
                                 idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
                             None => {
-                                admin_error!(
+                                warn!(
                                     "WARNING: index {:?} {:?} was not found. YOU MUST REINDEX YOUR DATABASE",
                                     attr, itype
                                 );
@@ -1280,7 +1280,7 @@ impl<'a> BackendWriteTransaction<'a> {
                                 idlayer.write_idl(attr, itype, &idx_key, &idl)
                             }
                             None => {
-                                admin_error!(
+                                warn!(
                                     "WARNING: index {:?} {:?} was not found. YOU MUST REINDEX YOUR DATABASE",
                                     attr, itype
                                 );

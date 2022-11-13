@@ -2205,10 +2205,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         info!(session_id = %osr.session_id, "Persisting auth session");
 
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_append(
-            "oauth2_session",
-            session,
-        );
+        let modlist = ModifyList::new_append("oauth2_session", session);
 
         self.qs_write
             .internal_modify(

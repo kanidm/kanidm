@@ -135,9 +135,10 @@ macro_rules! run_create_test {
 
         let ce = match $internal {
             None => CreateEvent::new_internal($create_entries.clone()),
-            Some(e_str) => unsafe {
-                CreateEvent::new_impersonate_entry_ser(e_str, $create_entries.clone())
-            },
+            Some(ent) => CreateEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_readwrite(ent),
+                $create_entries.clone(),
+            ),
         };
 
         {
@@ -190,8 +191,8 @@ macro_rules! run_modify_test {
 
         let me = match $internal {
             None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
-            Some(e_str) => unsafe {
-                ModifyEvent::new_impersonate_entry_ser(e_str, $modify_filter, $modify_list)
+            Some(ent) => unsafe {
+                ModifyEvent::new_impersonate_entry(ent, $modify_filter, $modify_list)
             },
         };
 
@@ -237,9 +238,7 @@ macro_rules! run_delete_test {
         let qs = setup_test!($preload_entries);
 
         let de = match $internal {
-            Some(e_str) => unsafe {
-                DeleteEvent::new_impersonate_entry_ser(e_str, $delete_filter.clone())
-            },
+            Some(ent) => unsafe { DeleteEvent::new_impersonate_entry(ent, $delete_filter.clone()) },
             None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
         };
 
